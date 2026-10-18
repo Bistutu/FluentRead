@@ -1,0 +1,682 @@
+{
+  "schemaVersion": 1,
+  "description": "第二份盲测阅读留出。在不查看当前分支新增核心、当前测量结果或具体修复样例的条件下独立撰写；冻结后仅测 main baseline 和最终候选，不用于修改规则、阈值或标签。自然繁体与简繁同形中文、技术正文、真正混合内容、日文与共享汉字、非 CJK 各十条。languages 为唯一允许跳过的目标；空数组为真正混合或纯共享汉字歧义，必须保留翻译。没有逐条 requireSkip。所有句子为合成阅读样本，不代表真实通知或产品。",
+  "groups": [
+    {
+      "id": "natural-hant",
+      "cases": 10
+    },
+    {
+      "id": "shared-chinese",
+      "cases": 10
+    },
+    {
+      "id": "technical-reading",
+      "cases": 10
+    },
+    {
+      "id": "mixed-reading",
+      "cases": 10
+    },
+    {
+      "id": "japanese-boundary",
+      "cases": 10
+    },
+    {
+      "id": "non-cjk",
+      "cases": 10
+    }
+  ],
+  "cases": [
+    {
+      "id": "reading-blind-natural-hant-01",
+      "text": "麻煩把剛才的收據留給我，等會兒還要核對金額。",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "natural-hant",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-natural-hant-02",
+      "text": "趁現在雨勢較小，先把陽臺上的衣服收進來。",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "natural-hant",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-natural-hant-03",
+      "text": "這份名單尚未確認，暫時不要轉寄給其他同事。",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "natural-hant",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-natural-hant-04",
+      "text": "搬到新住處之後，信件請改寄到右上角的地址。",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "natural-hant",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-natural-hant-05",
+      "text": "我記得鑰匙放在抽屜裡，你可以再找一次。",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "natural-hant",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-natural-hant-06",
+      "text": "如果今天來不及處理，就先在表格旁邊註明原因。",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "natural-hant",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-natural-hant-07",
+      "text": "場地已經訂好，接下來只要確認參加人數。",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "natural-hant",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-natural-hant-08",
+      "text": "這家店週二不營業，出發前最好先打電話。",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "natural-hant",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-natural-hant-09",
+      "text": "請沿著走廊往前，到第二個路口再向左轉。",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "natural-hant",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-natural-hant-10",
+      "text": "包裹外面的紙箱有點破損，裡面的物品還是完整的。",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "natural-hant",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-shared-chinese-01",
+      "text": "他把桌上的小盒子收好，就到外面等我。",
+      "languages": [
+        "zh-Hans",
+        "zh-Hant"
+      ],
+      "tags": [
+        "shared-chinese",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-shared-chinese-02",
+      "text": "我想先把此事做好，再和大家一起回家。",
+      "languages": [
+        "zh-Hans",
+        "zh-Hant"
+      ],
+      "tags": [
+        "shared-chinese",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-shared-chinese-03",
+      "text": "你若是今天有空，不妨陪我去走一走。",
+      "languages": [
+        "zh-Hans",
+        "zh-Hant"
+      ],
+      "tags": [
+        "shared-chinese",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-shared-chinese-04",
+      "text": "他一直坐在台下，直到所有人都上台。",
+      "languages": [
+        "zh-Hans",
+        "zh-Hant"
+      ],
+      "tags": [
+        "shared-chinese",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-shared-chinese-05",
+      "text": "我只是想把今天的事交代清楚，不想和你吵架。",
+      "languages": [
+        "zh-Hans",
+        "zh-Hant"
+      ],
+      "tags": [
+        "shared-chinese",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-shared-chinese-06",
+      "text": "孩子把手放在口袋中，慢慢地跟在大家身旁。",
+      "languages": [
+        "zh-Hans",
+        "zh-Hant"
+      ],
+      "tags": [
+        "shared-chinese",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-shared-chinese-07",
+      "text": "把一半的水果留到明天，今天就先吃桌上那些。",
+      "languages": [
+        "zh-Hans",
+        "zh-Hant"
+      ],
+      "tags": [
+        "shared-chinese",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-shared-chinese-08",
+      "text": "每次看到此景，他都想起和家人一起生活的日子。",
+      "languages": [
+        "zh-Hans",
+        "zh-Hant"
+      ],
+      "tags": [
+        "shared-chinese",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-shared-chinese-09",
+      "text": "此事不必太心急，先想清楚再作打算。",
+      "languages": [
+        "zh-Hans",
+        "zh-Hant"
+      ],
+      "tags": [
+        "shared-chinese",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-shared-chinese-10",
+      "text": "此事已告一段落，大家不想再提起它。",
+      "languages": [
+        "zh-Hans",
+        "zh-Hant"
+      ],
+      "tags": [
+        "shared-chinese",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-technical-reading-01",
+      "text": "录音转成 WAV 以后，先试听开头有没有杂音。",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "technical-reading",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-technical-reading-02",
+      "text": "请将收件地址写进 contacts.csv，不要覆盖原来的文件。",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "technical-reading",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-technical-reading-03",
+      "text": "这份 HTML 表格需要按列导出，单元格里的文字保持不变。",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "technical-reading",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-technical-reading-04",
+      "text": "更新 StoneBridge 11.2 之前，先确认备份已经写入硬盘。",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "technical-reading",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-technical-reading-05",
+      "text": "页面保留 HTTPS 链接，打印时会在末尾附上完整网址。",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "technical-reading",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-technical-reading-06",
+      "text": "截圖已存成 PNG；若要寄信，請另附文字說明。",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "technical-reading",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-technical-reading-07",
+      "text": "匯入 records.json 之前，請先核對每筆資料的日期。",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "technical-reading",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-technical-reading-08",
+      "text": "這個資料夾只保留 CSV 備份，原始圖片另外存放。",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "technical-reading",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-technical-reading-09",
+      "text": "把 OceanLedger 12.4 的視窗關掉後，再重新登入帳戶。",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "technical-reading",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-technical-reading-10",
+      "text": "安裝包內附 SHA-256 檢查碼，下載後可以自行核對。",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "technical-reading",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-mixed-reading-01",
+      "text": "他说暂时不用出门，但门上仍贴着：Collection ends at half past five.",
+      "languages": [],
+      "tags": [
+        "mixed-reading",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-mixed-reading-02",
+      "text": "纸条的最后一行写着：Please return the key before breakfast. 这句话也需要读懂。",
+      "languages": [],
+      "tags": [
+        "mixed-reading",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-mixed-reading-03",
+      "text": "这只是前半段说明。荷物は夕方までに届けてもらえると助かります。",
+      "languages": [],
+      "tags": [
+        "mixed-reading",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-mixed-reading-04",
+      "text": "沿路都是中文标牌，其中一块写着：다음 교차로에서 오른쪽으로 가세요.",
+      "languages": [],
+      "tags": [
+        "mixed-reading",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-mixed-reading-05",
+      "text": "這份通知附上一句英文：Visitors must leave their bags at the entrance.",
+      "languages": [],
+      "tags": [
+        "mixed-reading",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-mixed-reading-06",
+      "text": "收據背面的提示是 Please check the total before leaving，店員沒有另外解釋。",
+      "languages": [],
+      "tags": [
+        "mixed-reading",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-mixed-reading-07",
+      "text": "這裡先說明取件方式。忘れ物がないか、もう一度確かめてください。",
+      "languages": [],
+      "tags": [
+        "mixed-reading",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-mixed-reading-08",
+      "text": "這是繁體中文提醒。문을 닫은 뒤에 전등을 꺼 주세요.",
+      "languages": [],
+      "tags": [
+        "mixed-reading",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-mixed-reading-09",
+      "text": "The morning boat has been cancelled because of the wind. Vous pouvez échanger votre billet au guichet.",
+      "languages": [],
+      "tags": [
+        "mixed-reading",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-mixed-reading-10",
+      "text": "Bitte warten Sie hinter der gelben Linie. Следующий поезд прибывает через десять минут.",
+      "languages": [],
+      "tags": [
+        "mixed-reading",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-japanese-boundary-01",
+      "text": "まだ少し時間があるので、先にお茶を用意しておきます。",
+      "languages": [
+        "ja"
+      ],
+      "tags": [
+        "japanese-boundary",
+        "kana",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-japanese-boundary-02",
+      "text": "その本は読み終わったら、玄関の棚に戻してください。",
+      "languages": [
+        "ja"
+      ],
+      "tags": [
+        "japanese-boundary",
+        "kana",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-japanese-boundary-03",
+      "text": "雨がやむまで、ここで一緒に待っていてもいいですか。",
+      "languages": [
+        "ja"
+      ],
+      "tags": [
+        "japanese-boundary",
+        "kana",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-japanese-boundary-04",
+      "text": "帰り道でパンを買うつもりでしたが、店はもう閉まっていました。",
+      "languages": [
+        "ja"
+      ],
+      "tags": [
+        "japanese-boundary",
+        "kana",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-japanese-boundary-05",
+      "text": "予定が変わった場合は、出発する前に連絡をお願いします。",
+      "languages": [
+        "ja"
+      ],
+      "tags": [
+        "japanese-boundary",
+        "kana",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-japanese-boundary-06",
+      "text": "商品管理台帳",
+      "languages": [],
+      "tags": [
+        "japanese-boundary",
+        "pure-han-ambiguous",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-japanese-boundary-07",
+      "text": "市民文化会館",
+      "languages": [],
+      "tags": [
+        "japanese-boundary",
+        "pure-han-ambiguous",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-japanese-boundary-08",
+      "text": "学校給食当番",
+      "languages": [],
+      "tags": [
+        "japanese-boundary",
+        "pure-han-ambiguous",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-japanese-boundary-09",
+      "text": "町内清掃活動",
+      "languages": [],
+      "tags": [
+        "japanese-boundary",
+        "pure-han-ambiguous",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-japanese-boundary-10",
+      "text": "中央防災会議",
+      "languages": [],
+      "tags": [
+        "japanese-boundary",
+        "pure-han-ambiguous",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-non-cjk-01",
+      "text": "Please leave the spare blanket on the lower shelf so that the next guest can find it without waking anyone.",
+      "languages": [
+        "en"
+      ],
+      "tags": [
+        "non-cjk",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-non-cjk-02",
+      "text": "The road beyond the mill is closed this weekend because workers are repairing the old stone bridge.",
+      "languages": [
+        "en"
+      ],
+      "tags": [
+        "non-cjk",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-non-cjk-03",
+      "text": "La boulangerie du quartier fermera plus tôt demain, mais vous pourrez toujours récupérer votre commande avant midi.",
+      "languages": [
+        "fr"
+      ],
+      "tags": [
+        "non-cjk",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-non-cjk-04",
+      "text": "Nous avons laissé les clés chez la voisine afin que vous puissiez entrer même si notre train arrive en retard.",
+      "languages": [
+        "fr"
+      ],
+      "tags": [
+        "non-cjk",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-non-cjk-05",
+      "text": "Bitte stellen Sie die leeren Flaschen neben die Tür, damit wir sie morgen gemeinsam zum Laden zurückbringen können.",
+      "languages": [
+        "de"
+      ],
+      "tags": [
+        "non-cjk",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-non-cjk-06",
+      "text": "Die Wanderung fällt heute wegen des starken Regens aus, deshalb treffen wir uns erst nächste Woche am Bahnhof.",
+      "languages": [
+        "de"
+      ],
+      "tags": [
+        "non-cjk",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-non-cjk-07",
+      "text": "Пожалуйста, оставьте запасное одеяло на нижней полке, чтобы следующий гость смог легко его найти.",
+      "languages": [
+        "ru"
+      ],
+      "tags": [
+        "non-cjk",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-non-cjk-08",
+      "text": "Мы перенесли встречу на следующую неделю, потому что в здании пока продолжаются ремонтные работы.",
+      "languages": [
+        "ru"
+      ],
+      "tags": [
+        "non-cjk",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-non-cjk-09",
+      "text": "يرجى ترك المفتاح عند مكتب الاستقبال حتى يتمكن الضيف التالي من الدخول دون انتظار.",
+      "languages": [
+        "ar"
+      ],
+      "tags": [
+        "non-cjk",
+        "reading-blind-holdout"
+      ]
+    },
+    {
+      "id": "reading-blind-non-cjk-10",
+      "text": "أغلق المتجر أبوابه مبكرا اليوم بسبب أعمال الصيانة، ويمكن استلام الطلبات صباح الغد.",
+      "languages": [
+        "ar"
+      ],
+      "tags": [
+        "non-cjk",
+        "reading-blind-holdout"
+      ]
+    }
+  ]
+}

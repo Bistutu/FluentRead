@@ -126,7 +126,9 @@ const artifactBytes = Buffer.byteLength(source);
 // 同依赖独立主线 e806feff0 为 2,081,039，最终候选为 2,094,364；主线预算余 61 字节，
 // 在主线 2,081,100 预算上按既有 1 KB 步长最小增加 14 KB，余 736 字节，全部原校验保留。
 // 构建日志、前后产物与散列见工作区 research/deeplx-direct-968-20261014/userscript-size/。
-const MAX_USERSCRIPT_BYTES = 2_095_100;
+// 阅读语言预检：同依赖独立 main 0fef0669 为 2,092,304 字节，候选为 2,099,247，增加 6,943（0.332%）。
+// 原预算余 2,796，按既有 1 KB 步长最小增加 5 KB；保留协议、资源和 VM 运行断言，余量 853 字节。
+const MAX_USERSCRIPT_BYTES = 2_100_100;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';
 const preludeEndMarker = '/* FluentRead userscript compatibility prelude:end */';
 const preludeStart = source.indexOf(preludeStartMarker);
