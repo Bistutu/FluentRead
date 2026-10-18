@@ -173,7 +173,7 @@
     {"id": "th-long-extension", "text": "ย่อหน้านี้อธิบายว่าส่วนขยายเก็บข้อความต้นฉบับไว้อย่างไรและแสดงคำแปลไว้ด้านล่างทันที", "languages": ["th"], "requireSkip": true, "tags": ["long", "script-unique"]},
 
     {"id": "zh-hans-short", "text": "欢迎访问我们的网站。", "languages": ["zh-Hans"], "requireSkip": true, "tags": ["short", "chinese"]},
-    {"id": "zh-hans-saved", "text": "您的更改已保存。", "languages": ["zh-Hans"], "requireSkip": false, "tags": ["short", "chinese"]},
+    {"id": "zh-hans-saved", "text": "您的更改已保存。", "languages": ["zh-Hans", "zh-Hant"], "requireSkip": false, "tags": ["short", "chinese"]},
     {"id": "zh-hans-long", "text": "这段文字说明扩展如何保留原文，并在原文下方显示译文。", "languages": ["zh-Hans"], "requireSkip": true, "tags": ["long", "chinese"]},
     {"id": "zh-hans-reported-a1", "text": "OPENAI 🔥：宣布了一个大型“发布”周，预告了来自 GPT-6 系列的新模型。", "languages": ["zh-Hans"], "requireSkip": true, "tags": ["reported", "identifier", "chinese"]},
     {"id": "zh-hans-reported-a2", "text": "预计将推出 GPT-6 Sol 以及更小的 GPT-6 模型。", "languages": ["zh-Hans"], "requireSkip": true, "tags": ["reported", "identifier", "chinese"]},

@@ -1,7 +1,7 @@
 /**
  * @file src/features/full-page-translation/content/translationRequest.ts
  * 文件职责：为单次全文翻译会话冻结请求配置，并执行文本槽的批量、原生数组和显式 AI 跨候选合并、分包、回退与会话级结果复用。
- * 主要内容：记录显式显示覆盖以隔离后续弹窗模式切换；冻结组合与成员连接摘要，组合数组交由 broker 按真实成员调用并保留通用 AI 成员可消费的篇章上下文；冻结调用时的长段落换行与译文位置，操作身份区分展示设置而 provider 结果键仍只包含请求维度；在调用入口复制原文与服务/模型/语言/术语/排除列表快照，先过滤排除语言的文本槽再合批；缺失条目携带同次复制快照生成的逐槽键，保持键维度、512 条容量与整请求取消归属，避免登记结果时重复序列化；在本地保留尚未排版的三美元公式源码，构造显式 client 参数，按服务选择批译策略；标记内部单条槽协议，由 broker 按冻结术语和同一截止时间逐槽校验；为本地模型只构造一次整段语言样本，为 Chrome auto 逐槽翻译保留无哨兵整段检测样本，按冻结服务偏好自动原生数组合批，关闭后保留逐项请求，完整结构校验后才分发，AI 只合并同父直接相邻候选并在协议失败后停用同快照合批，严格隔离取消归属并维护有界会话缓存。
+ * 主要内容：记录显式显示覆盖以隔离后续弹窗模式切换；冻结组合与成员连接摘要，组合数组交由 broker 按真实成员调用并保留通用 AI 成员可消费的篇章上下文；冻结调用时的长段落换行与译文位置，操作身份区分展示设置而 provider 结果键仍只包含请求维度；在调用入口复制原文与服务/模型/语言/术语/排除列表快照，先对原始文本槽执行可取消的目标及排除语言预检，再合批或组装内部包；显式传递同次排除快照到 client；缺失条目携带同次复制快照生成的逐槽键，保持键维度、512 条容量与整请求取消归属，避免登记结果时重复序列化；在本地保留尚未排版的三美元公式源码，构造显式 client 参数，按服务选择批译策略；标记内部单条槽协议，由 broker 按冻结术语和同一截止时间逐槽校验；为本地模型只构造一次整段语言样本，为 Chrome auto 逐槽翻译保留无哨兵整段检测样本，按冻结服务偏好自动原生数组合批，关闭后保留逐项请求，完整结构校验后才分发，AI 只合并同父直接相邻候选并在协议失败后停用同快照合批，严格隔离取消归属并维护有界会话缓存。
  * 模块边界：本文件不发现候选、不持有 DOM 翻译状态也不渲染译文；runtime 提供会话缓存和取消作用域，client 负责后台协议与队列执行。
  */
 import {preparePageDiscourseContext} from '@/src/services/translation/context/pageDiscourse';
@@ -19,9 +19,11 @@ import {normalizeMaxConcurrentTranslations} from '@/src/core/config/scheduling';
 import {normalizeExcludedLanguages} from '@/src/core/config/pageTranslation';
 import {isNativeTranslationBatchEnabled} from '@/src/core/config/nativeBatch';
 import {shouldSkipTranslationForTarget} from '@/src/core/language/detect';
+import {getSupplementalLanguageCandidate} from '@/src/core/language/supplement';
 import {isModelThinkingEnabled} from '@/src/core/config/modelThinking';
 import {createGlossaryRevisionMemoizer} from '@/src/core/glossary';
 import {translateText, translateTextBatch, type TranslateOptions} from '@/src/services/translation/client';
+import {shouldSkipTranslationWithEvidence} from '@/src/services/translation/languagePreflight';
 import {supportsNativeTranslationBatch, supportsTranslationBatch} from '@/src/services/translation/capabilities';
 import {validateNativeBatchResults} from '@/src/core/translation/nativeBatch';
 import {hasTranslationContent} from '@/src/core/translation/result';
@@ -180,6 +182,7 @@ export function createSnapshotTranslateOptions(
         thinkingOverride: snapshot.thinking,
         sourceLanguage: snapshot.sourceLanguage,
         targetLanguage: snapshot.targetLanguage,
+        excludedLanguages: snapshot.excludedLanguages,
         enableAIContext: snapshot.enableAIContext,
         enableNativeBatch: snapshot.enableNativeBatch !== false,
         // 非会话 batch 需要显式禁用 broker 缓存；其余调用继续使用冻结的会话值。
@@ -915,10 +918,21 @@ async function translateTextSlotsInternal(
         if (translations.length !== prose.length) return [];
         return parts.map(pieces => pieces.map(piece => typeof piece === 'number' ? translations[piece] : piece).join(''));
     }
-    const translatedIndexes = origins
+    let translatedIndexes = origins
         .map((origin, index) => shouldKeepOriginalSlot(origin ?? '', snapshot) ? -1 : index)
         .filter((index) => index >= 0);
     if (translatedIndexes.length === 0) return [...origins];
+    // 内部槽包必须绕过 client 检测，因此补充证据只检查组包前的原文。
+    // 空槽沿用既有协议，由供应商回传占位，不把它当作语言证据。
+    const supplementalIndexes = translatedIndexes.filter(index => getSupplementalLanguageCandidate(origins[index] ?? '') !== undefined);
+    if (supplementalIndexes.length > 0) {
+        const keepOriginal = await Promise.all(supplementalIndexes.map(index =>
+            shouldSkipTranslationWithEvidence(origins[index]!, snapshot.targetLanguage, snapshot.excludedLanguages, signal)));
+        throwIfAborted(signal);
+        const skipped = new Set(supplementalIndexes.filter((_index, position) => keepOriginal[position]));
+        translatedIndexes = translatedIndexes.filter(index => !skipped.has(index));
+        if (translatedIndexes.length === 0) return [...origins];
+    }
     // 全量路径复用入口自己的快照；只有跳过语言槽时才创建回填所需的子集。
     const requestOrigins = translatedIndexes.length === origins.length
         ? origins

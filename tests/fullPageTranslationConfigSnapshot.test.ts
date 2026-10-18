@@ -15,6 +15,8 @@ const fixture = vi.hoisted(() => ({config: {
     longParagraphLineBreakEnabled: false, translationBeforeOriginal: false,
     compositeTranslationProviders: [] as CompositeTranslationProvider[], customBody: {} as Record<string, string>,
 }}));
+// 可选浏览器证据由预检边界套件验证；这里保留原有纯识别与请求/DOM契约。
+vi.mock('@/src/services/translation/languagePreflight', () => ({shouldSkipTranslationWithEvidence: async () => false}));
 vi.mock('@/src/services/config/store', () => ({config: fixture.config}));
 vi.mock('@/src/services/translation/client', () => ({translateText: vi.fn(), translateTextBatch: vi.fn()}));
 vi.mock('@/src/services/translation/queue', () => ({cancelTranslationQueueSession: vi.fn(), createTranslationQueueSession: vi.fn()}));

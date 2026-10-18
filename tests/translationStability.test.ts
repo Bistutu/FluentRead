@@ -1,9 +1,12 @@
 import {collectLiveTranslationTextSlots, extractTranslationText, getCurrentTranslationCore} from '@/src/core/translation/public';
+import {identifyTextLanguage} from '@/src/core/language/identify';
+import {getSupplementalLanguageCandidate} from '@/src/core/language/supplement';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {parseHTML} from 'linkedom';
 import {
     canKeepTranslationAttempt,
     getCurrentTranslationStateSourceSnapshot,
+    getCurrentTranslationStateTextNodes,
     createCurrentTranslationStateSourceSnapshotBatch,
     createTranslationMutationStabilityChecks,
     createAcceptedUnchangedCompletion,
@@ -19,6 +22,7 @@ import {
     isTranslationArtifactCurrent,
     isTranslationCandidateCurrent,
     isTranslationStateCandidateCurrent,
+    isTranslationStateSourceCurrent,
     mutationTouchesCurrentTranslationArtifact,
     reboundLiveTextResult,
     statefulSourceAndTextSlotsAreCurrent,
@@ -103,6 +107,24 @@ describe('动态翻译稳定性判定', () => {
         expect(isTranslationCandidateCurrent(candidate)).toBe(true);
         owner.remove();
         expect(isTranslationCandidateCurrent(candidate)).toBe(false);
+    });
+
+    it('先前自动外壳许可不适用于当前页面时，同值来源也不能提供重绑文本槽', () => {
+        const {document} = parseHTML('<html><body><main><p>Readable public source.</p></main></body></html>');
+        const owner = document.querySelector<HTMLElement>('p')!;
+        const source = owner.firstChild as Text;
+        const current = state({sourceText: source.data});
+        expect(isTranslationStateSourceCurrent(owner, current)).toBe(true);
+        expect(getCurrentTranslationStateTextNodes(owner, current)).toEqual([source]);
+
+        // 当前普通页面没有原自动站点的授权；原文相同不能把过期能力降级成手动外壳例外。
+        const previousAutomatic = state({sourceText: source.data,
+            allowTopLevelApplicationShell: true, applicationShellPolicyId: 'mastodon'});
+        expect(isTranslationStateSourceCurrent(owner, previousAutomatic)).toBe(false);
+        expect(getCurrentTranslationStateTextNodes(owner, previousAutomatic)).toEqual([]);
+        source.data = 'The website replaced this public source.';
+        expect(isTranslationStateSourceCurrent(owner, current)).toBe(false);
+        expect(getCurrentTranslationStateTextNodes(owner, previousAutomatic)).toEqual([]);
     });
 
     it('视觉手动分块只要仍是已标记的合成段且挂在文档中就保持有效', () => {
@@ -1404,11 +1426,24 @@ describe('同值完成证据的真实来源与会话边界', () => {
         const chinese = beginCompletionUnit('<p id="completion">这是已经属于目标语言的完整中文句子。</p>');
         expect(captureCompletionUnit(chinese)).toBeUndefined();
         const english = beginCompletionUnit('<p id="completion">This paragraph explains how the translation extension keeps the original text and shows the translated sentence below it.</p>');
+        expect(identifyTextLanguage(english.state.sourceText).status).toBe('identified');
         expect(captureCompletionUnit(english, undefined, {excludedLanguages: ['en']})).toBeUndefined();
         for (const service of ['openai', 'unknown-client']) {
             expect(captureCompletionUnit(english, undefined, {service})).toBeUndefined();
         }
         expect(captureCompletionUnit(english)).toBeDefined();
+    });
+
+    it('符合补充检测资格的真实长未知正文同值回填不能认证为供应商完成结果', () => {
+        const source = 'Astronomical instruments capture electromagnetic radiation across distant interstellar regions enabling detailed spectroscopic measurements alongside sophisticated computational simulations.';
+        const fixture = beginCompletionUnit('<p id="completion">' + source + '</p>');
+        expect(fixture.state.sourceText).toBe(source);
+        expect(identifyTextLanguage(source).status).toBe('unknown');
+        expect(getSupplementalLanguageCandidate(source)).toBe('en');
+        expect(captureCompletionUnit(fixture, [source], {targetLanguage: 'en'})).toBeUndefined();
+        expect(captureCompletionUnit(fixture, [source])).toBeUndefined();
+        expect(getTranslationState(fixture.owner)).toBe(fixture.state);
+        expect(fixture.owner.textContent).toBe(source);
     });
 
     it('仅译文、按钮、合成段和多个真实槽均不提供 direct single-slot bilingual content 证据', () => {
