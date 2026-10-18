@@ -462,10 +462,14 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
     await mount();runtimeEvent({type:'fullPageTranslationState',isTranslated:true,toolbarStatus:'error',documentToken:'popup-fixture-document',diagnostic:{code:'authentication'}},{id:'fixture-extension',url:'https://example.com/a',tab:{id:7,url:'https://example.com/a'},frameId:0});await drain()
     const translation=document.querySelector('[data-popup-module="translation"]')!,meta=translation.querySelector('.translation-meta')!,notice=document.querySelector('.fluentread-diagnostic')!
     const tools=meta.querySelector('.translation-tools')!,mode=button('popup-display-mode')
-    expect(document.querySelectorAll('.fluentread-diagnostic')).toHaveLength(1);expect(notice.parentElement).toBe(tools);expect(mode.closest('.translation-tools')).toBe(tools);expect(notice.nextElementSibling?.contains(mode)).toBe(true);expect(notice.closest('[data-popup-module="translation"]')).toBe(translation);expectCollapsedDiagnostic()
+    expect(document.querySelectorAll('.fluentread-diagnostic')).toHaveLength(1);expect(notice.parentElement).toBe(tools);expect(mode.closest('.translation-tools')).toBe(tools);expect(mode.parentElement?.nextElementSibling).toBe(notice);expect(notice.closest('[data-popup-module="translation"]')).toBe(translation);expectCollapsedDiagnostic()
     expect(translation.querySelectorAll('[data-diagnostic-details-toggle]')).toHaveLength(1)
     const site=document.querySelector('[data-popup-module="siteRule"]')
-    if(layout==='nested'){expect(site?.parentElement).toBe(meta);expect(site?.nextElementSibling).toBe(tools)}
+    if(layout==='nested'){
+      expect(site?.parentElement).toBe(meta);expect(site?.nextElementSibling).toBe(tools)
+      expect([...meta.querySelectorAll('[data-setting], [data-testid="popup-display-mode"], [data-diagnostic-details-toggle]')].map(el=>el.getAttribute('data-setting')||el.getAttribute('data-testid')||'diagnostic'))
+        .toEqual(['always-translate-site','disable-extension-site','popup-display-mode','diagnostic'])
+    }
     else if(layout==='hidden')expect(site).toBeNull()
     else {expect(site).not.toBeNull();expect(site!.closest('[data-popup-module="translation"]')).toBeNull();expect(meta.querySelector('[data-popup-module="siteRule"]')).toBeNull()}
     const expected=config.popupModuleOrder.filter(id=>layout!=='hidden'||id!=='siteRule')

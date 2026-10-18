@@ -178,7 +178,6 @@
         :onSetExtensionDisabled="pageButtons.disabled"
         />
         <div class="translation-tools">
-          <DiagnosticNotice v-if="pageDiagnostic" :diagnostic="pageDiagnostic" :language="config.uiLanguage" :busy="translating" :version="version" @action="diagnosticAction" />
           <span class="display-mode-slot" :title="displayModeButton.label" data-i18n-ignore>
             <button class="display-mode-button" type="button" data-testid="popup-display-mode"
               :data-display-mode="config.display === 1 ? 'bilingual' : 'translation-only'"
@@ -195,6 +194,7 @@
               </svg>
             </button>
           </span>
+          <DiagnosticNotice v-if="pageDiagnostic" :diagnostic="pageDiagnostic" :language="config.uiLanguage" :busy="translating" :version="version" @action="diagnosticAction" />
         </div>
       </div>
 

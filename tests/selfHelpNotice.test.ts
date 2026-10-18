@@ -1,7 +1,7 @@
 /**
  * @file tests/selfHelpNotice.test.ts
  * 文件职责：执行真实诊断提示模板与 popup 控制器，验证故障后用户的可操作性和隐私边界。
- * 主要内容：报告按需预览及明确导出、白名单文案、冷却与忙状态、切换和卸载清理，以及恢复后重试的整段页面归属。
+ * 主要内容：报告按需预览及明确导出、白名单文案、冷却与忙状态、实际定位容器和换行入口的空间复验、切换和卸载清理，以及恢复后重试的整段页面归属。
  * 模块边界：自有 Vue renderer 覆盖实际组件事件与生命周期，下载及浏览器消息使用可控端口；真实浏览器下载和视觉验收另行执行。
  */
 import {createRequire} from 'node:module';
@@ -36,7 +36,7 @@ function loadNotice() {
   return module.exports.default;
 }
 afterEach(() => {dispose?.();dispose = undefined;vi.useRealTimers();vi.restoreAllMocks();vi.unstubAllGlobals();ensureUiLanguageBundle.mockReset().mockImplementation(loadLanguage);});
-interface Host {tag: string; text: string; props: Record<string, any>; children: Host[]; parent: Host | null; focus: ReturnType<typeof vi.fn>; contains: (target: Host | null) => boolean; querySelector: (selector: string) => Host | null; scrollHeight: number; getBoundingClientRect?: () => {top: number; bottom: number}; closest?: (selector: string) => {getBoundingClientRect: () => {top: number; bottom: number}} | null}
+interface Host {tag: string; text: string; props: Record<string, any>; children: Host[]; parent: Host | null; focus: ReturnType<typeof vi.fn>; contains: (target: Host | null) => boolean; querySelector: (selector: string) => Host | null; scrollHeight: number; getBoundingClientRect?: () => {top: number; bottom: number}; closest?: (selector: string) => {getBoundingClientRect: () => {top: number; bottom: number}} | null; offsetParent?: {getBoundingClientRect: () => {top: number; bottom: number}} | null}
 const node = (tag: string, text = ''): Host => {
   const value: Host = {tag, text, props: {}, children: [], parent: null, scrollHeight: 0,
     focus: vi.fn(() => {if (globalThis.document) (document as unknown as {activeElement: Host}).activeElement = value;}),
@@ -165,6 +165,21 @@ describe('actual self help notice', () => {
     const reads = vi.mocked(host.getBoundingClientRect).mock.calls.length;await f.dispatchDocument('scroll', panel);expect(vi.mocked(host.getBoundingClientRect)).toHaveBeenCalledTimes(reads);
     rect = {top: 480, bottom: 504};await f.dispatchDocument('scroll', node('main'));expect(panel.props.class).toContain('above');expect(panel.props.style.maxHeight).toBe('422px');
     rect = {top: 570, bottom: 594};await f.dispatchWindow('resize');f.collapsed();expect(f.trigger().focus).not.toHaveBeenCalled();expect(f.listenerCounts()).toEqual({document: 0, window: 0});
+  });
+
+  it('sizes a report against its positioned meta container when the trigger wraps to a later row, while visibility still follows the trigger', async () => {
+    const f = await mount({code: 'timeout'}), host = all(f.root, value => value.tag === 'section')[0];
+    let triggerRect = {top: 300, bottom: 324}, metaRect = {top: 260, bottom: 324};
+    host.getBoundingClientRect = () => triggerRect;
+    host.closest = () => ({getBoundingClientRect: () => ({top: 40, bottom: 560})});
+    await f.click('查看详情');const panel = all(f.root, value => 'data-diagnostic-details' in value.props)[0];
+    panel.offsetParent = {getBoundingClientRect: () => metaRect};panel.scrollHeight = 400;
+    // 预览增长后的空间必须来自浮层实际锚定的整行容器；较晚一行的入口会错误地选择上方。
+    await f.click('预览诊断');expect(panel.props.class).toContain('below');expect(panel.props.style.maxHeight).toBe('218px');
+    metaRect = {top: 440, bottom: 504};triggerRect = {top: 480, bottom: 504};
+    await f.dispatchWindow('resize');expect(panel.props.class).toContain('above');expect(panel.props.style.maxHeight).toBe('382px');
+    // 定位容器仍可见也不能保留已经滚出弹窗的诊断入口。
+    triggerRect = {top: 570, bottom: 594};await f.dispatchWindow('resize');f.collapsed();expect(f.listenerCounts()).toEqual({document: 0, window: 0});
   });
 
   it('shows safe fixed recovery text and generates no report or download before explicit actions', async () => {

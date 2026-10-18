@@ -757,18 +757,19 @@ footer button { font-weight: 500; color: var(--muted); }
 
 /* 首次操作与真实完成提示紧邻主操作，保持正文与主要功能可见。 */
 .first-use-hint { margin: 7px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
-.translation-meta { display: flex; align-items: center; gap: 6px; margin-top: 8px; min-width: 0; }
-:root .popup-shell[data-interface-skin] .translation-meta > .site-rule-row[data-popup-module="siteRule"] { flex: 1; min-width: 0; margin-top: 0; }
-/* 显示模式常驻局部按钮下方；网站规则可换行，右侧工具独立对齐，不增加默认中文弹窗高度。 */
-.translation-tools { position: relative; display: flex; flex: none; align-items: center; gap: 6px; margin-inline-start: auto; }
+.translation-meta { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; min-width: 0; }
+/* 嵌套时按钮进入同一换行流，模式图标紧接禁用网站按钮；独立排序的网站规则保留原布局。 */
+:root .popup-shell[data-interface-skin] .translation-meta > .site-rule-row[data-popup-module="siteRule"],
+:root .popup-shell[data-interface-skin] .translation-meta > .site-rule-row > .site-rule-actions,
+.translation-tools { display: contents; }
 .popup-shell .translation-tools > .fluentread-diagnostic { position: static; margin-left: 0; }
-.display-mode-slot { display: grid; place-items: center; flex: 0 0 var(--popup-secondary-action-width); width: var(--popup-secondary-action-width); }
+.display-mode-slot { display: grid; place-items: center; flex: none; }
 .display-mode-button { display: grid; place-items: center; width: 24px; height: 24px; padding: 2px; border: 1px solid transparent; border-radius: 6px; color: var(--brand-strong); background: var(--surface-soft); cursor: pointer; }
 .display-mode-button svg { width: 18px; height: 18px; }
 .display-mode-button:hover:not(:disabled) { border-color: var(--brand); background: var(--brand-soft); }
 .display-mode-button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .display-mode-button:disabled { color: var(--muted); opacity: .55; cursor: default; }
-/* 诊断图标可在模式图标左侧；浮层仍以工具组右缘为锚点，避免向左越出窄弹窗。 */
+/* 诊断入口排在模式图标之后；浮层以整行右缘为锚点，避免向左越出窄弹窗。 */
 .translation-tools .diagnostic-details { right: 0; }
 
 .popup-startup-recovery { padding: 20px; color: var(--ink); font-size: 12px; line-height: 1.6; }
