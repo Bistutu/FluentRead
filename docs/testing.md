@@ -793,6 +793,8 @@ Reddit 搜索结果沿用内置 focus 规则，补充 SDUI 的 `post-title-text`
 
 issue #1000 的 `reddit-search.html` 是依据报告选择器独立编写的最小结构夹具，并非实站快照。上述命令追加 `--search-only`，只运行全站 `/search/` 与社区 `/r/.../search/` 的搜索专项，覆盖 focus 正文范围、标题与评论悬浮 `[1,0,1]`、全文翻译、动态新增和移除结果、恢复后再翻译、链接与按钮节点身份和点击行为。`translationCore.test.ts` 同时检查候选发现与悬浮解析一致，以及 `data-testid` 被移除和恢复后的目标复验。
 
+issue #1017 的 `reddit-profile.html` 同样依据报告的 DOM 结构独立编写，覆盖 `shreddit-profile-comment` 评论卡片、父帖标题，以及空前缀和带前缀的 `-post-rtjson-content` 正文。上述命令追加 `--profile-only`，只运行用户主页概览、帖子和评论路径，验证标题与正文悬浮 `[1,0,1]`、全文翻译、动态卡片增删、恢复后再翻译及导航/元数据/代码保护；默认命令也包含此专项。`translationCore.test.ts` 验证结构化段落与纯文本正文的发现、悬浮解析和目标失效复验。夹具和受控响应不代表 Reddit 实站可访问或在线供应商验收。
+
 额外追加 `--live-search` 才会访问真实公开搜索页；翻译仍使用本地确定性微软响应。报告将 HTTP 状态、搜索目标数、实际翻译数和站点限制单独记录，真实页面不可访问时不算实站验证通过，也不代表在线供应商的翻译质量。
 
 ### GitHub Latest 仅译文反复翻译

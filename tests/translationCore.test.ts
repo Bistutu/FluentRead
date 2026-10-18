@@ -2734,6 +2734,69 @@ describe('translation candidate core', () => {
         },
     );
 
+    it.each(['/user/example/', '/user/example/comments/', '/u/example/'])(
+        'Reddit 用户主页 %s 发现父帖标题、分块评论与裸正文，保留普通帖子边界', (pathname) => {
+            const fixture = readFileSync(new URL('./fixtures/translation-pages/reddit-profile.html', import.meta.url), 'utf8');
+            const {document} = parseHTML(fixture);
+            const core = createTranslationCore({url: new URL(pathname, 'https://www.reddit.com')});
+            const expected = ['profile-title', 'profile-comment', 'profile-title-second', 'profile-comment-second',
+                'profile-comment-third', 'profile-comment-list', 'profile-comment-quote', 'profile-comment-heading',
+                'profile-title-bare', 't1_bare-post-rtjson-content', 'ordinary-title', 'ordinary-body', 'ordinary-comment'];
+            const before = document.body.innerHTML;
+            const candidates = core.discover(document);
+            expect(candidates.map(candidate => candidate.element.id)).toEqual(expected);
+            for (const id of expected) {
+                const owner = document.getElementById(id)!;
+                expect(core.resolve(owner.firstChild)).toMatchObject({element: owner, adapterId: 'reddit'});
+            }
+            for (const [selector, id] of [
+                ['#profile-title-emphasis', 'profile-title'], ['#profile-source-link', 'profile-comment-second'],
+                ['#profile-comment-emphasis', 'profile-comment-third'], ['#profile-bare-emphasis', 't1_bare-post-rtjson-content'],
+                ['#profile-bare-link', 't1_bare-post-rtjson-content'],
+            ]) {
+                expect(core.resolve(document.querySelector(selector!)!.firstChild)?.element.id, selector).toBe(id);
+            }
+            for (const selector of ['#profile-navigation a', 'button', '.metadata a', 'faceplate-timeago',
+                '#profile-heading', '#profile-sidebar h2', '#profile-sidebar p']) {
+                for (const element of document.querySelectorAll(selector)) {
+                    expect(core.resolve(element.firstChild ?? element), selector).toBeNull();
+                }
+            }
+            const sources = candidates.map(candidate => extractTranslationTextFromNodes(
+                candidate.nodes ?? [candidate.element], core.shouldStayOriginal));
+            expect(sources.join('\n')).not.toMatch(/KEEP_ORIGINAL_CODE|Reddit Home|Share|Reply|Show more|u\/example|r\/languagelearning|hours ago|About this user/);
+            expect(sources.filter(source => source.includes('Compare the original meaning'))).toHaveLength(1);
+            expect(sources.filter(source => source.includes('Start with familiar topics'))).toHaveLength(1);
+            expect(document.body.innerHTML).toBe(before);
+        },
+    );
+
+    it('Reddit 用户主页动态评论拆分直接文本与嵌套段落，替换和移除后不复用旧候选', () => {
+        const {document, core} = page('<main></main>', 'https://www.reddit.com/user/example/comments/');
+        const card = document.createElement('shreddit-profile-comment');
+        card.innerHTML = '<h2 class="inline-block m-0"><a class="rpl" id="late-profile-title" href="/r/example/comments/late/">A recently loaded parent discussion</a></h2>'
+            + '<div class="md" id="t1_late-post-rtjson-content"><span id="late-profile-intro">A direct introduction before the paragraph.</span>'
+            + '<p id="late-profile-paragraph">A nested paragraph remains an independent translation.</p>'
+            + '<span id="late-profile-after">A direct conclusion after the paragraph.</span></div><button>Reply</button>';
+        document.querySelector('main')!.append(card);
+        const sources = core.discover(card).map(candidate => extractTranslationTextFromNodes(
+            candidate.nodes ?? [candidate.element], core.shouldStayOriginal));
+        expect(sources).toHaveLength(4);
+        expect(sources).toEqual(expect.arrayContaining(['A recently loaded parent discussion', 'A direct introduction before the paragraph.',
+            'A nested paragraph remains an independent translation.', 'A direct conclusion after the paragraph.']));
+        expect(core.resolve(card.querySelector('#late-profile-intro')!.firstChild)?.nodes?.length).toBeGreaterThan(0);
+        expect(core.resolve(card.querySelector('#late-profile-paragraph')!.firstChild)?.element.id).toBe('late-profile-paragraph');
+        expect(core.resolve(card.querySelector('#late-profile-after')!.firstChild)?.nodes?.length).toBeGreaterThan(0);
+        const body = card.querySelector('[id$="-post-rtjson-content"]')!;
+        body.removeAttribute('id');
+        expect(core.resolve(body.querySelector('p')!.firstChild)).toBeNull();
+        body.setAttribute('id', '-post-rtjson-content');
+        body.innerHTML = '<p id="replacement-profile-comment">The host replaced the previous comment body.</p>';
+        expect(core.discover(card).map(candidate => candidate.element.id)).toEqual(['late-profile-title', 'replacement-profile-comment']);
+        card.remove();
+        expect(core.discover(document)).toEqual([]);
+    });
+
     it.each(['content', 'all'] as const)('Reddit %s 范围不叠加外部译文，也不吞掉未翻译的相邻正文', (scope) => {
         const {document} = page(`<main><shreddit-post>
             <h1 slot="title" id="translated-title">A model with strong potential
