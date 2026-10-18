@@ -108,7 +108,7 @@ export const navigationGroups = [
         id: 'settings-selection', icon: '文', label: '划词翻译', description: '翻译卡片与按需学习', group: '专项翻译',
         heading: '划词翻译', summary: '选中文字查看译文，用卡片查词或理解句子结构',
         kicker: '专项翻译', title: '划词翻译', detail: '统一管理划词的触发、呈现与学习偏好',
-        searchDescription: '划词翻译、普通翻译、卡片模式、词性、句法、冠词、名词、触发、朗读、翻译卡片、阅读卡、Harness、DeepSeek、读懂、拆句、用法、练习、选区、段落、学习辅助、解释深度、学习程度、学习记忆、记忆开关',
+        searchDescription: '划词翻译、普通翻译、卡片模式、词性、句法、冠词、名词、触发、朗读、翻译卡片、阅读卡、读懂、拆句、用法、练习、选区、段落、学习辅助、解释深度、学习程度、学习记忆、记忆开关',
       },
       {
         id: 'settings-image-translation', icon: '图', label: '图片/漫画翻译', description: '漫画连续翻译、网页图片与圈选', group: '专项翻译',
