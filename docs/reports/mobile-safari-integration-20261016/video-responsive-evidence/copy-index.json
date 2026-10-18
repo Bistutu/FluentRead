@@ -22,5 +22,12 @@
     "copy": "model-prompt.png",
     "bytes": 70438,
     "sha256": "0101c7e7f8fea120583180c870cba2ad1d5ac8cb5ba2563bb198c39276db3c9c"
+  },
+  {
+    "original": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/native-first-screen-attempt2/runtime-attachments/65D15201-2ADC-4F9F-8B6A-4BA8FB55EBD0.png",
+    "copy": "native-ios-first-screen.png",
+    "bytes": 1018484,
+    "sha256": "d7cffa24c6ac30e5a64fd1a89ae208a4f395e2fce213e599fb129462372ad6d9",
+    "scope": "iOS Simulator26.2 Safari first-screen native UI; not physical-device or subtitle-paint acceptance"
   }
 ]

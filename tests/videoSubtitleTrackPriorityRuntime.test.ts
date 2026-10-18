@@ -281,7 +281,7 @@ function mobileYoutubeLayoutFixture() {
 }
 
 describe('public mounted mobile YouTube subtitle control layout', () => {
-  it.each(['resize', 'orientationchange', 'visualViewport-resize', 'visualViewport-scroll'] as const)('calibrates the owned menu host before real menu measurement in the next %s frame', async eventName => {
+  it.each(['resize', 'orientationchange', 'visualViewport-resize', 'visualViewport-scroll'] as const)('calibrates the mobile viewport menu host before real menu measurement in the next %s frame', async eventName => {
     const f = mobileYoutubeLayoutFixture();
     const viewport = f.document.createElement('div');
     Object.assign(viewport, {width: 402, height: 720, offsetLeft: 0, offsetTop: 0, scale: 1});
@@ -305,7 +305,10 @@ describe('public mounted mobile YouTube subtitle control layout', () => {
     const button = f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)!;
     const click = new f.window.Event('click', {bubbles: true}); Object.defineProperty(click, 'isTrusted', {value: true}); button.dispatchEvent(click);
     expect(menu.hidden).toBe(false); expect(menu.dataset.layout).toBe('wide'); expect(host.clientWidth).toBe(402);
-    Object.assign(geometry, {left: 12, top: 36, width: 240, height: 320});
+    expect(host.parentElement).toBe(f.document.documentElement); expect(host.clientHeight).toBe(720);
+    // 手机菜单随实际可见视口缩放和平移，播放器可保持独立的尺寸与位置。
+    Object.assign(geometry, {left: 40, top: 70, width: 320, height: 180});
+    Object.assign(viewport, {width: 240, height: 320, offsetLeft: 12, offsetTop: 36});
     if (eventName.startsWith('visualViewport-')) viewport.dispatchEvent(new f.window.Event(eventName.slice('visualViewport-'.length)));
     else f.window.dispatchEvent(new f.window.Event(eventName));
     // 只推进实际事件调度的一帧，远短于1秒播放器同步；不调用 binding.sync 或媒体/配置刷新。
@@ -315,7 +318,7 @@ describe('public mounted mobile YouTube subtitle control layout', () => {
     expect(f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)).toBe(button);
     expect(f.document.querySelectorAll('#' + VIDEO_TRANSLATION_MENU_ID)).toHaveLength(1);
     f.window.dispatchEvent(new f.window.Event('resize')); dispose(); await vi.advanceTimersByTimeAsync(16);
-    expect(f.scope.querySelector('.fluent-read-video-menu-host')).toBeNull();
+    expect(f.document.querySelector('.fluent-read-video-menu-host')).toBeNull();
   });
 
   it.each([false, true])('学习宿主增删在一帧内撤回/恢复字幕host，scroll=%s，模式与Off保持正确', async scrolling => {
