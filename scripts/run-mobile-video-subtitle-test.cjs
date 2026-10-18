@@ -683,6 +683,130 @@ async function main() {
   assert.equal(reopenedFocus.actualMode,reopenedSelection.mode);
   assertWholeMenuTarget('shortOffsetReopenFocus',reopenedFocus);
   report.menuReopenFromBodyBottom={bodyScrollTop:shortReopened.bodyScrollTop,sameMenu:shortReopened.sameMenu,sameHost:shortReopened.sameHost,checkedMode:reopenedSelection.mode,focusedMode:reopenedFocus.actualMode,focusedSameCheckedNode:reopenedSelection.focusedSameNode,checkedBeforeFixtureReset:true};save();
+  // This is a controlled visible-port fixture, not a native keyboard. At extremely small heights
+  // only Close must fit; demanding the whole body here would turn intentional collapse into a failure.
+  await page.evaluate(()=>{
+    const menu=document.querySelector('#fluent-read-video-subtitle-menu'),body=menu.querySelector('.fluent-read-video-menu-body');
+    window.__veryShortMenuIdentity={body,modes:[...menu.querySelectorAll('[data-mode]')],scrollTop:body.scrollTop,
+      selected:menu.querySelector('[data-mode][aria-checked="true"]')?.dataset.mode};
+  });
+  const veryShortState=()=>page.evaluate(()=>{
+    const menu=document.querySelector('#fluent-read-video-subtitle-menu'),body=menu.querySelector('.fluent-read-video-menu-body'),p=window.__veryShortMenuIdentity;
+    const active=document.activeElement,close=menu.querySelector('[data-action="close-menu"]'),modes=[...menu.querySelectorAll('[data-mode]')];
+    return {state:menu.dataset.viewportState||null,sameBody:body===p.body,sameModeNodes:modes.length===p.modes.length&&modes.every((node,i)=>node===p.modes[i]),
+      selected:menu.querySelector('[data-mode][aria-checked="true"]')?.dataset.mode,expectedSelected:p.selected,
+      bodyScrollTop:body.scrollTop,expectedScrollTop:p.scrollTop,bodyInert:Boolean(body.closest('[inert]')),bodyInLayout:body.getClientRects().length>0,
+      closeFocused:active===close,externalFocused:active===document.querySelector('#description'),
+      focusInInert:Boolean(active?.closest('[inert]')),focusInFoldedBranch:menu.contains(active)&&active!==close,
+      viewportInertMarkers:[...menu.querySelectorAll('[data-viewport-inert]')].map(node=>node.hasAttribute('inert'))};
+  });
+  let normal128;
+  for(const height of [44,54,58,80,83,84,127,128]){
+    if(height===80){
+      // An explicit fixture-only focus setup checks that resizing never steals an unrelated host focus.
+      await page.evaluate(()=>{const outside=document.querySelector('#description');outside.tabIndex=-1;outside.focus({preventScroll:true});});
+      report.veryShortOutsideFocusSetup='Controlled fixture-description focus with preventScroll; not a product focus action';save();
+    }
+    await setControlledMenuViewport({width:378,height,offsetLeft:12,offsetTop:80});
+    const name=`very-short-${height}-close`,geometry=await captureMenuScrollTargets(name);
+    assert.equal(geometry.presentation,'viewport');assert.ok(geometry.sameMenu&&geometry.sameHost,`${name}: same owned menu/host`);
+    assert.ok(geometry.menu.left>=geometry.host.left-.01&&geometry.menu.right<=geometry.host.right+.01&&geometry.menu.top>=geometry.host.top-.01&&geometry.menu.bottom<=geometry.host.bottom+.01,`${name}: menu inside host`);
+    const vv=geometry.visualViewport;
+    assert.ok(geometry.host.left>=vv.left-.01&&geometry.host.top>=vv.top-.01&&geometry.host.right<=vv.right+.01&&geometry.host.bottom<=vv.bottom+.01,`${name}: host inside controlled port`);
+    assertWholeMenuTarget(name,geometry.targets.find(target=>target.action==='close-menu'));
+    const state=await veryShortState();(report.veryShortMenuChecks ||= []).push({height,...state});save();
+    assert.ok(state.sameBody&&state.sameModeNodes&&state.selected===state.expectedSelected,`${name}: same body/modes/selection`);
+    assert.equal(state.bodyScrollTop,state.expectedScrollTop,`${name}: collapse must not reset body scroll`);
+    assert.equal(state.state,height<128?'close-only':null,`${name}: exact short-height boundary`);
+    assert.equal(state.bodyInert,height<128,`${name}: body focus isolation`);
+    assert.equal(state.bodyInLayout,height>=128,`${name}: collapsed body must leave the layout`);
+    assert.ok(state.viewportInertMarkers.every(Boolean)&&!state.focusInInert,`${name}: no focus in collapsed inert content`);
+    if(height===58){
+      assert.equal(state.closeFocused,true,'Owned mode focus must move to the complete Close target');
+      for(const key of ['Home','End','ArrowDown','Tab']){
+        await page.keyboard.press(key);const observed=await veryShortState();
+        (report.veryShortKeyboardChecks ||= []).push({height,key,...observed});save();
+        assert.ok(!observed.focusInInert&&!observed.focusInFoldedBranch,`${name}: ${key} must not reach collapsed controls`);
+        if(key!=='Tab')assert.equal(observed.closeFocused,true,`${name}: ${key} stays on the sole menu target`);
+      }
+    }
+    if(height===80||height===83)assert.equal(state.externalFocused,true,`${name}: retain unrelated fixture focus`);
+    if(height===128){normal128=geometry;assert.equal(state.closeFocused,true,'Expanding must not move Close focus back to the body');}
+    if(height===83){
+      const close=geometry.targets.find(target=>target.action==='close-menu');
+      await page.mouse.click(close.points[0].x,close.points[0].y);
+      await page.waitForFunction(()=>document.querySelector('#fluent-read-video-subtitle-menu')?.hidden===true);
+      await assertClosedMenu('very-short-normal-close',geometry);
+      // Derive a new controlled83px port that actually contains the closed menu's known entry,
+      // so reopening tests the explicit short-state initial focus without clicking outside that port.
+      const entryFrame=await page.evaluate(()=>{const r=document.querySelector('#fluent-read-video-subtitle-button').getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom};});
+      const reopenPort={width:378,height:83,offsetLeft:12,offsetTop:Math.max(0,entryFrame.top-2)};
+      assert.ok(entryFrame.left>=reopenPort.offsetLeft&&entryFrame.right<=reopenPort.offsetLeft+reopenPort.width&&entryFrame.top>=reopenPort.offsetTop&&entryFrame.bottom<=reopenPort.offsetTop+reopenPort.height,'Short reopen entry must fit the derived controlled port');
+      report.veryShortReopenPort={entryFrame,...reopenPort,actualOSKeyboard:false};save();
+      await setControlledMenuViewport(reopenPort);await checkedEntryClick();
+      const reopened=await captureMenuScrollTargets('very-short-83-reopened-close');
+      assertWholeMenuTarget('veryShort83Reopened',reopened.targets.find(target=>target.action==='close-menu'));
+      const reopenedState=await veryShortState();report.veryShortReopened=reopenedState;save();
+      assert.ok(reopenedState.state==='close-only'&&reopenedState.closeFocused&&!reopenedState.focusInInert,'Explicit short-state open must focus the sole visible Close');
+    }
+  }
+  const pageScrollState=()=>page.evaluate(()=>({x:scrollX,y:scrollY,rootTop:document.documentElement.scrollTop,rootLeft:document.documentElement.scrollLeft,bodyTop:document.body.scrollTop,bodyLeft:document.body.scrollLeft}));
+  const before128PageScroll=await pageScrollState();
+  await page.mouse.click(normal128.targets[0].points[0].x,normal128.targets[0].points[0].y);
+  await page.waitForFunction(()=>document.querySelector('#fluent-read-video-subtitle-menu')?.hidden===true);
+  await assertClosedMenu('normal-128-before-focused-reopen',normal128);
+  const entry128=await page.evaluate(()=>{const r=document.querySelector('#fluent-read-video-subtitle-button').getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom};});
+  const port128={width:378,height:128,offsetLeft:12,offsetTop:Math.max(0,entry128.top-2)};
+  assert.ok(entry128.left>=port128.offsetLeft&&entry128.right<=port128.offsetLeft+port128.width&&entry128.top>=port128.offsetTop&&entry128.bottom<=port128.offsetTop+port128.height,'128px normal-open entry must be inside the actual controlled port');
+  report.normal128ReopenPort={entryFrame:entry128,...port128,actualOSKeyboard:false};save();
+  await setControlledMenuViewport(port128);await checkedEntryClick();
+  const assertFocused128=async(name,expected)=>{
+    const geometry=await captureMenuScrollTargets(name,false,true);
+    // A44px body window promises one revealed target, not all primary controls on the same screen.
+    assertResponsive(name,geometry,[],false);
+    const focused=geometry.targets.find(target=>target.action==='focused');assertWholeMenuTarget(name,focused);
+    assert.equal(focused.actualMode||focused.actualAction,expected,`${name}: known focused control`);
+    const state=await veryShortState();
+    const ownsFocus=await page.evaluate(()=>document.querySelector('.fluent-read-video-menu-body').contains(document.activeElement));
+    const pageScroll=await pageScrollState();
+    (report.normal128FocusedControls ||= []).push({name,ownsFocus,pageScroll,...state});save();
+    assert.ok(ownsFocus&&state.sameBody&&state.sameModeNodes&&state.selected===state.expectedSelected&&!state.bodyInert&&!state.focusInInert,`${name}: same reachable owned body and unchanged selection`);
+    assert.deepEqual(pageScroll,before128PageScroll,`${name}: only the owned body may scroll`);
+    return geometry;
+  };
+  const opened128=await assertFocused128('normal-128-open-selected',reopenedSelection.mode);
+  await page.keyboard.press('End');
+  const last128=await assertFocused128('normal-128-keyboard-last','open-sentence-learning');
+  assert.ok(last128.bodyScrollTop>opened128.bodyScrollTop,'End must actually scroll the owned body to its last control');
+  await setControlledMenuViewport({...port128,height:127});
+  const folded127=await captureMenuScrollTargets('normal-128-scrolled-collapse-127');
+  assertWholeMenuTarget('scrolledCollapse127',folded127.targets.find(target=>target.action==='close-menu'));
+  const folded127State=await veryShortState();
+  assert.ok(folded127State.state==='close-only'&&folded127State.bodyInert&&!folded127State.bodyInLayout&&folded127State.closeFocused&&!folded127State.focusInInert,'Collapsing a scrolled body must move its owned focus to Close');
+  // A display:none body has no scroll box; only the expanded body's restored nonzero position is authoritative.
+  await setControlledMenuViewport(port128);
+  const expanded128=await captureMenuScrollTargets('normal-128-scrolled-restored');
+  assertWholeMenuTarget('scrolledRestored128',expanded128.targets.find(target=>target.action==='close-menu'));
+  const expanded128State=await veryShortState();
+  report.nonzeroBodyCollapseRestore={beforeScrollTop:last128.bodyScrollTop,folded:folded127State,expanded:expanded128State};save();
+  assert.ok(expanded128State.sameBody&&expanded128State.sameModeNodes&&expanded128State.selected===expanded128State.expectedSelected&&expanded128State.state===null&&!expanded128State.bodyInert&&expanded128State.bodyInLayout&&expanded128State.closeFocused,'Expanding must retain body/modes/selection and must not return focus to the body');
+  assert.equal(expanded128.bodyScrollTop,last128.bodyScrollTop,'Expanded body must restore its previous actual nonzero scroll position');
+  assert.deepEqual(await pageScrollState(),before128PageScroll,'Collapse/expand must not scroll the host page');
+  for(const key of ['Home','ArrowDown','ArrowDown'])await page.keyboard.press(key);
+  const first128=await assertFocused128('normal-128-keyboard-first','bilingual');
+  assert.ok(first128.bodyScrollTop<last128.bodyScrollTop,'Returning to the first body control must scroll only that body upwards');
+  await setControlledMenuViewport({width:378,height:280,offsetLeft:12,offsetTop:80});
+  const restoredBeforeReopen=await captureMenuScrollTargets('very-short-restored-280-before-reopen',true,false,true);
+  assertResponsive('veryShortRestored280BeforeReopen',restoredBeforeReopen,['bilingual','translation-only','original-only','off','subtitle-earlier','subtitle-later'],false);
+  assert.deepEqual(await pageScrollState(),before128PageScroll,'Restoring the larger viewport must not scroll the page');
+  // Preserve the pre-existing first-screen zero-scroll oracle by explicitly closing/reopening;
+  // do not erase the128px keyboard scroll with a fixture assignment.
+  await checkedMenuClose('restored-280-normal-close',restoredBeforeReopen);await checkedEntryClick();
+  const restoredShort=await captureMenuScrollTargets('very-short-restored-280-primary',true,false,true);
+  assertResponsive('veryShortRestored280',restoredShort,['bilingual','translation-only','original-only','off','subtitle-earlier','subtitle-later']);
+  const restoredShortState=await veryShortState();report.veryShortRestored280=restoredShortState;save();
+  assert.ok(restoredShortState.sameBody&&restoredShortState.sameModeNodes&&restoredShortState.selected===restoredShortState.expectedSelected,'Restored viewport must retain body/modes/selection');
+  assert.ok(restoredShortState.state===null&&!restoredShortState.bodyInert&&restoredShortState.bodyInLayout&&restoredShortState.viewportInertMarkers.length===0,'Restored body must rejoin layout and keyboard access');
   await setControlledMenuViewport(null);
   await page.evaluate(()=>{window.__menuRootStyles={html:document.documentElement.getAttribute('style'),body:document.body.getAttribute('style')};document.documentElement.style.transform='translate(17px,11px) scale(.8)';document.documentElement.style.transformOrigin='0 0';document.body.style.transform='translateX(30px)';window.dispatchEvent(new Event('resize'));});
   await settleMenu();
@@ -724,6 +848,8 @@ async function main() {
   await page.mouse.click(outside.x,outside.y);await page.waitForFunction(()=>document.querySelector('#fluent-read-video-subtitle-menu')?.hidden===true);
   await assertClosedMenu('outside',outsideGeometry);
   report.menuResponsiveCoverage={portrait402:true,portrait320TwoColumns:true,landscape844PrimaryFirstScreen:true,bodyOnlyScrollAndPinnedHeader:true,
+    veryShort44_54Close44FiveHits:true,
+    veryShort58_80_83Close44FiveHits:true,closeOnly84_127:true,normal128FocusedFirstLast44FiveHits:true,restored280PrimaryAndIdentity:true,inertBodyAndOwnedFocusOnly:true,
     visualViewportKeyboardGeometryFixture:true,actualOSKeyboard:false,rootTransform:true,safeArea:report.menuSafeAreaEmulation.supported?'PASS':'NOT_TESTED_CDP_UNAVAILABLE',
     initialCloseEscapeOutsideCSSHiddenAndNoHit:true,languageMatrix:'NOT_RUN_IN_THIS_SUITE; use existing language tests',DOMFullscreenMenu:'PENDING'};save();
   await page.setViewportSize({width:844,height:390});

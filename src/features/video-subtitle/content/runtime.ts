@@ -105,7 +105,7 @@ import type { VideoAiStabilizedCue } from './video-ai/streamingTranscript';
 import {browserCapabilities} from '@/src/platform/browser/capabilities';
 import {
   createVideoPlayerMenu, isVideoModelPromptOpen, renderVideoAiMenu, renderVideoAiModelSelection, renderVideoMenuMode, renderVideoModelPrompt,
-  renderVideoSubtitleTiming, renderVideoSourceStatus, handleVideoMenuNavigation, setVideoMenuToolsOpen, setVideoMenuDownloadStatus, syncVideoPlayerMenuLayout, type VideoMenuMode,
+  renderVideoSubtitleTiming, renderVideoSourceStatus, handleVideoMenuNavigation, setVideoMenuToolsOpen, setVideoMenuDownloadStatus, syncVideoPlayerMenuLayout, revealVideoMenuBodyControl, type VideoMenuMode,
 } from './playerMenu';
 import {createVideoAiModelSetup} from './video-ai/modelSetup';
 import {VideoAiSubtitleSession} from './video-ai/subtitleSession';
@@ -1259,7 +1259,11 @@ export function mountVideoSubtitleTranslation(): () => void {
       const body = menu.querySelector<HTMLElement>('.fluent-read-video-menu-body');
       if (body) body.scrollTop = 0;
       syncVideoPlayerMenuLayout(menu);
-      menu.querySelector<HTMLButtonElement>('[data-mode][aria-checked="true"]')?.focus({preventScroll: true});
+      // 这是用户明确打开菜单的初始焦点；极矮态不能把焦点交给已隔离的正文。
+      const initialFocus = menu.dataset.viewportState === 'close-only' ? '[data-action="close-menu"]' : '[data-mode][aria-checked="true"]';
+      const control = menu.querySelector<HTMLButtonElement>(initialFocus);
+      control?.focus({preventScroll: true});
+      revealVideoMenuBodyControl(menu, control);
     } else {
       closeMenu();
     }

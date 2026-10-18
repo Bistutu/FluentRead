@@ -2,7 +2,7 @@
  * @file src/features/video-subtitle/content/ui.ts
  *
  * 文件职责：封装视频字幕 content UI 的界面语言转换、可访问名称刷新及桌面/触屏安全视口菜单样式，避免 YouTube 播放器运行时承载重复的文案拼装。
- * 主要内容：提供视频菜单本地化、菜单与完整句学习共享的局部外观变量、按逐字高亮开关写入字幕行、校时与就地模型选择控件样式、节点创建、播放器定位；每次原生字幕读取按候选集合与局部父链排除嵌套内层，保留外层全文和顺序，避免片段两两包含扫描，不跨调用缓存节点；过滤 YouTube 滚动窗口裁掉的旧行，按实际画面及同视频可见底控约束字幕几何、换行与大字号完整高度，并封装字幕清理、媒体时钟读取、样式及字幕下载。
+ * 主要内容：提供视频菜单本地化、菜单与完整句学习共享的局部外观变量、极矮视口完整关闭目标、按逐字高亮开关写入字幕行、校时与就地模型选择控件样式、节点创建、播放器定位；每次原生字幕读取按候选集合与局部父链排除嵌套内层，保留外层全文和顺序，避免片段两两包含扫描，不跨调用缓存节点；过滤 YouTube 滚动窗口裁掉的旧行，按实际画面及同视频可见底控约束字幕几何、换行与大字号完整高度，并封装字幕清理、媒体时钟读取、样式及字幕下载。
  * 模块边界：只读取界面配置并操作视频 feature 拥有的节点、样式和下载链接，不发起翻译或识别请求；任务生命周期由 runtime 管理。
  */
 
@@ -1616,6 +1616,24 @@ export function installVideoSubtitleStyle(): HTMLStyleElement {
       min-height: 44px !important;
       flex-shrink: 0 !important;
       touch-action: manipulation !important;
+    }
+    /* 安全高度不足 128px 时只保留关闭；正常态需在 84px 外框/标题之外留出完整 44px 正文窗口。 */
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"][data-viewport-state="close-only"] {
+      bottom: 0 !important;
+      max-height: 100% !important;
+      padding: 0 !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"][data-viewport-state="close-only"] .fluent-read-video-menu-title {
+      flex: 0 0 44px !important;
+      height: 44px !important;
+      justify-content: flex-end !important;
+      margin-bottom: 0 !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"][data-viewport-state="close-only"] > :not(.fluent-read-video-menu-title),
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"][data-viewport-state="close-only"] > .fluent-read-video-menu-title > :not(.fluent-read-video-menu-close) {
+      display: none !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-menu-section,
     #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-menu-watch,
