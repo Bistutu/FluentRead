@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/playerMenu.ts
  * 文件职责：组装播放器字幕菜单，以紧凑行呈现显示方式、字幕时间、本地 AI 字幕与下载与完整句学习入口，并在同一弹层内提供模型下载确认。
- * 主要内容：X 首层聚焦显示方式和当前需要的操作，模型选择、校时、导出和重新识别放在可返回的选项页；复用稳定节点呈现字幕来源、故障恢复、实际音频读取及并行识别进度、模型下载进度和模型确认，生成预览期间不开放完整字幕导出。
+ * 主要内容：常驻标题与可滚动正文分离，显示与校时先于次级学习入口；触屏安全视口按可用宽度排布，桌面按播放器高度收紧；X 首层聚焦显示方式和当前操作，模型选择、校时、导出和重新识别放在可返回的选项页，复用稳定节点呈现来源、故障恢复及识别/下载进度，生成预览期间不开放完整字幕导出。
  * 模块边界：只操作 FluentRead 自己的菜单节点，不读取存储、不发起识别或绑定全局事件；运行时负责配置、请求与清理。
  */
 import type {VideoSubtitleDisplayMode} from '@/src/core/config/model';
@@ -28,6 +28,8 @@ const MENU_BOTTOM_OFFSET_PX = 40;
 const MENU_TOP_GAP_PX = 8;
 /** 矮行布局至少需要这么宽；更窄时各组会自动换行，仍比单列矮。 */
 const WIDE_LAYOUT_MIN_PLAYER_WIDTH_PX = 300;
+/** 触屏安全视口达到此宽度时，四种显示方式可以保留一行；窄屏分成两行。 */
+const VIEWPORT_MENU_WIDE_MIN_WIDTH_PX = 380;
 /** 单列菜单高度超过播放器可用高度的这一比例时，改用更矮的双列，留出画面上半部分。 */
 const STACK_LAYOUT_MAX_HEIGHT_RATIO = .8;
 
@@ -216,11 +218,14 @@ export function createVideoPlayerMenu(language: UiLanguage, withLocalGeneration:
     menu.setAttribute('aria-label', translateVideoUi('video.menuAriaLabel', language));
     markVideoUi(menu);
 
+    // 子页只切换正文，所有页面共用同一标题和关闭按钮。
+    menu.appendChild(createHeader(language, withLocalGeneration));
     const main = createTextElement('div', 'fluent-read-video-menu-main', '');
-    main.appendChild(createHeader(language, withLocalGeneration));
+    // 标题不进入滚动正文，软键盘或横屏压缩可用高度时仍能立即关闭菜单。
+    const body = createTextElement('div', 'fluent-read-video-menu-body', '');
+    main.appendChild(body);
     const learning = createButton('fluent-read-video-menu-item fluent-read-video-menu-learning', {'data-action': 'open-sentence-learning', role: 'menuitem'});
     learning.append(createIcon('learning'), keyedText('span', 'fluent-read-video-menu-learning-label', 'video.learning.start', language), createIcon('next'));
-    main.appendChild(learning);
     if (withLocalGeneration) {
         const watch = createTextElement('div', 'fluent-read-video-menu-watch', '');
         const primary = createTextElement('div', 'fluent-read-video-menu-primary-ai', '');
@@ -249,7 +254,7 @@ export function createVideoPlayerMenu(language: UiLanguage, withLocalGeneration:
         regenerate.setAttribute('role', 'menuitem');
         regenerate.hidden = true;
         tools.append(createAiModelSelection(), createTimingRow(language), downloads, secondary, regenerate);
-        main.append(watch, tools);
+        body.append(watch, tools, learning);
         menu.append(main, createModelPrompt(language));
         return menu;
     }
@@ -261,7 +266,7 @@ export function createVideoPlayerMenu(language: UiLanguage, withLocalGeneration:
     const nativeHint = keyedText('p', 'fluent-read-video-menu-source-hint fluent-read-video-native-fullscreen-hint', 'video.nativeFullscreenHint', language);
     nativeHint.dataset.nativeFullscreenHint = 'true';
     nativeHint.hidden = true;
-    main.append(display, actions, nativeHint);
+    body.append(display, actions, learning, nativeHint);
     menu.appendChild(main);
     return menu;
 }
@@ -391,7 +396,8 @@ export function handleVideoMenuNavigation(event: KeyboardEvent): void {
     const scope = horizontal ? event.target.closest('.fluent-read-video-menu-mode-group') : menu;
     if (!scope) return;
     const buttons = Array.from(scope.querySelectorAll<HTMLButtonElement>('button'))
-        .filter(button => !button.disabled && !button.closest('[hidden]'));
+        .filter(button => !button.disabled && !button.closest('[hidden]')
+            && (button.dataset.action !== 'close-subtitle-tools' || menu.dataset.view === 'main'));
     if (!buttons.length) return;
     event.preventDefault();
     const current = buttons.indexOf(event.target as HTMLButtonElement);
@@ -677,8 +683,8 @@ export function focusVideoModelPromptReturn(menu: HTMLElement, purpose?: 'select
 }
 
 /**
- * 菜单渲染宿主保持媒体播放器的布局尺寸，据此选择布局。矮而宽的播放器（手机横屏视频、
- * 小窗口）改为双列，避免单列菜单遮住整个画面还需要滚动；其余情况保持单列。
+ * 触屏安全视口按宽度分列，不测量短视频溢出；桌面宿主保持播放器布局尺寸，
+ * 矮而宽的播放器改为双列，其余保持单列。
  */
 export function syncVideoPlayerMenuLayout(menu: HTMLElement): void {
     const player = menu.parentElement;
@@ -687,6 +693,11 @@ export function syncVideoPlayerMenuLayout(menu: HTMLElement): void {
     const width = player.clientWidth;
     const height = player.clientHeight;
     if (!width || !height) return;
+    // 触屏菜单的宿主是已扣除安全区的可见视口，不能再按短视频的高度测量/压缩。
+    if (menu.dataset.presentation === 'viewport') {
+        menu.dataset.layout = width >= VIEWPORT_MENU_WIDE_MIN_WIDTH_PX ? 'wide' : 'stack';
+        return;
+    }
     // X 观看首页已精简，不再因为少量说明把菜单拉成 440px 的横向面板。
     if (menu.dataset.compact === 'true' && menu.dataset.panel === 'watch' && menu.dataset.view === 'main') {
         menu.dataset.layout = 'stack';

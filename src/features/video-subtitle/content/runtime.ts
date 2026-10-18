@@ -957,10 +957,13 @@ export function mountVideoSubtitleTranslation(): () => void {
   const closeMenu = () => {
     const menu = menuElement?.isConnected ? menuElement : document.getElementById(VIDEO_TRANSLATION_MENU_ID);
     const button = buttonElement?.isConnected ? buttonElement : document.getElementById(VIDEO_TRANSLATION_BUTTON_ID);
+    const heldFocus = menu?.contains(document.activeElement);
     aiModelSetup.cancel();
     downloads.cancel();
     if (menu) { menu.hidden = true; setVideoMenuToolsOpen(menu, false); }
     button?.setAttribute('aria-expanded', 'false');
+    playerBinding?.syncMenuHost();
+    if (heldFocus && button?.isConnected) button.focus({preventScroll: true});
     syncTranslationOverlayPosition(findCaptionContainer());
   };
 
@@ -1027,6 +1030,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     }
     const nativeHint = menu.querySelector<HTMLElement>('[data-native-fullscreen-hint]');
     if (nativeHint) nativeHint.hidden = !isYouTubeVideoPage() || !supportsNativeVideoFullscreen(observedVideo) || !enabled || !visible;
+    playerBinding?.syncMenuHost();
     if (!menu.hidden) syncVideoPlayerMenuLayout(menu);
   };
 
@@ -1174,7 +1178,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     }
     if (target.dataset.action === 'close-menu') {
       closeMenu();
-      buttonElement?.focus();
+      buttonElement?.focus({preventScroll: true});
       return;
     }
     if (target.dataset.action === 'retry-subtitle-translation') {
@@ -1251,8 +1255,11 @@ export function mountVideoSubtitleTranslation(): () => void {
     updatePlayerUiState();
     syncTranslationOverlayPosition(findCaptionContainer());
     if (!menu.hidden) {
+      // 新一次打开回到主要操作；只重置自有正文，不滚动网页，状态刷新/旋转保留原位置。
+      const body = menu.querySelector<HTMLElement>('.fluent-read-video-menu-body');
+      if (body) body.scrollTop = 0;
       syncVideoPlayerMenuLayout(menu);
-      menu.querySelector<HTMLButtonElement>('[data-mode][aria-checked="true"]')?.focus();
+      menu.querySelector<HTMLButtonElement>('[data-mode][aria-checked="true"]')?.focus({preventScroll: true});
     } else {
       closeMenu();
     }
@@ -1324,7 +1331,7 @@ export function mountVideoSubtitleTranslation(): () => void {
       const destination = menuElement.querySelector<HTMLButtonElement>('[data-action="open-subtitle-tools"]');
       if (destination && !destination.hidden) destination.focus();
       else menuElement.querySelector<HTMLButtonElement>('[data-mode][aria-checked="true"]')?.focus();
-    } else { closeMenu(); buttonElement?.focus(); }
+    } else { closeMenu(); buttonElement?.focus({preventScroll: true}); }
   };
 
   const startTranslationLoop = () => {

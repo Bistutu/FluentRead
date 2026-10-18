@@ -1,7 +1,7 @@
 /**
  * @file tests/videoPlayerBinding.test.ts
  * 文件职责：验证播放器入口绑定在原生控制栏、信息流 fallback、禁用和视频切换时的节点所有权。
- * 主要内容：覆盖进度徽标、悬浮/聚焦可见性、原生控件重挂载和清理行为；包含无桌面挂载端口的移动 YouTube 同视频兄弟控制层，以及观察器处理副本和卸载的所有权边界。
+ * 主要内容：覆盖进度徽标、悬浮/聚焦可见性、原生控件重挂载和清理行为；验证移动安全视口宿主、桌面/全屏迁移及焦点保持，包含同视频兄弟控制层和观察器处理副本、卸载的所有权边界。
  * 模块边界：使用注入的定位器与按钮工厂，不启动 content runtime 或字幕识别。
  */
 
@@ -24,6 +24,11 @@ function createFixture(markup = '<div class="player"><video></video><div class="
   vi.stubGlobal('Element', view.Element);
   vi.stubGlobal('Node', view.Node);
   vi.stubGlobal('HTMLButtonElement', view.HTMLButtonElement);
+  // 旧宿主测试明确使用桌面视口；移动断言另提供实际窄视口/触屏端口。
+  vi.stubGlobal('innerWidth', 1280);
+  vi.stubGlobal('innerHeight', 800);
+  vi.stubGlobal('visualViewport', undefined);
+  vi.stubGlobal('matchMedia', undefined);
   vi.stubGlobal('MutationObserver', class {
     observe() {}
     disconnect() {}
@@ -57,7 +62,7 @@ function createFixture(markup = '<div class="player"><video></video><div class="
 afterEach(() => {vi.restoreAllMocks(); vi.unstubAllGlobals();});
 
 /** 仅使用已知 mweb 同视频拓扑；不保留桌面 .ytp-right-controls，也不模拟像素层叠或浏览器命中。 */
-function createMobileYoutubeFixture() {
+function createMobileYoutubeFixture(fullDocument = false) {
   const fixture = createFixture('<div id="player-container-id" class="player-container sticky-player">'
     + '<div id="movie_player" class="player html5-video-player ytp-mweb-player"><video></video></div>'
     + '<ytm-custom-control><ytm-watch-player-controls><div id="player-control-overlay">'
@@ -65,7 +70,7 @@ function createMobileYoutubeFixture() {
     + '<button aria-label="Settings">settings</button><button aria-label="Subtitles">CC</button></div>'
     + '<div class="player-controls-bottom player-controls-bottom-right">'
     + '<button aria-label="Full screen">fullscreen</button>'
-    + '</div></div></div></ytm-watch-player-controls></ytm-custom-control></div>');
+    + '</div></div></div></ytm-watch-player-controls></ytm-custom-control></div>', fullDocument);
   const scope = fixture.document.querySelector<HTMLElement>('#player-container-id')!;
   Object.defineProperty(fixture.window, 'location', {configurable: true, value: new URL('https://m.youtube.com/watch?v=entry-ownership')});
   const controls = scope.querySelector<HTMLElement>('.player-controls-bottom-right')!;
@@ -89,11 +94,12 @@ function createMobileYoutubeFixture() {
 }
 
 /** 用显式浏览器布局端口消费宿主样式；不声称 linkedom 可验证真实层叠命中。 */
-function mobileMenuGeometry(f: ReturnType<typeof createMobileYoutubeFixture>) {
+function mobileMenuGeometry(f: Pick<ReturnType<typeof createFixture>, 'player' | 'window'>) {
   const geometry = {
     player: {left: 40, top: 80, width: 402, height: 226},
     base: {left: 20, top: 30, width: 804, height: 452},
     width: 402, height: 226,
+    viewportBase: {left: 0, top: 0, scaleX: 1, scaleY: 1, empty: false},
   };
   const bounds = (value: typeof geometry.player) => ({...value, right: value.left + value.width,
     bottom: value.top + value.height, x: value.left, y: value.top, toJSON: () => ({})});
@@ -109,6 +115,12 @@ function mobileMenuGeometry(f: ReturnType<typeof createMobileYoutubeFixture>) {
         clientWidth: {configurable: true, get: () => Number.parseFloat(this.style.width)},
         clientHeight: {configurable: true, get: () => Number.parseFloat(this.style.height)},
       });
+      if (this.dataset.presentation === 'viewport') {
+        const base = geometry.viewportBase;
+        return bounds({left: base.left, top: base.top,
+          width: base.empty ? 0 : Number.parseFloat(this.style.width) * base.scaleX,
+          height: base.empty ? 0 : Number.parseFloat(this.style.height) * base.scaleY}) as DOMRect;
+      }
       return bounds(geometry.base) as DOMRect;
     }
     return nativeRect.call(this);
@@ -129,6 +141,222 @@ function ownedMenu() {
   })});
   return menu;
 }
+
+/** 只模拟标准视口与父变换的布局端口；真实滚动/层叠/命中仍必须由浏览器验收。 */
+function viewportMenuFixture() {
+  const f = createMobileYoutubeFixture(true), geometry = mobileMenuGeometry(f);
+  const viewport = Object.assign(f.document.createElement('div'), {width: 402, height: 714, offsetLeft: 0, offsetTop: 0});
+  const media = {matches: false};
+  const insets = {left: 0, top: 0, right: 0, bottom: 0};
+  const safeReads = vi.fn((node: Element) => node.tagName === 'SPAN'
+    ? {paddingLeft: `${insets.left}px`, paddingTop: `${insets.top}px`, paddingRight: `${insets.right}px`, paddingBottom: `${insets.bottom}px`}
+    : {position: 'relative'});
+  vi.stubGlobal('visualViewport', viewport);
+  vi.stubGlobal('matchMedia', vi.fn(() => media));
+  vi.stubGlobal('getComputedStyle', safeReads);
+  return {...f, geometry, viewport, media, insets, safeReads};
+}
+
+describe('mobile viewport menu host', () => {
+  it('uses the current body as a calibrated owned fallback when the document root is temporarily unavailable', () => {
+    const f = viewportMenuFixture(), body = f.document.body;
+    body.style.transform = 'scale(2)'; const original = body.getAttribute('style');
+    Object.assign(f.geometry.viewportBase, {left: 30, top: 50, scaleX: 2, scaleY: 2});
+    Object.assign(f.viewport, {offsetLeft: 5, offsetTop: 7});
+    // 模拟平台端口暂不提供根元素，保留仍有效的当前body；不替换媒体或修改其宿主样式。
+    Object.defineProperties(f.document, {
+      documentElement: {configurable: true, value: null},
+      body: {configurable: true, value: body},
+    });
+    const menu = ownedMenu(), factory = vi.fn(() => menu);
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton, createMenu: factory});
+    const host = menu.parentElement!;
+    expect(menu.dataset.presentation).toBe('viewport'); expect(host.parentElement).toBe(body);
+    expect(host.clientWidth).toBe(402); expect(host.clientHeight).toBe(714);
+    expect(host.style.transform).toBe('translate(-12.5px, -21.5px) scale(0.5, 0.5)');
+    expect(body.getAttribute('style')).toBe(original); expect(factory).toHaveBeenCalledOnce();
+    binding.destroy(); expect(menu.isConnected).toBe(false); expect(host.isConnected).toBe(false);
+    expect(body.isConnected).toBe(true); expect(body.getAttribute('style')).toBe(original);
+  });
+
+  it('uses the safe offset viewport instead of a short transformed player, and caches safe-area probes across layout frames', () => {
+    const f = viewportMenuFixture();
+    Object.assign(f.viewport, {offsetLeft: 12, offsetTop: 38, height: 280});
+    Object.assign(f.insets, {left: 7, right: 11, top: 9, bottom: 17});
+    Object.assign(f.geometry.viewportBase, {left: -10, top: 20, scaleX: 2, scaleY: 0.5});
+    f.scope.style.transform = 'scale(.5)'; f.scope.style.overflow = 'hidden';
+    f.document.body.style.transform = 'translateX(30px)';
+    const original = [f.scope, f.player, f.document.body].map(node => node.getAttribute('style'));
+    const menu = ownedMenu(), factory = vi.fn(() => menu);
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton, createMenu: factory});
+    const host = menu.parentElement!;
+    expect(menu.dataset.presentation).toBe('viewport'); expect(host.parentElement).toBe(f.document.documentElement);
+    expect(host.dataset.presentation).toBe('viewport'); expect(host.style.position).toBe('fixed');
+    expect(host.clientWidth).toBe(384); expect(host.clientHeight).toBe(254);
+    expect(host.style.transform).toBe('translate(14.5px, 54px) scale(0.5, 2)');
+    expect(host.style.overflow).toBe('hidden'); expect(host.style.visibility).toBe('visible');
+    expect(host.style.getPropertyValue('pointer-events')).toBe('none'); expect(menu.style.getPropertyValue('pointer-events')).toBe('auto');
+    expect([f.scope, f.player, f.document.body].map(node => node.getAttribute('style'))).toEqual(original);
+    const probes = () => f.safeReads.mock.calls.filter(([node]) => node.tagName === 'SPAN').length;
+    expect(probes()).toBe(1);
+    binding.syncMenuHost(); binding.sync(); binding.syncMenuHost();
+    expect(probes()).toBe(1); expect(factory).toHaveBeenCalledOnce();
+    expect(f.document.querySelectorAll('span[aria-hidden="true"]')).toHaveLength(0);
+    f.viewport.height = 180; f.viewport.offsetTop = 80;
+    binding.syncMenuHost(); expect(host.clientHeight).toBe(154); expect(probes()).toBe(2);
+    f.insets.bottom = 25; f.viewport.dispatchEvent(new f.window.Event('resize')); binding.syncMenuHost();
+    expect(host.clientHeight).toBe(146); expect(probes()).toBe(3);
+    f.viewport.dispatchEvent(new f.window.Event('scroll')); binding.syncMenuHost(); expect(probes()).toBe(4);
+    for (const name of ['resize', 'orientationchange', 'pageshow']) {
+      const before = probes(); f.window.dispatchEvent(new f.window.Event(name)); binding.syncMenuHost();
+      expect(probes()).toBe(before + 1);
+    }
+    const beforeFullscreen = probes(); f.document.dispatchEvent(new f.window.Event('fullscreenchange')); binding.syncMenuHost();
+    expect(probes()).toBe(beforeFullscreen + 1);
+    binding.destroy();
+  });
+
+  it.each([{width: 600, inset: 0, sheet: true}, {width: 601, inset: 0, sheet: false}, {width: 602, inset: 2, sheet: true}])(
+    'uses safe available width at the 600px boundary: $width with $inset inset', ({width, inset, sheet}) => {
+      const f = viewportMenuFixture(); f.viewport.width = width; f.insets.right = inset;
+      const menu = ownedMenu();
+      const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+        getState: () => ({enabled: true}), createButton: f.createButton, createMenu: () => menu});
+      expect(menu.dataset.presentation === 'viewport').toBe(sheet);
+      expect(menu.parentElement?.parentElement).toBe(sheet ? f.document.documentElement : f.scope);
+      binding.destroy();
+    });
+
+  it('retains the same menu, listeners and focus across desktop, narrow sheet, coarse landscape, DOM fullscreen and back', () => {
+    const f = viewportMenuFixture(); f.viewport.width = 1024;
+    const menu = ownedMenu(), item = menu.querySelector<HTMLButtonElement>('button')!, click = vi.fn();
+    menu.hidden = false; menu.dataset.view = 'main'; menu.scrollTop = 41; item.addEventListener('click', click);
+    let active: Element = f.document.body;
+    Object.defineProperty(f.document, 'activeElement', {configurable: true, get: () => active});
+    const focus = vi.spyOn(item, 'focus').mockImplementation(() => {active = item;});
+    const factory = vi.fn(() => menu);
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton, createMenu: factory});
+    const host = menu.parentElement!, button = f.createButton.mock.results[0].value;
+    expect(host.parentElement).toBe(f.scope); expect(menu.dataset.presentation).toBeUndefined();
+    active = item;
+    const append = f.document.documentElement.appendChild.bind(f.document.documentElement);
+    Object.defineProperty(f.document.documentElement, 'appendChild', {configurable: true, value: (node: Node) => {
+      // 真实重挂只会使被移动子树中的焦点失效，不能模拟成抹掉页面外部输入的焦点。
+      if (node === host && host.contains(active)) active = f.document.body; return append(node);
+    }});
+    f.viewport.width = 402; binding.syncMenuHost();
+    expect(host.parentElement).toBe(f.document.documentElement); expect(menu.dataset.presentation).toBe('viewport');
+    expect(active).toBe(item); expect(focus).toHaveBeenCalledWith({preventScroll: true});
+    f.viewport.width = 844; f.viewport.height = 320; f.media.matches = true; binding.syncMenuHost();
+    expect(menu.parentElement).toBe(host); expect(host.clientWidth).toBe(844); expect(host.clientHeight).toBe(320);
+    Object.assign(f.geometry.player, {left: 20, top: 30, width: 760, height: 270});
+    Object.defineProperty(f.document, 'fullscreenElement', {configurable: true, value: f.player});
+    f.setTarget({...f.target, fullscreen: true});
+    expect(host.parentElement).toBe(f.player); expect(host.clientWidth).toBe(760); expect(host.clientHeight).toBe(270);
+    expect(menu.parentElement).toBe(host); expect(menu.dataset.presentation).toBe('viewport');
+    Object.defineProperty(f.document, 'fullscreenElement', {configurable: true, value: null});
+    f.media.matches = false; f.viewport.width = 1024; f.setTarget(f.target);
+    expect(host.parentElement).toBe(f.scope); expect(menu.dataset.presentation).toBeUndefined();
+    expect(host.style.position).toBe('absolute'); expect(host.style.overflow).toBe('visible');
+    expect(menu.hidden).toBe(false); expect(menu.dataset.view).toBe('main'); expect(menu.scrollTop).toBe(41);
+    expect(factory).toHaveBeenCalledOnce(); expect(f.createButton).toHaveBeenCalledOnce(); expect(button.parentElement).toBe(f.controls);
+    item.dispatchEvent(new f.window.Event('click', {bubbles: true})); expect(click).toHaveBeenCalledOnce();
+    const outside = f.document.createElement('input'); f.document.body.appendChild(outside); active = outside;
+    const previousCalls = focus.mock.calls.length; f.viewport.width = 402; binding.syncMenuHost();
+    expect(active).toBe(outside); expect(focus).toHaveBeenCalledTimes(previousCalls);
+    binding.destroy(); expect(menu.isConnected).toBe(false); expect(host.isConnected).toBe(false);
+  });
+
+  it('repairs only its expected viewport host parent and treats a portaled menu as owned interaction', () => {
+    const f = viewportMenuFixture(), menu = ownedMenu(); menu.hidden = false;
+    const factory = vi.fn(() => menu);
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton, createMenu: factory});
+    const host = menu.parentElement!, scans = vi.spyOn(f.locator, 'sync'); scans.mockClear();
+    const unrelated = f.document.createElement('div'); f.document.body.appendChild(unrelated);
+    f.changed(unrelated, [f.document.createElement('span')]); expect(scans).not.toHaveBeenCalled();
+    unrelated.appendChild(host); f.changed(unrelated, [host]);
+    expect(host.parentElement).toBe(f.document.documentElement); expect(factory).toHaveBeenCalledOnce();
+    menu.dispatchEvent(new f.window.Event('pointerover', {bubbles: true}));
+    expect(f.player.getAttribute('data-fluent-read-video-active')).toBe('true');
+    const snapshot = scans.mock.calls.length;
+    const out = new f.window.Event('pointerout', {bubbles: true}); Object.defineProperty(out, 'relatedTarget', {value: menu.querySelector('button')});
+    f.controls.dispatchEvent(out); expect(scans).toHaveBeenCalledTimes(snapshot);
+    const focusOut = new f.window.Event('focusout', {bubbles: true}); Object.defineProperty(focusOut, 'relatedTarget', {value: menu});
+    f.controls.dispatchEvent(focusOut); expect(scans).toHaveBeenCalledTimes(snapshot);
+    menu.querySelector('button')!.dispatchEvent(new f.window.Event('focusin', {bubbles: true}));
+    expect(menu.parentElement).toBe(host); expect(menu.hidden).toBe(false);
+    binding.destroy();
+  });
+
+  it('keeps the same open X viewport menu usable when native controls leave, and restores only the entry on remount', () => {
+    const f = createFixture('<div class="player" data-testid="videoPlayer"><video></video>'
+      + '<div class="x-controls"><button aria-label="Settings"></button><button>fullscreen</button></div></div>', true);
+    vi.stubGlobal('innerWidth', 402); mobileMenuGeometry(f);
+    let enabled = true;
+    const menu = ownedMenu(), item = menu.querySelector<HTMLButtonElement>('button')!, click = vi.fn();
+    menu.hidden = false; menu.scrollTop = 57; item.addEventListener('click', click);
+    const factory = vi.fn(() => menu), createButton = vi.fn(() => f.document.createElement('button'));
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled}), createButton, createMenu: factory});
+    const host = menu.parentElement!, button = createButton.mock.results[0].value;
+    const controls = f.player.querySelector<HTMLElement>('.x-controls')!;
+    expect(host.parentElement).toBe(f.document.documentElement); expect(menu.dataset.presentation).toBe('viewport');
+    controls.remove(); binding.sync();
+    expect(menu.isConnected).toBe(true); expect(menu.hidden).toBe(false); expect(menu.parentElement).toBe(host);
+    expect(host.parentElement).toBe(f.document.documentElement); expect(host.style.visibility).toBe('visible');
+    expect(menu.scrollTop).toBe(57); expect(button.isConnected).toBe(false);
+    expect(f.player.querySelector('.fluent-read-video-controls')).toBeNull();
+    item.dispatchEvent(new f.window.Event('click', {bubbles: true})); expect(click).toHaveBeenCalledOnce();
+    f.player.appendChild(controls); binding.sync();
+    expect(button.parentElement).toBe(controls); expect(menu.parentElement).toBe(host); expect(menu.hidden).toBe(false);
+    expect(factory).toHaveBeenCalledOnce(); expect(createButton).toHaveBeenCalledOnce();
+    enabled = false; binding.sync();
+    expect(menu.isConnected).toBe(false); expect(host.isConnected).toBe(false); expect(button.isConnected).toBe(false);
+    binding.destroy();
+  });
+
+  it.each(['disable', 'media-key', 'destroy'] as const)('cleans a root-level menu and viewport listeners on %s without removing foreign nodes', finish => {
+    const f = viewportMenuFixture(), factory = vi.fn(() => ownedMenu()); let enabled = true;
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled}), createButton: f.createButton, createMenu: factory});
+    const firstMenu = factory.mock.results[0].value, host = firstMenu.parentElement!;
+    const foreign = f.document.createElement('div'); foreign.className = host.className; f.document.documentElement.appendChild(foreign);
+    if (finish === 'disable') {enabled = false; binding.sync();}
+    else if (finish === 'media-key') f.setTarget({...f.target, key: 'video:two'});
+    else binding.destroy();
+    expect(firstMenu.isConnected).toBe(false); expect(host.isConnected).toBe(false); expect(foreign.isConnected).toBe(true);
+    const remove = vi.spyOn(f.viewport, 'removeEventListener'); binding.destroy();
+    if (finish !== 'destroy') {
+      expect(remove).toHaveBeenCalledWith('resize', expect.any(Function)); expect(remove).toHaveBeenCalledWith('scroll', expect.any(Function));
+    }
+    const probes = f.safeReads.mock.calls.length;
+    f.viewport.dispatchEvent(new f.window.Event('resize')); binding.syncMenuHost();
+    expect(f.safeReads).toHaveBeenCalledTimes(probes);
+    expect(f.document.querySelectorAll('#fluent-read-video-subtitle-menu')).toHaveLength(0);
+  });
+
+  it.each(['empty-fullscreen-intersection', 'unmeasurable-host'] as const)('keeps an unavailable %s sheet hidden instead of returning it to the clipped player', mode => {
+    const f = viewportMenuFixture(), menu = ownedMenu();
+    if (mode === 'empty-fullscreen-intersection') {
+      Object.assign(f.geometry.player, {left: 900, top: 900});
+      Object.defineProperty(f.document, 'fullscreenElement', {configurable: true, value: f.player});
+      f.setTarget({...f.target, fullscreen: true});
+    } else f.geometry.viewportBase.empty = true;
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton, createMenu: () => menu});
+    const host = menu.parentElement!;
+    expect(menu.dataset.presentation).toBe('viewport'); expect(host.classList.contains('fluent-read-video-menu-host')).toBe(true);
+    expect(host.style.visibility).toBe('hidden'); expect(menu.parentElement).not.toBe(f.player);
+    if (mode === 'empty-fullscreen-intersection') expect(host.clientWidth).toBe(0);
+    f.geometry.viewportBase.empty = false; Object.assign(f.geometry.player, {left: 0, top: 0});
+    binding.syncMenuHost(); expect(host.style.visibility).toBe('visible'); expect(menu.parentElement).toBe(host);
+    binding.destroy();
+  });
+});
 
 describe('mobile YouTube owned menu rendering scope', () => {
   it('observer repairs a site-moved menu host within the same scope while retaining content, listeners and focus', () => {

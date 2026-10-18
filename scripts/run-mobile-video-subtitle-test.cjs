@@ -14,7 +14,7 @@ const arg = (name, fallback) => { const i = process.argv.indexOf(`--${name}`); r
 const suiteFlags = process.argv.slice(2).filter(value=>value==='--suite'||value.startsWith('--suite='));
 if(suiteFlags.length>1) throw Error('--suite may be specified only once');
 const selectedSuite = suiteFlags[0]?.startsWith('--suite=')?suiteFlags[0].slice('--suite='.length):arg('suite','lifecycle');
-if (!['menu','lifecycle','control-clones'].includes(selectedSuite)) throw Error('--suite must be menu, lifecycle or control-clones (default: lifecycle)');
+if (!['menu','menu-details','lifecycle','control-clones'].includes(selectedSuite)) throw Error('--suite must be menu, menu-details, lifecycle or control-clones (default: lifecycle)');
 const extensionDir = path.resolve(arg('extension-dir', '.output/chrome-mv3'));
 const artifacts = path.resolve(arg('artifacts-dir', '/private/tmp/fluentread-mobile-video'));
 const playwrightRoot = arg('playwright-root');
@@ -26,7 +26,13 @@ const source = 'Watch bilingual captions near the bottom.';
 const translated = '在视频底部观看双语字幕。';
 const url = 'https://m.youtube.com/watch?v=fluentread-mobile-992';
 const report = {selectedSuite,fixture:'mobile-youtube-production-extension', evidenceLimits:['local HTML and timedtext fixtures', 'mock translation', 'Chromium viewport/touch emulation', 'isolated-extension-world webkit capability/event shim only; no iOS/AVKit rendering', 'fullscreen geometry uses an explicit DOM property fixture; no system/window fullscreen', 'no live provider or mobile device'], cases:[], errors:[]};
-if(selectedSuite==='menu') report.evidenceLimits.push('Explicit menu suite: shared caption readiness, touch/desktop menus and fullscreen geometry only; native-selection shim, video replacement, reload and persisted-pageshow lifecycle assertions are not executed; menu success is not lifecycle acceptance');
+if(selectedSuite==='menu') report.evidenceLimits.push('Responsive menu uses production content/style/binding with controlled VisualViewport numeric accessors and an explicit DOM fullscreen property fixture; it does not prove actual OS keyboard or Safari rendering. Explicit menu suite: shared caption readiness, touch/desktop menus and fullscreen geometry only; native-selection shim, video replacement, reload and persisted-pageshow lifecycle assertions are not executed; menu success is not lifecycle acceptance');
+if(selectedSuite==='menu-details') Object.assign(report,{fixture:'X-production-menu-details',evidenceLimits:[
+  'Local X DOM/generated-media fixture, official seeded transcript cache and mocked translation',
+  'Actual production content creates and handles compact watch/tools/model/export DOM; no factory import or hand-built prompt',
+  'Model-state message response is mocked; model preparation is blocked, no model confirmation, ASR or export confirmation',
+  'Seven configured UI languages and Chromium coarse-pointer viewport only; not live X, Safari, OS keyboard or native mobile acceptance',
+]});
 if(selectedSuite==='control-clones') Object.assign(report,{fixture:'same-scope-control-clones-production-extension',evidenceLimits:[
   'Local desktop/mobile YouTube HTML, generated media and timedtext fixtures; mock translation',
   'Actual built extension content and native Chromium MutationObserver; no binding import, sync call or cleanup model',
@@ -191,6 +197,165 @@ async function runControlClonesSuite(context, configure, mediaBase64) {
   report.stage='control-clones-complete';save();
 }
 
+async function runMenuDetailsSuite(context, configure, mediaBase64) {
+  const languages=[["zh-CN","关闭字幕菜单","双语","字幕选项"],["en-US","Close subtitle menu","Both","Subtitle options"],["ja-JP","字幕メニューを閉じる","両方","字幕オプション"],["ko-KR","자막 메뉴 닫기","둘 다","자막 옵션"],["fr-FR","Fermer le menu des sous-titres","Les deux","Options des sous-titres"],["ru-RU","Закрыть меню субтитров","Оба","Параметры субтитров"],["es-ES","Cerrar el menú de subtítulos","Ambos","Opciones de subtítulos"]];
+  const cdp=await context.newCDPSession(page),worlds=new Map();
+  cdp.on('Runtime.executionContextCreated',({context})=>worlds.set(context.id,context));
+  cdp.on('Runtime.executionContextDestroyed',({executionContextId})=>worlds.delete(executionContextId));
+  cdp.on('Runtime.executionContextsCleared',()=>worlds.clear());await cdp.send('Runtime.enable');
+  await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:1});
+  await page.setViewportSize({width:320,height:720});
+  await configure({uiLanguage:'zh-CN',uiLanguageSetupCompleted:true,videoLocalModel:'tiny',videoSourceLanguage:'auto'});
+  const cached=await control.evaluate(cue=>chrome.runtime.sendMessage({type:'fluentReadSetVideoAiSubtitleCache',source:{mediaId:'424242'},model:'tiny',sourceLanguage:'auto',
+    cues:[{startMs:0,durationMs:10000,text:cue}]}),source);assert.equal(cached.cached,true);
+  const fixtureUrl='https://x.com/fluentread/status/424242';
+  await page.route('https://video.twimg.com/**',route=>route.fulfill({contentType:'video/mp4',body:Buffer.from(mediaBase64,'base64')}));
+  await page.route(fixtureUrl,route=>route.fulfill({contentType:'text/html',body:`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;font:16px Arial;background:#e9edf3}[data-testid="videoPlayer"]{position:relative;width:100%;aspect-ratio:16/9;background:#10283f;overflow:hidden}video{width:100%;height:100%}.fixture-controls{position:absolute;bottom:0;right:8px;height:44px;display:flex;align-items:center;gap:8px}.fixture-controls button{width:44px;height:44px}.fixture-actions{display:flex;align-items:center}p{margin:16px}</style></head><body><article><a href="/fluentread/status/424242/video/1">Controlled X video</a><div data-testid="videoPlayer"><video muted playsinline preload="auto" src="https://video.twimg.com/ext_tw_video/424242/pu/fixture.mp4"></video><div class="fixture-controls"><button aria-label="Volume">Volume</button><button aria-label="Settings">Settings</button><div class="fixture-actions"><div id="fixture-pip"><button aria-label="Picture in picture">PiP</button></div><div id="fixture-fullscreen"><button aria-label="Full screen">Full</button></div></div></div></div></article><p>Production menu CSS, local transcript cache and mocked translation; no model download or ASR.</p></body></html>`}));
+  let downloads=0;page.on('download',()=>downloads++);
+  await page.goto(fixtureUrl,{waitUntil:'domcontentloaded'});await helper.activateExtensionTabWithoutForeground(context,page);
+  await page.mouse.move(160,80);
+  await page.waitForFunction(()=>document.querySelector('video')?.readyState>=2&&document.querySelector('#fluent-read-video-subtitle-original')?.textContent.includes('Watch bilingual'));
+  const id=new URL(worker.url()).host,frame=(await cdp.send('Page.getFrameTree')).frameTree.frame.id;
+  let world;
+  for(let attempt=0;attempt<50&&!world;attempt++){
+    for(const candidate of worlds.values()){
+      if(candidate.auxData?.isDefault||candidate.auxData?.frameId!==frame)continue;
+      const identity=await cdp.send('Runtime.evaluate',{contextId:candidate.id,expression:'globalThis.chrome?.runtime?.id',returnByValue:true});
+      if(identity.result?.value===id){world=candidate.id;break;}
+    }
+    if(!world)await page.waitForTimeout(100);
+  }
+  assert.ok(world,'Actual production extension world must be identified');
+  const isolated=async expression=>{
+    const result=await cdp.send('Runtime.evaluate',{contextId:world,expression,returnByValue:true,awaitPromise:true});
+    assert.ok(!result.exceptionDetails,JSON.stringify(result.exceptionDetails));return result.result.value;
+  };
+  evaluateBusinessWorld=isolated;
+  await isolated(`(()=>{const original=chrome.runtime.sendMessage;globalThis.__menuDetailsMessages={modelState:0,blockedPrepare:0};
+    chrome.runtime.sendMessage=function(...args){const type=args[0]?.type;let response;
+      if(type==='fluentReadGetLocalVideoModelState'){__menuDetailsMessages.modelState++;response={success:true,models:[]};}
+      else if(type==='fluentReadPrepareLocalVideoModel'){__menuDetailsMessages.blockedPrepare++;response={success:false,error:'Menu-details fixture forbids model preparation'};}
+      else return original.apply(this,args);
+      const callback=args[args.length-1];if(typeof callback==='function'){queueMicrotask(()=>callback(response));return;}return Promise.resolve(response);
+    };return true;})()`);
+  report.menuDetails={languages:languages.map(([language])=>language),viewport:{width:320,height:720},cache:'official seeded AI transcript',modelState:'mock success/models=[]; preparation blocked',translation:'existing deterministic worker mock',cases:[],keyboard:[],closed:[]};save();
+  const menuSelector='#fluent-read-video-subtitle-menu';
+  const measure=async(name,screenshot=true)=>{
+    await checkFocus();
+    const value=await page.evaluate(()=>{
+      const menu=document.querySelector('#fluent-read-video-subtitle-menu'),header=menu.querySelector('.fluent-read-video-menu-title'),body=menu.querySelector('.fluent-read-video-menu-body');
+      const prompt=menu.querySelector('[data-model-prompt]:not([hidden]), [data-export-prompt]'),main=menu.querySelector('.fluent-read-video-menu-main');
+      const rect=node=>{const r=node.getBoundingClientRect();return {left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};
+      const clipped=node=>{const r=rect(node),ancestorScrollports=[];
+        for(let parent=node.parentElement;parent;parent=parent.parentElement){
+          const css=getComputedStyle(parent),p=rect(parent),clipX=/^(auto|scroll|hidden|clip)$/.test(css.overflowX),clipY=/^(auto|scroll|hidden|clip)$/.test(css.overflowY);
+          if(!clipX&&!clipY)continue;
+          const border={left:parseFloat(css.borderLeftWidth)||0,right:parseFloat(css.borderRightWidth)||0,top:parseFloat(css.borderTopWidth)||0,bottom:parseFloat(css.borderBottomWidth)||0};
+          const reservedScrollbarWidth=Math.max(0,parent.offsetWidth-parent.clientWidth-border.left-border.right),reservedScrollbarHeight=Math.max(0,parent.offsetHeight-parent.clientHeight-border.top-border.bottom);
+          // Preserve fractional padding-box edges; clientWidth/clientHeight are integer diagnostics, not precise clip edges.
+          const scrollport={left:p.left+border.left,right:p.right-border.right-reservedScrollbarWidth,top:p.top+border.top,bottom:p.bottom-border.bottom-reservedScrollbarHeight};
+          if(clipX){r.left=Math.max(r.left,scrollport.left);r.right=Math.min(r.right,scrollport.right);}
+          if(clipY){r.top=Math.max(r.top,scrollport.top);r.bottom=Math.min(r.bottom,scrollport.bottom);}
+          ancestorScrollports.push({tag:parent.tagName,className:parent.getAttribute('class'),clipX,clipY,frame:p,border,offsetWidth:parent.offsetWidth,offsetHeight:parent.offsetHeight,
+            clientWidth:parent.clientWidth,clientHeight:parent.clientHeight,reservedScrollbarWidth,reservedScrollbarHeight,scrollport});
+        }
+        r.left=Math.max(0,r.left);r.top=Math.max(0,r.top);r.right=Math.min(innerWidth,r.right);r.bottom=Math.min(innerHeight,r.bottom);
+        return {...r,width:Math.max(0,r.right-r.left),height:Math.max(0,r.bottom-r.top),ancestorScrollports};
+      };
+      const buttons=[...menu.querySelectorAll('button')].map((node,index)=>{
+        const r=rect(node),v=clipped(node),css=getComputedStyle(node),displayed=r.width>0&&r.height>0&&css.visibility==='visible'&&css.display!=='none';
+        const fullyVisible=displayed&&v.left<=r.left+.01&&v.top<=r.top+.01&&v.right>=r.right-.01&&v.bottom>=r.bottom-.01;
+        const points=[[.5,.5],[.25,.25],[.75,.25],[.25,.75],[.75,.75]].map(([x,y])=>{const px=r.left+r.width*x,py=r.top+r.height*y,hit=document.elementFromPoint(px,py);
+          return {x:px,y:py,hit:hit===node||Boolean(hit&&node.contains(hit)),hitTag:hit?.tagName||null,hitClass:hit?.getAttribute('class')||null};});
+        const textFits=[node,...node.querySelectorAll('[data-i18n-key], .fluent-read-video-menu-label, .fluent-read-video-model-option-name, .fluent-read-video-model-option-hint')].every(label=>{
+          if(!label.textContent.trim())return true;const range=document.createRange();range.selectNodeContents(label);return [...range.getClientRects()].every(t=>t.left>=r.left-.5&&t.right<=r.right+.5&&t.top>=r.top-.5&&t.bottom<=r.bottom+.5);});
+        return {index,action:node.dataset.action||null,mode:node.dataset.mode||null,model:node.dataset.modelChoice||null,exportChoice:node.dataset.exportChoice||null,
+          label:node.textContent.trim(),ariaLabel:node.getAttribute('aria-label'),disabled:node.disabled,displayed,fullyVisible,textFits,frame:r,clippedRect:v,points,focused:node===document.activeElement,inPrompt:Boolean(prompt?.contains(node))};
+      });
+      const back=menu.querySelector('[data-action="close-subtitle-tools"]'),close=buttons.find(node=>node.action==='close-menu');
+      const old=window.__menuDetailsIdentity;return {view:menu.dataset.view,panel:menu.dataset.panel,compact:menu.dataset.compact,presentation:menu.dataset.presentation,
+        sameMenu:!old||old.menu===menu,sameHost:!old||old.host===menu.parentElement,menu:rect(menu),header:rect(header),headerDirect:header.parentElement===menu,headerOutsideBody:!body.contains(header),
+        overflowX:menu.scrollWidth>menu.clientWidth+1,bodyOverflowX:body.scrollWidth>body.clientWidth+1,bodyScrollTop:body.scrollTop,bodyScrollHeight:body.scrollHeight,bodyClientHeight:body.clientHeight,
+        mainHidden:main.hidden,mainDisplay:getComputedStyle(main).display,promptOverflowX:Boolean(prompt&&prompt.scrollWidth>prompt.clientWidth+1),promptScrollHeight:prompt?.scrollHeight,promptClientHeight:prompt?.clientHeight,
+        back:{hidden:back.hidden,display:getComputedStyle(back).display,frame:rect(back)},close,buttons,viewport:{width:innerWidth,height:innerHeight},coarse:matchMedia('(pointer:coarse)').matches};
+    });
+    report.menuDetails.cases.push({name,...value});save();if(screenshot)await page.screenshot({path:path.join(artifacts,`${name}.png`)});return value;
+  };
+  const whole=(name,node)=>{assert.ok(node&&node.displayed&&node.fullyVisible&&node.frame.width>=43.99&&node.frame.height>=43.99&&node.points.every(point=>point.hit),`${name}: complete 44px hit ${JSON.stringify(node)}`);};
+  const validate=(name,state)=>{
+    assert.equal(state.compact,'true');assert.equal(state.presentation,'viewport');assert.equal(state.coarse,true);assert.ok(state.sameMenu&&state.sameHost);
+    assert.ok(!state.overflowX&&!state.bodyOverflowX&&!state.promptOverflowX,`${name}: horizontal content overflow`);
+    assert.ok(state.menu.left>=-.01&&state.menu.right<=state.viewport.width+.01&&state.menu.top>=-.01&&state.menu.bottom<=state.viewport.height+.01,`${name}: menu outside controlled viewport`);
+    assert.ok(state.headerDirect&&state.headerOutsideBody);whole(name+' Close',state.close);
+    for(const button of state.buttons.filter(button=>button.displayed)){assert.ok(button.frame.width>=43.99&&button.frame.height>=43.99,`${name}: 44px control ${JSON.stringify(button)}`);assert.equal(button.textFits,true,`${name}: localized label clipped ${JSON.stringify(button)}`);}
+    if(state.view!=='main'){assert.ok(state.mainHidden&&state.mainDisplay==='none',`${name}: main CSS must honor hidden`);assert.equal(state.back.display,'none');assert.equal(state.back.frame.width,0);assert.equal(state.back.frame.height,0);}
+  };
+  const click=async(selector)=>{
+    await checkFocus();const target=await page.evaluate(selector=>{
+      const nodes=document.querySelectorAll(selector);if(nodes.length!==1)return {count:nodes.length};const node=nodes[0],r=node.getBoundingClientRect();
+      const points=[[.5,.5],[.25,.25],[.75,.25],[.25,.75],[.75,.75]].map(([x,y])=>{const px=r.left+r.width*x,py=r.top+r.height*y,hit=document.elementFromPoint(px,py);return {x:px,y:py,hit:hit===node||Boolean(hit&&node.contains(hit))};});
+      return {count:1,disabled:node.disabled,width:r.width,height:r.height,inside:r.left>=0&&r.top>=0&&r.right<=innerWidth&&r.bottom<=innerHeight,points};
+    },selector);assert.ok(target.count===1&&!target.disabled&&target.width>=43.99&&target.height>=43.99&&target.inside&&target.points.every(point=>point.hit),`Pre-click 44px hit ${selector}: ${JSON.stringify(target)}`);
+    await page.mouse.click(target.points[0].x,target.points[0].y);
+  };
+  const waitView=(view,panel)=>page.waitForFunction(({view,panel})=>{const menu=document.querySelector('#fluent-read-video-subtitle-menu');return !menu.hidden&&menu.dataset.view===view&&(!panel||menu.dataset.panel===panel);},{view,panel});
+  const open=async()=>{await click('#fluent-read-video-subtitle-button');await waitView('main');};
+  const close=async(name)=>{
+    await click(menuSelector+' [data-action="close-menu"]');await page.waitForFunction(()=>document.querySelector('#fluent-read-video-subtitle-menu').hidden);
+    const state=await page.evaluate(()=>{const menu=document.querySelector('#fluent-read-video-subtitle-menu'),r=menu.getBoundingClientRect(),entry=document.querySelector('#fluent-read-video-subtitle-button');return {hidden:menu.hidden,display:getComputedStyle(menu).display,width:r.width,height:r.height,focusReturned:document.activeElement===entry};});
+    report.menuDetails.closed.push({name,...state});save();assert.ok(state.hidden&&state.display==='none'&&state.width===0&&state.height===0&&state.focusReturned);
+  };
+  const keyboard=async(name)=>{
+    const outputs=[];
+    for(const key of ['Home','ArrowDown','End']){
+      await page.keyboard.press(key);const state=await measure(name+'-'+key,false),active=state.buttons.find(button=>button.focused);whole(name+' '+key,active);
+      assert.notEqual(active.action,'close-subtitle-tools','Hidden tools Back must never receive focus in a prompt');
+      if(key==='Home')assert.equal(active.action,'open-settings');if(key==='ArrowDown')assert.equal(active.action,'close-menu');if(key==='End')assert.equal(active.inPrompt,true);
+      outputs.push({key,action:active.action,model:active.model,exportChoice:active.exportChoice});
+    }
+    report.menuDetails.keyboard.push({name,outputs});save();
+  };
+  await open();await page.evaluate(()=>{const menu=document.querySelector('#fluent-read-video-subtitle-menu');window.__menuDetailsIdentity={menu,host:menu.parentElement};});await close('initial');
+  for(const [language,closeLabel,bilingualLabel,toolsLabel] of languages){
+    await configure({uiLanguage:language});
+    await page.waitForFunction(expected=>document.querySelector('#fluent-read-video-subtitle-menu [data-action="close-menu"]')?.getAttribute('aria-label')===expected,closeLabel);
+    await open();let state=await measure(`details-${language}-watch`);validate(language+' watch',state);
+    assert.equal(state.buttons.find(button=>button.mode==='bilingual').label,bilingualLabel);
+    assert.equal(state.buttons.find(button=>button.action==='open-subtitle-tools').label,toolsLabel);
+    for(const mode of ['bilingual','translation-only','original-only','off'])whole(language+' '+mode,state.buttons.find(button=>button.mode===mode));
+    whole(language+' tools entry',state.buttons.find(button=>button.action==='open-subtitle-tools'));
+    whole(language+' learning entry',state.buttons.find(button=>button.action==='open-sentence-learning'));
+    await close(language+' watch');
+  }
+  // Only one language enters the real subpages; the seven-language matrix above stays a bounded watch-layout check.
+  await configure({uiLanguage:'zh-CN'});
+  await page.waitForFunction(()=>document.querySelector('#fluent-read-video-subtitle-menu [data-action="close-menu"]')?.getAttribute('aria-label')==='关闭字幕菜单');
+  await open();await click(menuSelector+' [data-action="open-subtitle-tools"]');await waitView('main','tools');
+  let state=await measure('details-tools');validate('tools',state);whole('tools Back',state.buttons.find(button=>button.action==='close-subtitle-tools'));
+  await click(menuSelector+' [data-action="close-subtitle-tools"]');await waitView('main','watch');
+  await click(menuSelector+' [data-action="open-subtitle-tools"]');await waitView('main','tools');
+  await click(menuSelector+' [data-action="select-ai-model"]');await waitView('model-prompt');
+  state=await measure('details-model');validate('model',state);await keyboard('model');
+  await page.keyboard.press('Home');await page.keyboard.press('ArrowDown');await page.keyboard.press('ArrowDown');
+  await click(menuSelector+' [data-model-prompt] .fluent-read-video-model-prompt-head [data-action="model-prompt-cancel"]');await waitView('main','tools');
+  await click(menuSelector+' [data-action="download-translated-subtitles"]');await waitView('export-prompt');
+  state=await measure('details-export');validate('export',state);await keyboard('export');
+  await click(menuSelector+' [data-export-choice="cancel"]');await waitView('main','tools');
+  // Global Close is checked while each real production subpage is open, without confirming either task.
+  await click(menuSelector+' [data-action="select-ai-model"]');await waitView('model-prompt');await close('model-global');
+  await open();await click(menuSelector+' [data-action="open-subtitle-tools"]');await waitView('main','tools');
+  await click(menuSelector+' [data-action="download-translated-subtitles"]');await waitView('export-prompt');await close('export-global');
+  await open();await click(menuSelector+' [data-action="open-subtitle-tools"]');await waitView('main','tools');
+  await page.setViewportSize({width:320,height:300});await page.waitForTimeout(180);
+  await page.evaluate(()=>{const body=document.querySelector('.fluent-read-video-menu-body');body.scrollTop=body.scrollHeight;});
+  const short=await measure('details-short-body-bottom');validate('short body',short);assert.ok(short.bodyScrollHeight>short.bodyClientHeight&&short.bodyScrollTop>0);
+  await close('short-body-global');
+  report.menuDetails.messages=await isolated('globalThis.__menuDetailsMessages');report.menuDetails.downloadEvents=downloads;
+  assert.equal(report.menuDetails.messages.modelState,2);assert.equal(report.menuDetails.messages.blockedPrepare,0);assert.equal(downloads,0);
+  assert.equal(report.errors.length,0,report.errors.join('\n'));
+  report.menuDetails.success=true;save();
+}
+
 async function main() {
   assert.ok(fs.existsSync(path.join(extensionDir,'manifest.json')), '需要 production 扩展构建');
   profileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fluentread-mobile-video-'));
@@ -260,12 +425,13 @@ async function main() {
   page.on('console',message=>(report.console ||= []).push({type:message.type(),text:message.text()}));
   page.on('requestfailed',request=>(report.requestFailures ||= []).push({url:request.url().slice(0,300),failure:request.failure()}));
   page.on('response',response=>{if(response.url().includes('/api/timedtext'))(report.timedtextResponses ||= []).push({url:response.url(),status:response.status()});});
+  if(selectedSuite==='menu-details'){await runMenuDetailsSuite(context,configure,mediaBase64);return;}
   if(selectedSuite==='control-clones'){await runControlClonesSuite(context,configure,mediaBase64);return;}
   const timedtext='https://m.youtube.com/api/timedtext?v=fluentread-mobile-992&lang=en';
   await page.route('**/api/timedtext**',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({events:[{tStartMs:0,dDurationMs:30000,segs:[{utf8:source}]}]})}));
   await page.route(url,route=>route.fulfill({status:200,contentType:'text/html',body:`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Mobile YouTube subtitle fixture</title><style>html,body{margin:0;background:#e9edf3;font:16px Arial}#movie_player{position:relative;width:100%;height:min(56.25vw,100svh);aspect-ratio:16/9;background:#101820;overflow:hidden}video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}.ytp-caption-window-container{position:absolute;left:0;right:0;top:45%;text-align:center;color:white}.ytp-caption-segment{background:#000b}.ytp-right-controls{position:absolute;right:8px;bottom:8px;height:32px;display:flex;gap:8px}.ytp-right-controls button{height:32px;background:#223345;color:white}.controls-hidden .ytp-right-controls{opacity:0;pointer-events:none}#description{padding:20px;line-height:1.6}</style><script>var ytInitialPlayerResponse=${JSON.stringify({videoDetails:{videoId:'fluentread-mobile-992'},captions:{playerCaptionsTracklistRenderer:{captionTracks:[{baseUrl:timedtext,languageCode:'en',name:{simpleText:'English'}}]}}})};</script></head><body><div id="movie_player" class="html5-video-player controls-hidden"><video playsinline preload="auto" src="data:video/mp4;base64,${mediaBase64}"></video><div id="ytp-caption-window-container" class="ytp-caption-window-container"><span class="ytp-caption-segment">${source}</span></div><div class="ytp-right-controls"><button aria-label="Settings">Settings</button><button aria-label="Fullscreen">Fullscreen</button></div></div><div id="description">Mobile YouTube layout fixture<br>生产扩展字幕定位与系统轨道接口专项<br>不是移动真机验收</div></body></html>`}));
   const activate=()=>helper.activateExtensionTabWithoutForeground(context,page);
-  await page.setViewportSize({width:390,height:844});
+  await page.setViewportSize({width:402,height:874});
   const cdp=await context.newCDPSession(page);
   const worlds=new Map();
   cdp.on('Runtime.executionContextCreated',({context})=>worlds.set(context.id,context));
@@ -327,26 +493,18 @@ async function main() {
   await page.evaluate(()=>document.querySelector('#movie_player').classList.remove('controls-hidden'));
   await page.waitForTimeout(1200); const controls=await capture('portrait-visible-controls');
   assert.ok(controls.panel.bottom<=controls.video.bottom-42,JSON.stringify(controls));
-  await page.locator('#fluent-read-video-subtitle-button').click();
-  await page.waitForFunction(()=>document.querySelector('#fluent-read-video-subtitle-menu')?.hidden===false);
-  assert.ok(await page.locator('[data-native-fullscreen-hint]').isVisible());
-  const targets=await page.locator('#fluent-read-video-subtitle-menu button, #fluent-read-video-subtitle-button').evaluateAll(nodes=>nodes.filter(n=>{
-    const style=getComputedStyle(n);
-    return !n.closest('[hidden]')&&n.getClientRects().length>0&&style.visibility==='visible'&&Number(style.opacity)>0;
-  }).map(n=>({action:n.dataset.action||n.dataset.mode||n.id,label:n.getAttribute('aria-label')||n.textContent.trim(),height:n.getBoundingClientRect().height,width:n.getBoundingClientRect().width})));
-  report.touchTargets=targets;
-  assert.equal(portrait.coarsePointer,true,'The controlled touch fixture must actually enable coarse-pointer CSS');
-  if(portrait.coarsePointer) assert.ok(targets.length>0&&targets.every(t=>t.height>=44&&t.width>=44),JSON.stringify(targets));
-  await capture('portrait-menu');
-  const captureMenuScrollTargets=async(name,includeTiming,includeFocused=false)=>{
+  let controlledMenuViewport=null;
+  const primaryCodes=['bilingual','translation-only','original-only','off','subtitle-earlier','subtitle-later',
+    'download-subtitles','download-translated-subtitles','download-bilingual-subtitles'];
+  const captureMenuScrollTargets=async(name,includeTiming=false,includeFocused=false,includePrimary=false)=>{
     await checkFocus();
-    const geometry=await page.evaluate(({includeTiming,includeFocused})=>{
+    const geometry=await page.evaluate(({includeTiming,includeFocused,includePrimary,controlledViewport})=>{
       const menu=document.querySelector('#fluent-read-video-subtitle-menu');
-      const header=menu.querySelector('.fluent-read-video-menu-title');
+      const body=menu.querySelector('.fluent-read-video-menu-body'),header=menu.querySelector('.fluent-read-video-menu-title'),host=menu.parentElement;
+      if(!body||!header)throw Error('Actual production menu must expose its owned body and header');
       const rect=node=>{const r=node.getBoundingClientRect();return {left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};
-      const viewport=window.visualViewport;
-      const visibleViewport={left:viewport?.offsetLeft||0,top:viewport?.offsetTop||0,
-        right:(viewport?.offsetLeft||0)+(viewport?.width||innerWidth),bottom:(viewport?.offsetTop||0)+(viewport?.height||innerHeight)};
+      const vv=window.visualViewport,visibleViewport=controlledViewport||{left:vv?.offsetLeft||0,top:vv?.offsetTop||0,
+        right:(vv?.offsetLeft||0)+(vv?.width||innerWidth),bottom:(vv?.offsetTop||0)+(vv?.height||innerHeight)};
       const visibleRect=node=>{
         const bounds={...rect(node)};
         for(let ancestor=node.parentElement;ancestor;ancestor=ancestor.parentElement){
@@ -361,119 +519,213 @@ async function main() {
         bounds.right=Math.min(bounds.right,visibleViewport.right);bounds.bottom=Math.min(bounds.bottom,visibleViewport.bottom);
         return {...bounds,width:Math.max(0,bounds.right-bounds.left),height:Math.max(0,bounds.bottom-bounds.top)};
       };
-      const headerVisible=visibleRect(header);
-      const menuFrame=rect(menu),menuPaddingTop=parseFloat(getComputedStyle(menu).paddingTop)||0;
+      const codes=['close-menu',...(includeTiming?['subtitle-earlier','subtitle-later']:[])];
+      if(includePrimary)codes.push('open-settings','bilingual','translation-only','original-only','off','subtitle-earlier','subtitle-later',
+        'download-subtitles','download-translated-subtitles','download-bilingual-subtitles','open-sentence-learning');
+      const targets=[...new Set(codes)].map(action=>({action,matches:[...menu.querySelectorAll(`[data-action="${action}"], [data-mode="${action}"]`)]}));
+      if(includeFocused){const active=document.activeElement;targets.push({action:'focused',matches:active instanceof HTMLButtonElement&&menu.contains(active)?[active]:[]});}
+      const headerVisible=visibleRect(header),menuFrame=rect(menu),menuPaddingTop=parseFloat(getComputedStyle(menu).paddingTop)||0;
       const menuClipTop=menuFrame.top+menu.clientTop*(menuFrame.height/(menu.offsetHeight||menuFrame.height)||1);
       const headerTopHits=[.25,.5,.75].map(fraction=>{
-        const x=headerVisible.left+headerVisible.width*fraction,y=menuClipTop+1,hit=document.elementFromPoint(x,y);
-        return {x,y,hitOwnedHeader:hit===header||Boolean(hit&&header.contains(hit)),hitTag:hit?.tagName||null};
+        const x=headerVisible.left+headerVisible.width*fraction,y=headerVisible.top+1,hit=document.elementFromPoint(x,y);
+        return {x,y,hitOwnedHeader:hit===header||Boolean(hit&&header.contains(hit))};
       });
-      const actions=['close-menu',...(includeTiming?['subtitle-earlier','subtitle-later']:[])];
-      const targets=actions.map(action=>({action,matches:[...menu.querySelectorAll(`[data-action="${action}"]`)]}));
-      if(includeFocused){
-        const active=document.activeElement;
-        targets.push({action:'focused',matches:active instanceof HTMLButtonElement&&menu.contains(active)?[active]:[]});
-      }
-      return {menu:menuFrame,menuPaddingTop,menuClipTop,header:rect(header),headerVisible,headerTopHits,headerBackground:getComputedStyle(header).backgroundColor,visualViewport:visibleViewport,scrollTop:menu.scrollTop,scrollHeight:menu.scrollHeight,clientHeight:menu.clientHeight,
+      const displayedButtons=[...menu.querySelectorAll('button')].filter(node=>!node.closest('[hidden]')&&node.getClientRects().length&&getComputedStyle(node).visibility==='visible');
+      const identity=window.__responsiveMenuIdentity;
+      return {menu:menuFrame,menuPaddingTop,menuClipTop,header:rect(header),headerVisible,headerTopHits,headerBackground:getComputedStyle(header).backgroundColor,
+        headerDirectChild:header.parentElement===menu,headerOutsideBody:!body.contains(header),presentation:menu.dataset.presentation,layout:menu.dataset.layout,
+        host:rect(host),hostRoot:host.parentElement===document.documentElement?'documentElement':host.parentElement===document.querySelector('#movie_player')?'player':'other',
+        sameMenu:!identity||identity.menu===menu,sameHost:!identity||identity.host===host,
+        visualViewport:visibleViewport,viewportMethod:controlledViewport?'production-world-VisualViewport-fixture':'native-browser-VisualViewport',
+        scrollTop:menu.scrollTop,scrollHeight:menu.scrollHeight,clientHeight:menu.clientHeight,scrollWidth:menu.scrollWidth,clientWidth:menu.clientWidth,
+        body:rect(body),bodyScrollTop:body.scrollTop,bodyScrollHeight:body.scrollHeight,bodyClientHeight:body.clientHeight,bodyScrollWidth:body.scrollWidth,bodyClientWidth:body.clientWidth,
         timingRow:includeTiming?rect(menu.querySelector('[data-timing-row]')):null,
+        modeFrames:[...menu.querySelectorAll('[data-mode]')].map(node=>({mode:node.dataset.mode,frame:rect(node)})),
+        displayedButtons:displayedButtons.map(node=>({code:node.dataset.action||node.dataset.mode,frame:rect(node)})),
         targets:targets.map(({action,matches})=>{
-          const node=matches[0];
-          if(!node)return {action,count:0};
+          const node=matches[0];if(!node)return {action,count:0};
           const frame=rect(node),visible=visibleRect(node);
           const points=[[.5,.5],[.25,.25],[.75,.25],[.25,.75],[.75,.75]].map(([x,y])=>{
             const px=frame.left+frame.width*x,py=frame.top+frame.height*y,hit=document.elementFromPoint(px,py);
-            return {x:px,y:py,hitOwnedControl:hit===node||Boolean(hit&&node.contains(hit)),hitTag:hit?.tagName||null,hitAction:hit?.closest('[data-action]')?.getAttribute('data-action')||null};
+            return {x:px,y:py,hitOwnedControl:hit===node||Boolean(hit&&node.contains(hit)),hitTag:hit?.tagName||null,hitClass:hit?.getAttribute('class')||null,hitAction:hit?.closest('[data-action], [data-mode]')?.getAttribute('data-action')||hit?.closest('[data-mode]')?.getAttribute('data-mode')||null};
           });
-          return {action,count:matches.length,actualAction:node.dataset.action||null,actualMode:node.dataset.mode||null,inHeader:header.contains(node),frame,visible,fullyVisible:visible.left<=frame.left+.01&&visible.top<=frame.top+.01&&visible.right>=frame.right-.01&&visible.bottom>=frame.bottom-.01,points};
+          return {action,count:matches.length,actualAction:node.dataset.action||null,actualMode:node.dataset.mode||null,inHeader:header.contains(node),frame,visible,
+            fullyVisible:visible.left<=frame.left+.01&&visible.top<=frame.top+.01&&visible.right>=frame.right-.01&&visible.bottom>=frame.bottom-.01,points};
         })};
-    },{includeTiming,includeFocused});
+    },{includeTiming,includeFocused,includePrimary,controlledViewport:controlledMenuViewport});
     (report.menuScrollTargets ||= []).push({name,...geometry});save();
-    // Capture the observed scroll position before any input or assertion; locator.click() would auto-scroll it.
-    await page.screenshot({path:path.join(artifacts,`${name}.png`)});
-    return geometry;
+    // Capture geometry/hit state before any input. No locator auto-scroll may establish first-screen visibility.
+    await page.screenshot({path:path.join(artifacts,`${name}.png`)});return geometry;
   };
   const assertWholeMenuTarget=(name,target,minSize=44)=>{
-    assert.equal(target.count,1,`${name}: actual target must be unique ${JSON.stringify(target)}`);
-    assert.ok(target.frame.width>=minSize&&target.frame.height>=minSize&&target.visible.width>=minSize-.01&&target.visible.height>=minSize-.01&&target.fullyVisible,
-      `${name}: full${minSize}px target clipped by menu/player/viewport ${JSON.stringify(target)}`);
-    assert.ok(target.points.length===5&&target.points.every(point=>point.hitOwnedControl),`${name}: actual five-point target hit failed ${JSON.stringify(target)}`);
+    assert.equal(target?.count,1,`${name}: actual target must be unique ${JSON.stringify(target)}`);
+    assert.ok(target.frame.width>=minSize-.01&&target.frame.height>=minSize-.01&&target.visible.width>=minSize-.01&&target.visible.height>=minSize-.01&&target.fullyVisible,
+      `${name}: full ${minSize}px target clipped by body/menu/host/viewport ${JSON.stringify(target)}`);
+    assert.ok(target.points.length===5&&target.points.every(point=>point.hitOwnedControl),`${name}: five-point hit failed ${JSON.stringify(target)}`);
   };
   const assertMenuHeaderTop=(name,geometry)=>{
-    if(geometry.scrollTop<geometry.menuPaddingTop)return;
-    assert.ok(geometry.headerVisible.top<=geometry.menuClipTop+.01&&geometry.headerTopHits.length===3&&geometry.headerTopHits.every(point=>point.hitOwnedHeader),
-      `${name}: scrolled content leaks above the current menu header ${JSON.stringify(geometry)}`);
+    if(geometry.presentation==='viewport'){
+      assert.ok(geometry.headerDirectChild&&geometry.headerOutsideBody&&geometry.header.height>=44&&geometry.headerVisible.height>=geometry.header.height-.01,
+        `${name}: permanent header must remain outside the body scroller ${JSON.stringify(geometry)}`);
+      assert.ok(geometry.body.top>=geometry.header.bottom-.01&&geometry.scrollTop===0,`${name}: body must not cover/scroll the permanent header`);
+    }else if(geometry.scrollTop>=geometry.menuPaddingTop){
+      assert.ok(geometry.headerVisible.top<=geometry.menuClipTop+.01&&geometry.headerTopHits.every(point=>point.hitOwnedHeader),`${name}: desktop header covered`);
+    }
   };
-  const timingGeometry=await page.evaluate(()=>{
-    const menu=document.querySelector('#fluent-read-video-subtitle-menu');
-    const row=menu.querySelector('[data-timing-row]');
-    menu.scrollTop+=Math.max(0,row.getBoundingClientRect().bottom-menu.getBoundingClientRect().bottom+8);
-    const label=row.querySelector('.fluent-read-video-menu-row-label');
-    const controls=row.querySelector('.fluent-read-video-menu-timing-controls');
-    const rect=node=>{const r=node.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom};};
-    const style=getComputedStyle(label);
-    return {menu:rect(menu),row:rect(row),label:rect(label),controls:rect(controls),modes:rect(menu.querySelector('[data-mode]').parentElement),labelText:label.textContent,labelWidth:label.clientWidth,labelScrollWidth:label.scrollWidth,labelHeight:label.clientHeight,labelScrollHeight:label.scrollHeight,overflow:style.overflow,textOverflow:style.textOverflow,contain:style.contain,offset:controls.querySelector('[data-subtitle-offset]').textContent};
-  });
-  report.timingGeometry=timingGeometry;
-  const timingTargets=await captureMenuScrollTargets('portrait-menu-timing-targets',true);
-  assert.equal(timingGeometry.labelText,'字幕时间');
-  assert.ok(timingGeometry.row.top>=timingGeometry.modes.bottom-1,'Touch timing group must use its own row');
-  assert.ok(timingGeometry.row.top>=timingGeometry.menu.top&&timingGeometry.row.bottom<=timingGeometry.menu.bottom,JSON.stringify(timingGeometry));
-  assert.ok(timingGeometry.labelScrollWidth<=timingGeometry.labelWidth+1&&timingGeometry.labelScrollHeight<=timingGeometry.labelHeight+1,JSON.stringify(timingGeometry));
-  assert.notEqual(timingGeometry.textOverflow,'ellipsis');assert.equal(timingGeometry.contain,'none');
-  assert.ok(timingGeometry.controls.left>=timingGeometry.row.left&&timingGeometry.controls.right<=timingGeometry.row.right,JSON.stringify(timingGeometry));
-  assert.ok(timingGeometry.label.right<=timingGeometry.controls.left+1||timingGeometry.label.bottom<=timingGeometry.controls.top+1,'Timing label and controls must not overlap');
-  assert.match(timingGeometry.offset,/0\.0\s*s/);
-  await page.screenshot({path:path.join(artifacts,'portrait-menu-timing.png')});
-  const hintGeometry=await page.evaluate(()=>{
-    const menu=document.querySelector('#fluent-read-video-subtitle-menu');
-    menu.scrollTop=menu.scrollHeight;
-    const bounds=menu.getBoundingClientRect();
-    const hint=menu.querySelector('[data-native-fullscreen-hint]').getBoundingClientRect();
-    return {menuTop:bounds.top,menuBottom:bounds.bottom,hintTop:hint.top,hintBottom:hint.bottom,scrollTop:menu.scrollTop};
-  });
-  const hintTargets=await captureMenuScrollTargets('portrait-menu-hint-targets',false);
-  assert.ok(hintGeometry.hintTop>=hintGeometry.menuTop&&hintGeometry.hintBottom<=hintGeometry.menuBottom,JSON.stringify(hintGeometry));
-  report.nativeHintGeometry=hintGeometry;
-  for(const [name,geometry] of [['timing',timingTargets],['hint',hintTargets]]){
-    assert.ok(geometry.scrollHeight>geometry.clientHeight&&geometry.scrollTop>0,`${name}: fixture must exercise actual menu overflow and scrolling ${JSON.stringify(geometry)}`);
+  const assertResponsive=(name,geometry,codes=primaryCodes,firstScreen=true)=>{
+    assert.equal(geometry.presentation,'viewport',`${name}: actual binding must select the viewport host`);
+    assert.equal(geometry.sameMenu,true);assert.equal(geometry.sameHost,true);
+    assert.ok(geometry.menu.left>=geometry.host.left-.01&&geometry.menu.right<=geometry.host.right+.01&&geometry.menu.top>=geometry.host.top-.01&&geometry.menu.bottom<=geometry.host.bottom+.01,
+      `${name}: menu escaped actual owned viewport host`);
+    const vv=geometry.visualViewport;
+    assert.ok(geometry.host.left>=vv.left-.01&&geometry.host.top>=vv.top-.01&&geometry.host.right<=vv.right+.01&&geometry.host.bottom<=vv.bottom+.01,`${name}: host escaped visible viewport`);
+    assert.ok(geometry.scrollWidth<=geometry.clientWidth+1&&geometry.bodyScrollWidth<=geometry.bodyClientWidth+1,`${name}: horizontal menu/body overflow`);
+    assert.ok(geometry.displayedButtons.length>0&&geometry.displayedButtons.every(node=>node.frame.width>=43.99&&node.frame.height>=43.99),`${name}: touch controls must all retain 44px rectangles`);
+    if(firstScreen)assert.equal(geometry.bodyScrollTop,0,`${name}: first-screen geometry must precede body scroll/focus navigation`);
     assertMenuHeaderTop(name,geometry);
-    for(const target of geometry.targets)assertWholeMenuTarget(name,target);
+    for(const code of ['close-menu',...codes])assertWholeMenuTarget(name,geometry.targets.find(target=>target.action===code));
+  };
+  const checkedEntryClick=async(minSize=44)=>{
+    await checkFocus();
+    const target=await page.evaluate(()=>{
+      const nodes=document.querySelectorAll('#fluent-read-video-subtitle-button');if(nodes.length!==1)return {count:nodes.length};
+      const node=nodes[0],r=node.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2,hit=document.elementFromPoint(x,y);
+      return {count:1,x,y,width:r.width,height:r.height,hit:hit===node||Boolean(hit&&node.contains(hit))};
+    });
+    assert.ok(target.count===1&&target.width>=minSize-.01&&target.height>=minSize-.01&&target.hit,`Entry must be directly hittable before click ${JSON.stringify(target)}`);
+    await page.mouse.click(target.x,target.y);
+    await page.waitForFunction(()=>document.querySelector('#fluent-read-video-subtitle-menu')?.hidden===false);
+  };
+  const assertClosedMenu=async(name,previous)=>{
+    const samples=(previous?.targets||[]).flatMap(target=>target.points||[]);
+    const value=await page.evaluate(samples=>{
+      const menu=document.querySelector('#fluent-read-video-subtitle-menu'),r=menu.getBoundingClientRect();
+      const points=samples.length?samples:[{x:innerWidth/2,y:innerHeight/2},{x:innerWidth/2,y:innerHeight-20}];
+      return {hidden:menu.hidden,display:getComputedStyle(menu).display,width:r.width,height:r.height,
+        anyHit:points.some(({x,y})=>{const hit=document.elementFromPoint(x,y);return hit===menu||Boolean(hit&&menu.contains(hit));})};
+    },samples);
+    (report.closedMenuChecks ||= []).push({name,...value});save();
+    assert.equal(value.hidden,true,`${name}: menu.hidden`);assert.equal(value.display,'none',`${name}: actual CSS must honor root hidden`);
+    assert.ok(value.width===0&&value.height===0&&!value.anyHit,`${name}: hidden menu must leave neither painted rectangle nor sampled hit`);
+  };
+  const checkedMenuClose=async(name,geometry)=>{
+    const target=geometry.targets.find(target=>target.action==='close-menu');assertWholeMenuTarget(name,target);
+    await page.mouse.click(target.points[0].x,target.points[0].y);
+    await page.waitForFunction(()=>document.querySelector('#fluent-read-video-subtitle-menu')?.hidden===true);
+    await assertClosedMenu(name,geometry);
+    const focusedEntry=await page.evaluate(viewport=>{
+      const nodes=document.querySelectorAll('#fluent-read-video-subtitle-button'),node=nodes[0];if(nodes.length!==1)return {count:nodes.length};
+      const r=node.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2,hit=document.elementFromPoint(x,y);
+      const vv=viewport||{left:0,top:0,right:innerWidth,bottom:innerHeight};
+      return {count:1,focused:node===document.activeElement,visible:r.width>0&&r.height>0&&r.left>=vv.left&&r.top>=vv.top&&r.right<=vv.right&&r.bottom<=vv.bottom,
+        hit:hit===node||Boolean(hit&&node.contains(hit)),frame:{left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height}};
+    },controlledMenuViewport);
+    (report.closeFocusChecks ||= []).push({name,...focusedEntry});save();
+    assert.ok(focusedEntry.count===1&&focusedEntry.focused&&focusedEntry.visible&&focusedEntry.hit,`${name}: Close must return visible focus to the same hittable entry ${JSON.stringify(focusedEntry)}`);
+  };
+  const settleMenu=()=>page.waitForTimeout(180);
+  const resetBodyScroll=()=>page.evaluate(()=>{document.querySelector('.fluent-read-video-menu-body').scrollTop=0;});
+  await page.waitForFunction(()=>Boolean(document.querySelector('#fluent-read-video-subtitle-menu')));
+  await assertClosedMenu('initial');
+  await checkedEntryClick();
+  await page.evaluate(()=>{const menu=document.querySelector('#fluent-read-video-subtitle-menu');window.__responsiveMenuIdentity={menu,host:menu.parentElement};});
+  await settleMenu();
+  const normal=await captureMenuScrollTargets('portrait-402-menu-first-screen',true,false,true);
+  assertResponsive('portrait402',normal,[...primaryCodes,'open-settings','open-sentence-learning']);
+  assert.equal(portrait.coarsePointer,true,'Controlled touch fixture must really enable coarse CSS');
+  report.touchTargets=normal.displayedButtons;
+  await page.setViewportSize({width:320,height:720});await settleMenu();await resetBodyScroll();
+  const narrow=await captureMenuScrollTargets('portrait-320-menu-first-screen',true,false,true);
+  assertResponsive('portrait320',narrow,[...primaryCodes,'open-settings','open-sentence-learning']);
+  const modes=narrow.modeFrames;
+  assert.ok(modes.length===4&&Math.abs(modes[0].frame.top-modes[1].frame.top)<1&&Math.abs(modes[2].frame.top-modes[3].frame.top)<1&&modes[2].frame.top>=modes[0].frame.bottom-1,'320px modes must form two complete columns');
+  await page.setViewportSize({width:844,height:390});await settleMenu();await resetBodyScroll();
+  const wide=await captureMenuScrollTargets('landscape-844-menu-first-screen',true,false,true);
+  assertResponsive('landscape844',wide,['bilingual','translation-only','original-only','off','subtitle-earlier','subtitle-later']);
+  await page.setViewportSize({width:402,height:874});await settleMenu();await resetBodyScroll();
+  // Preserve the actual VisualViewport EventTarget/listeners; override only its numeric accessors in the production isolated world.
+  const setControlledMenuViewport=async(value)=>{
+    const observed=await isolated(`(()=>{
+      const vv=window.visualViewport;if(!vv)return {supported:false};
+      let fixture=globalThis.__mobileMenuViewportFixture;
+      if(!fixture){fixture={original:{},value:null};for(const key of ['width','height','offsetLeft','offsetTop'])fixture.original[key]=Object.getOwnPropertyDescriptor(vv,key);globalThis.__mobileMenuViewportFixture=fixture;}
+      fixture.value=${JSON.stringify(value)};
+      for(const key of ['width','height','offsetLeft','offsetTop']){
+        if(fixture.value)Object.defineProperty(vv,key,{configurable:true,get:()=>fixture.value[key]});
+        else if(fixture.original[key])Object.defineProperty(vv,key,fixture.original[key]);else delete vv[key];
+      }
+      vv.dispatchEvent(new Event('resize'));vv.dispatchEvent(new Event('scroll'));window.dispatchEvent(new Event('resize'));
+      return {supported:true,width:vv.width,height:vv.height,offsetLeft:vv.offsetLeft,offsetTop:vv.offsetTop};
+    })()`);
+    assert.equal(observed.supported,true,'Controlled VisualViewport port unavailable');
+    controlledMenuViewport=value?{left:observed.offsetLeft,top:observed.offsetTop,right:observed.offsetLeft+observed.width,bottom:observed.offsetTop+observed.height}:null;
+    (report.menuViewportFixtures ||= []).push({requested:value,observed,actualOSKeyboard:false,method:'numeric VisualViewport accessors in the actual production isolated world; original EventTarget retained'});save();await settleMenu();
+  };
+  await setControlledMenuViewport({width:378,height:280,offsetLeft:12,offsetTop:80});await resetBodyScroll();
+  const short=await captureMenuScrollTargets('short-offset-visualviewport-menu-top',false,false,true);
+  assertResponsive('shortOffset',short,['bilingual','translation-only','original-only','off','subtitle-earlier','subtitle-later']);
+  assert.ok(short.bodyScrollHeight>short.bodyClientHeight,'Intentionally short viewport must exercise actual body overflow');
+  await page.evaluate(()=>{const body=document.querySelector('.fluent-read-video-menu-body');body.scrollTop=body.scrollHeight;});await settleMenu();
+  const shortBottom=await captureMenuScrollTargets('short-offset-visualviewport-body-bottom',false,false,true);
+  assertResponsive('shortOffsetBottom',shortBottom,[],false);
+  assert.ok(shortBottom.bodyScrollTop>0,'Only the menu body should scroll in the constrained case');
+  assert.ok(Math.abs(short.header.top-shortBottom.header.top)<.01&&Math.abs(short.header.bottom-shortBottom.header.bottom)<.01,'Body scrolling must not move permanent header');
+  await checkedMenuClose('short-body-normal-close',shortBottom);await checkedEntryClick();
+  // Observe the product's reset before any fixture viewport restoration or manual scroll reset can hide a regression.
+  const shortReopened=await captureMenuScrollTargets('short-offset-body-bottom-close-reopen',false,true,true);
+  assertResponsive('shortOffsetReopen',shortReopened,['bilingual','translation-only','original-only','off','subtitle-earlier','subtitle-later']);
+  const reopenedFocus=shortReopened.targets.find(target=>target.action==='focused');
+  const reopenedSelection=await page.evaluate(()=>{
+    const checked=document.querySelectorAll('#fluent-read-video-subtitle-menu [data-mode][aria-checked="true"]');
+    return {count:checked.length,mode:checked[0]?.dataset.mode,focusedSameNode:checked.length===1&&checked[0]===document.activeElement};
+  });
+  assert.ok(reopenedSelection.count===1&&reopenedSelection.focusedSameNode,'Reopening must focus the current checked mode node');
+  assert.equal(reopenedFocus.actualMode,reopenedSelection.mode);
+  assertWholeMenuTarget('shortOffsetReopenFocus',reopenedFocus);
+  report.menuReopenFromBodyBottom={bodyScrollTop:shortReopened.bodyScrollTop,sameMenu:shortReopened.sameMenu,sameHost:shortReopened.sameHost,checkedMode:reopenedSelection.mode,focusedMode:reopenedFocus.actualMode,focusedSameCheckedNode:reopenedSelection.focusedSameNode,checkedBeforeFixtureReset:true};save();
+  await setControlledMenuViewport(null);
+  await page.evaluate(()=>{window.__menuRootStyles={html:document.documentElement.getAttribute('style'),body:document.body.getAttribute('style')};document.documentElement.style.transform='translate(17px,11px) scale(.8)';document.documentElement.style.transformOrigin='0 0';document.body.style.transform='translateX(30px)';window.dispatchEvent(new Event('resize'));});
+  await settleMenu();
+  const transformed=await captureMenuScrollTargets('root-transform-viewport-menu',true,false,true);
+  assertResponsive('rootTransform',transformed,primaryCodes);
+  await page.evaluate(()=>{for(const [key,node] of [['html',document.documentElement],['body',document.body]]){const value=window.__menuRootStyles[key];if(value===null)node.removeAttribute('style');else node.setAttribute('style',value);}delete window.__menuRootStyles;window.dispatchEvent(new Event('resize'));});await settleMenu();
+  try{await cdp.send('Emulation.setSafeAreaInsets',{insets:{top:9,left:7,bottom:17,right:11}});report.menuSafeAreaEmulation={supported:true,insets:{top:9,left:7,bottom:17,right:11}};}
+  catch(error){report.menuSafeAreaEmulation={supported:false,status:'NOT_TESTED_CDP_UNAVAILABLE',reason:String(error)};}
+  if(report.menuSafeAreaEmulation.supported){
+    await page.evaluate(()=>{visualViewport.dispatchEvent(new Event('resize'));window.dispatchEvent(new Event('resize'));});await settleMenu();await resetBodyScroll();
+    const safeMenu=await captureMenuScrollTargets('safe-area-viewport-menu',true,false,true);assertResponsive('safeArea',safeMenu,primaryCodes);
+    assert.ok(safeMenu.host.left>=7-.01&&safeMenu.host.top>=9-.01&&safeMenu.host.right<=402-11+.01&&safeMenu.host.bottom<=874-17+.01,'Production host must subtract actual CSS safe insets');
+    await cdp.send('Emulation.setSafeAreaInsets',{insets:{top:0,left:0,bottom:0,right:0}});await page.evaluate(()=>{visualViewport.dispatchEvent(new Event('resize'));window.dispatchEvent(new Event('resize'));});await settleMenu();
   }
-  assert.ok(timingTargets.headerVisible.height===0||timingTargets.timingRow.top>=timingTargets.headerVisible.bottom-.01,
-    `Timing row is covered by the current menu header ${JSON.stringify(timingTargets)}`);
-  await capture('portrait-menu-hint');
-  const closeCenter=hintTargets.targets.find(target=>target.action==='close-menu').points[0];
-  report.normalMenuClose={input:'mouse.click-at-observed-checked-center',x:closeCenter.x,y:closeCenter.y};save();
-  await page.mouse.click(closeCenter.x,closeCenter.y);
-  await page.waitForFunction(()=>document.querySelector('#fluent-read-video-subtitle-menu')?.hidden===true);
+  const closeGeometry=await captureMenuScrollTargets('portrait-menu-before-normal-close',false);
+  await checkedMenuClose('portrait-normal-close',closeGeometry);await capture('portrait-menu-normal-close');
   const entry=page.locator('#fluent-read-video-subtitle-button');
-  assert.equal(await entry.evaluate(node=>node===document.activeElement),true,'Normal Close after scrolling must return focus to the same player entry');
-  report.normalMenuClose.focusReturned=true;
-  await capture('portrait-menu-normal-close');
-  await entry.click();
-  await page.waitForFunction(()=>document.querySelector('#fluent-read-video-subtitle-menu')?.hidden===false);
-  const keyboardSteps=[
-    ['End','download-bilingual-subtitles'],
-    ['ArrowUp','download-translated-subtitles'],['ArrowUp','download-subtitles'],
-    ['ArrowUp','subtitle-later'],['ArrowUp','subtitle-earlier'],
-    ['ArrowUp','off'],['ArrowUp','original-only'],['ArrowUp','translation-only'],['ArrowUp','bilingual'],
-    ['ArrowUp','open-sentence-learning'],['ArrowUp','close-menu'],['Home','open-settings'],
-  ];
+  await checkedEntryClick();
+  const keyboardSteps=[['End','open-sentence-learning'],['ArrowUp','download-bilingual-subtitles'],['ArrowUp','download-translated-subtitles'],['ArrowUp','download-subtitles'],
+    ['ArrowUp','subtitle-later'],['ArrowUp','subtitle-earlier'],['ArrowUp','off'],['ArrowUp','original-only'],['ArrowUp','translation-only'],['ArrowUp','bilingual'],['ArrowUp','close-menu'],['Home','open-settings']];
+  let lastKeyboardGeometry;
   for(const [index,[key,expected]] of keyboardSteps.entries()){
-    await page.keyboard.press(key);
-    const name=`portrait-menu-keyboard-${index+1}-${key}`;
-    const geometry=await captureMenuScrollTargets(name,false,true);
-    const focused=geometry.targets.find(target=>target.action==='focused');
+    await page.keyboard.press(key);const name=`portrait-menu-keyboard-${index+1}-${key}`;
+    const geometry=await captureMenuScrollTargets(name,false,true),focused=geometry.targets.find(target=>target.action==='focused');lastKeyboardGeometry=geometry;
     (report.menuKeyboardSteps ||= []).push({key,expected,observed:focused.actualAction||focused.actualMode});save();
-    assert.equal(focused.actualAction||focused.actualMode,expected,`${name}: trusted key must focus the expected actual control`);
-    assertMenuHeaderTop(name,geometry);
+    assert.equal(focused.actualAction||focused.actualMode,expected);assertMenuHeaderTop(name,geometry);
     for(const target of geometry.targets)assertWholeMenuTarget(name,target);
-    assert.ok(focused.inHeader||geometry.headerVisible.height===0||focused.frame.top>=geometry.headerVisible.bottom-.01,
-      `${name}: focused body control is covered by the menu header ${JSON.stringify(focused)}`);
   }
-  await page.keyboard.press('Escape');
-  await page.waitForFunction(()=>document.querySelector('#fluent-read-video-subtitle-menu')?.hidden===true);
-  assert.equal(await entry.evaluate(node=>node===document.activeElement),true,'Escape after reopening must return focus to the same player entry');
+  await page.keyboard.press('Escape');await page.waitForFunction(()=>document.querySelector('#fluent-read-video-subtitle-menu')?.hidden===true);
+  await assertClosedMenu('Escape',lastKeyboardGeometry);assert.equal(await entry.evaluate(node=>node===document.activeElement),true);
+  await checkedEntryClick();
+  const outsideGeometry=await captureMenuScrollTargets('portrait-menu-before-outside-close',false);
+  const outside=await page.evaluate(()=>{
+    const node=document.querySelector('#description'),r=node.getBoundingClientRect(),menu=document.querySelector('#fluent-read-video-subtitle-menu').getBoundingClientRect();
+    const x=r.left+20,y=r.top+20,hit=document.elementFromPoint(x,y);
+    return {x,y,insideViewport:x>=0&&y>=0&&x<innerWidth&&y<innerHeight,outsideMenu:x<menu.left||x>menu.right||y<menu.top||y>menu.bottom,hitOwnedDescription:hit===node||Boolean(hit&&node.contains(hit))};
+  });
+  assert.ok(outside.insideViewport&&outside.outsideMenu&&outside.hitOwnedDescription,'Outside close requires a checked fixture-description hit, not an unverified page/player click');
+  await page.mouse.click(outside.x,outside.y);await page.waitForFunction(()=>document.querySelector('#fluent-read-video-subtitle-menu')?.hidden===true);
+  await assertClosedMenu('outside',outsideGeometry);
+  report.menuResponsiveCoverage={portrait402:true,portrait320TwoColumns:true,landscape844PrimaryFirstScreen:true,bodyOnlyScrollAndPinnedHeader:true,
+    visualViewportKeyboardGeometryFixture:true,actualOSKeyboard:false,rootTransform:true,safeArea:report.menuSafeAreaEmulation.supported?'PASS':'NOT_TESTED_CDP_UNAVAILABLE',
+    initialCloseEscapeOutsideCSSHiddenAndNoHit:true,languageMatrix:'NOT_RUN_IN_THIS_SUITE; use existing language tests',DOMFullscreenMenu:'PENDING'};save();
   await page.setViewportSize({width:844,height:390});
   await page.waitForTimeout(1200);const landscape=await capture('landscape-inline');
   assert.ok(landscape.panel.left>=landscape.video.left&&landscape.panel.right<=landscape.video.right,JSON.stringify(landscape));
@@ -490,6 +742,11 @@ async function main() {
   await page.evaluate(()=>{const player=document.querySelector('#movie_player');player.style.cssText='position:fixed;inset:0;width:100vw;height:100vh;aspect-ratio:auto;';document.dispatchEvent(new Event('fullscreenchange'));});
   await page.waitForTimeout(1200);
   const safe=await capture('fullscreen-geometry-safe-area');
+  await checkedEntryClick();await resetBodyScroll();
+  const fullscreenMenu=await captureMenuScrollTargets('dom-fullscreen-safe-area-menu',true,false,true);
+  assertResponsive('DOMFullscreen',fullscreenMenu,['bilingual','translation-only','original-only','off','subtitle-earlier','subtitle-later']);
+  assert.equal(fullscreenMenu.hostRoot,'player','DOM fullscreen host must move into the actual fixture fullscreen root');
+  await checkedMenuClose('DOMFullscreen-close',fullscreenMenu);report.menuResponsiveCoverage.DOMFullscreenMenu='PASS_CONTROLLED_PROPERTY_FIXTURE';save();
   const side=report.safeAreaEmulation.supported?44:12;
   assert.ok(safe.panel.left>=side-1&&safe.panel.right<=safe.viewport.width-side+1,JSON.stringify(safe));
   if(report.safeAreaEmulation.supported) assert.ok(safe.panel.bottom<=safe.viewport.height-24+1,JSON.stringify(safe));
@@ -504,12 +761,11 @@ async function main() {
     assert.equal(desktopCapabilities.coarsePointer,false,'Desktop section must actually leave coarse-pointer CSS');
     assert.equal(desktopCapabilities.maxTouchPoints,0,'Desktop section must actually disable touch emulation');
     await page.evaluate(()=>document.querySelector('#movie_player').classList.remove('controls-hidden'));
-    await entry.click();
-    await page.waitForFunction(()=>document.querySelector('#fluent-read-video-subtitle-menu')?.hidden===false);
+    await checkedEntryClick(22);
     const desktopOpen=await captureMenuScrollTargets('desktop-menu-open',false,true);
     assert.ok(desktopOpen.header.height<=28,`Desktop header must retain its existing compact size ${JSON.stringify(desktopOpen.header)}`);
     for(const target of desktopOpen.targets)assertWholeMenuTarget('desktop-open',target,22);
-    for(const [key,expected] of [['End','download-bilingual-subtitles'],['Home','open-settings']]){
+    for(const [key,expected] of [['End','open-sentence-learning'],['Home','open-settings']]){
       await page.keyboard.press(key);
       const name=`desktop-menu-keyboard-${key}`,geometry=await captureMenuScrollTargets(name,false,true);
       const focused=geometry.targets.find(target=>target.action==='focused');
@@ -524,6 +780,7 @@ async function main() {
     const desktopCloseTarget=desktopClose.targets[0];assertWholeMenuTarget('desktop-close',desktopCloseTarget,22);
     await page.mouse.click(desktopCloseTarget.points[0].x,desktopCloseTarget.points[0].y);
     await page.waitForFunction(()=>document.querySelector('#fluent-read-video-subtitle-menu')?.hidden===true);
+    await assertClosedMenu('desktop-normal-close',desktopClose);
     assert.equal(await entry.evaluate(node=>node===document.activeElement),true,'Desktop normal Close must return focus to the same player entry');
     report.desktopMenu.normalCloseFocusReturned=true;
     await capture('desktop-menu-normal-close');

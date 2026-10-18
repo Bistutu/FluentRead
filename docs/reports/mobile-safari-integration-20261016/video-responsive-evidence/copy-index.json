@@ -1,0 +1,26 @@
+[
+  {
+    "original": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/browser-attempt2/portrait-320-menu-first-screen.png",
+    "copy": "portrait-320.png",
+    "bytes": 71883,
+    "sha256": "684cd38c32c1c62781f25bb494fa73586f6fa373038a9bde1feb21dde41bbc63"
+  },
+  {
+    "original": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/browser-attempt2/landscape-844-menu-first-screen.png",
+    "copy": "landscape-844.png",
+    "bytes": 41397,
+    "sha256": "d3373fdac144698180999c456ffebb6114f612e03578751f7cd0c9ee2f108644"
+  },
+  {
+    "original": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/browser-details-attempt2/details-zh-CN-watch.png",
+    "copy": "x-compact-watch.png",
+    "bytes": 52137,
+    "sha256": "04d2a4c78c01792012378da6115af3a2deabdecd15f4b054c967d9a08b8923ce"
+  },
+  {
+    "original": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/browser-details-attempt2/details-model.png",
+    "copy": "model-prompt.png",
+    "bytes": 70438,
+    "sha256": "0101c7e7f8fea120583180c870cba2ad1d5ac8cb5ba2563bb198c39276db3c9c"
+  }
+]

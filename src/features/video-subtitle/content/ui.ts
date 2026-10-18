@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/ui.ts
  *
- * 文件职责：封装视频字幕 content UI 的界面语言转换与可访问名称刷新，避免 YouTube 播放器运行时承载重复的文案拼装。
+ * 文件职责：封装视频字幕 content UI 的界面语言转换、可访问名称刷新及桌面/触屏安全视口菜单样式，避免 YouTube 播放器运行时承载重复的文案拼装。
  * 主要内容：提供视频菜单本地化、菜单与完整句学习共享的局部外观变量、按逐字高亮开关写入字幕行、校时与就地模型选择控件样式、节点创建、播放器定位；每次原生字幕读取按候选集合与局部父链排除嵌套内层，保留外层全文和顺序，避免片段两两包含扫描，不跨调用缓存节点；过滤 YouTube 滚动窗口裁掉的旧行，按实际画面及同视频可见底控约束字幕几何、换行与大字号完整高度，并封装字幕清理、媒体时钟读取、样式及字幕下载。
  * 模块边界：只读取界面配置并操作视频 feature 拥有的节点、样式和下载链接，不发起翻译或识别请求；任务生命周期由 runtime 管理。
  */
@@ -977,7 +977,7 @@ export function installVideoSubtitleStyle(): HTMLStyleElement {
     }
     #${VIDEO_TRANSLATION_MENU_ID}[data-layout="wide"] { width: min(440px, calc(100% - 16px)) !important; }
     /* hidden 必须高于带 compact/layout 状态的组件规则，收起的选项页不能被 grid 再次显示。 */
-    #${VIDEO_TRANSLATION_MENU_ID}[hidden],
+    #${VIDEO_TRANSLATION_MENU_ID}#${VIDEO_TRANSLATION_MENU_ID}[hidden],
     #${VIDEO_TRANSLATION_MENU_ID}#${VIDEO_TRANSLATION_MENU_ID} [hidden] { display: none !important; }
     #${VIDEO_TRANSLATION_MENU_ID} * {
       box-sizing: border-box !important;
@@ -1038,6 +1038,7 @@ export function installVideoSubtitleStyle(): HTMLStyleElement {
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-learning-label { flex: 1 !important; }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-learning .fluent-read-video-menu-icon-next { width: 16px !important; height: 16px !important; }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-main,
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-body,
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-section {
       display: grid !important;
       grid-template-columns: minmax(0, 1fr) !important;
@@ -1078,6 +1079,7 @@ export function installVideoSubtitleStyle(): HTMLStyleElement {
       justify-content: space-between !important;
       gap: 6px !important;
       min-height: 22px !important;
+      margin-bottom: 6px !important;
       padding: 0 0 0 4px !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-brand {
@@ -1527,7 +1529,7 @@ export function installVideoSubtitleStyle(): HTMLStyleElement {
       white-space: normal !important;
       overflow-wrap: anywhere !important;
     }
-    /* 触屏目标至少 44px；菜单沿既有最大高度滚动，不压缩触控区域。 */
+    /* 触屏目标至少 44px；安全视口菜单在下方单独安排正文滚动。 */
     @media (pointer: coarse) {
       #${VIDEO_TRANSLATION_BUTTON_ID} { min-width: 44px !important; min-height: 44px !important; }
       #${VIDEO_TRANSLATION_MENU_ID} { scroll-padding-top: calc(44px + 6px) !important; }
@@ -1551,6 +1553,165 @@ export function installVideoSubtitleStyle(): HTMLStyleElement {
         overflow-wrap: anywhere !important;
       }
     }
+    /* 手机菜单使用安全可见视口宿主，不随 16:9 的短播放器裁切；标题与正文分别布局。 */
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] {
+      left: 50% !important;
+      right: auto !important;
+      bottom: 8px !important;
+      transform: translateX(-50%) !important;
+      display: flex !important;
+      flex-direction: column !important;
+      width: min(560px, calc(100% - 16px)) !important;
+      max-height: calc(100% - 16px) !important;
+      padding: 8px !important;
+      border-radius: 16px !important;
+      font-size: 14px !important;
+      overflow: hidden !important;
+      scroll-padding-top: 0 !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-menu-main {
+      display: flex !important;
+      flex-direction: column !important;
+      min-height: 0 !important;
+      gap: 6px !important;
+      overflow: hidden !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-menu-title {
+      position: static !important;
+      flex: 0 0 auto !important;
+      min-height: 44px !important;
+      gap: 4px !important;
+      padding: 0 !important;
+      margin-bottom: 6px !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-menu-body {
+      display: flex !important;
+      flex-direction: column !important;
+      min-height: 0 !important;
+      gap: 10px !important;
+      padding: 0 8px 4px !important;
+      overflow: auto !important;
+      overscroll-behavior: contain !important;
+      scrollbar-width: thin !important;
+      scrollbar-gutter: stable !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-menu-brand { font-size: 13px !important; }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-menu-settings {
+      flex: 1 1 0 !important;
+      min-width: 0 !important;
+      justify-content: flex-end !important;
+      padding: 0 4px !important;
+      font-size: 12px !important;
+      overflow: hidden !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-menu-close,
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-menu-back {
+      flex: 0 0 44px !important;
+      width: 44px !important;
+      height: 44px !important;
+    }
+    /* 窄屏与带鼠标的手机测试视口也保留完整触控面积，长标签自然换行。 */
+    #${VIDEO_TRANSLATION_MENU_ID}#${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] button {
+      min-width: 44px !important;
+      min-height: 44px !important;
+      flex-shrink: 0 !important;
+      touch-action: manipulation !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-menu-section,
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-menu-watch,
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-menu-tools {
+      display: grid !important;
+      flex: 0 0 auto !important;
+      grid-template-columns: minmax(0, 1fr) !important;
+      gap: 10px !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-menu-mode-group {
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 4px !important;
+      padding: 3px !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"][data-layout="wide"] .fluent-read-video-menu-mode-group {
+      grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-menu-mode {
+      padding: 6px 4px !important;
+      font-size: 14px !important;
+      white-space: normal !important;
+      overflow-wrap: anywhere !important;
+      text-overflow: clip !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-menu-timing {
+      display: flex !important;
+      flex-wrap: wrap !important;
+      gap: 4px 8px !important;
+      padding-left: 4px !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-menu-timing .fluent-read-video-menu-row-label {
+      contain: none !important;
+      overflow: visible !important;
+      text-overflow: clip !important;
+      white-space: normal !important;
+      overflow-wrap: anywhere !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-menu-step { width: 44px !important; height: 44px !important; }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-menu-timing-value { font-size: 14px !important; }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-menu-downloads {
+      display: grid !important;
+      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+      gap: 6px !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-menu-download {
+      flex-direction: row !important;
+      gap: 4px !important;
+      padding: 6px !important;
+      font-size: 12px !important;
+      white-space: normal !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-menu-download .fluent-read-video-menu-label {
+      min-width: 0 !important;
+      white-space: normal !important;
+      overflow-wrap: anywhere !important;
+      text-overflow: clip !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-menu-learning {
+      flex: 0 0 auto !important;
+      padding: 6px 8px !important;
+      background: transparent !important;
+      font-size: 13px !important;
+      font-weight: 500 !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-menu-learning-label { white-space: normal !important; }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-native-fullscreen-hint { font-size: 12px !important; }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-model-prompt {
+      grid-template-columns: minmax(0, 1fr) !important;
+      min-height: 0 !important;
+      overflow: auto !important;
+      overscroll-behavior: contain !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-model-prompt-head,
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-model-prompt-description,
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-model-options,
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-model-prompt-actions {
+      grid-area: auto !important;
+      grid-column: auto !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-model-prompt-title,
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-model-option-name { font-size: 14px !important; }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-model-prompt-description,
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-model-option-hint { font-size: 12px !important; }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-model-prompt-actions {
+      flex-wrap: wrap !important;
+      gap: 6px !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-model-prompt-actions button {
+      padding: 6px 10px !important;
+      white-space: normal !important;
+      font-size: 13px !important;
+    }
+    /* 确认页有自己的取消/返回，不能暴露仍指向隐藏工具页的返回按钮。 */
+    #${VIDEO_TRANSLATION_MENU_ID}[data-view="model-prompt"] .fluent-read-video-menu-back,
+    #${VIDEO_TRANSLATION_MENU_ID}[data-view="export-prompt"] .fluent-read-video-menu-back { display: none !important; }
     @keyframes fluent-read-video-download-spin { to { transform: rotate(360deg); } }
     @media (prefers-reduced-motion: reduce) {
       #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-download[aria-busy="true"]::before,

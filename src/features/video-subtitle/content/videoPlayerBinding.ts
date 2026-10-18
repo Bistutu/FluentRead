@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/videoPlayerBinding.ts
  * 文件职责：把字幕入口和菜单绑定到定位器选中的视频播放器，并在信息流、全屏及原生控件重挂载时保持稳定。
- * 主要内容：以画中画和全屏控件为锚点维护入口顺序，移动 YouTube 仅在已验证同视频容器中认领外部底部右控制组和交互；自有菜单宿主按媒体播放器坐标校准并隔离原生控制层，重挂仅恢复菜单原有焦点；在已认领的局部播放器范围清理自身入口副本，管理 fallback、进度徽标和禁用清理。
+ * 主要内容：以画中画和全屏控件为锚点维护入口顺序，移动 YouTube 仅在已验证同视频容器中认领外部底部右控制组和交互；触屏或窄视口菜单使用安全可见视口宿主，桌面菜单按媒体坐标校准，整块迁移保留节点与既有焦点；在已认领的局部播放器范围清理自身入口副本，管理 fallback、进度徽标和禁用清理。
  * 模块边界：只管理 FluentRead 播放器节点的挂载位置与事件；公开菜单宿主校准供既有布局帧调用，不重扫播放器或重建入口；按钮行为、菜单内容和字幕业务由调用方注入。
  */
 
@@ -16,6 +16,7 @@ import {
 } from './ui';
 import type {VideoPlayerLocator, VideoPlayerTarget} from './videoPlayerLocator';
 import {getYoutubeSubtitleControlsScope} from './youtubeControlsScope';
+import {getSafeVisualViewportRect, getVisualViewportRect, type VisualViewportRect} from '@/src/platform/dom/visualViewport';
 
 export interface VideoPlayerBindingState {
   readonly enabled: boolean;
@@ -133,6 +134,25 @@ export function createVideoPlayerBinding(options: VideoPlayerBindingOptions): Vi
   let fallback: HTMLElement | null = null;
   let destroyed = false;
   let cleaningNodes = false;
+  const coarsePointer = view.matchMedia?.('(pointer: coarse)');
+  const subscribedViewport = view.visualViewport;
+  let safeViewport: VisualViewportRect | undefined;
+  let viewportKey = '';
+  let viewportFullscreen: Element | null | undefined;
+  const invalidateViewport = () => {safeViewport = undefined;};
+  const readSafeViewport = (): VisualViewportRect => {
+    const viewport = getVisualViewportRect(view);
+    const key = [viewport.left, viewport.top, viewport.width, viewport.height].join(':');
+    if (!safeViewport || key !== viewportKey || viewportFullscreen !== document.fullscreenElement) {
+      safeViewport = getSafeVisualViewportRect(view);
+      viewportKey = key;
+      viewportFullscreen = document.fullscreenElement;
+    }
+    return safeViewport;
+  };
+  const viewportPresentation = () => Boolean(coarsePointer?.matches) || readSafeViewport().width <= 600;
+  const viewportRoot = (): Element => document.fullscreenElement || document.documentElement || document.body;
+  const menuHostParent = (scope: HTMLElement): Element => viewportPresentation() ? viewportRoot() : scope;
   // 属性随 DOM 深复制而保留；只识别本实例入口的副本，不按公共 id 删除其他实例或页面节点。
   const buttonOwner = `${Date.now()}-${Math.random()}`;
   const buttonOwnerAttribute = 'data-fluent-read-video-binding-owner';
@@ -239,9 +259,10 @@ export function createVideoPlayerBinding(options: VideoPlayerBindingOptions): Vi
     }
   };
   const isInteractive = (next: VideoPlayerTarget): boolean =>
-    next.fullscreen || activePlayers.has(next.player) || playerIsHovered(controlsScope(next)) || playerIsFocused(controlsScope(next), document);
+    next.fullscreen || activePlayers.has(next.player) || playerIsHovered(controlsScope(next)) || playerIsFocused(controlsScope(next), document)
+    || Boolean(menu && !menu.hidden && playerIsFocused(menu, document));
 
-  const moveWithFocus = (node: HTMLElement, parent: HTMLElement) => {
+  const moveWithFocus = (node: HTMLElement, parent: Element) => {
     if (node.parentElement === parent) return;
     const active = document.activeElement;
     const restoreFocus = active instanceof Element && node.contains(active);
@@ -252,10 +273,24 @@ export function createVideoPlayerBinding(options: VideoPlayerBindingOptions): Vi
   };
 
   const menuRenderParent = (next: VideoPlayerTarget, scope: HTMLElement): HTMLElement => {
-    if (scope === next.player) return next.player;
-    const rect = next.player.getBoundingClientRect();
-    const width = next.player.clientWidth || rect.width, height = next.player.clientHeight || rect.height;
-    if (width <= 0 || height <= 0 || rect.width <= 0 || rect.height <= 0) return next.player;
+    const viewport = viewportPresentation();
+    if (menu) {
+      if (viewport) menu.dataset.presentation = 'viewport';
+      else delete menu.dataset.presentation;
+    }
+    if (!viewport && scope === next.player) return next.player;
+    const playerRect = next.player.getBoundingClientRect();
+    let rect: {left: number; top: number; width: number; height: number} = playerRect;
+    let width = next.player.clientWidth || playerRect.width, height = next.player.clientHeight || playerRect.height;
+    if (viewport) {
+      const safe = readSafeViewport(), fullscreen = document.fullscreenElement?.getBoundingClientRect();
+      const left = fullscreen ? Math.max(safe.left, fullscreen.left) : safe.left;
+      const top = fullscreen ? Math.max(safe.top, fullscreen.top) : safe.top;
+      const right = fullscreen ? Math.min(safe.right, fullscreen.right) : safe.right;
+      const bottom = fullscreen ? Math.min(safe.bottom, fullscreen.bottom) : safe.bottom;
+      width = Math.max(0, right - left); height = Math.max(0, bottom - top);
+      rect = {left, top, width, height};
+    } else if (width <= 0 || height <= 0 || playerRect.width <= 0 || playerRect.height <= 0) return next.player;
     if (!menuHost) {
       menuHost = document.createElement('div');
       menuHost.className = 'fluent-read-video-menu-host';
@@ -265,12 +300,20 @@ export function createVideoPlayerBinding(options: VideoPlayerBindingOptions): Vi
         margin: '0', padding: '0', border: '0', 'box-sizing': 'border-box',
         'pointer-events': 'none', 'z-index': '2147483646', 'transform-origin': '0 0', overflow: 'visible'})) menuHost.style.setProperty(name, value, 'important');
     }
-    moveWithFocus(menuHost, scope);
+    moveWithFocus(menuHost, viewport ? viewportRoot() : scope);
+    if (viewport) menuHost.dataset.presentation = 'viewport';
+    else delete menuHost.dataset.presentation;
+    menuHost.style.setProperty('position', viewport ? 'fixed' : 'absolute', 'important');
+    menuHost.style.setProperty('overflow', viewport ? 'hidden' : 'visible', 'important');
     menuHost.style.setProperty('width', `${width}px`, 'important');
     menuHost.style.setProperty('height', `${height}px`, 'important');
     menuHost.style.setProperty('transform', 'none', 'important');
     const base = menuHost.getBoundingClientRect();
-    if (base.width <= 0 || base.height <= 0) return next.player;
+    if (width <= 0 || height <= 0 || base.width <= 0 || base.height <= 0) {
+      menuHost.style.setProperty('visibility', 'hidden', 'important');
+      return viewport ? menuHost : next.player;
+    }
+    menuHost.style.setProperty('visibility', 'visible', 'important');
     const sx = base.width / width, sy = base.height / height;
     menuHost.style.setProperty('transform', `translate(${(rect.left - base.left) / sx}px, ${(rect.top - base.top) / sy}px) scale(${rect.width / base.width}, ${rect.height / base.height})`, 'important');
     return menuHost;
@@ -312,7 +355,8 @@ export function createVideoPlayerBinding(options: VideoPlayerBindingOptions): Vi
     // X 的控制栏在悬浮后才挂载。等待真实控制栏，避免右下角 fallback 首帧闪现后跳到进度左侧。
     if (!preferred && next.player.getAttribute('data-testid') === 'videoPlayer') {
       // 原生控制栏的生命周期不代表用户结束菜单操作；保留已打开的菜单及焦点。
-      if (menu && menu.parentElement === next.player && !menu.hidden) {
+      if (menu && (menu.parentElement === next.player || menu.parentElement === menuHost) && !menu.hidden) {
+        syncOwnedMenuHost(next, scope);
         removeClonedButtons(host, button);
         button?.remove();
         host = null;
@@ -389,11 +433,13 @@ export function createVideoPlayerBinding(options: VideoPlayerBindingOptions): Vi
     if (button) setProgress(button, options.getState());
   };
 
+  const containsInteraction = (next: VideoPlayerTarget, node: Node) =>
+    controlsScope(next).contains(node) || Boolean(menu && !menu.hidden && menu.contains(node));
   const markInteraction = (event: Event, active: boolean) => {
     const element = event.target;
     if (!element || typeof (element as {tagName?: unknown}).tagName !== 'string') return;
     const selected = target;
-    if (!selected || !controlsScope(selected).contains(element as Node)) return;
+    if (!selected || !containsInteraction(selected, element as Node)) return;
     if (activePlayers.has(selected.player) === active) return;
     if (active) activePlayers.add(selected.player);
     else activePlayers.delete(selected.player);
@@ -403,13 +449,13 @@ export function createVideoPlayerBinding(options: VideoPlayerBindingOptions): Vi
   const onPointerOver = (event: Event) => markInteraction(event, true);
   const onPointerOut = (event: Event) => {
     const related = (event as MouseEvent).relatedTarget;
-    if (related && target && controlsScope(target).contains(related as Node)) return;
+    if (related && target && containsInteraction(target, related as Node)) return;
     markInteraction(event, false);
   };
   const onFocusIn = (event: Event) => markInteraction(event, true);
   const onFocusOut = (event: Event) => {
     const related = (event as FocusEvent).relatedTarget;
-    if (related && target && controlsScope(target).contains(related as Node)) return;
+    if (related && target && containsInteraction(target, related as Node)) return;
     markInteraction(event, false);
   };
 
@@ -418,6 +464,13 @@ export function createVideoPlayerBinding(options: VideoPlayerBindingOptions): Vi
   document.addEventListener('pointerout', onPointerOut, true);
   document.addEventListener('focusin', onFocusIn, true);
   document.addEventListener('focusout', onFocusOut, true);
+  // 安全区探针只在视口/全屏变化后重测；既有布局帧负责实际同步，不新增轮询或重扫定位器。
+  view.addEventListener?.('resize', invalidateViewport);
+  view.addEventListener?.('orientationchange', invalidateViewport);
+  view.addEventListener?.('pageshow', invalidateViewport);
+  subscribedViewport?.addEventListener('resize', invalidateViewport);
+  subscribedViewport?.addEventListener('scroll', invalidateViewport);
+  document.addEventListener('fullscreenchange', invalidateViewport);
   const unsubscribe = options.locator.subscribe((next) => {
     if (destroyed) return;
     if (next?.interacting) activePlayers.add(next.player);
@@ -428,7 +481,7 @@ export function createVideoPlayerBinding(options: VideoPlayerBindingOptions): Vi
     const scope = controlsScope(target);
     // 第二视频/播放器移出会让 scope 退回 player，而变更记录仍属于旧容器；先撤回失效宿主，再按新范围过滤噪声。
     if ((ownedScope && ownedScope !== scopeForOwnedCopies(scope))
-      || (host && !scope.contains(host)) || (menuHost && menuHost.parentElement !== scope)) {sync(); return;}
+      || (host && !scope.contains(host)) || (menuHost && menuHost.parentElement !== menuHostParent(scope))) {sync(); return;}
     const playerRecords = records.filter(record => scope.contains(record.target));
     if (playerRecords.length === 0) return;
     const isOwned = (node: Node) => node instanceof Element && Boolean(node.closest('.fluent-read-video-ui'));
@@ -481,6 +534,12 @@ export function createVideoPlayerBinding(options: VideoPlayerBindingOptions): Vi
       document.removeEventListener('pointerout', onPointerOut, true);
       document.removeEventListener('focusin', onFocusIn, true);
       document.removeEventListener('focusout', onFocusOut, true);
+      view.removeEventListener?.('resize', invalidateViewport);
+      view.removeEventListener?.('orientationchange', invalidateViewport);
+      view.removeEventListener?.('pageshow', invalidateViewport);
+      subscribedViewport?.removeEventListener('resize', invalidateViewport);
+      subscribedViewport?.removeEventListener('scroll', invalidateViewport);
+      document.removeEventListener('fullscreenchange', invalidateViewport);
       removePlayerMark(target?.player || null);
       cleanNodes();
       target = null;
