@@ -484,6 +484,7 @@ export default defineConfig({
                 'src/features/full-page-translation/content/bilingualRemount.ts',
                 'src/features/full-page-translation/content/bilingualRemountMatching.ts',
                 'src/features/full-page-translation/content/bilingualReplay.ts',
+                'src/features/full-page-translation/content/displayMode.ts',
                 'src/features/full-page-translation/content/syntheticRemount.ts',
                 'src/features/full-page-translation/content/liveTextRender.ts',
                 'src/features/full-page-translation/content/loadingIndicator.ts',
