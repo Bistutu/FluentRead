@@ -1,7 +1,7 @@
 /**
  * @file tests/popupChildOwnership.test.ts
  * 文件职责：执行 Popup 语言选择和首启根组件的实际客户端模板，验证旧事件与迟到加载的归属。
- * 主要内容：真实 Vue/KeepAlive 覆盖开关、源目标切换、外部值同步、关闭、失活、卸载、预加载和外观监听清理。
+ * 主要内容：真实 Vue/KeepAlive 覆盖开关、源目标切换、外部值同步、关闭、失活、卸载、预加载和外观监听清理；触屏语言列表执行真实视口订阅器，验证平移及键盘高度变化不替换选择器、关闭与失活取消队列，旧浮层回调不能写入新会话。
  * 模块边界：Element Plus、引导展示、浏览器 locale、模块加载和外观应用为受控端口；不声称真实浏览器焦点或语言持久化证据。
  */
 import {createRequire} from 'node:module'
@@ -46,7 +46,7 @@ beforeEach(async () => {
   fixture = {runtime, selects: [], onboardings: [], locale, appearance, options, language: runtime.ref('zh-CN'),
     label: vi.fn(getMultilingualTargetLanguageLabel), config: runtime.reactive({interfaceSkin: 'default', interfaceFont: 'system', theme: 'auto'}),
     subscribe: (callback: () => void) => {subscribers.add(callback);callback();return () => subscribers.delete(callback)},
-    loadMain: vi.fn(async () => ({render: () => runtime.h('div', {'data-main-app': 'true'}, 'main')}))}
+    selectBlur: vi.fn(), loadMain: vi.fn(async () => ({render: () => runtime.h('div', {'data-main-app': 'true'}, 'main')}))}
   fixture.importMain = () => fixture.loadMain().then((component: any) => ({default: component}))
   ;(globalThis as any).__popupChildFixture = fixture
   for (const [key, value] of Object.entries({document, window: win, HTMLElement: win.HTMLElement, Event: win.Event, Node: win.Node,
@@ -79,7 +79,7 @@ beforeEach(async () => {
       if (id === '\0child-config') return 'const f = globalThis.__popupChildFixture;export const config = f.config, subscribeConfig = f.subscribe'
       if (id === '\0child-appearance') return "const f = globalThis.__popupChildFixture;export const applyInterfaceSkin = value => f.appearance('skin', value), applyInterfaceFont = value => f.appearance('font', value), applyInterfaceTheme = value => f.appearance('theme', value)"
       if (id === '\0child-options') return "import {h} from 'vue';export const ElOption = {props: ['value', 'label'], setup: props => () => h('div', {'data-option': props.value}, props.label)}"
-      if (id === '\0child-select') return "import {getCurrentInstance, h, ref} from 'vue';export default {inheritAttrs: false, setup(_, {attrs, slots}) {const instance = getCurrentInstance(), opened = ref(false);globalThis.__popupChildFixture.selects.push({instance, show: value => {opened.value = value;instance.vnode.props.onVisibleChange(value)}});return () => h('section', {...attrs, 'data-select-port': 'true', tabindex: '0'}, [slots.label?.(), opened.value ? slots.default?.() : null])}}"
+      if (id === '\0child-select') return "import {getCurrentInstance, h, ref} from 'vue';export default {inheritAttrs: false, setup(_, {attrs, slots, expose}) {const instance = getCurrentInstance(), opened = ref(false), show = value => {opened.value = value;instance.vnode.props.onVisibleChange(value)};expose({blur: () => {globalThis.__popupChildFixture.selectBlur();show(false)}});globalThis.__popupChildFixture.selects.push({instance, show});return () => h('section', {...attrs, 'data-select-port': 'true', tabindex: '0'}, [slots.label?.(), opened.value ? slots.default?.() : null, opened.value ? slots.footer?.() : null])}}"
       if (id === '\0child-onboarding') return "import {getCurrentInstance, h} from 'vue';export default {inheritAttrs: false, setup(_, {attrs}) {globalThis.__popupChildFixture.onboardings.push({instance: getCurrentInstance()});return () => h('section', {...attrs, 'data-onboarding-port': 'true'})}}"
       return null
     }}]})
@@ -105,6 +105,46 @@ async function mount(path: string, values: Record<string, any> = {}) {
 }
 
 describe('PopupLanguageSelect 实际事件归属', () => {
+  function touchViewport(coarse: boolean) {
+    const viewport = Object.assign(document.createElement('div'), {width: 320, height: 600, offsetLeft: 0, offsetTop: 0});
+    const frames = new Map<number, FrameRequestCallback>();let nextFrame = 0;
+    Object.defineProperties(win, {visualViewport: {configurable: true, value: viewport},
+      matchMedia: {configurable: true, value: () => ({matches: coarse})},
+      requestAnimationFrame: {configurable: true, value: (callback: FrameRequestCallback) => {frames.set(++nextFrame, callback);return nextFrame}},
+      cancelAnimationFrame: {configurable: true, value: (id: number) => frames.delete(id)}});
+    const add = vi.spyOn(viewport, 'addEventListener'), remove = vi.spyOn(viewport, 'removeEventListener');
+    return {viewport, frames, add, remove, flush: () => {const pending = [...frames.values()];frames.clear();for (const callback of pending) callback(0)}};
+  }
+  function viewportEffect() {
+    const options = handles(select())['popper-options'];
+    expect(options).toBeTruthy();
+    return {options, effect: options.modifiers.find((modifier: {name: string}) => modifier.name === 'fluentreadPopupLanguageViewport').effect};
+  }
+  it.each(['coarse', 'android'])('%s 语言列表随可见高度及平移重算，关闭取消已排队更新并拒绝旧浮层写入', async mode => {
+    const v = touchViewport(mode === 'coarse');if (mode === 'android') document.documentElement.setAttribute('data-fluentread-android-popup', '');
+    await mount(selectPath, {modelValue: 'en'});await open();const first = select(), before = viewportEffect();
+    const popper = document.createElement('div');popper.className = 'fluentread-popup-language-popper';
+    const cleanup = before.effect({state: {elements: {popper}}});expect(popper.style.getPropertyValue('--fluentread-popup-language-height')).toBe('600px');
+    v.viewport.height = 58;v.viewport.offsetTop = 240;v.viewport.dispatchEvent(new win.Event('resize'));v.viewport.dispatchEvent(new win.Event('scroll'));
+    expect(v.frames.size).toBe(1);v.flush();await settle();const after = viewportEffect();cleanup();after.effect({state: {elements: {popper}}});
+    expect(after.options).not.toBe(before.options);expect(popper.style.getPropertyValue('--fluentread-popup-language-height')).toBe('58px');
+    expect(select() === first).toBe(true);expect(source.modelValue).toBe('en');expect(updates).not.toHaveBeenCalled();
+    v.viewport.offsetTop = 250;v.viewport.dispatchEvent(new win.Event('scroll'));v.flush();await settle();expect(viewportEffect().options).not.toBe(after.options);
+    const staleClose = eventOf(document.querySelector('.popup-language-close')!);
+    v.viewport.dispatchEvent(new win.Event('resize'));expect(v.frames.size).toBe(1);staleClose();await settle();
+    expect(fixture.selectBlur).toHaveBeenCalledOnce();expect(state.menuOpen).toBe(false);expect(v.frames.size).toBe(0);expect(document.querySelector('.popup-language-close')).toBeNull();
+    for (const [name, listener] of v.add.mock.calls) expect(v.remove).toHaveBeenCalledWith(name, listener);
+    popper.style.removeProperty('--fluentread-popup-language-height');before.effect({state: {elements: {popper}}});expect(popper.style.getPropertyValue('--fluentread-popup-language-height') ?? '').toBe('');
+    await open();staleClose();await settle();expect(state.menuOpen).toBe(true);expect(fixture.selectBlur).toHaveBeenCalledOnce();
+    handles(select())['onUpdate:modelValue']('de');expectOneUpdate('de');
+  });
+  it.each(['disabled', 'cached', 'pagehide', 'unmount'])('%s 释放触屏语言列表订阅，排队及迟到的浮层回调不再写入', async reason => {
+    const v = touchViewport(true);await mount(selectPath, {modelValue: 'en'});await open();const old = viewportEffect();
+    v.viewport.dispatchEvent(new win.Event('resize'));expect(v.frames.size).toBe(1);invalidate(reason);await settle();expect(v.frames.size).toBe(0);
+    for (const [name, listener] of v.add.mock.calls) expect(v.remove).toHaveBeenCalledWith(name, listener);
+    const popper = document.createElement('div');popper.className = 'fluentread-popup-language-popper';old.effect({state: {elements: {popper}}});
+    expect(popper.style.getPropertyValue('--fluentread-popup-language-height') ?? '').toBe('');v.viewport.dispatchEvent(new win.Event('scroll'));expect(v.frames.size).toBe(0);expect(updates).not.toHaveBeenCalled();
+  });
   it.each(['disabled', 'source', 'value', 'cached', 'pagehide', 'unmount'])('%s 后拒绝捕获的选择及可见性事件', async reason => {
     await mount(selectPath, {modelValue: 'en'});await open();const old = handles(select());invalidate(reason);await settle()
     const before = state.menuOpen;old['onUpdate:modelValue']('de');old.onVisibleChange(!before);await settle();expect(updates).not.toHaveBeenCalled();expect(state.menuOpen).toBe(before)
@@ -136,6 +176,7 @@ describe('PopupLanguageSelect 实际事件归属', () => {
   })
   it('开关菜单和选择值不重复翻译完整列表，界面语言变更才重算', async () => {
     await mount(selectPath, {modelValue: 'en'});fixture.label.mockClear();await open();expect(fixture.label).toHaveBeenCalledTimes(options.to.length)
+    expect(handles(select())['popper-options']).toBeUndefined();expect(document.querySelector('.popup-language-close')).toBeNull();
     select().show(false);await settle();await open();expect(fixture.label).toHaveBeenCalledTimes(options.to.length)
     source.modelValue = 'fr';await settle();expect(fixture.label).toHaveBeenCalledTimes(options.to.length + 1)
     fixture.label.mockClear();fixture.language.value = 'en-US';await settle();expect(fixture.label).toHaveBeenCalledTimes(options.to.length + 1)

@@ -3,7 +3,7 @@
  * 文件职责：定义桌面宽度随皮肤和界面语言、Firefox Android 固定容器限制画布不超过视口，高度由内容撑开且最高 560px 的浏览器 Popup 视觉系统与交互状态，包括亮暗主题、服务选择、功能卡、设置抽屉、通知和响应式细节；Safari 触摸独立 Popup 的快捷入口以两列换行布局适配宿主。
  * 主要内容：Safari 触摸独立 Popup 的快捷入口使用 flex 换行，卡片宽度与皮肤局部间距共享变量，奇数末项保留半宽；整页遮罩持续拦截背景，内部抽屉跟随可见视口并保留内部滚动，服务搜索在触屏使用 16px 字号避免自动缩放；触摸设备的主画布、快捷和服务抽屉采用 46px 命中预算，为原生 sheet 缩放留余量，开关保留紧凑胶囊视觉，桌面沿用原有布局；以白色窄版画布、浅灰控件和品牌色强调翻译、局部及站点控制；两个操作以 42px 高度紧凑同排，主按钮弹性伸展并用短标题合并快捷键，辅助按钮以上方图标和下方文字收拢；网站规则不再绘制外层框，独立按钮沿用指示点展示保存状态并尊重减少动画偏好；保留版本与赞赏码的原位放大、服务及模型摘要、两列入口、完整开源胶囊与开关优先的快捷抽屉和必要的内部滚动。
  * 模块边界：样式只对应 PopupApp 的 DOM 和受控第三方组件，不决定配置值、能力可用性或消息行为；跨页面 token 在 src/ui/styles，Options/文档页各自维护页面样式。
- * 极矮视口：服务选择的返回、搜索、清除与关闭复用原节点并排，隐藏装饰留白而不缩小操作区，输入状态与整页遮罩保持。
+ * 极矮视口：服务选择的返回、搜索、清除与关闭复用原节点并排，隐藏装饰留白而不缩小操作区，输入状态与整页遮罩保持；触屏语言选择使用独立 portal 标记，46px 控件与 16px 输入避免继续沿用桌面紧凑尺寸，列表随可见高度收缩并给关闭入口让位。
  */
 @import "../../ui/styles/feedback.css";
 /* Popup 页面样式跟随 app 页面边界，避免 WXT 入口目录继续承载实现。 */
@@ -879,3 +879,29 @@ footer button { font-weight: 500; color: var(--muted); }
 :root[data-fluentread-android-popup] .popup-startup-recovery button { min-width: 46px; min-height: 46px; height: auto; }
 :root[data-fluentread-android-popup] .popup-shell .fluentread-diagnostic { flex-basis: 46px; width: 46px; height: 46px; }
 :root[data-fluentread-android-popup] .popup-shell .fluentread-diagnostic .diagnostic-close { flex-basis: 46px; }
+
+/* 语言列表 teleport 到 body；专属类只约束 Popup，不改变 Options 和其他 UiSelect。 */
+@media (any-pointer: coarse) {
+  :root .popup-shell[data-interface-skin] .language-pair .popup-language-select .el-select__wrapper { min-width: 46px; min-height: 46px; }
+  :root .popup-shell .popup-language-select :is(.el-select__input, .el-select__selected-item) { font-size: 16px; }
+  :root .fluentread-popup-language-popper .el-select-dropdown__item { min-height: 46px; font-size: 16px; }
+}
+:root[data-fluentread-android-popup] .popup-shell[data-interface-skin] .language-pair .popup-language-select .el-select__wrapper { min-width: 46px; min-height: 46px; }
+:root[data-fluentread-android-popup] .popup-shell .popup-language-select :is(.el-select__input, .el-select__selected-item) { font-size: 16px; }
+:root[data-fluentread-android-popup] .fluentread-popup-language-popper .el-select-dropdown__item { min-height: 46px; font-size: 16px; }
+/* 变量只在触屏菜单打开时存在；极矮视口优先保留关闭，选项仍由自己的 scrollbar 滚动。 */
+.fluentread-popup-language-popper[style*="--fluentread-popup-language-height"] .el-select-dropdown {
+  display: flex; flex-direction: column; max-height: max(0px, calc(var(--fluentread-popup-language-height) - 10px)); overflow: hidden;
+}
+.fluentread-popup-language-popper[style*="--fluentread-popup-language-height"] .el-select-dropdown > .el-scrollbar {
+  flex: 1 1 auto; min-height: 0;
+}
+.fluentread-popup-language-popper[style*="--fluentread-popup-language-height"] .el-select-dropdown__wrap {
+  max-height: max(0px, min(320px, calc(var(--fluentread-popup-language-height) - 58px))); overscroll-behavior: contain;
+}
+.fluentread-popup-language-popper[style*="--fluentread-popup-language-height"] .el-select-dropdown__empty { flex: 1 1 auto; min-height: 0; padding: 0 8px; overflow: auto; }
+.fluentread-popup-language-popper .el-select-dropdown__footer { flex: 0 0 auto; padding: 0; border-top: 0; }
+.fluentread-popup-language-popper .popup-language-close {
+  display: block; width: 100%; min-width: 46px; min-height: 46px; padding: 6px 12px; border: 0; border-radius: 9px;
+  background: var(--surface-soft); color: var(--ink); font-size: 16px; cursor: pointer;
+}
