@@ -185,11 +185,13 @@
               :aria-label="displayModeButton.label" :title="displayModeButton.label" :aria-pressed="config.display === 1"
               :disabled="displayModeButton.disabled" :onClick="displayModeButton.toggle">
               <svg v-if="config.display === 1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <g opacity=".5"><rect x="4" y="3" width="16" height="7" rx="1.5"/><path d="M7 6.5h8"/></g>
-                <rect x="4" y="14" width="16" height="7" rx="1.5"/><path d="M7 17.5h8"/>
+                <path d="M9.5 17h-5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2H12a2 2 0 0 1 2 2v3M5.5 12.5l2-5.5 2 5.5M6.2 10.5h2.6"/>
+                <rect x="9.5" y="8" width="12" height="13" rx="2"/>
+                <path d="M15.5 10.5v2M12.5 12.5h6M13.3 12.5c.4 2.5 2.3 4.5 5.2 5.5M17.7 12.5c-.4 2.5-2.3 4.5-5.2 5.5"/>
               </svg>
               <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <rect x="4" y="6" width="16" height="12" rx="1.5"/><path d="M7 10h10M7 14h7"/>
+                <rect x="5" y="3" width="14" height="18" rx="2"/>
+                <path d="M12 7v2M8 9h8M9 9c.5 3.5 2.7 6.5 7 8M15 9c-.5 3.5-2.7 6.5-7 8"/>
               </svg>
             </button>
           </span>
