@@ -52,7 +52,7 @@ beforeAll(async () => {
     t: (key: string, params?: Parameters<typeof translate>[2]) => translate(key, language.value, params),
     translateLegacy: (text: string) => translateLegacyText(text, language.value)});
   server = await createServer({root: process.cwd(), configFile: false, appType: 'custom', logLevel: 'silent',
-    resolve: {alias: {'@': process.cwd()}}, ssr: {noExternal: ['webextension-polyfill']}, plugins: [{name: 'popup-summary-client', enforce: 'pre', resolveId(id) {
+    resolve: {alias: {'@': process.cwd()}}, ssr: {noExternal: ['element-plus', 'webextension-polyfill']}, plugins: [{name: 'popup-summary-client', enforce: 'pre', resolveId(id) {
       if (/(?:\/|^)Popup(?:App|SiteRule)\.vue$/u.test(id)) return resolve('src/app/popup', id.split('/').at(-1)!) + '.summary.ts';
       if (id === 'webextension-polyfill') return '\0summary-browser';
       if (/\/src\/services\/config\/store(?:\.ts)?$/u.test(id)) return '\0summary-config';
@@ -62,6 +62,7 @@ beforeAll(async () => {
       if (id.endsWith('/PopupDrawer') || id.endsWith('/PopupDrawer.ts')) return '\0summary-drawer';
       if (id.endsWith('/PopupServices.vue')) return '\0summary-services';
       if (id === '@element-plus/icons-vue') return '\0summary-icons';
+      if (id === 'element-plus/es/components/tooltip/index') return '\0summary-tooltip';
       if (id.endsWith('.vue')) return '\0summary-display';
       return null;
     }, load(id) {
@@ -84,6 +85,8 @@ beforeAll(async () => {
       if (id === '\0summary-appearance') return 'export const applyInterfaceFont=()=>{},applyInterfaceSkin=()=>{};';
       if (id === '\0summary-capabilities') return "export const browserCapabilities={browser:'chrome',areaTranslation:true,imageTranslation:true};";
       if (id === '\0summary-icons') return 'export const Setting={render:()=>null};';
+      // Tooltip 的定位和显示时序由真实浏览器验证；此处只保留链接及父组件的关闭端口。
+      if (id === '\0summary-tooltip') return 'export const ElTooltip={inheritAttrs:false,setup(_, {slots,expose}){expose({onClose(){},hide(){}});return()=>slots.default?.()}};';
       if (id === '\0summary-drawer') return "import {h} from 'vue';export default {setup(_, {attrs,slots}){return()=>attrs.modelValue||attrs['model-value']?h('div',{class:'drawer-port'},slots.default?.()):null}};";
       if (id === '\0summary-services') return "import {h} from 'vue';export default {emits:['close'],setup(_, {emit}){return()=>h('button',{class:'service-panel-close',onClick:()=>emit('close')},'Close')}};";
       if (id === '\0summary-display') return "import {h} from 'vue';export default {setup(_, {attrs,slots}){return()=>h('div',attrs,slots.default?.())}};";

@@ -2,9 +2,9 @@
 /**
  * @file scripts/testing/run-reddit-translation-test.cjs
  * 在全新临时 Edge 中重现页面已有译文的 font 结构，检查 FluentRead 的
- * 正文/全部节点范围、悬浮切换、全文翻译、迟到响应及外部译文增删，以及 SDUI 搜索结果。
- * 默认只提供本地夹具和确定性微软响应；--search-only 限定搜索专项，--live-search
- * 额外尝试公开搜索页并单独记录站点限制。不执行用户脚本，不激活 macOS 前台。
+ * 正文/全部节点范围、悬浮切换、全文翻译、迟到响应及外部译文增删，以及搜索和个人主页。
+ * 默认只提供本地夹具和确定性微软响应；--search-only/--profile-only 限定对应专项，
+ * --live-search 额外尝试公开搜索页并单独记录站点限制。不执行用户脚本，不激活 macOS 前台。
  */
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -19,7 +19,7 @@ const args = {timeout: 30000};
 for (let i = 2; i < process.argv.length; i++) {
   const key = process.argv[i];
   if (key === '--background') continue;
-  if (key === '--search-only' || key === '--live-search') {
+  if (key === '--search-only' || key === '--profile-only' || key === '--live-search') {
     args[key.slice(2).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())] = true;
     continue;
   }
@@ -31,6 +31,7 @@ for (const key of ['extensionDir', 'playwrightRoot', 'focusSafeHelper', 'artifac
   args[key] = path.resolve(args[key]);
 }
 args.timeout = Number(args.timeout);
+assert.ok(!(args.searchOnly && args.profileOnly), '--search-only and --profile-only cannot be combined');
 const helper = require(args.focusSafeHelper);
 const {chromium} = createRequire(path.join(args.playwrightRoot, 'reddit-test.cjs'))('playwright');
 const report = {scope: 'reddit-domain-local-fixture', provider: 'microsoft-local-deterministic-response',
@@ -114,13 +115,17 @@ async function main() {
     await installWorker(worker);
     const fixture = fs.readFileSync(path.join(root, 'tests/fixtures/translation-pages/reddit-duplicates.html'), 'utf8');
     const searchFixture = fs.readFileSync(path.join(root, 'tests/fixtures/translation-pages/reddit-search.html'), 'utf8');
+    const profileFixture = fs.readFileSync(path.join(root, 'tests/fixtures/translation-pages/reddit-profile.html'), 'utf8');
     const url = 'https://www.reddit.com/r/MiniMax_AI/comments/fluentread_fixture/';
     const searchUrls = ['https://www.reddit.com/search/?q=language&type=posts',
       'https://www.reddit.com/r/languagelearning/search/?q=reading&type=comments'];
+    const profileUrls = ['https://www.reddit.com/user/example/',
+      'https://www.reddit.com/user/example/submitted/', 'https://www.reddit.com/user/example/comments/'];
     const fixtureRoute = route => {
       const request = route.request();
       if (request.isNavigationRequest() && request.url() === url) return route.fulfill({status: 200, contentType: 'text/html', body: fixture});
       if (request.isNavigationRequest() && searchUrls.includes(request.url())) return route.fulfill({status: 200, contentType: 'text/html', body: searchFixture});
+      if (request.isNavigationRequest() && profileUrls.includes(request.url())) return route.fulfill({status: 200, contentType: 'text/html', body: profileFixture});
       if (/^https?:/.test(request.url())) return route.abort('blockedbyclient');
       return route.continue();
     };
@@ -133,7 +138,7 @@ async function main() {
       enableAIContext: false, enableAIMultiSegment: false, uiLanguage: 'zh-CN', uiLanguageSetupCompleted: true};
     await patchConfig(report.config);
     await patchConfig({translationScope: 'content'});
-    for (const [index, searchUrl] of searchUrls.entries()) {
+    for (const [index, searchUrl] of (args.profileOnly ? [] : searchUrls).entries()) {
       await worker.evaluate(() => { globalThis.redditRequests = []; });
       const page = await helper.newPageWithoutForeground(context, args.timeout);
       const result = {kind: 'search', scope: 'content', url: searchUrl}; report.cases.push(result);
@@ -206,7 +211,7 @@ async function main() {
         throw error;
       } finally { save(); await page.close(); }
     }
-    if (args.liveSearch) {
+    if (args.liveSearch && !args.profileOnly) {
       await patchConfig({translationScope: 'content'});
       await context.unroute('**/*', fixtureRoute);
       const page = await helper.newPageWithoutForeground(context, args.timeout);
@@ -233,7 +238,97 @@ async function main() {
         report.liveSearch.error = error.message;
       } finally { save(); await page.close(); await context.route('**/*', fixtureRoute); }
     }
-    for (const scope of args.searchOnly ? [] : ['content', 'all']) {
+    for (const [index, profileUrl] of (args.searchOnly ? [] : profileUrls).entries()) {
+      await patchConfig({translationScope: 'content'});
+      await worker.evaluate(() => { globalThis.redditRequests = []; });
+      const page = await helper.newPageWithoutForeground(context, args.timeout);
+      const result = {kind: 'profile', scope: 'content', url: profileUrl}; report.cases.push(result);
+      const prefix = `profile-content-${index}`;
+      page.on('pageerror', error => report.errors.push(error.message));
+      try {
+        await page.goto(profileUrl, {waitUntil: 'domcontentloaded'});
+        await page.waitForSelector('#fluent-read-page-styles', {state: 'attached'});
+        await page.waitForTimeout(600);
+        const original = await page.locator('main').innerHTML();
+        const ids = ['profile-title', 'profile-comment', 'profile-title-second', 'profile-comment-second',
+          'profile-comment-third', 'profile-comment-list', 'profile-comment-quote', 'profile-comment-heading',
+          'profile-title-bare', 't1_bare-post-rtjson-content', 'ordinary-title', 'ordinary-body', 'ordinary-comment'];
+        const protectedSelector = 'nav, aside, .metadata, faceplate-timeago, #profile-heading, code, button';
+        const hostProtectedHtml = () => page.locator(protectedSelector).evaluateAll((nodes, owned) =>
+          nodes.filter(node => !node.closest(owned)).map(node => node.outerHTML), owned);
+        const protectedHtml = await hostProtectedHtml();
+        await page.evaluate(({protectedSelector, owned}) => {
+          window.profileLinks = [...document.querySelectorAll('a')];
+          window.profileButtons = [...document.querySelectorAll('button')];
+          window.profileProtectedNodes = [...document.querySelectorAll(protectedSelector)].filter(node => !node.closest(owned));
+          window.profileClicks = 0;
+          window.profileLinks.forEach(link => link.addEventListener('click', event => { event.preventDefault(); window.profileClicks++; }));
+          window.profileButtons.forEach(button => button.addEventListener('click', () => { window.profileClicks++; }));
+        }, {protectedSelector, owned});
+        const checkHostControls = async expectedClicks => {
+          assert.equal(await page.evaluate(() => window.profileLinks.every(link => link.isConnected) && window.profileButtons.every(button => button.isConnected)), true);
+          assert.equal(await page.evaluate(({protectedSelector, owned}) => {
+            const nodes = [...document.querySelectorAll(protectedSelector)].filter(node => !node.closest(owned));
+            return nodes.length === window.profileProtectedNodes.length && nodes.every((node, index) => node === window.profileProtectedNodes[index]);
+          }, {protectedSelector, owned}), true);
+          assert.deepEqual(await hostProtectedHtml(), protectedHtml);
+          await page.locator('#profile-source-link').click();
+          await page.locator('#profile-share').click();
+          assert.equal(await page.evaluate(() => window.profileClicks), expectedClicks);
+          assert.equal(page.url(), profileUrl);
+        };
+        result.hoverCounts = {};
+        for (const id of ['profile-title', 'profile-comment']) {
+          result.hoverCounts[id] = [];
+          for (const expected of [1, 0, 1]) {
+            await toggleHover(page, `#${id}`, true); await waitCount(page, `#${id} ${owned}`, expected);
+            result.hoverCounts[id].push(await count(page, `#${id} ${owned}`));
+            assert.equal(await count(page, owned), expected);
+            assert.equal(page.url(), profileUrl);
+          }
+          await toggleHover(page, `#${id}`, true); await waitCount(page, owned, 0);
+        }
+        await toggleFull(page); await waitCount(page, owned, ids.length); await waitCount(page, '.fluent-read-loading', 0);
+        for (const id of ids) {
+          assert.equal(await count(page, `#${id} ${owned}`), 1, id);
+          assert.match(await page.locator(`#${id} ${owned}`).textContent(), /流畅阅读测试译文/);
+        }
+        await page.evaluate(() => {
+          const card = document.createElement('shreddit-profile-comment'); card.id = 'late-profile-card';
+          card.innerHTML = '<h2 class="inline-block m-0"><a class="rpl" href="/r/languagelearning/comments/late/" id="late-profile-title">Another discussion loaded while browsing this profile</a></h2><div class="md" id="t1_late-post-rtjson-content"><p id="late-profile-comment">This newly loaded comment recommends keeping a short reading journal.</p></div><div class="metadata"><a href="/user/example/">u/example</a><faceplate-timeago>One hour ago</faceplate-timeago></div><button>Reply</button>';
+          document.querySelector('main').append(card);
+        });
+        await waitCount(page, owned, ids.length + 2); await waitCount(page, '.fluent-read-loading', 0);
+        for (const id of ['late-profile-title', 'late-profile-comment']) assert.equal(await count(page, `#${id} ${owned}`), 1, id);
+        result.dynamicCount = await count(page, owned);
+        await page.locator('#late-profile-card').evaluate(node => node.remove());
+        await waitCount(page, owned, ids.length);
+        await checkHostControls(2);
+        const requests = await worker.evaluate(() => globalThis.redditRequests.flat());
+        assert.equal(requests.some(text => /KEEP_ORIGINAL_CODE|Upvote|Share|Reply|Show more|u\/example|r\/languagelearning|hours? ago|Reddit Home|Open menu|Example reader|About this user|Browse more community/.test(text)), false);
+        result.requests = requests;
+        await page.screenshot({path: path.join(args.artifactsDir, `${prefix}-translated.png`), caret: 'initial'});
+        await toggleFull(page); await waitCount(page, owned, 0); await page.waitForTimeout(300);
+        assert.equal(await page.locator('main').innerHTML(), original);
+        await checkHostControls(4);
+        result.restored = true;
+        await toggleFull(page); await waitCount(page, owned, ids.length); await waitCount(page, '.fluent-read-loading', 0);
+        assert.equal(await count(page, `${owned} ${owned}`), 0);
+        for (const id of ids) assert.equal(await count(page, `#${id} ${owned}`), 1, id);
+        await checkHostControls(6);
+        await toggleFull(page); await waitCount(page, owned, 0); await page.waitForTimeout(300);
+        assert.equal(await page.locator('main').innerHTML(), original);
+        await checkHostControls(8);
+        result.passed = true;
+        console.log(`${prefix}: hover 1/0/1, full coverage, dynamic cards, restore/retranslate and host controls passed`);
+      } catch (error) {
+        result.error = error.stack;
+        result.dom = await page.locator('body').innerHTML().catch(() => '');
+        await page.screenshot({path: path.join(args.artifactsDir, `${prefix}-failure.png`), caret: 'initial'}).catch(() => {});
+        throw error;
+      } finally { save(); await page.close(); }
+    }
+    for (const scope of args.searchOnly || args.profileOnly ? [] : ['content', 'all']) {
       await patchConfig({translationScope: scope});
       await worker.evaluate(() => { globalThis.redditRequests = []; });
       const page = await helper.newPageWithoutForeground(context, args.timeout);

@@ -1,0 +1,46 @@
+<!doctype html>
+<!-- Issue #1017 的最小用户主页结构夹具；依据报告中的 DOM 独立编写，并非实站抓取。 -->
+<html lang="en">
+<head><meta charset="utf-8"><title>Reddit profile comments fixture</title>
+<style>
+body {font:18px Arial;margin:32px;color:#202020;background:white;}
+main {max-width:820px;} shreddit-profile-comment,shreddit-post,shreddit-comment {display:block;padding:16px 0;border-bottom:1px solid #ddd;}
+p,li,blockquote {line-height:1.6;} h2 {font-size:24px;} a {color:#164b80;}
+button {font:inherit;} nav,aside,.metadata {font-size:14px;color:#555;}
+</style></head>
+<body>
+<nav id="profile-navigation"><a href="/">Reddit Home</a><button id="profile-menu">Open menu</button></nav>
+<main id="profile-feed">
+  <h1 id="profile-heading">Example reader's recent activity</h1>
+  <shreddit-profile-comment id="profile-first-card">
+    <div class="metadata" id="profile-metadata"><a id="profile-author" href="/user/example/">u/example</a> commented in <a id="profile-community" href="/r/languagelearning/">r/languagelearning</a> · <faceplate-timeago>Three hours ago</faceplate-timeago></div>
+    <h2 class="inline-block m-0"><a class="rpl" href="/r/languagelearning/comments/first/" id="profile-title">A useful discussion about <span id="profile-title-emphasis">learning through reading</span></a></h2>
+    <div id="-post-rtjson-content" class="md pt-xs pb-2xs" dir="auto"><p id="profile-comment">Reading short stories every day helps me learn new words in context.</p></div>
+    <button id="profile-share">Share</button><button id="profile-reply">Reply</button>
+  </shreddit-profile-comment>
+  <shreddit-profile-comment id="profile-rich-card">
+    <div class="metadata"><a href="/user/example/">u/example</a> · <faceplate-timeago>Two hours ago</faceplate-timeago></div>
+    <h2 class="inline-block m-0"><a class="rpl" href="/r/languagelearning/comments/second/" id="profile-title-second">How to make a regular reading habit last</a></h2>
+    <div id="t1_fixture-post-rtjson-content" class="md pt-xs pb-2xs" dir="auto">
+      <p id="profile-comment-second">Keep a small reading journal and <a id="profile-source-link" href="/r/languagelearning/wiki/">review useful examples</a> regularly.</p>
+      <p id="profile-comment-third">Compare the original meaning with <strong id="profile-comment-emphasis">your own notes</strong>. <code id="profile-protected-code">KEEP_ORIGINAL_CODE</code></p>
+      <ul><li id="profile-comment-list">Practice with one short article each day.</li></ul>
+      <blockquote id="profile-comment-quote">A little reading every day is easier to maintain.</blockquote>
+      <h3 id="profile-comment-heading">Choose material that you enjoy</h3>
+    </div>
+    <button id="profile-more">Show more replies</button>
+  </shreddit-profile-comment>
+  <shreddit-profile-comment id="profile-bare-card">
+    <h2 class="inline-block m-0"><a class="rpl" href="/r/languagelearning/comments/third/" id="profile-title-bare">Advice for starting with short articles</a></h2>
+    <div id="t1_bare-post-rtjson-content" class="md pt-xs pb-2xs" dir="auto">Start with <strong id="profile-bare-emphasis">familiar topics</strong> and <a id="profile-bare-link" href="/r/languagelearning/wiki/">follow a simple reading plan</a> before moving to longer books.</div>
+    <button id="profile-bare-reply">Reply</button>
+  </shreddit-profile-comment>
+  <shreddit-post>
+    <h1 slot="title" id="ordinary-title">An ordinary Reddit post still has a readable title</h1>
+    <div slot="text-body"><p id="ordinary-body">The normal post layout continues to translate its own paragraphs.</p></div>
+    <button id="ordinary-share">Share</button>
+  </shreddit-post>
+  <shreddit-comment><div slot="comment"><p id="ordinary-comment">The normal thread comment remains a separate translation target.</p></div><button id="ordinary-reply">Reply</button></shreddit-comment>
+</main>
+<aside id="profile-sidebar"><h2>About this user</h2><p>Browse more community activity</p></aside>
+</body></html>

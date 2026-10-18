@@ -44,6 +44,7 @@ async function withDocumentRealm<T>(
     document: Document,
     callback: () => T | Promise<T>,
     readInlineStyles = false,
+    computedColor?: (element: HTMLElement) => string,
 ): Promise<T> {
     const realm = document.defaultView as unknown as Record<string, unknown>;
     const globalRecord = globalThis as unknown as Record<string, unknown>;
@@ -63,6 +64,7 @@ async function withDocumentRealm<T>(
         // linkedom 不计算 CSS；新保护用例依据真实 inline style 提供所需读数。
         ...(readInlineStyles ? {getComputedStyle: (element: HTMLElement) => ({
             display: element.style.display || 'block', visibility: element.style.visibility || 'visible',
+            color: computedColor?.(element) ?? element.style.color ?? '',
             position: 'static', overflow: 'visible', overflowY: 'visible', height: 'auto',
             maxHeight: 'none', webkitLineClamp: 'none',
             getPropertyValue: (name: string) => element.style.getPropertyValue(name) || '',
@@ -293,6 +295,34 @@ const githubModelsParagraph =
     'from <code>agentOverrides.&lt;name&gt;</code>; their other definition fields stay owned by the registering extension.';
 
 describe('双语译文骨架重放', () => {
+    it('首次翻译与骨架重放均读取当前链接颜色，保留译文及宿主链接节点', async () => {
+        const {document} = parseHTML('<html><head></head><body></body></html>');
+        let color = 'rgb(220, 38, 38)';
+        await withDocumentRealm(document, () => {
+            const fixture = createCommittedMixedSourceFixture(document,
+                'Read <a id="source-link" href="https://example.com/guide" class="host-accent"><span>@steipete</span></a> <code>npm install</code>', 'p');
+            const link = fixture.owner.querySelector<HTMLAnchorElement>('#source-link')!;
+            const sourceText = link.firstChild;
+            const translations = [...fixture.state.bilingualReplay!.translations];
+            const translatedText = fixture.wrapper.textContent;
+            expect(fixture.wrapper.querySelector<HTMLAnchorElement>('a')?.style.color).toBe('rgb(220, 38, 38)');
+
+            link.className = 'host-accent-updated';
+            color = 'rgb(31, 111, 235)';
+            expect(refreshBilingualTranslationSkeleton(fixture.owner, fixture.state)).toBe(true);
+            expect(fixture.state.bilingualContent).toBe(fixture.wrapper);
+            expect(fixture.wrapper.querySelector<HTMLAnchorElement>('a')?.style.color).toBe('rgb(31, 111, 235)');
+            expect(fixture.wrapper.textContent).toBe(translatedText);
+            expect(fixture.state.bilingualReplay!.translations).toEqual(translations);
+            expect(fixture.owner.querySelector('#source-link')).toBe(link);
+            expect(link.firstChild).toBe(sourceText);
+            expect(link.className).toBe('host-accent-updated');
+            expect(link.hasAttribute('style')).toBe(false);
+            expect(fixture.wrapper.querySelector('a')?.hasAttribute('class')).toBe(false);
+            expect(isTranslationArtifactCurrent(fixture.owner, fixture.state)).toBe(true);
+        }, true, element => element.localName === 'a' ? color : '');
+    });
+
     it('issue #969 的 GitHub 混合行内代码段落在真实 MO 中保留译文并有界复验', async () => {
         const {document} = parseHTML('<html><head></head><body></body></html>');
         await withDocumentRealm(document, async () => {
