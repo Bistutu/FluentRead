@@ -24,7 +24,7 @@ import {
     setBilingualContent,
 } from '@/src/features/full-page-translation/content/state';
 
-function page(markup: string) {
+function page(markup: string, computedColor?: (element: HTMLElement) => string) {
     const {document, window} = parseHTML(`<html><head><base href="https://example.org/article"></head><body><p id="owner">Read this explanation ${markup} with its linked details.</p></body></html>`);
     Object.defineProperty(window, 'getComputedStyle', {
         configurable: true,
@@ -32,6 +32,7 @@ function page(markup: string) {
             display: element.style.display || 'inline',
             visibility: element.style.visibility || 'visible',
             fontFamily: 'Arial',
+            color: computedColor?.(element) ?? element.style.color ?? '',
         }),
     });
     // linkedom 将 contenteditable=false 也报告为可编辑；补齐浏览器的原生语义。
@@ -39,7 +40,7 @@ function page(markup: string) {
         Object.defineProperty(element, 'isContentEditable', {value: false}));
     vi.stubGlobal('document', document);
     vi.stubGlobal('Node', window.Node);
-    return {document, owner: document.querySelector<HTMLElement>('#owner')!};
+    return {document, window, owner: document.querySelector<HTMLElement>('#owner')!};
 }
 
 afterEach(() => {
@@ -65,6 +66,68 @@ function commitBilingual(owner: HTMLElement, core = createTranslationCore()) {
 }
 
 describe('双语快照展示保护', () => {
+    it.each([
+        ['inline RGB', '<a href="https://example.org/guide" style="color:rgb(220, 38, 38)"><span>@steipete</span></a>', 'rgb(220, 38, 38)'],
+        ['class', '<a href="https://example.org/guide" class="host-link"><span>@steipete</span></a>', 'rgb(31, 111, 235)'],
+        ['inherited', '<span class="host-accent"><a href="https://example.org/guide"><span>@steipete</span></a></span>', 'rgb(22, 163, 74)'],
+    ])('%s 链接按实时颜色保留嵌套文本，两轮翻译与恢复均不修改宿主', (_kind, markup, color) => {
+        let sourceLink: HTMLAnchorElement | undefined;
+        const {owner} = page(markup, element => element === sourceLink ? color : '');
+        sourceLink = owner.querySelector<HTMLAnchorElement>('a')!;
+        const originalHTML = owner.innerHTML;
+        const originalChildren = [...owner.childNodes];
+        const originalLinkText = sourceLink.firstChild;
+        for (let cycle = 0; cycle < 2; cycle += 1) {
+            const {wrapper} = commitBilingual(owner);
+            const translatedLink = wrapper.querySelector<HTMLAnchorElement>('a')!;
+            expect(translatedLink.style.color).toBe(color);
+            expect(translatedLink.querySelector('span')?.textContent).toBe('@steipete');
+            expect(translatedLink.getAttribute('href')).toBe('https://example.org/guide');
+            expect(translatedLink.hasAttribute('class')).toBe(false);
+            expect(restoreTranslation(owner)).toBe(true);
+            expect(owner.innerHTML).toBe(originalHTML);
+            expect([...owner.childNodes]).toEqual(originalChildren);
+            expect(owner.querySelector('a')).toBe(sourceLink);
+            expect(sourceLink.firstChild).toBe(originalLinkText);
+        }
+    });
+
+    it.each(['unavailable', 'throws'] as const)('computed style %s 时保留来源链接的 inline color', (mode) => {
+        const {owner, window} = page('<a href="https://example.org/guide" style="color:rgb(220, 38, 38)">@steipete</a>');
+        Object.defineProperty(window, 'getComputedStyle', {
+            configurable: true,
+            value: mode === 'unavailable' ? undefined : () => {throw new Error('Style unavailable');},
+        });
+        const {wrapper} = commitBilingual(owner);
+        expect(wrapper.querySelector<HTMLAnchorElement>('a')?.style.color).toBe('rgb(220, 38, 38)');
+        expect(restoreTranslation(owner)).toBe(true);
+    });
+
+    it.each([true, false])('仅本地骨架放行链接 color，sourceSkeleton=%s 仍拒绝其他样式、class、事件和危险链接', (sourceSkeleton) => {
+        const markup = '<a href="https://example.org/guide" title="Guide" class="host-link" onclick="alert(1)" ' +
+            'style="color:rgb(220, 38, 38);background:red;position:fixed"><span class="host-text" style="color:blue">@steipete</span></a> ' +
+            '<a href="javascript:alert(1)" style="color:rgb(220, 38, 38)">@unsafe</a>';
+        const {owner} = page(markup);
+        vi.stubGlobal('DOMParser', class FixtureDOMParser {
+            parseFromString(source: string) {
+                return parseHTML(`<html><body>${source}</body></html>`).document;
+            }
+        });
+        const snapshot = createTranslationSourceSnapshot(owner);
+        const html = applyTranslationsToSnapshot(snapshot, snapshot.slots.map(slot => `译:${slot.source}`));
+        const wrapper = appendBilingualTranslation(owner, sourceSkeleton ? html : markup,
+            sourceSkeleton ? {sourceSkeleton: snapshot.clone} : {});
+        const [safeLink, unsafeLink] = [...wrapper.querySelectorAll<HTMLAnchorElement>('a')];
+        expect(safeLink!.getAttribute('href')).toBe('https://example.org/guide');
+        expect(safeLink!.getAttribute('title')).toBe('Guide');
+        expect(safeLink!.style.color || '').toBe(sourceSkeleton ? 'rgb(220, 38, 38)' : '');
+        expect(safeLink!.style.background || '').toBe('');
+        expect(safeLink!.style.position || '').toBe('');
+        expect(wrapper.querySelector('[class], [onclick]')).toBeNull();
+        expect(safeLink!.querySelector('span')?.hasAttribute('style')).toBe(false);
+        expect(unsafeLink!.hasAttribute('href')).toBe(false);
+    });
+
     it.each([
         '<span hidden>EXCLUDED_SOURCE</span>',
         '<span inert>EXCLUDED_SOURCE</span>',
