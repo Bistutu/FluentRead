@@ -776,6 +776,45 @@ describe('video player menu composition', () => {
     expect(writes).toEqual([]);
   });
 
+  it('reveals the owned body control when the layout height measurement is unavailable', () => {
+    const {document} = parseHTML('<!doctype html><body><div id="host"></div><button id="outside">Page</button></body>');
+    vi.stubGlobal('document', document);
+    const host = document.getElementById('host')!;
+    const outside = document.getElementById('outside')!;
+    const menu = createVideoPlayerMenu('en-US', false);
+    host.appendChild(menu);
+    menu.hidden = false;
+    menu.dataset.presentation = 'viewport';
+    const body = menu.querySelector<HTMLElement>('.fluent-read-video-menu-body')!;
+    const control = menu.querySelector<HTMLButtonElement>('[data-mode="bilingual"]')!;
+    let scrollTop = 0, controlTop = 108, controlHeight = 44;
+    const writes: number[] = [];
+    // Defensive measurement fixture: a missing layout height falls back to a 1x rectangle scale.
+    Object.defineProperties(body, {clientTop: {value: 1}, clientHeight: {value: 44}, offsetHeight: {value: 0},
+      getBoundingClientRect: {value: () => ({top: 100, bottom: 146, height: 46})},
+      scrollTop: {get: () => scrollTop, set: (value: number) => {writes.push(value); scrollTop = value;}}});
+    Object.defineProperty(control, 'getBoundingClientRect', {value: () => ({top: controlTop - scrollTop, bottom: controlTop - scrollTop + controlHeight, height: controlHeight})});
+    Object.defineProperty(document, 'activeElement', {get: () => outside});
+    const focus = vi.spyOn(control, 'focus');
+    host.scrollTop = 23;
+    document.body.scrollTop = 41;
+    revealVideoMenuBodyControl(menu, control);
+    expect(writes).toEqual([7]); // The bordered client window is y101..145; the target ends at y152.
+    expect(control.getBoundingClientRect()).toMatchObject({top: 101, bottom: 145});
+    writes.length = 0;
+    revealVideoMenuBodyControl(menu, control);
+    expect(writes).toEqual([]);
+    controlTop = 200;
+    controlHeight = 0;
+    revealVideoMenuBodyControl(menu, control);
+    expect(writes).toEqual([]); // A target without measurable height must not move the body toward its empty rectangle.
+    expect(scrollTop).toBe(7);
+    expect(host.scrollTop).toBe(23);
+    expect(document.body.scrollTop).toBe(41);
+    expect(document.activeElement).toBe(outside);
+    expect(focus).not.toHaveBeenCalled();
+  });
+
   it('keeps an open prompt and its original hidden state while the viewport temporarily offers only Close', () => {
     const {document} = parseHTML('<!doctype html><body><div id="host"></div></body>');
     vi.stubGlobal('document', document);
