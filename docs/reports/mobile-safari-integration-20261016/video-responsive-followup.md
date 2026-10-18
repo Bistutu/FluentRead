@@ -14,14 +14,18 @@
 | 当前生产构建 | Chrome、Firefox、Safari、userscript 构建及相应产物验证通过；文档构建通过。 |
 | 本地原生编译 | macOS、iOS Simulator、arm64 iPhoneOS 均通过，各目标内嵌 467 份 Web 资源与其对应的 Safari 产物逐文件一致。随后从干净提交 `78eca76` 重新生成 Safari 与 Simulator 包，用于本轮原生菜单验收。未进行开发者签名、发布或真机操作。 |
 | 原生 Safari 首屏 | iPhone 16 Pro／iOS Simulator 26.2，官方 XCTest 1 通过、0 跳过、0 失败，30.074 秒。四种显示模式与前后调时六个控件均完整可见、至少 44×44pt，分别通过实时可点击检查；关闭按钮另行检查并实际点按，菜单消失，原播放器入口仍在。1 张原始 PNG 已实际查看。 |
+| 原生短后台返回 | 同一专用模拟器，官方 XCTest 1 通过、0 跳过、0 失败，28.471 秒。正常回到主屏幕，单次等待 5.004 秒后返回 Safari，重新确认原标签页、TED 视频和播放器，点按一次字幕入口后观察到唯一菜单及五个已知子项。返回截图仍在系统切换动画中，且截图早于打开菜单；只接受短后台返回后的入口和菜单 AX，不作为静止布局、播放连续性或长期后台验收。 |
+| 原生正常全屏前置 | 两次分别为 0 通过、1 跳过、0 失败，23.998／24.919 秒。第二次在新鲜播放器场景中正常触摸一次，再等待固定全屏标签；仍未出现该已确认控件，未执行进入、退出或返回后菜单。触摸的播放影响未知，也不能证明其他标签的全屏控件不存在；两次均不计为全屏通过或产品失败。 |
 
 首轮浏览器虽然退出 0，独审发现短视口重开后的校时“＋”按钮右侧两点未命中。增加正文滚动条留白后，第二轮六个主要控件的五点命中全部通过。首轮失败记录保留。
 
 子页首轮还有一处测试误报：裁剪算法把 331.046875px 高的区域当成 331px，误判按钮底部超出 0.046875px。新一轮实际祖先矩形、边框、滚动条和五点命中记录确认完整可见；修正了测量，44px 和可见性阈值保持。该失败也保留。
 
-PR 首次 CI 的 174 个受影响测试文件中，4 项旧手机菜单场景仍只改变播放器尺寸，期望菜单继续受播放器约束，与本次视口菜单契约冲突。场景已分别设置播放器和可见视口的尺寸与偏移；原先的一帧重排、尺寸、变换、同节点与布局断言保留，并补充页面根节点挂载和全页卸载检查。该文件 54/54 通过，首次 CI 的失败记录保留，更新后的 CI 另行确认。
+PR 首次 CI 的 174 个受影响测试文件中，4 项旧手机菜单场景仍只改变播放器尺寸，期望菜单继续受播放器约束，与本次视口菜单契约冲突。场景已分别设置播放器和可见视口的尺寸与偏移；原先的一帧重排、尺寸、变换、同节点与布局断言保留，并补充页面根节点挂载和全页卸载检查。该文件 54/54 通过，首次 CI 的失败记录保留。随后提交 `da521c9` 的远端 CI 通过：174 个相关测试文件、8825 项测试，9 个严格覆盖率模块逐文件及总计的 statements／branches／functions／lines 均为 100%；类型、Chrome／Firefox 构建与清单和 userscript 验证通过。这是该精确提交及其合并测试引用的结果，不代表后续提交已通过，也不代表全仓库覆盖率 100%。
 
 首轮新包原生菜单测试在 Safari 启动阶段被进程监测超时中止，未生成可导出的正式结果或截图，未作为 UI 通过。原应用、限定的 13 份数据文件（含元数据）、Userscripts 应用和 Demo 脚本均逐文件恢复核对通过，专用模拟器已关闭；监测改用所需的进程名字段，保持原有超时、焦点与恢复约束后复验。
+
+后续短后台和两次全屏前置用例也均完成原应用及上述限定文件的逐文件恢复核对，专用模拟器关闭、任务端口空闲；这不等于全部 Safari／扩展设置、缓存、权限或播放状态恢复。短后台的[正式统计](./video-responsive-evidence/native-ios-background-summary.json)及[测试详情](./video-responsive-evidence/native-ios-background-test-details.json)、单次播放器触摸全屏前置的[正式统计](./video-responsive-evidence/native-ios-fullscreen-touch-summary.json)及[测试详情](./video-responsive-evidence/native-ios-fullscreen-touch-test-details.json)均为 XCTest 原样导出副本。
 
 | 场景 | 原始截图 |
 | --- | --- |
@@ -30,6 +34,9 @@ PR 首次 CI 的 174 个受影响测试文件中，4 项旧手机菜单场景仍
 | X 紧凑观看菜单 | [查看](./video-responsive-evidence/x-compact-watch.png) |
 | 模型确认页 | [查看](./video-responsive-evidence/model-prompt.png) |
 | iOS Simulator Safari 实际菜单 | [查看](./video-responsive-evidence/native-ios-first-screen.png) |
+| 短后台前的播放器 | [查看](./video-responsive-evidence/native-ios-background-before.png) |
+| 返回 Safari 的系统切换动画 | [查看](./video-responsive-evidence/native-ios-background-return.png) |
+| 全屏前置检查，播放器触摸前 | [查看](./video-responsive-evidence/native-ios-fullscreen-touch-before.png) |
 
 截图逐字节复制，见[复制索引](./video-responsive-evidence/copy-index.json)。浏览器使用生产扩展、生成媒体及本地站点结构夹具，翻译受控；短视口与 DOM 全屏为仿真，不等于原生软键盘、Safari、真实站点或物理设备验收。实际安全区环境变量未由该浏览器协议验证。
 
