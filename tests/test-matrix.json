@@ -82,6 +82,7 @@
       "tests/bilingualRenderingLifecycle.test.ts",
       "tests/fullPageRemountPreparation.test.ts",
       "tests/bilingualReplay.test.ts",
+      "tests/pageTranslationDisplayMode.test.ts",
       "tests/syntheticRemount.test.ts",
       "tests/backgroundCacheCleanup.test.ts",
       "tests/backgroundCapabilityRegistry.test.ts",

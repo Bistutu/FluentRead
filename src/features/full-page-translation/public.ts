@@ -1,7 +1,7 @@
 /**
  * @file src/features/full-page-translation/public.ts
  * 文件职责：汇总全文翻译 feature 给其他模块使用的稳定能力，覆盖只读双语摘录、页面翻译控制、局部区域翻译、进度面板生命周期和进度及真实结果状态订阅。
- * 主要内容：精确再导出 autoTranslateEnglishPage、handleTranslation、restoreOriginalContent、活动状态与悬浮取消函数，局部翻译的区域盘点与切换函数，以及进度面板生命周期、结果状态订阅和个人校订的受控原译文读取、受影响预览与可逆更新端口。
+ * 主要内容：公开不请求 provider 的当前页面显示模式同步入口；精确再导出 autoTranslateEnglishPage、handleTranslation、restoreOriginalContent、活动状态与悬浮取消函数，局部翻译的区域盘点与切换函数，以及进度面板生命周期、结果状态订阅和个人校订的受控原译文读取、受影响预览与可逆更新端口。
  * 模块边界：公共出口不暴露 FullPageSession、DOM 状态机或指示器实现；content composition root 与 floating-ball 应依赖此处，内部 renderer/state/background 仍通过各自子路径组装。
  */
 export {
@@ -17,6 +17,7 @@ export {
     type PageTranslationInvocation,
 } from './content/runtime';
 export {beginBilingualArtifactHostWriteGesture as noteBilingualHostGesture} from './content/state';
+export {syncPageTranslationDisplayMode, createPageTranslationDisplayModeSync} from './content/displayMode';
 export {
     inspectTranslationSection,
     toggleTranslationSection,

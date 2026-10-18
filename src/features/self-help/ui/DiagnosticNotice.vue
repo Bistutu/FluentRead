@@ -80,7 +80,9 @@ function measurePanel() {
   const clip = host.value?.closest?.('.popup-shell')?.getBoundingClientRect();
   const top = Math.max(0, clip?.top ?? 0), bottom = Math.min(window.innerHeight, clip?.bottom ?? window.innerHeight);
   if (rect.bottom <= top || rect.top >= bottom) {toggleDetails();return;}
-  const above = Math.max(0, rect.top - top - 18), below = Math.max(0, bottom - rect.bottom - 18);
+  // Popup 可将入口放入换行流，浮层空间须按实际定位容器计算，不能把入口与容器的行差算作可用高度。
+  const anchor = panel.value.offsetParent?.getBoundingClientRect() ?? rect;
+  const above = Math.max(0, anchor.top - top - 18), below = Math.max(0, bottom - anchor.bottom - 18);
   placement.value = panel.value.scrollHeight <= above || above >= below ? 'above' : 'below';
   maxHeight.value = Math.max(48, placement.value === 'above' ? above : below);
 }

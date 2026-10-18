@@ -64,6 +64,7 @@ vi.mock('@/src/app/content/features', () => ({
     unmountShareCard: () => { mocks.shareCardMounted = false; },
     isShareCardMounted: () => mocks.shareCardMounted,
     isFloatingBallAllowedOnPage: () => mocks.floatingBallAllowed,
+    createPageTranslationDisplayModeSync: (_initial: unknown, apply: (next: any) => void) => apply,
     restoreOriginalContent: mocks.restoreOriginal,
     resetFullPageTranslationRouteState: mocks.resetRouteState,
     autoTranslateEnglishPage: mocks.autoTranslate,

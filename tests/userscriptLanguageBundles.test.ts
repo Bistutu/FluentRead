@@ -39,6 +39,7 @@ describe('userscript remote UI language data', () => {
         for (const bundle of Object.values(UI_LANGUAGE_BUNDLES)) {
             expect(bundle.messages).not.toHaveProperty('popup.compact.translate');
             expect(bundle.messages).not.toHaveProperty('popup.compact.restore');
+            expect(Object.keys(bundle.messages).some(key => key.startsWith('popup.displayMode.'))).toBe(false);
             expect(Object.keys(bundle.messages).some(key => key.startsWith('safari.freePool.'))).toBe(false);
             expect(bundle.messages['popup.translateCurrentPage']).toBeTruthy();
         }

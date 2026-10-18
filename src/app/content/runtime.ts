@@ -1,7 +1,7 @@
 /**
  * @file src/app/content/runtime.ts
  * 文件职责：作为内容脚本应用的顶层 composition root，协调配置就绪、站点规则、公共样式、主世界桥、功能注册表、快捷键和消息监听生命周期。
- * 主要内容：装配学习材料继续阅读的来源校验、定位与自动位置更新生命周期；先排除原始 XML 文档与失效扩展上下文，再安装内联 page.css 并按 capability 和配置挂载页面功能；配置变更时更新页面私有网站名单索引，按已提交地址检查自动翻译与站点禁用，锚点跳转保留请求，协调停用、往返缓存暂停恢复与销毁。
+ * 主要内容：通过既有配置订阅即时重排网页双语与仅译文工件，不重发翻译请求；装配学习材料继续阅读的来源校验、定位与自动位置更新生命周期；先排除原始 XML 文档与失效扩展上下文，再安装内联 page.css 并按 capability 和配置挂载页面功能；配置变更时更新页面私有网站名单索引，按已提交地址检查自动翻译与站点禁用，锚点跳转保留请求，协调停用、往返缓存暂停恢复与销毁。
  * 模块边界：本文件只负责依赖装配和页面激活所有权，不实现具体翻译算法、组件内部状态、provider 请求或配置存储；这些职责分别属于 features、services 与 platform。
  */
 import {createLearningContentFeatures} from './learningFeatures';
@@ -33,7 +33,7 @@ import {
     mountSelectionTranslator, mountTranslationProgressPanel, mountShareCard, unmountShareCard, isShareCardMounted,
     mountVideoSubtitleTranslation, mountVocabularyReencounter, unmountVocabularyReencounter,
     isSupportedVideoPage,
-    restoreOriginalContent, resetFullPageTranslationRouteState,
+    restoreOriginalContent, resetFullPageTranslationRouteState, createPageTranslationDisplayModeSync,
     unmountAreaTranslator, unmountFloatingBall, unmountImageTranslator,
     unmountSelectionTranslator,
     unmountTranslationProgressPanel,
@@ -248,7 +248,7 @@ export async function startContentApp(ctx: ContentScriptContext,
     }, capabilities);
     runtimeMessages.addListener(runtimeMessageListener);
     void reportSiteDisabledState();
-    unsubscribeContentConfig = subscribeConfig((nextConfig) => {
+    unsubscribeContentConfig = subscribeConfig(createPageTranslationDisplayModeSync(config, (nextConfig) => {
         siteRules.update(nextConfig);
         void ensureUiLanguageBundle(nextConfig.uiLanguage); applyCoreTranslationPreferences(nextConfig);
         siteAdaptation.update(nextConfig.siteAdaptation, new URL(window.location.href));
@@ -276,7 +276,7 @@ export async function startContentApp(ctx: ContentScriptContext,
         void activePageFeatureRegistry?.reconcileEnabled();
         // 关闭“始终翻译”不撤销当前会话；同页同值回声不会再次启动。
         pageAvailability!.refreshAutoTranslation();
-    });
+    }));
     // 先订阅再跨越首次 activation，避免初始化期间的总开关或站点规则写入永久漏同步。
     await pageAvailability.reconcile();
 }

@@ -136,7 +136,7 @@ describe('快捷翻译调用解析', () => {
         expect(normalized.map(({enabled}) => enabled)).toEqual([true, false, false, false, false]);
     });
 
-    it('在全部跟随默认时冻结当前服务、自定义模型、语言、展示和全文范围', () => {
+    it('跟随默认时冻结当前服务、自定义模型、语言与范围，显示方式交给入口继承', () => {
         const invocation = resolveQuickTranslationInvocation(profile(), {
             service: services.openai,
             model: {[services.openai]: customModelString},
@@ -153,9 +153,9 @@ describe('快捷翻译调用解析', () => {
             service: services.openai,
             model: 'private-default-model',
             targetLanguage: 'zh-Hans',
-            displayMode: 'bilingual',
             fullPageMode: 'viewport',
         });
+        expect(invocation).not.toHaveProperty('displayMode');
     });
 
     it('显式方案会同时覆盖服务、模型、语言、展示和全文范围', () => {
@@ -216,7 +216,7 @@ describe('快捷翻译调用解析', () => {
         expect(invocation).not.toHaveProperty('fullPageMode');
     });
 
-    it('机器翻译且默认仅译文时省略模型并解析为 single', () => {
+    it('机器翻译且默认仅译文时省略模型与显示覆盖，保留继承语义', () => {
         expect(resolveQuickTranslationInvocation(profile({service: services.microsoft}), {
             service: services.openai,
             model: {},
@@ -230,9 +230,21 @@ describe('快捷翻译调用解析', () => {
             scope: 'content',
             service: services.microsoft,
             targetLanguage: 'de',
-            displayMode: 'single',
             fullPageMode: 'all',
         });
+    });
+
+    it.each(['hover', 'section', 'full-page'] as const)('%s 跟随默认不把当前全局模式固化为显式覆盖', action => {
+        const config = {service: services.microsoft, model: {}, customModel: {}, to: 'zh-Hans', display: 1,
+            fullPageTranslationMode: 'viewport' as const, translationScope: 'content' as const};
+        const selected = profile({action});
+        const initial = resolveQuickTranslationInvocation(selected, config);
+        config.display = 0;
+        const switched = resolveQuickTranslationInvocation(selected, config);
+        expect(initial).not.toHaveProperty('displayMode');
+        expect(switched).toEqual(initial);
+        expect(resolveQuickTranslationInvocation({...selected, displayMode: 'bilingual'}, config).displayMode).toBe('bilingual');
+        expect(resolveQuickTranslationInvocation({...selected, displayMode: 'translation-only'}, config).displayMode).toBe('single');
     });
 
     it('悬浮与全文方案均冻结保存的全部节点设置，并独立保留视口范围', () => {
@@ -249,10 +261,10 @@ describe('快捷翻译调用解析', () => {
         expect(resolveQuickTranslationInvocation(profile(), config).scope).toBe('content');
     });
 
-    it('Google 只在当次执行时限制为双语，不覆盖方案保存的显示偏好', () => {
+    it.each(['inherit', 'translation-only', 'bilingual'] as const)('Google 的 %s 方案只在当次执行时限制为双语，不覆盖保存偏好', displayMode => {
         const selected = profile({
             service: services.google,
-            displayMode: 'translation-only',
+            displayMode,
         });
         expect(resolveQuickTranslationInvocation(selected, {
             service: services.openai,
@@ -266,7 +278,7 @@ describe('快捷翻译调用解析', () => {
             service: services.google,
             displayMode: 'bilingual',
         });
-        expect(selected.displayMode).toBe('translation-only');
+        expect(selected.displayMode).toBe(displayMode);
     });
 });
 

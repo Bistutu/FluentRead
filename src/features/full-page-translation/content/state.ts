@@ -1,7 +1,7 @@
 /**
  * @file src/features/full-page-translation/content/state.ts
  * 文件职责：维护每个被翻译 DOM 节点的可恢复状态、请求代次、译文工件和共享布局覆盖所有权，确保重复翻译、宿主变更和移除节点都能安全收敛。
- * 主要内容：包含 WeakMap 状态索引、begin/complete/error/discard 状态机、spinner/译文/retry/仅译文槽节点登记、无主槽原文解包、兼容字体标记与链接提示的译文复验及有界重挂、离线模板仅省略外层属性自比较并保留内容与复制工件复验、双语重放对象的纯组装与扩展源语言边界、已提交译文的前后位置及骨架重放换行快照、含固定高度 line-clamp 的共享样式租约、同批布局与来源保护读数复用及写入失效（释放最后一个旧祖先租约也立即失效）、祖先观察器引用计数、文本槽回写、按钮型 input 标签属性的原值记录与回滚、逐父节点单次读取子列表的移除子树所有者枚举、按真实状态变更发布增量阶段通知、清除通知携带旧来源以协调延迟区域任务，以及沿用当前 owner 快照并保护各滚动面的全量恢复。
+ * 主要内容：包含 WeakMap 状态索引、begin/complete/error/discard 状态机、spinner/译文/retry/仅译文槽节点登记、无主槽原文解包、兼容字体标记与链接提示的译文复验及有界重挂、离线模板仅省略外层属性自比较并保留内容与复制工件复验、双语重放对象的纯组装与扩展源语言边界、已提交译文的前后位置及骨架重放换行快照、保留请求代次的显示工件切换、含固定高度 line-clamp 的共享样式租约、同批布局与来源保护读数复用及写入失效（释放最后一个旧祖先租约也立即失效）、祖先观察器引用计数、文本槽回写、按钮型 input 标签属性的原值记录与回滚、逐父节点单次读取子列表的移除子树所有者枚举、按真实状态变更发布增量阶段通知、清除通知携带旧来源以协调延迟区域任务，以及沿用当前 owner 快照并保护各滚动面的全量恢复。
  * 模块边界：该模块不发现候选、不请求翻译也不生成译文 HTML；自动应用外壳许可随状态保存并在提交、修复和独立观察时向核心复验；runtime 负责会话编排，renderer 负责内容创建，本文件仅拥有 DOM 状态与可逆样式资源，重挂时撤下旧译文尺寸隔离并同步可信模板，避免跨 session 误删新结果。
  */
 import {getTranslatableControlValueAttribute, isTranslationTooltip} from "@/src/core/translation/dom";
@@ -48,6 +48,9 @@ export interface TranslationLayoutStyleOverride {
 }
 
 export interface BilingualTranslationReplay {
+    /** 本次服务与显式模式覆盖用于限制已有译文的即时显示切换。 */
+    service?: string;
+    displayModeOverridden?: true;
     /** 扩展保存当前翻译的源语言，稍后主动开启校订仍能沿用原请求语言。 */
     sourceLanguage?: string;
     /** 个人校订来源随骨架重挂保留，不混入译文文字。 */
@@ -58,18 +61,21 @@ export interface BilingualTranslationReplay {
     style: number;
     /** 首次提交已冻结的换行选项，骨架重放不得跟随后改的全局设置。 */
     longParagraphLineBreak?: boolean;
+    translationBeforeOriginal?: boolean;
 }
 
 /** 组装当前请求的重放输入；状态登记时再复制数组，userscript 不保存扩展校订语言。 */
 export function createBilingualTranslationReplay(
     sources: readonly string[],
     translations: readonly string[],
-    options: Pick<BilingualTranslationReplay, 'targetLanguage' | 'style' | 'longParagraphLineBreak'> & {sourceLanguage: string},
+    options: Pick<BilingualTranslationReplay, 'targetLanguage' | 'style' | 'longParagraphLineBreak' | 'translationBeforeOriginal' | 'service' | 'displayModeOverridden'> & {sourceLanguage: string},
 ): BilingualTranslationReplay {
     return {sources, translations,
         ...(import.meta.env.BROWSER !== 'userscript' ? {sourceLanguage: options.sourceLanguage} : {}),
         targetLanguage: options.targetLanguage, style: options.style,
-        longParagraphLineBreak: options.longParagraphLineBreak};
+        longParagraphLineBreak: options.longParagraphLineBreak,
+        translationBeforeOriginal: options.translationBeforeOriginal,
+        service: options.service, displayModeOverridden: options.displayModeOverridden};
 }
 
 interface TranslationLayoutPropertySnapshot {
@@ -1924,12 +1930,7 @@ function teardownAttempt(
 
     // 仅译文槽的轻 DOM 保存原始 Text 节点，必须在通用扩展产物
     // 清理之前解包。宿主已移除或移走的槽保持宿主权威，不重新插回。
-    state.singleTextSlotHosts?.forEach(({host}) => {
-        if (!node.contains(host) || !host.parentNode) return;
-        const parent = host.parentNode;
-        while (host.firstChild) parent.insertBefore(host.firstChild, host);
-        parent.removeChild(host);
-    });
+    unwrapOwnedSingleTextSlots(node, state);
     // 同一 owner 可能还活着，但所有旧槽已被宿主克隆替换。必须在通用 owned
     // 删除前抢先解包克隆原文；恢复原文入口也不能依赖稍后才执行的 discovery。
     unwrapUnownedSingleTextSlots(node);
@@ -2019,6 +2020,33 @@ export function setSingleTextSlotHosts(
         if (!source) return [];
         return [{host, source, sourceValue: originalValues.get(source) ?? source.nodeValue ?? ""}];
     });
+    refreshOwnershipIndex(node, state);
+}
+
+/** 模式切换与最终恢复共用原文解包，只操作仍由 owner 持有的已登记槽。 */
+function unwrapOwnedSingleTextSlots(node: HTMLElement, state: TranslationState): void {
+    state.singleTextSlotHosts?.forEach(({host}) => {
+        const parent = host.parentNode;
+        if (!parent || !node.contains(host)) return;
+        while (host.firstChild) parent.insertBefore(host.firstChild, host);
+        parent.removeChild(host);
+    });
+}
+
+/** 只撤下当前显示工件，保留 generation、原始节点、请求身份和恢复原文所有权。 */
+export function resetTranslationPresentation(node: HTMLElement, state: TranslationState, mode: TranslationDisplayMode): void {
+    unwrapOwnedSingleTextSlots(node, state);
+    state.bilingualContent?.remove();
+    releaseTranslationLayoutOverrides(node, state);
+    state.singleTextSlotHosts = undefined;
+    state.bilingualContent = undefined;
+    state.bilingualContentTemplate = undefined;
+    state.bilingualHTML = undefined;
+    state.bilingualOuterHTML = undefined;
+    state.textSlotsApplied = undefined;
+    state.translatedTextNodes = undefined;
+    state.translatedTextValues = undefined;
+    state.mode = mode;
     refreshOwnershipIndex(node, state);
 }
 

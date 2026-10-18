@@ -1,17 +1,18 @@
 import {parseHTML} from 'linkedom';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
-const fixture = vi.hoisted(() => ({lookup: vi.fn(), states: new WeakMap<HTMLElement, any>(),
+const fixture = vi.hoisted(() => ({lookup: vi.fn(), states: new Map<HTMLElement, any>(),
     config: {on: true, personalCorrectionsEnabled: true}, artifact: true, source: true, refresh: vi.fn(), restore: vi.fn(), set: vi.fn()}));
 vi.mock('@/src/services/config/store', () => ({config: fixture.config}));
 vi.mock('@/src/services/personal-corrections/public', () => ({personalCorrections: {lookup: fixture.lookup}}));
 vi.mock('@/src/features/full-page-translation/content/state', () => ({
     getTranslationState: (node: HTMLElement) => fixture.states.get(node), setBilingualContent: fixture.set,
+    getTranslationOwnersWithin: (root: Node) => [...fixture.states.keys()].filter(node => root === node || root.contains(node)),
     restoreTranslation: fixture.restore,
 }));
 vi.mock('@/src/features/full-page-translation/content/translationStability', () => ({
     statefulSourceAndTextSlotsAreCurrent: () => fixture.source, isTranslationArtifactCurrent: () => fixture.artifact,
 }));
-vi.mock('@/src/features/full-page-translation/content/bilingualReplay', () => ({refreshBilingualTranslationSkeleton: fixture.refresh}));
+vi.mock('@/src/features/full-page-translation/content/displayMode', () => ({refreshTranslationPresentation: fixture.refresh}));
 vi.mock('@/src/features/full-page-translation/content/viewportStability', () => ({withFullPageViewportAnchor: (action: () => unknown) => action()}));
 import {createMaterialId} from '@/src/core/personal-corrections/public';
 import {listVisiblePersonalCorrectionPairs, lookupPersonalCorrection, personalCorrectionIsCurrent, readPersonalCorrectionContext,
@@ -33,7 +34,7 @@ function pair(baseline: boolean = true, recordId?: string) {
 beforeEach(() => {
     const {document} = parseHTML('<html><body><h2>Team</h2><p>The team is ready.<span class="fluent-read-bilingual-content">团队准备好了。</span></p></body></html>');
     vi.stubGlobal('document', document); vi.stubGlobal('location', {href});
-    fixture.states = new WeakMap(); fixture.artifact = true; fixture.source = true;
+    fixture.states = new Map(); fixture.artifact = true; fixture.source = true;
     Object.assign(fixture.config, {on: true, personalCorrectionsEnabled: true});
     fixture.lookup.mockReset().mockResolvedValue({suggestions: [], conflicts: []});
     fixture.refresh.mockReset().mockImplementation((_node, state) => {
@@ -85,7 +86,7 @@ describe('个人校订的网页所有权端口', () => {
         fixture.artifact = true; const noBaseline = pair(false, 'saved'); fixture.source = false; disableVisiblePersonalCorrections();
         expect(noBaseline.state.bilingualReplay).toBeUndefined();
         fixture.source = true; pair(); fixture.refresh.mockClear(); disableVisiblePersonalCorrections(); expect(fixture.refresh).not.toHaveBeenCalled();
-        fixture.states = new WeakMap(); disableVisiblePersonalCorrections();
+        fixture.states = new Map(); disableVisiblePersonalCorrections();
         const orphan = document.createElement('span'); orphan.className = 'fluent-read-bilingual-content';
         vi.spyOn(document, 'querySelectorAll').mockReturnValueOnce([orphan] as any); disableVisiblePersonalCorrections();
     });
@@ -224,7 +225,7 @@ describe('个人校订的网页所有权端口', () => {
         for (const field of ['source', 'sourceLanguage', 'targetLanguage', 'context', 'materialId']) {
             expect(listVisiblePersonalCorrectionPairs({...query, [field]: 'different'})).toHaveLength(0);
         }
-        fixture.states = new WeakMap(); expect(listVisiblePersonalCorrectionPairs(query)).toHaveLength(0);
+        fixture.states = new Map(); expect(listVisiblePersonalCorrectionPairs(query)).toHaveLength(0);
         const orphan = document.createElement('span'); orphan.className = 'fluent-read-bilingual-content'; expect(readPersonalCorrectionPair(orphan)).toBeNull();
     });
     it('删除或范围退出回滚服务底稿；复用而无底稿的单元恢复原文', async () => {
@@ -236,7 +237,7 @@ describe('个人校订的网页所有权端口', () => {
         await refreshVisiblePersonalCorrections(); expect(fixture.restore).not.toHaveBeenCalled();
         const reused = pair(false, 'saved'); await refreshVisiblePersonalCorrections(); expect(fixture.restore).toHaveBeenCalledWith(reused.node);
         fixture.lookup.mockRejectedValueOnce(Error('unavailable')); await refreshVisiblePersonalCorrections();
-        fixture.states = new WeakMap(); await refreshVisiblePersonalCorrections();
+        fixture.states = new Map(); await refreshVisiblePersonalCorrections();
         const unattached = document.createElement('span'); unattached.className = 'fluent-read-bilingual-content';
         const queryAll = vi.spyOn(document, 'querySelectorAll').mockReturnValueOnce([] as any).mockReturnValueOnce([unattached] as any);
         await refreshVisiblePersonalCorrections(); queryAll.mockRestore();
@@ -261,7 +262,7 @@ describe('个人校订的网页所有权端口', () => {
         vi.stubGlobal('location', {href: href + '#/new-material'});
         await refreshVisiblePersonalCorrections(); expect(fixture.restore).toHaveBeenCalledWith(node);
         expect(fixture.lookup).not.toHaveBeenCalled();
-        fixture.states = new WeakMap(); invalidateStalePersonalCorrectionContexts();
+        fixture.states = new Map(); invalidateStalePersonalCorrectionContexts();
         const unattached = document.createElement('span'); unattached.setAttribute('data-fr-personal-correction', 'true');
         const queryAll = vi.spyOn(document, 'querySelectorAll').mockReturnValueOnce([unattached] as any);
         invalidateStalePersonalCorrectionContexts(); queryAll.mockRestore();

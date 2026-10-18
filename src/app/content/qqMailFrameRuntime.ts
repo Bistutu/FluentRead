@@ -1,7 +1,7 @@
 /**
  * @file src/app/content/qqMailFrameRuntime.ts
  * 文件职责：为受支持邮箱的正文 frame 组装翻译，并把全文手势交给顶层会话。
- * 主要内容：QQ 旧版与网易免费邮箱各自使用受限消息协议，共享无凭据会话快照、样式和键盘生命周期；真实阅读路由变化同步失效上下文与请求提交代次，同地址通知不重复清理。
+ * 主要内容：通过既有配置订阅即时重排网页双语与仅译文工件，不重发翻译请求；QQ 旧版与网易免费邮箱各自使用受限消息协议，共享无凭据会话快照、样式和键盘生命周期；真实阅读路由变化同步失效上下文与请求提交代次，同地址通知不重复清理。
  * 模块边界：只在经过后台认证的阅读 frame 激活，不挂载悬浮球等顶层 UI；翻译请求与异步状态由共享 feature 承担。
  */
 import {installContentPageLifecycle} from './pageLifecycle';
@@ -22,7 +22,7 @@ import {
 import {
     autoTranslateEnglishPage, getFullPageTranslationFrameState, cancelPendingHoverTranslation,
     handleTranslation, noteBilingualHostGesture,
-    invalidateFullPageTranslationSessionCache, restoreOriginalContent, resetFullPageTranslationRouteState,
+    invalidateFullPageTranslationSessionCache, restoreOriginalContent, resetFullPageTranslationRouteState, createPageTranslationDisplayModeSync,
     type PageTranslationInvocation,
 } from '@/src/features/full-page-translation/public';
 import {cancelAllTranslations} from '@/src/services/translation/client';
@@ -214,13 +214,13 @@ async function startMailFrameApp(ctx: ContentScriptContext, kind: MailFrameKind)
     }, {signal: lifetime.signal});
     const removeMessageListener = addRuntimeMessageListener(browser.runtime, listener);
     applyCoreTranslationPreferences(config);
-    const unsubscribe = subscribeConfig(() => {
+    const unsubscribe = subscribeConfig(createPageTranslationDisplayModeSync(config, () => {
         applyCoreTranslationPreferences(config);
         siteAdaptation.update(config.siteAdaptation, new URL(siteHref()));
         syncBilingualSentenceHighlight(document, enabled() && authorized && config.bilingualSentenceHighlightEnabled === true, config.bilingualSentenceHighlightStyle, config.bilingualSentenceHighlightAppearance);
         if (!enabled()) controller.suspend();
         else void controller.refresh();
-    });
+    }));
     cleanup = () => {
         if (lifetime.signal.aborted) return;
         disposed = true; lifetime.abort(); controller.dispose(); unsubscribe();

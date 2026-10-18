@@ -128,7 +128,10 @@ const artifactBytes = Buffer.byteLength(source);
 // 构建日志、前后产物与散列见工作区 research/deeplx-direct-968-20261014/userscript-size/。
 // 阅读语言预检：同依赖独立 main 0fef0669 为 2,092,304 字节，候选为 2,099,247，增加 6,943（0.332%）。
 // 原预算余 2,796，按既有 1 KB 步长最小增加 5 KB；保留协议、资源和 VM 运行断言，余量 853 字节。
-const MAX_USERSCRIPT_BYTES = 2_100_100;
+// 即时显示模式切换：同依赖独立 main 391499398 为 2,099,247，候选为 2,101,020，增加 1,773（0.0845%）。
+// 利用原余量 853 后按既有 1 KB 步长最小增加 1 KB，余 80；全部协议、资源及 VM 校验保留。
+// 构建环境与产物散列见 docs/reports/popup-display-mode-20261018/userscript-size.json。
+const MAX_USERSCRIPT_BYTES = 2_101_100;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';
 const preludeEndMarker = '/* FluentRead userscript compatibility prelude:end */';
 const preludeStart = source.indexOf(preludeStartMarker);
