@@ -1,0 +1,180 @@
+{
+  "sourceCommit": "1bae0a2a5d564d232c8cb694cfbcfa93c042f922",
+  "versionInheritedFromMain": "0.0.39",
+  "productionManifestSHA256": "d84f2ae185318d9f0add60b335e45056b476d2cce62f2dedc39a15fc9bd7ce1b",
+  "ok": true,
+  "scope": "production PopupLanguageSelect focused tests, not full regression",
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "windowState": "normal",
+    "displayTarget": "secondary",
+    "browserFrontmost": false
+  },
+  "focusSamplingOnly": true,
+  "cases": [
+    {
+      "label": "touch-320-source",
+      "ok": true,
+      "issues": [],
+      "originalPNGCount": 3
+    },
+    {
+      "label": "touch-320-target",
+      "ok": true,
+      "issues": [],
+      "originalPNGCount": 3
+    },
+    {
+      "label": "touch-390-source",
+      "ok": true,
+      "issues": [],
+      "originalPNGCount": 3
+    },
+    {
+      "label": "touch-390-target",
+      "ok": true,
+      "issues": [],
+      "originalPNGCount": 3
+    },
+    {
+      "label": "touch-landscape-780x220",
+      "ok": true,
+      "issues": [],
+      "originalPNGCount": 1
+    },
+    {
+      "label": "controlled-visual58-zero",
+      "ok": true,
+      "issues": [],
+      "originalPNGCount": 1
+    },
+    {
+      "label": "controlled-visual58-offset",
+      "ok": true,
+      "issues": [],
+      "originalPNGCount": 1
+    },
+    {
+      "label": "touch-dark-390",
+      "ok": true,
+      "issues": [],
+      "originalPNGCount": 1
+    },
+    {
+      "label": "desktop-390-fine-pointer",
+      "ok": true,
+      "issues": [],
+      "originalPNGCount": 2
+    }
+  ],
+  "persistenceCases": [
+    {
+      "label": "touch-320-source",
+      "actualReopened": true,
+      "readback": {
+        "on": true,
+        "from": "en",
+        "to": "zh-Hans",
+        "uiLanguage": "zh-CN",
+        "theme": "light",
+        "interfaceSkin": "default"
+      }
+    },
+    {
+      "label": "touch-320-target",
+      "actualReopened": true,
+      "readback": {
+        "on": true,
+        "from": "auto",
+        "to": "ja",
+        "uiLanguage": "zh-CN",
+        "theme": "light",
+        "interfaceSkin": "default"
+      }
+    },
+    {
+      "label": "touch-390-source",
+      "actualReopened": true,
+      "readback": {
+        "on": true,
+        "from": "en",
+        "to": "zh-Hans",
+        "uiLanguage": "zh-CN",
+        "theme": "light",
+        "interfaceSkin": "default"
+      }
+    },
+    {
+      "label": "touch-390-target",
+      "actualReopened": true,
+      "readback": {
+        "on": true,
+        "from": "auto",
+        "to": "ja",
+        "uiLanguage": "zh-CN",
+        "theme": "light",
+        "interfaceSkin": "default"
+      }
+    },
+    {
+      "label": "desktop-390-fine-pointer",
+      "actualReopened": true,
+      "readback": {
+        "on": true,
+        "from": "auto",
+        "to": "en",
+        "uiLanguage": "zh-CN",
+        "theme": "light",
+        "interfaceSkin": "default"
+      }
+    }
+  ],
+  "quickClose": {
+    "touchCases": 4,
+    "passed": true
+  },
+  "crossPageSync": "NOT_RUN_UNCHANGED_CONFIG_API",
+  "latestWriteWins": "NOT_RUN_UNCHANGED_CONFIG_API",
+  "consoleErrors": 0,
+  "cleanupErrors": [],
+  "seededConfig": "Existing runner marks uiLanguageSetupCompleted=true through persistConfig in a fresh temporary profile; this module seeds on/from/to/zh-CN/light/default through the real persistence API, restores its original six fields, and records actual values.",
+  "configRestored": true,
+  "originalPNGCount": 18,
+  "copiedOriginals": [
+    {
+      "file": "target-320.png",
+      "sourceFile": "touch-320-target-open.png",
+      "bytes": 53420,
+      "sha256": "1a3573c2834665a7543c678c9d8469832de626c0622eeb5c5fc8dc6d0f318e68"
+    },
+    {
+      "file": "landscape.png",
+      "sourceFile": "touch-landscape-780x220-short-landscape.png",
+      "bytes": 31202,
+      "sha256": "69e8d511acf2b1d5bde0a8271745d576a8e79fcc4e4a493ebd019139e3ff2981"
+    },
+    {
+      "file": "visible-58-offset.png",
+      "sourceFile": "controlled-visual58-offset-close-priority-58.png",
+      "bytes": 56426,
+      "sha256": "76488f8d97093484fc8b30ce4663d86583be990e67879de1d7a90f26fc728c09"
+    },
+    {
+      "file": "dark.png",
+      "sourceFile": "touch-dark-390-dark.png",
+      "bytes": 75900,
+      "sha256": "b570afd8e2b0b4c9dfc845a0700885ad1c741b6f11ebe330fb1344dca726a648"
+    },
+    {
+      "file": "desktop-keyboard.png",
+      "sourceFile": "desktop-390-fine-pointer-keyboard-reopened-persisted.png",
+      "bytes": 61215,
+      "sha256": "351180eed7d98764e7ecf78bb936f1ee0f394405364083d203714df417a02a2d"
+    }
+  ],
+  "controlledVisualViewportIsNativeKeyboard": false,
+  "nativeKeyboardSafariFirefoxAndroidPhysicalDeviceAcceptance": false
+}
