@@ -13,6 +13,7 @@ vi.mock('webextension-polyfill', () => ({default: {runtime: {getPlatformInfo: po
 vi.mock('../src/platform/browser/capabilities', () => ({browserCapabilities: {get browser() {return ports.browser;}}}));
 vi.mock('vue', () => ({createApp: ports.createApp}));
 vi.mock('element-plus/es/components/base/style/css', () => ({}));
+vi.mock('element-plus/es/components/tooltip/style/css', () => ({}));
 vi.mock('@element-plus/icons-vue', () => ({Coffee: {kind: 'coffee'}}));
 vi.mock('../src/services/config/store', () => ({config: ports.config, get configReady() {return ports.ready;}, getConfigHydrationStatus: () => ports.hydration}));
 vi.mock('../src/ui/i18n', () => ({createUiI18nPlugin: ports.plugin}));

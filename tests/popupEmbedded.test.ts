@@ -4,6 +4,7 @@ import {runInNewContext} from 'node:vm';
 
 const mountPorts = vi.hoisted(() => ({loaded: vi.fn(), mount: vi.fn(async (_selector: string) => {}), gate: undefined as Promise<void> | undefined, mountGate: undefined as Promise<void> | undefined}));
 vi.mock('element-plus/es/components/base/style/css', () => ({}));
+vi.mock('element-plus/es/components/tooltip/style/css', () => ({}));
 
 type Embedded = typeof import('../src/app/popup/embedded');
 function createPort() {

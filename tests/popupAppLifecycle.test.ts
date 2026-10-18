@@ -95,7 +95,7 @@ beforeEach(async()=>{
   getSourceTab.mockResolvedValue({id:7,windowId:3,url:'https://example.com/a'})
   ;(globalThis as any).__popupFixture={permissionEvents,locale,bundleRevision,permissionText,readAccess,requestAccess,config,getTab,getSourceTab,send,createTab,openOptions,runtimeSend,reloadTab,patches,tabEvents,runtimeEvents,subscribe:(fn:typeof subscribe)=>{subscribe=fn},runtime,capabilities:runtime.reactive({browser:'chrome',areaTranslation:true,imageTranslation:true})}
   // popup 测试控制组件事件与轮询，不使用文件观察或热更新。
-  server=await createServer({root:process.cwd(),configFile:false,appType:'custom',logLevel:'silent',server:{watch:null},resolve:{alias:{'@':process.cwd()}},ssr:{noExternal:['webextension-polyfill']},plugins:[{name:'popup-owned-client',enforce:'pre',resolveId(id){
+  server=await createServer({root:process.cwd(),configFile:false,appType:'custom',logLevel:'silent',server:{watch:null},resolve:{alias:{'@':process.cwd()}},ssr:{noExternal:['element-plus','webextension-polyfill']},plugins:[{name:'popup-owned-client',enforce:'pre',resolveId(id){
     if(/(?:\/|^)Popup(?:App|SiteRule)\.vue$/u.test(id)||(executeServicePicker&&/(?:\/|^)PopupServices\.vue$/u.test(id)))return resolve('src/app/popup',id.split('/').at(-1)!)+'.owned.ts'
     if(/(?:\/|^)DiagnosticNotice\.vue$/u.test(id))return resolve('src/features/self-help/ui/DiagnosticNotice.vue')+'.owned.ts'
     if(id==='webextension-polyfill')return '\0popup-browser'
@@ -108,6 +108,7 @@ beforeEach(async()=>{
     if(/\/src\/platform\/browser\/capabilities(?:\.ts)?$/u.test(id))return '\0popup-capabilities'
     if(id.endsWith('/PopupDrawer')||id.endsWith('/PopupDrawer.ts'))return '\0popup-drawer'
     if(id==='@element-plus/icons-vue')return '\0popup-icons'
+    if(id==='element-plus/es/components/tooltip/index')return '\0popup-tooltip'
     if(id.endsWith('.vue'))return '\0popup-display'
     return null
   },load(id){
@@ -124,6 +125,8 @@ beforeEach(async()=>{
     if(id==='\0popup-permissions')return 'export const readFreePoolAccess=globalThis.__popupFixture.readAccess,requestFreeProviderAccess=globalThis.__popupFixture.requestAccess;export const subscribeFreeProviderAccessChanges=fn=>{globalThis.__popupFixture.permissionEvents.add(fn);return()=>globalThis.__popupFixture.permissionEvents.delete(fn)}'
     if(id==='\0popup-capabilities')return 'export const browserCapabilities=globalThis.__popupFixture.capabilities'
     if(id==='\0popup-icons')return 'export const Setting={render:()=>null}'
+    // Tooltip 的定位和显示时序由真实浏览器验证；此处只保留链接及父组件的关闭端口。
+    if(id==='\0popup-tooltip')return 'export const ElTooltip={inheritAttrs:false,setup(_, {slots,expose}){expose({onClose(){},hide(){}});return()=>slots.default?.()}}'
     if(id==='\0popup-drawer')return "import {h,Teleport} from 'vue';export default {setup(_, {attrs,slots}){return()=>attrs.modelValue||attrs['model-value']?h(Teleport,{to:'body'},h('div',{class:'popup-drawer-modal'},h('div',{...attrs,class:['drawer-port',attrs.class]},slots.default?.()))):null}}"
     if(id==='\0popup-display')return "import {h} from 'vue';export default {setup(_, {attrs,slots}){return()=>h('div',attrs,slots.default?.())}}"
     return null

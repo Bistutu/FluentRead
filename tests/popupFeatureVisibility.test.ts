@@ -10,6 +10,7 @@ vi.mock('@/src/app/popup/mount', () => ({mountPreparedPopupApp}));
 // 本文件只验证入口唤醒与路由；DOM 启动反馈由 popupStartupFeedback.test.ts 执行真实实现。
 vi.mock('@/src/app/popup/startupFeedback', () => ({createPopupStartupFeedback: () => ({dispose() {}, fail() {}})}));
 vi.mock('element-plus/es/components/base/style/css', () => ({}));
+vi.mock('element-plus/es/components/tooltip/style/css', () => ({}));
 vi.mock('@/src/app/popup/PopupApp.vue', () => ({default: {}}));
 vi.mock('@/src/app/popup/PopupOnboarding.vue', () => ({default: {}}));
 import {mountPopupApp} from '@/src/app/popup';
