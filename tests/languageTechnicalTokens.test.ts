@@ -2,9 +2,10 @@
  * @file tests/languageTechnicalTokens.test.ts
  * 识别副本的技术标识符规则：URL、邮箱、提及、行内代码、路径、文件名、UUID、提交哈希、版本号、带版本名称、
  * 代码标识符和字母数字编号在不同位置、大小写、标点与中日韩相邻边界下被遮蔽；普通外语词、单级斜杠组合、
- * 伪哈希和被大写的句子不得被当作标识符；非 Latin 正文中 Latin 词的角色与权重。
+ * 伪哈希和被大写的句子不得被当作标识符；明确中文读音角色的 IPA 注音有界遮蔽，普通外语、无角色注音和跨行保留；非 Latin 正文中 Latin 词的角色与权重。
  */
 import {describe, expect, it} from 'vitest';
+import {shouldSkipTranslationForTarget} from '@/src/core/language/detect';
 import {
     classifyEmbeddedLatinWord,
     createLanguageDetectionCopy,
@@ -178,5 +179,96 @@ describe('非 Latin 正文中的 Latin 词角色', () => {
         expect(isMixedCaseName('PDFs')).toBe(false);
         expect(isMixedCaseName('A'.repeat(1) + 'b'.repeat(22) + 'C')).toBe(true);
         expect(isMixedCaseName('A' + 'b'.repeat(23) + 'C')).toBe(false);
+    });
+});
+
+describe('明确中文读音角色的有限 IPA 注音', () => {
+    it.each([
+        ['发音 /ˈtɛstə/，请先保存。', '发音 ，请先保存。'],
+        ['发音为 /teː/，请先保存。', '发音为 ，请先保存。'],
+        ['读音是 /t͡ʃeɪn/，请先保存。', '读音是 ，请先保存。'],
+        ['發音為 /ˌɐɹə/，請先儲存。', '發音為 ，請先儲存。'],
+        ['讀音 /ˈɐɹə/，請先儲存。', '讀音 ，請先儲存。'],
+        ['讀音是\t/ˈtɛstə/，請先儲存。', '讀音是 ，請先儲存。'],
+    ])('仅从识别副本去除注音并保留中文角色和原文：%s', (source, expected) => {
+        const before = source;
+        const copy = createLanguageDetectionCopy(source);
+        expect(masked(source)).toBe(expected);
+        expect(copy.identifiers).toBe(1);
+        expect(copy.versionedNames).toBe(0);
+        expect(source).toBe(before);
+    });
+
+    it.each([
+        'ˈkæt', 'høːs', 'ðə', 'ˈħa', 'ŋˈa', 'œˈa', 'βˈa', 'θiː', 'χˈa',
+    ])('常用 IPA 跨 Unicode 区段字母保留既有独特信号要求：%s', phonetic => {
+        const source = `发音 /${phonetic}/，请先保存。`;
+        expect(masked(source)).toBe('发音 ，请先保存。');
+        expect(createLanguageDetectionCopy(source).identifiers).toBe(1);
+    });
+
+    it('扩展字母不替代原有信号，不越过长度、空白、角色和引文边界', () => {
+        expect(masked(`读音 /${'æ'.repeat(63)}ˈ/，请保存。`)).toBe('读音 ，请保存。');
+        expect(masked(`读音 /ˈ${'æ'.repeat(63)}/，请保存。`)).toBe('读音 ，请保存。');
+        expect(masked(`读音${' '.repeat(8)}/ˈkæt/，请保存。`)).toBe('读音 ，请保存。');
+        for (const source of [
+            `读音 /${'æ'.repeat(64)}ˈ/，请保存。`,
+            `读音 /ˈ${'æ'.repeat(64)}/，请保存。`,
+            `读音${' '.repeat(9)}/ˈkæt/，请保存。`,
+            '读音\n/ˈkæt/，请保存。', '発音 /ˈkæt/ を確認してください。',
+        ]) {
+            expect(createLanguageDetectionCopy(source).text).toContain('æ');
+        }
+        for (const source of ['读音 /læge/，请保存。', '发音 /smør/，请保存。', '发音 /βa/，请保存。']) {
+            expect(createLanguageDetectionCopy(source).text).toMatch(/[æøβ]/u);
+        }
+        expect(shouldSkipTranslationForTarget('请先保存，发音 /ˈkæt/。', 'zh-Hans')).toBe(true);
+        expect(shouldSkipTranslationForTarget('請先儲存，讀音 /ˈkæt/。', 'zh-Hant')).toBe(true);
+        for (const source of [
+            '请先保存，发音 /ˈkæt/，Please restart the process.',
+            '請先儲存，讀音 /ˈkæt/，英文原文是 Permission denied。',
+            '请先保存，发音 /ˈkæt/，「The request was denied.」',
+        ]) {
+            expect(shouldSkipTranslationForTarget(source, 'zh-Hans')).toBe(false);
+            expect(shouldSkipTranslationForTarget(source, 'zh-Hant')).toBe(false);
+        }
+    });
+
+    it('注音与角色空白均有上限，连续注音不会借前一个角色跨越标点', () => {
+        const phonetic = 'ɐ'.repeat(64);
+        expect(masked(`读音${' '.repeat(8)}/${phonetic}/，请保存。`)).toBe('读音 ，请保存。');
+        for (const source of [
+            `读音 /${'ɐ'.repeat(65)}/，请保存。`,
+            `读音${' '.repeat(9)}/ɐ/，请保存。`,
+            '读音 /ɐ/；/ə/，请保存。',
+        ]) {
+            expect(createLanguageDetectionCopy(source).text).toContain('/');
+        }
+        expect(createLanguageDetectionCopy('读音 /ɐ/，发音 /ə/。').identifiers).toBe(2);
+    });
+
+    it.each([
+        '/ˈɐɹə/', '英文原文 /ˈɐɹə/', 'pronunciation /ˈɐɹə/', '発音 /ˈɐɹə/',
+        '读音\n/ˈɐɹə/', '发音：/ˈɐɹə/', '发音 /ˈɐ ɹə/',
+        '发音 /ˈɐ，ɹə/', '发音 /ˈɐ/ɹə/',
+    ])('无明确相邻角色、跨行和句子内容不整体成为注音：%s', text => {
+        const copy = createLanguageDetectionCopy(text);
+        expect(copy.text).toContain('ɹə');
+    });
+
+    it('保留普通外语、引文和角色后的其他正文，不降低混合文本保护', () => {
+        for (const text of [
+            '请先保存，发音 /please restart/。',
+            '请先保存，发音 /ˈtɛstə/，Please restart the process.',
+            '請先儲存，讀音 /ˈtɛstə/，英文原文是 Permission denied。',
+            '请先保存，发音 /ˈtɛstə/，「The request was denied.」',
+        ]) {
+            expect(shouldSkipTranslationForTarget(text, 'zh-Hans')).toBe(false);
+            expect(shouldSkipTranslationForTarget(text, 'zh-Hant')).toBe(false);
+        }
+        expect(createLanguageDetectionCopy('发音以及 /ˈɐɹə/').text).toContain('ˈɐɹə');
+        expect(createLanguageDetectionCopy('请先保存，发音 /ˈɐɹə/。').text).toContain('发音');
+        expect(shouldSkipTranslationForTarget('请先保存，发音 /ˈɐɹə/。', 'zh-Hans')).toBe(true);
+        expect(shouldSkipTranslationForTarget('請先儲存，讀音 /ˈɐɹə/。', 'zh-Hant')).toBe(true);
     });
 });
