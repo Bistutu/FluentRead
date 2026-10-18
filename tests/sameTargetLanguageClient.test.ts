@@ -4,7 +4,8 @@
  * 其他目标、显式源语言、逐次覆盖的目标语言与 skipLanguageDetection 语义保持不变；标题会话读取冻结的排除语言，
  * 页面把标题改成外语后重新识别并翻译，恢复时写回原标题；损坏整包专项经过真实 client/handler/broker，不以来源包替代空响应。
  * PR #906 前四段密集技术名称中文也须零请求，旁边外语句子和英文目标仍请求。
- * 只替换浏览器消息、provider、配置存储与页面上下文边界。
+ * 补充检测边界另以可控延迟验证显式排除列表快照、凭据校验顺序、取消和批量原索引；
+ * 只替换浏览器消息、provider、配置存储、补充检测与页面上下文边界，本地判断仍使用真实核心。
  */
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import modelPost from './fixtures/chinese-language-model-post.json';
@@ -13,6 +14,9 @@ import pr906Paragraphs from './fixtures/chinese-technical-pr-906.json';
 
 const mocks = vi.hoisted(() => ({
     sendMessage: vi.fn(),
+    preflight: vi.fn<(text: string, target: string, excluded: readonly string[], signal?: AbortSignal) => Promise<boolean>>(),
+    getPageTranslationContext: vi.fn(async () => ''),
+    getMissingCredentialMessage: vi.fn<() => string | null>(() => null),
     config: {
         glossaryEnabled: false,
         glossaryLibraries: [],
@@ -27,6 +31,7 @@ const mocks = vi.hoisted(() => ({
         service: 'mock',
         from: 'auto',
         to: 'zh-Hans',
+        excludedLanguages: [] as string[],
         useCache: false,
         enableAIContext: false,
     },
@@ -34,10 +39,11 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('webextension-polyfill', () => ({default: {runtime: {sendMessage: mocks.sendMessage}}}));
 vi.mock('@/src/services/config/store', () => ({config: mocks.config, requestConfigCountIncrement: vi.fn(async () => 0)}));
-vi.mock('@/src/services/translation/context', () => ({getPageTranslationContext: vi.fn(async () => '')}));
-vi.mock('@/src/core/config/validation', () => ({getMissingCredentialMessage: () => null}));
+vi.mock('@/src/services/translation/context', () => ({getPageTranslationContext: mocks.getPageTranslationContext}));
+vi.mock('@/src/services/translation/languagePreflight', () => ({shouldSkipTranslationWithEvidence: mocks.preflight}));
+vi.mock('@/src/core/config/validation', () => ({getMissingCredentialMessage: mocks.getMissingCredentialMessage}));
 
-import {translateText, translateTextBatch} from '@/src/services/translation/client';
+import {translateText, translateTextBatch, type TranslateOptions} from '@/src/services/translation/client';
 import {clearTranslationQueue} from '@/src/services/translation/queue';
 import {startFullPageTitleTranslation, stopFullPageTitleTranslation} from '@/src/features/full-page-translation/content/titleTranslation';
 import type {FullPageTranslationConfigSnapshot} from '@/src/features/full-page-translation/content/translationRequest';
@@ -65,12 +71,22 @@ const sameTarget = [
     ...technicalParagraphs.map(text => ['zh-Hans', text] as const),
 ] as const;
 
+function deferred<T>() {
+    let resolve!: (value: T) => void;
+    const promise = new Promise<T>(complete => { resolve = complete; });
+    return {promise, resolve};
+}
+
 beforeEach(() => {
     mocks.sendMessage.mockReset();
     mocks.sendMessage.mockImplementation(async (message: {origin: string | string[]}) =>
         Array.isArray(message.origin) ? message.origin.map(origin => `T:${origin}`) : `T:${message.origin}`);
     mocks.config.from = 'auto';
     mocks.config.to = 'zh-Hans';
+    mocks.config.excludedLanguages = [];
+    mocks.preflight.mockReset().mockResolvedValue(false);
+    mocks.getPageTranslationContext.mockClear();
+    mocks.getMissingCredentialMessage.mockReset().mockReturnValue(null);
     vi.stubGlobal('document', {title: 'Fixture'});
     vi.stubGlobal('location', {protocol: 'https:'});
 });
@@ -81,6 +97,133 @@ afterEach(() => {
 });
 
 describe('共享翻译客户端', () => {
+    it.each(['single', 'batch'] as const)('%s 本地同目标与显式排除命中都先于凭据检查，且不等待补充检测', async kind => {
+        vi.stubGlobal('location', {protocol: 'chrome-extension:'});
+        mocks.getMissingCredentialMessage.mockReturnValue('请填写 API 密钥');
+        const german = sameTarget[0][1];
+        const run = (options: TranslateOptions) => kind === 'single'
+            ? translateText(german, 'Context', options)
+            : translateTextBatch([german], 'Context', options);
+        await expect(run({targetLanguage: 'de'})).resolves.toEqual(kind === 'single' ? german : [german]);
+        await expect(run({targetLanguage: 'zh-Hans', excludedLanguages: ['de']}))
+            .resolves.toEqual(kind === 'single' ? german : [german]);
+        expect(mocks.preflight).not.toHaveBeenCalled();
+        expect(mocks.getMissingCredentialMessage).not.toHaveBeenCalled();
+        expect(mocks.sendMessage).not.toHaveBeenCalled();
+
+        await expect(run({targetLanguage: 'zh-Hans'})).rejects.toThrow('请填写 API 密钥');
+        expect(mocks.getMissingCredentialMessage).toHaveBeenCalledOnce();
+        expect(mocks.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it.each(['single', 'batch'] as const)('%s 等补充判断再检查凭据和提取上下文，全部跳过无需密钥', async kind => {
+        vi.stubGlobal('location', {protocol: 'chrome-extension:'});
+        mocks.getMissingCredentialMessage.mockReturnValue('请填写 API 密钥');
+        const decision = deferred<boolean>();
+        mocks.preflight.mockReturnValueOnce(decision.promise);
+        const origin = 'Axq jpv zrk wmt vdf qhs klp.';
+        const options: TranslateOptions = {serviceOverride: 'openai', modelOverride: 'gpt-4o', enableAIContext: true};
+        const pending = kind === 'single' ? translateText(origin, '', options) : translateTextBatch([origin], '', options);
+        expect(mocks.preflight).toHaveBeenCalledOnce();
+        expect(mocks.getMissingCredentialMessage).not.toHaveBeenCalled();
+        expect(mocks.getPageTranslationContext).not.toHaveBeenCalled();
+        expect(mocks.sendMessage).not.toHaveBeenCalled();
+        decision.resolve(true);
+        await expect(pending).resolves.toEqual(kind === 'single' ? origin : [origin]);
+        expect(mocks.getMissingCredentialMessage).not.toHaveBeenCalled();
+        expect(mocks.getPageTranslationContext).not.toHaveBeenCalled();
+        expect(mocks.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('显式排除只影响本次请求，不继承全局网页排除列表，也不发给后台', async () => {
+        const german = sameTarget[0][1];
+        const english = 'Please translate this English paragraph for the reader.';
+        mocks.config.excludedLanguages = ['en'];
+        await expect(translateText(german, '', {excludedLanguages: ['de']})).resolves.toBe(german);
+        await expect(translateText(english)).resolves.toBe(`T:${english}`);
+        await expect(translateTextBatch([german, english], '', {excludedLanguages: ['de']}))
+            .resolves.toEqual([german, `T:${english}`]);
+        expect(mocks.sendMessage).toHaveBeenCalledTimes(2);
+        expect(mocks.sendMessage.mock.calls[1]![0].origin).toEqual([english]);
+        for (const [message] of mocks.sendMessage.mock.calls) expect(message).not.toHaveProperty('excludedLanguages');
+    });
+
+    it('批量补充检测可乱序完成，原文、语言对、显式排除列表在等待前冻结，回填保持原索引', async () => {
+        const german = sameTarget[0][1];
+        const first = 'Axq jpv zrk wmt vdf qhs klp.';
+        const second = 'Bxq jpv zrk wmt vdf qhs klp.';
+        const chinese = technicalParagraphs[0]!;
+        const firstDecision = deferred<boolean>();
+        const secondDecision = deferred<boolean>();
+        mocks.preflight.mockImplementation(text => text === first ? firstDecision.promise : secondDecision.promise);
+        const origins = [german, first, chinese, second];
+        const excluded = ['de'];
+        const options: TranslateOptions = {sourceLanguage: 'ja', targetLanguage: 'zh-Hans', excludedLanguages: excluded};
+        const pending = translateTextBatch(origins, 'Context', options);
+        expect(mocks.preflight.mock.calls.map(call => call[0])).toEqual([first, second]);
+        expect(mocks.preflight.mock.calls[0]![2]).toEqual(['de']);
+        expect(Object.isFrozen(mocks.preflight.mock.calls[0]![2])).toBe(true);
+        origins.splice(0, origins.length, 'mutated input');
+        excluded[0] = 'en';
+        options.sourceLanguage = 'de';
+        options.targetLanguage = 'en';
+        secondDecision.resolve(false);
+        await Promise.resolve();
+        expect(mocks.sendMessage).not.toHaveBeenCalled();
+        firstDecision.resolve(true);
+        await expect(pending).resolves.toEqual([german, first, chinese, `T:${second}`]);
+        expect(mocks.preflight.mock.calls[0]![2]).toEqual(['de']);
+        expect(mocks.sendMessage).toHaveBeenCalledOnce();
+        expect(mocks.sendMessage.mock.calls[0]![0]).toMatchObject({origin: [second], sourceLanguage: 'ja', targetLanguage: 'zh-Hans'});
+    });
+
+    it('单条补充检测使用调用时的语言与排除列表，失败开放后仍保留显式源语言', async () => {
+        const origin = 'Axq jpv zrk wmt vdf qhs klp.';
+        const decision = deferred<boolean>();
+        mocks.preflight.mockReturnValueOnce(decision.promise);
+        const excluded = ['de'];
+        const options: TranslateOptions = {sourceLanguage: 'ja', targetLanguage: 'zh-Hans', excludedLanguages: excluded};
+        const pending = translateText(origin, 'Context', options);
+        excluded.push('en');
+        options.sourceLanguage = 'de';
+        options.targetLanguage = 'en';
+        decision.resolve(false);
+        await expect(pending).resolves.toBe(`T:${origin}`);
+        expect(mocks.preflight).toHaveBeenCalledWith(origin, 'zh-Hans', ['de'], undefined);
+        expect(mocks.sendMessage.mock.calls[0]![0]).toMatchObject({origin, sourceLanguage: 'ja', targetLanguage: 'zh-Hans'});
+    });
+
+    it.each(['single', 'batch'] as const)('%s 检测等待期间取消后，迟到的非跳过结论也不能检查凭据或发送翻译', async kind => {
+        vi.stubGlobal('location', {protocol: 'chrome-extension:'});
+        const origin = 'Axq jpv zrk wmt vdf qhs klp.';
+        const controller = new AbortController();
+        const decision = deferred<boolean>();
+        mocks.preflight.mockReturnValueOnce(decision.promise);
+        const pending = kind === 'single'
+            ? translateText(origin, '', {signal: controller.signal})
+            : translateTextBatch([origin], '', {signal: controller.signal});
+        expect(mocks.preflight).toHaveBeenCalledWith(origin, 'zh-Hans', [], controller.signal);
+        controller.abort();
+        decision.resolve(false);
+        await expect(pending).rejects.toMatchObject({name: 'AbortError'});
+        expect(mocks.getMissingCredentialMessage).not.toHaveBeenCalled();
+        expect(mocks.getPageTranslationContext).not.toHaveBeenCalled();
+        expect(mocks.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('skipLanguageDetection 绕过两层预检，单条结构化槽标记与批量原始槽继续提交', async () => {
+        const chinese = technicalParagraphs[0]!;
+        const packet = serializeTranslationSlots([chinese, chinese]);
+        mocks.preflight.mockImplementation(() => { throw new Error('should not inspect a structured packet'); });
+        await expect(translateText(packet.payload, '', {skipLanguageDetection: true, validateTranslationSlots: true,
+            excludedLanguages: ['en', 'zh-Hans']})).resolves.toBe(`T:${packet.payload}`);
+        await expect(translateTextBatch([chinese, chinese], '', {skipLanguageDetection: true,
+            excludedLanguages: ['en', 'zh-Hans']})).resolves.toEqual([`T:${chinese}`, `T:${chinese}`]);
+        expect(mocks.preflight).not.toHaveBeenCalled();
+        expect(mocks.sendMessage.mock.calls[0]![0]).toMatchObject({origin: packet.payload, validateTranslationSlots: true});
+        expect(mocks.sendMessage.mock.calls[1]![0].origin).toEqual([chinese, chinese]);
+    });
+
     it.each([undefined, false, true])('空响应在槽标志 %j 下仅为普通请求回退原文', async validateTranslationSlots => {
         const origin = 'Please translate this English paragraph for the reader.';
         mocks.sendMessage.mockResolvedValueOnce('');

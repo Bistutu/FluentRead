@@ -1,10 +1,10 @@
 /**
  * @file src/core/language/identify.ts
  *
- * 文件职责：对一段待翻译文本给出与目标语言无关的语言识别结论，是全文、悬浮、标题、划词和共享翻译客户端同目标跳过判断的唯一证据来源。
- * 主要内容：规范空白后生成技术标识符遮蔽副本并按文字切词；以非名称字母量确定主文字，把其他文字正文判为混合；按同句非 Latin 文字正文和相邻文字边界辨别短名称及连字符名称，让中日韩、Cyrillic、Arabic、Indic 和独立文字共用规则，不依赖品牌名单；同子句的中日韩明确外语标题、词句和提示标记优先于名称，冒号连接标签与正文而逗号及句末截断标记作用域；中文额外保留既有短操作句架与小写技术术语证据，保护外语句子、功能词和引述文本；把名称、缩写、格式名和带版本名称限制为不能主导结论的少量权重。中日韩分别使用假名/谚文/汉字规则并以中文专用字形排除中日、中韩误判；单一语言文字直接给出结论；Latin、Cyrillic、Arabic、Devanagari 交给统计评估，并逐句检查是否夹带可信的其他语言句子；名称句架只对词和词间间隔进行常数次扫描，结果以文本为键做有界缓存，目标语言与排除列表不进入缓存。
+ * 文件职责：对一段待翻译文本给出与目标语言无关的语言识别结论，是全文、悬浮、标题、划词和共享翻译客户端同目标跳过判断的统一纯文本证据来源。
+ * 主要内容：规范空白后生成技术标识符遮蔽副本并按文字切词；以非名称字母量确定主文字，把其他文字正文判为混合；按同句非 Latin 文字正文和相邻文字边界辨别短名称及连字符名称，让中日韩、Cyrillic、Arabic、Indic 和独立文字共用规则，不依赖品牌名单；同子句的中日韩明确外语标题、词句和提示标记优先于名称，冒号连接标签与正文而逗号及句末截断标记作用域；中文额外组合短操作或标签句架与至多两个通用技术缩写，避免缩写权重压过可信的短中文，同时保护外语句子、功能词和引述文本；把其他名称、缩写、格式名和带版本名称限制为不能主导结论的少量权重。中日韩分别使用假名/谚文/汉字规则并以中文专用字形排除中日、中韩误判；含假名时另以原文中未被其他文字打断的汉字段落检查中文语法反证，避免少量假名掩盖明确中文，也避免跨假名拼接汉字；单一语言文字直接给出结论；Latin、Cyrillic、Arabic、Devanagari 交给统计评估，并逐句检查是否夹带可信的其他语言句子；名称句架只对词和词间间隔进行常数次扫描，结果以文本为键做有界缓存，目标语言与排除列表不进入缓存。
  * 模块边界：本文件属于 core 纯算法，不比较目标语言、不读取配置或页面 lang、不修改原文与 DOM；配置语言匹配和各功能入口语义由 detect.ts 负责。
- * 判断限制：外语角色标签只在有界同子句内生效，后置标签还须直接述谓当前片段；未覆盖角色标签的文字，对普通多词 TitleCase 保守保留翻译，须有该项自身的缩写、内部大写或连字符证据才按名称计权。
+ * 判断限制：外语角色标签只在有界同子句内生效，后置标签还须直接述谓当前片段；未标注的 TitleCase 名词短语与外语标题存在语义歧义，名称判断还依赖母语句架和该项的缩写、内部大写或连字符等证据。
  */
 
 import {classifyChineseHan, hasSimplifiedChineseEvidence, hasTraditionalChineseEvidence} from './chineseText';
@@ -53,6 +53,9 @@ const FOREIGN_PROSE_MARKERS = new Set(['please', 'hello', 'welcome', 'goodbye', 
 // 短操作提示只有一个服务名称和完整中文句架；不能把任意短中文旁的英文词当作名称。
 const SHORT_UI_NAME_BEFORE = /^(?:继续使用|繼續使用|通过|通過|透过|透過)$/u;
 const SHORT_UI_NAME_AFTER = /^(?:继续操作|繼續操作)?$/u;
+// 少量通用缩写可作短中文操作的宾语或设置标签；整段须符合句架，不能只在长文中碰巧命中动作词。
+const SHORT_TECHNICAL_ACTION = /^(?:请|請)?(?:[选選][择擇]|使用|[启啟]用|[关關][闭閉]|[开開][启啟]|安[装裝]|配置|[设設](?:置|定)|[连連]接)$/u;
+const SHORT_TECHNICAL_LABEL = /^(?:[设設](?:置|定)|配置|[连連]接|[启啟]用|安[装裝]|[上下][载載])(?:成功|完成|失[败敗]|中)?$/u;
 // 只描述软件执行、数据及测试语境，不维护某篇文章里的英文术语名单。
 const CHINESE_TECHNICAL_CONTEXT = /(?:连接|連接|持槽|排队|排隊|阻塞|互锁|互鎖|挡住|擋住|重试|重試|并发|併發|同桶|峰值|元数据|元資料|只传|只傳|传递|傳遞|查询|查詢|字段|欄位|参数|參數|变量|變量|集合|状态|狀態|分支|调用|呼叫|入口|响应|回應|缓存|緩存|配置|用例|回归|回歸|所有权|所有權|计数|計數|计一次|計一次|恢复|恢復|安装|安裝|运行|運行|执行|執行|构建|構建|测试|測試|调度|調度|处理链|處理鏈|释放|釋放|占位|按实际选择|按實際選擇|字节|位元組|标准方案|標準方案|产物|產物)/u;
 const CHINESE_CODE_CONTEXT = /(?:字段|欄位|参数|參數|变量|變量|元数据|元資料|调用|呼叫|缓存|緩存|并发|併發|调度|調度|处理链|處理鏈|持槽|阻塞|互锁|互鎖|安装|安裝|回归|回歸)/u;
@@ -406,6 +409,30 @@ function findEmbeddedNames(copy: string, words: readonly ScriptWord[]): Readonly
     return names;
 }
 
+/**
+ * 可信中文短操作或标签中的通用技术缩写不按普通名称占满预算。仅处理 2–7 个汉字、至多两个
+ * 相邻缩写且没有其他文字或带版本名称的完整标签；未知名称、引文和明确外语角色均不接纳。
+ * 外语反证仍由后续 findForeignLatinWords 优先执行；本规则不改写原文，也不使用目标语言。
+ */
+function findShortChineseTechnicalLabels(copy: string, words: readonly ScriptWord[], versionedNames: number): ReadonlyMap<ScriptWord, number> {
+    const labels = new Map<ScriptWord, number>();
+    const hanCount = words.reduce((count, word) => count + (word.script === 'Han' ? word.letters : 0), 0);
+    if (versionedNames > 0 || hanCount < 2 || hanCount >= 8
+        || words.some(word => word.script !== 'Han' && word.script !== 'Latin')
+        || classifyChineseHan(copy) === undefined) return labels;
+    const latin = words.filter(word => word.script === 'Latin');
+    if (latin.length === 0 || latin.length > 2 || !latin.every(word => isTechnicalAbbreviation(word.text))) return labels;
+    const first = latin[0]!;
+    const last = latin.at(-1)!;
+    if (latin.some((word, index) => index > 0 && !/^[ \t/、+&和与與及或]+$/u.test(copy.slice(latin[index - 1]!.end, word.start)))) return labels;
+    const before = copy.slice(0, first.start).trim();
+    const after = copy.slice(last.end).trim().replace(/[。.!！?？]$/u, '').trimEnd();
+    if (!(SHORT_TECHNICAL_ACTION.test(before) && after === ''
+        || before === '' && SHORT_TECHNICAL_LABEL.test(after))) return labels;
+    for (const word of latin) labels.set(word, .5);
+    return labels;
+}
+
 function statisticalWords(words: readonly ScriptWord[], script: StatisticalScript): string[] {
     return words
         .filter(word => word.script === script)
@@ -445,6 +472,10 @@ function identifyCjk(copy: string, words: readonly ScriptWord[], versionedNames:
 
     if (counts.Kana > 0) {
         return hasSimplifiedChineseEvidence(han) || hasTraditionalChineseEvidence(han)
+            // 共享字形的中文句法也能否决纯日文结论；保留逗号等间隔以检查关联关系，
+            // 并在假名及其他文字处断开，不能把「我が想像力」拼成「我想像力」。
+            || copy.split(/[^\p{Script=Han}\p{P}\p{Z}\p{N}\s]+/u)
+                .some(passage => classifyChineseHan(passage) !== undefined)
             ? MIXED
             : identified(['ja'], 'japanese');
     }
@@ -476,6 +507,9 @@ function identifyUncached(value: string): LanguageIdentification {
     for (const [word, weight] of findChineseTechnicalTerms(detectionCopy.text, words)) {
         // 格式名仍保持零权重，已接纳的名称沿用原有预算；新规则只补足小写术语的正文误判。
         if (!embeddedNames.has(word) && classifyEmbeddedLatinWord(word.text).role === 'prose') embeddedNames.set(word, weight);
+    }
+    for (const [word, weight] of findShortChineseTechnicalLabels(detectionCopy.text, words, detectionCopy.versionedNames)) {
+        embeddedNames.set(word, weight);
     }
     const foreignWords = findForeignLatinWords(detectionCopy.text, words, embeddedNames);
 

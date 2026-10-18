@@ -2,7 +2,7 @@
  * @file src/core/language/chineseText.ts
  *
  * 文件职责：以保守字形与中文词语证据区分简体、繁体、简繁同形和未知的纯汉字正文，供统一语言识别器使用。
- * 主要内容：按原顺序构造可逐对审核的简繁冲突表与 Unicode 简繁专属字数据证据，排除简繁混排、罕见扩展字和粤语口语；导出 classifyChineseHan、hasSimplifiedChineseEvidence 与 hasTraditionalChineseEvidence，包含登入、頁面、儲存与瀏覽器等中文界面词语，并保留日文、韩文排除中文语境所需的字形规则。
+ * 主要内容：按原顺序构造可逐对审核的简繁冲突表与 Unicode 简繁专属字数据证据，排除简繁混排、罕见扩展字和粤语口语；组合中文操作词、状态词、请求句架及有界的人称情态、条件关联、时态与补语关系，补足短界面及自然中文正文的语境证据，同时保持字形和语言证据分离；导出 classifyChineseHan、hasSimplifiedChineseEvidence 与 hasTraditionalChineseEvidence，并保留日文、韩文排除中文语境所需的字形规则。
  * 模块边界：本文件属于 core 纯文本算法，只接受调用方已排除其他文字的汉字正文；不处理语言标签、不转换原文、不猜测地区或方言，不读取配置、页面、浏览器、网络或翻译服务。ChineseScript 仅作类型依赖，配置与纯标签消费者无需加载字符表和本模块。
  */
 
@@ -40,7 +40,7 @@ const scriptPairs = `
 释釋 钱錢 铁鐵 银銀 链鏈 锁鎖 错錯 镜鏡 闪閃 闭閉 问問 闻聞 阅閱 队隊 阳陽
 阴陰 阵陣 际際 陆陸 险險 随隨 隐隱 难難 雾霧 静靜 页頁 顺順 顾顧 预預 领領
 频頻 额額 颜顏 风風 飞飛 饭飯 饮飲 馆館 骑騎 骗騙 鸡雞 鸣鳴 鸭鴨 麦麥 齐齊
-齿齒 龟龜 与與 两兩 猫貓 数數
+齿齒 龟龜 与與 两兩 猫貓 数數 确確 来來
 `.trim().split(/\s+/u);
 const simplifiedScriptPattern = new RegExp(`[${scriptPairs.map((pair) => pair[0]).join('')}${simplifiedOnlyCharacters}]`, 'u');
 // 「于」自身在繁体中也有合法用途，不能当作简体证据；「於」可单向证明繁体字形。
@@ -56,8 +56,8 @@ const hanPattern = /\p{Script=Han}/u;
 // 中文专用简体字：人工短表与 Unicode 数据中“有中国来源、无日本来源”的简体字，日文和韩文正文不会使用。
 const simplifiedChineseOnlyCharacters = `这们语译设为说从对还样书门车东发见长电现间题让气实图网边变进选级应标经简汉龙刘吴赵陈张听读广欢专严丽举买亲众伤伦${simplifiedChineseEvidenceCharacters}`;
 const simplifiedChineseOnlyPattern = new RegExp(`[${simplifiedChineseOnlyCharacters}]`, 'u');
-// 「起来」等词语只作为中文语境证据；「出来る」是常见日文，不能用于排除日文。
-const simplifiedChineseEvidencePattern = new RegExp(`[${simplifiedChineseOnlyCharacters}]|[起出下]来`, 'u');
+// 「起来」等词语只作为中文语境证据；「出来る」「出来高」是常见日文，不能借「出来」确认中文。
+const simplifiedChineseEvidencePattern = new RegExp(`[${simplifiedChineseOnlyCharacters}]|[起下]来`, 'u');
 // 繁体中文常用字形，现代日文使用新字体（説、実、図、体），因此可排除日文；韩文汉字仍可能使用这些字形。
 const traditionalChineseEvidencePattern = /[這們譯與說從對樣發氣點實圖邊變條應經體廣歡專嚴舉眾寫續]/u;
 // 方言不是书写体系。含常见粤语口语标记时不能据繁体字形推断普通话。
@@ -69,12 +69,42 @@ const cantoneseMarkerPattern = /[嘅咗哋佢冇嚟喺啲嘢唔咁乜嗰咩噉]/
 // 「趨勢」与日文共用，只有简体「趋势」可作这里的中文证据；不能把任意纯 Han 或页面 lang 当作证据。
 const sharedChineseEvidencePattern = /新增|不再|允[许許]|[你您]好|[谢謝]{2}|登[录錄入]|用[户戶]|[邮郵]箱|[关關]注|趋势|[条條]款|[隐隱]私|[浏瀏][览覽]器|[页頁]面|[储儲]存/u;
 
+// 「保存」「設定」「更新」「複製」本身也可能是日文，不能直接当成中文证据。
+// 使用中文的操作词及“请 + 动作”“已/正在 + 状态”等组合；这里只确认语言，简繁仍由字形冲突表决定。
+// 不收录品牌、产品或模型名称，未知技术名称也不能凭本表获得中文归属。
+const chineseInterfaceEvidencePattern = /确定|[上下]一步|登出|安[装裝]|启用|啟用|[上下][载載]|密[码碼]|[讯訊]息|[选選][单單]|(?:已(?:经|經)?|尚未|正在)(?:完成|保存|更新|[复複][制製]|安[装裝]|[连連]接|[启啟]用|[关關][闭閉])|[请請](?:稍候|重[试試]|[选選][择擇]|使用|[开開][启啟]|[设設](?:置|定)|安[装裝]|[启啟]用|[关關][闭閉])|您的/u;
+
+// 语法标记必须与主语、谓语或另一关联词组合。变量区只接受至多 24 个连续汉字，
+// 不跨完整句子寻找关系；固定上限使长文扫描有界，单个「我」「了」「先」不能确认中文。
+const chinesePronounPredicatePattern = /(?:[我你他她您它](?:[们們])?|大家)(?:也|都|[还還]|就)?(?:可以|不能|不要|需要|希望|想要|打算|[应應][该該]|[想先再把])\p{Script=Han}{2,24}/u;
+const chineseRequestDisposalPattern = /[请請](?:把|[将將]|先|再|不要)\p{Script=Han}{2,24}/u;
+const chineseAspectPredicatePattern = /(?:已[经經]|[还還][没沒])\p{Script=Han}{2,24}/u;
+const chineseConditionalPattern = /(?:如果|要是|只要)\p{Script=Han}{1,24}(?:[，,]\p{Script=Han}{0,8})?(?:就|才|可以)\p{Script=Han}{1,24}/u;
+// 「被害」「被請求者」可属日文；被动式额外要求施事也有人称证据，并以「所」连接谓语。
+const chinesePassiveAgentPattern = /(?:[我你他她您它](?:[们們])?|大家)被(?:[我你他她您它](?:[们們])?|大家)(?:的\p{Script=Han}{1,8})?所\p{Script=Han}{1,8}/u;
+// 完成体须有人称和基本动作，不能因日文「作業完了」「使用完了」中的「了」便确认中文。
+// 「出来/出來」亦见于日文「出来高」等词，泛化补语只接纳前有谓语的「起来/起來」。
+const chineseCompletedActionPattern = /(?:[我你他她您它](?:[们們])?|大家)(?:都|也)?(?:看|吃|喝|走|睡|拿|放|收|做|交|借|忘|找|用|到|等|算|[听聽读讀买買卖賣])\p{Script=Han}{0,8}了/u;
+const chineseDirectionalComplementPattern = /\p{Script=Han}{1,12}起[来來]/u;
+
+function hasChineseGrammarEvidence(value: string): boolean {
+    return chinesePronounPredicatePattern.test(value)
+        || chineseRequestDisposalPattern.test(value)
+        || chineseAspectPredicatePattern.test(value)
+        || chineseConditionalPattern.test(value)
+        || chinesePassiveAgentPattern.test(value)
+        || chineseCompletedActionPattern.test(value)
+        || chineseDirectionalComplementPattern.test(value);
+}
+
 export function hasSimplifiedChineseEvidence(value: string): boolean {
-    return simplifiedChineseOnlyPattern.test(value);
+    return simplifiedChineseOnlyPattern.test(value)
+        || chineseInterfaceEvidencePattern.test(value) && simplifiedScriptPattern.test(value);
 }
 
 export function hasTraditionalChineseEvidence(value: string): boolean {
-    return traditionalChineseEvidencePattern.test(value);
+    return traditionalChineseEvidencePattern.test(value)
+        || chineseInterfaceEvidencePattern.test(value) && traditionalScriptPattern.test(value);
 }
 
 /**
@@ -89,9 +119,11 @@ export function classifyChineseHan(value: string): ChineseScript | 'shared' | un
     }
     const hasHans = simplifiedScriptPattern.test(value);
     const hasHant = traditionalScriptPattern.test(value);
-    if (!hasHans && !hasHant) return sharedChineseEvidencePattern.test(value) ? 'shared' : undefined;
+    const hasPhraseEvidence = sharedChineseEvidencePattern.test(value) || chineseInterfaceEvidencePattern.test(value)
+        || hasChineseGrammarEvidence(value);
+    if (!hasHans && !hasHant) return hasPhraseEvidence ? 'shared' : undefined;
     if (hasHans && hasHant) return undefined;
-    const hasChineseEvidence = sharedChineseEvidencePattern.test(value)
+    const hasChineseEvidence = hasPhraseEvidence
         || (hasHans ? simplifiedChineseEvidencePattern : traditionalChineseEvidencePattern).test(value);
     if (!hasChineseEvidence) return undefined;
     return hasHans ? 'Hans' : 'Hant';

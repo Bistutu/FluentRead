@@ -2,7 +2,7 @@
  * @file tests/sameTargetLanguageSlots.test.ts
  * 全文富文本槽与批量请求在真实语言识别下的一致性：谷歌/微软批量、免费聚合会话缓存、普通供应商文本包、本地模型逐槽、
  * AI 跨候选合并与 $$$ 公式拆分都只提交未被同一判断跳过的槽，并按原索引回填；是否配置排除语言不改变识别深度；
- * 快照切换目标或排除语言后重新判断，不复用旧会话结果；取消与失败重试同样只涉及外语槽。只替换翻译客户端与配置存储。
+ * 快照切换目标或排除语言后重新判断，不复用旧会话结果；补充证据仅检查组包前原文，取消与失败重试同样只涉及外语槽。只替换翻译客户端、异步补充证据与配置存储。
  * 批译缓存通过真实请求入口计数 slot key 序列化，覆盖不同原文、重复原文和部分已结算命中，并核对缓存身份与回填结果。
  */
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
@@ -13,6 +13,7 @@ const runtime = vi.hoisted(() => ({
     requests: [] as Array<{kind: 'text' | 'batch'; origins: string[]; options: Record<string, unknown>}>,
     fail: 0,
     pending: null as null | {resolve: () => void},
+    preflight: vi.fn<(text: string, target: string, excluded: readonly string[], signal?: AbortSignal) => Promise<boolean>>(),
     config: {
         service: 'microsoft',
         model: {microsoft: 'default', openai: 'gpt-test'} as Record<string, string>,
@@ -46,6 +47,7 @@ async function respond(kind: 'text' | 'batch', origins: string[], options: Recor
 }
 
 vi.mock('@/src/services/config/store', () => ({config: runtime.config}));
+vi.mock('@/src/services/translation/languagePreflight', () => ({shouldSkipTranslationWithEvidence: runtime.preflight}));
 vi.mock('@/src/services/translation/client', () => ({
     translateText: async (origin: string, _context: string, options: Record<string, unknown>) =>
         (await respond('text', [origin], options))[0],
@@ -56,6 +58,7 @@ vi.mock('@/src/services/translation/client', () => ({
 import {
     captureFullPageTranslationConfig,
     clearFullPageTranslationRequestCache,
+    createSnapshotTranslateOptions,
     translateTextSlots,
     type FullPageTranslationSessionCache,
 } from '@/src/features/full-page-translation/content/translationRequest';
@@ -69,6 +72,13 @@ const japanese = 'GPT-6 Sol の新しいモデルを発表しました。';
 const chinese = '云端模型清单允许清空，且不再连带拒掉无关偏好的保存 (84522b3)';
 const shortGermanLink = 'Mehr';
 const origins = [german, english, japanese, shortGermanLink, chinese, '84522b3', ''];
+const unknownEnglish = 'Astronomical instruments capture electromagnetic radiation across distant interstellar regions enabling detailed spectroscopic measurements alongside sophisticated computational simulations.';
+const otherUnknownEnglish = 'Photographic collections document extraordinary architectural landscapes throughout remarkable Mediterranean villages alongside magnificent historical monuments.';
+const deferredBoolean = () => {
+    let resolve!: (value: boolean) => void;
+    const promise = new Promise<boolean>(done => {resolve = done;});
+    return {promise, resolve};
+};
 
 function submitted(): string[] {
     return runtime.requests.flatMap(request => request.origins.flatMap(origin => origin.startsWith('___FLUENTREAD_')
@@ -81,7 +91,70 @@ beforeEach(() => {
     runtime.requests = [];
     runtime.fail = 0;
     runtime.pending = null;
+    runtime.preflight.mockReset().mockResolvedValue(false);
     Object.assign(runtime.config, {service: 'microsoft', from: 'auto', to: 'de', excludedLanguages: [], enableAIMultiSegment: false});
+});
+
+describe('原始槽的补充证据与快照', () => {
+    it('显式排除快照透传 client，全跳过无需构造结构包', async () => {
+        Object.assign(runtime.config, {service: 'openai', to: 'de', excludedLanguages: ['en']});
+        const snapshot = captureFullPageTranslationConfig();
+        const options = createSnapshotTranslateOptions(snapshot);
+        runtime.config.excludedLanguages[0] = 'fr';
+        expect(options.excludedLanguages).toEqual(['en']);
+        expect(Object.isFrozen(options.excludedLanguages)).toBe(true);
+        runtime.preflight.mockResolvedValue(true);
+        await expect(translateTextSlots([unknownEnglish], snapshot)).resolves.toEqual([unknownEnglish]);
+        expect(runtime.preflight).toHaveBeenCalledWith(unknownEnglish, 'de', ['en'], undefined);
+        expect(runtime.requests).toEqual([]);
+        runtime.preflight.mockResolvedValue(false);
+        await translateTextSlots([unknownEnglish], snapshot);
+        expect(runtime.requests[0]?.options.excludedLanguages).toEqual(['en']);
+    });
+
+    it('AI 组包前只检测原始槽，异序证据按原索引回填，等待时的输入与配置变化不污染请求', async () => {
+        Object.assign(runtime.config, {service: 'openai', from: 'ja', to: 'en', excludedLanguages: ['fr']});
+        const first = deferredBoolean(); const second = deferredBoolean();
+        runtime.preflight.mockImplementation(text => text === unknownEnglish ? first.promise
+            : text === otherUnknownEnglish ? second.promise : Promise.resolve(false));
+        const inputs = [unknownEnglish, german, otherUnknownEnglish];
+        const snapshot = captureFullPageTranslationConfig();
+        const request = translateTextSlots(inputs, snapshot);
+        inputs[0] = 'mutated';
+        Object.assign(runtime.config, {from: 'de', to: 'zh-Hans', excludedLanguages: ['de']});
+        second.resolve(false);
+        await Promise.resolve();
+        expect(runtime.requests).toEqual([]);
+        first.resolve(true);
+        await expect(request).resolves.toEqual([unknownEnglish, `T:${german}`, `T:${otherUnknownEnglish}`]);
+        expect(runtime.preflight.mock.calls.map(call => call[0])).toEqual([unknownEnglish, otherUnknownEnglish]);
+        expect(submitted()).toEqual([german, otherUnknownEnglish]);
+        expect(runtime.requests).toHaveLength(1);
+        expect(runtime.requests[0]?.options).toMatchObject({skipLanguageDetection: true,
+            validateTranslationSlots: true, sourceLanguage: 'ja', targetLanguage: 'en', excludedLanguages: ['fr']});
+    });
+
+    it.each([true, false])('等待原槽证据期间取消，迟到 skip=%s 不请求也不登记会话缓存', async skip => {
+        Object.assign(runtime.config, {service: 'openai', to: 'en'});
+        const work = deferredBoolean();
+        runtime.preflight.mockReturnValue(work.promise);
+        const controller = new AbortController();
+        const session: FullPageTranslationSessionCache = {active: true, translationSlotCache: new Map(),
+            ...createFullPageRequestSessionState()};
+        const request = translateTextSlots([unknownEnglish, otherUnknownEnglish], captureFullPageTranslationConfig(),
+            controller.signal, undefined, session);
+        const rejected = expect(request).rejects.toMatchObject({name: 'AbortError'});
+        controller.abort();
+        work.resolve(skip);
+        await rejected;
+        expect(runtime.requests).toEqual([]);
+        expect(session.translationSlotCache.size).toBe(0);
+        expect(session.translationRequestCache?.size ?? 0).toBe(0);
+        expect(session.requestControllers?.size).toBe(0);
+        expect(session.requestQueueSessions?.size).toBe(0);
+        expect(runtime.preflight.mock.calls.every(call => call[3] === controller.signal)).toBe(true);
+        clearFullPageTranslationRequestCache(session);
+    });
 });
 
 afterEach(() => {

@@ -1011,9 +1011,11 @@ describe('translation API request lifecycle performance', () => {
 
     await expect(batch).resolves.toEqual(['译:Original first', '译:Original second']);
     await expect(single).resolves.toBe('译:Original single');
-    expect(mocks.sendMessage.mock.calls[0][0]).toMatchObject({origin: ['Original first', 'Original second'], documentBatch: true, aiMultiSegment: true, enableAIContext: true});
-    expect(mocks.sendMessage.mock.calls[1][0]).toMatchObject({enableAIContext: true});
-    expect(mocks.sendMessage.mock.calls[1][0]).not.toHaveProperty('documentBatch');
+    const batchMessage = mocks.sendMessage.mock.calls.find(([message]) => Array.isArray(message.origin))?.[0];
+    const singleMessage = mocks.sendMessage.mock.calls.find(([message]) => message.origin === 'Original single')?.[0];
+    expect(batchMessage).toMatchObject({origin: ['Original first', 'Original second'], documentBatch: true, aiMultiSegment: true, enableAIContext: true});
+    expect(singleMessage).toMatchObject({enableAIContext: true});
+    expect(singleMessage).not.toHaveProperty('documentBatch');
     expect(origins).toEqual(['Original first', 'Original second', 'Added later']);
   });
 

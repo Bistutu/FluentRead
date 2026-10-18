@@ -28,6 +28,10 @@ Links retained in bilingual translations, such as user mentions (`@username`) an
 
 The default translates as you read. If you need the whole page at once, change the translation range in settings. After restoring, you can translate again with another language or service.
 
+Language checks apply to each paragraph for both hover and page translation. Short Chinese controls, natural Traditional Chinese sentences and clear Chinese instructions containing technical abbreviations can remain unchanged when they match the target or an excluded language. Simplified and Traditional Chinese still convert when their characters differ; shared Chinese text does not need another translation. A webpage's language label alone does not determine a paragraph's language.
+
+For eligible long passages that remain uncertain, a browser language check can provide supporting evidence when available. Conflicting evidence or a short timeout leaves the passage eligible for translation. Quoted foreign passages, uncertain mixed text and ambiguous Han-only text remain conservative cases.
+
 Paragraphs already in the target language keep their original text. A clearly Chinese paragraph can include browser names, build terms, parameters, units or repository links without triggering another translation. Foreign sentences, words explicitly marked for translation and uncertain mixed content still remain eligible, as does conversion between Simplified and Traditional Chinese.
 
 | What you want | What to use |
