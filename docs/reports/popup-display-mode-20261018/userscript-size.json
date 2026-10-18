@@ -1,0 +1,31 @@
+{
+  "measuredAt": "2026-10-18",
+  "buildCommand": "pnpm build:userscript",
+  "verifyCommand": "node scripts/verify-userscript-build.mjs",
+  "nodeVersion": "20.11.1",
+  "pnpmVersion": "9.12.1",
+  "lockfileSha256": "f05a7705309a18c1da81c8a155aee748bbfe8974f8dd2f2d3a7de66adbdca206",
+  "sameInstalledDependencies": true,
+  "baseline": {
+    "commit": "391499398202eb6e5dd25cd9eacafa979c2af6fb",
+    "isolatedDetachedWorktree": true,
+    "bytes": 2099247,
+    "sha256": "7671dac221dac7f9ee017d90cd8558fb134985226e06570cfbc18b65d680c5ac",
+    "buildPassed": true,
+    "verificationPassed": true
+  },
+  "candidate": {
+    "sourceCommit": "516b64276eb10afc2fe4e1dbcaae00d900067348",
+    "bytes": 2101020,
+    "sha256": "dcac44e260229a223f199050ab34325f2de5478a439aa978bfdad1431fcda675",
+    "buildPassed": true,
+    "verificationPassed": true
+  },
+  "deltaBytes": 1773,
+  "previousBudgetBytes": 2100100,
+  "budgetStepBytes": 1000,
+  "budgetIncreaseBytes": 1000,
+  "finalBudgetBytes": 2101100,
+  "remainingBytes": 80,
+  "allProtocolResourceAndVmChecksRetained": true
+}
