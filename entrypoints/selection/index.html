@@ -1,0 +1,18 @@
+<!doctype html>
+<!--
+  @file entrypoints/selection/index.html
+  文件职责：承载原生 PDF 右键划词结果窗口的最小扩展页面。
+  主要内容：声明中文页面、独立挂载点和静态模块入口，由 WXT 0.20 的普通 HTML 页面机制生成 selection.html。
+  模块边界：不内联脚本、不包含原文或令牌，选区领取、来源范围和现有翻译卡片的生命周期由 app 页面管理。
+-->
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>流畅阅读 · 划词翻译</title>
+  </head>
+  <body>
+    <main id="app"></main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

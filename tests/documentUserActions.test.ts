@@ -9,6 +9,8 @@ import {TranslationRequestError, serializeTranslationError} from '@/src/services
 import DocumentApp from '@/src/app/document-translation/DocumentApp.vue';
 import {documentRetryBackoff} from '@/src/app/document-translation/runtime';
 import DocumentSegmentEditor from '@/src/app/document-translation/DocumentSegmentEditor.vue';
+const defaultDocumentRetryWaitMs = documentRetryBackoff.maxWaitMs;
+const defaultDocumentRetryDurationMs = documentRetryBackoff.maxDurationMs;
 
 // Only external ports are controlled. Both original client SFC templates, the app adapter,
 // parsing, segment translator, text export and (unless explicitly delayed) ZIP writer run.
@@ -34,7 +36,7 @@ vi.mock('@/src/services/config/store', async () => {
         requestConfigPatch: (patch: unknown, send: (message: unknown) => Promise<unknown>) => send({patch}),
     };
 });
-vi.mock('@/src/services/translation/client', () => ({translateText: ports.single, translateTextBatch: ports.batch}));
+vi.mock('@/src/services/translation/client', async original => ({...await original<typeof import('@/src/services/translation/client')>(), translateText: ports.single, translateTextBatch: ports.batch}));
 vi.mock('@/src/features/document-translation/services/binary', async () => {
     const actual = await vi.importActual<typeof import('@/src/features/document-translation/services/binary')>('@/src/features/document-translation/services/binary');
     ports.download.mockImplementation(actual.createDocumentDownload);
@@ -930,6 +932,69 @@ describe('document user actions: confirmation and task consumers', () => {
         await fire(translateButton(), 'click');
         await vi.waitFor(() => expect(textOf(taskbar())).toContain('第 1 段文档翻译失败：service unavailable'));
         expect(waits.slice(1)).toEqual([2000, 4000]); expect(textOf(taskbar())).toContain('翻译中断'); expect(textOf(taskbar())).not.toContain('将自动重试');
+    });
+
+    it('honors a 90-second rate-limit hint and completes the actual batch automatically without another click', async () => {
+        const pendingWait = deferred<void>(undefined), waits: number[] = [];
+        Object.assign(documentRetryBackoff, {maxWaitMs: defaultDocumentRetryWaitMs, sleep: (milliseconds: number) => {
+            waits.push(milliseconds); return pendingWait.promise;
+        }});
+        await importFiles(file('long-rate-limit.txt', 'First batched passage.\n\nSecond batched passage.'));
+        ports.batch.mockRejectedValueOnce(new TranslationRequestError(serializeTranslationError({
+            message: '429 rate limited, retry later', kind: 'rate-limit', retryable: true, statusCode: 429, retryAfterMs: 90_000,
+        })));
+        await fire(translateButton(), 'click');
+        await vi.waitFor(() => expect(waits).toEqual([90_000]));
+        expect(textOf(taskbar())).toContain('document.translationProgress.waitingRetry');
+        expect(textOf(taskbar())).toContain('将自动重试');
+        expect(textOf(taskbar())).toContain('90s');
+        expect(button('暂停翻译', taskbar()).props.disabled).not.toBe(true);
+        expect(ports.batch).toHaveBeenCalledOnce();
+        pendingWait.resolve();
+        await vi.waitFor(() => expect(textOf(taskbar())).toContain('翻译完成'));
+        expect(ports.batch).toHaveBeenCalledTimes(2);
+        expect(ports.batch.mock.calls[1][0]).toEqual(['First batched passage.', 'Second batched passage.']);
+        expect(textarea(0).value).toBe('T:First batched passage.');
+        expect(textarea(1).value).toBe('T:Second batched passage.');
+        expect(textOf(taskbar())).not.toContain('将自动重试');
+    });
+
+    it('pauses a long rate-limit wait immediately and never sends a late retry even when the test sleep ignores abort', async () => {
+        const pendingWait = deferred<void>(undefined); let waitingSignal: AbortSignal | undefined;
+        Object.assign(documentRetryBackoff, {maxWaitMs: defaultDocumentRetryWaitMs, sleep: (_milliseconds: number, signal?: AbortSignal) => {
+            waitingSignal = signal; return pendingWait.promise;
+        }});
+        await importFiles(file('pause-long-wait.txt'));
+        ports.batch.mockRejectedValueOnce(new TranslationRequestError(serializeTranslationError({
+            message: '429 wait for quota', kind: 'rate-limit', retryable: true, statusCode: 429, retryAfterMs: 90_000,
+        })));
+        await fire(translateButton(), 'click');
+        await vi.waitFor(() => expect(textOf(taskbar())).toContain('90s'));
+        await fire(button('暂停翻译', taskbar()), 'click');
+        expect(waitingSignal?.aborted).toBe(true);
+        expect(textOf(taskbar())).toContain('已暂停');
+        expect(textOf(taskbar())).not.toContain('将自动重试');
+        expect(textOf(translateButton())).toBe('继续翻译');
+        pendingWait.resolve(); await flush();
+        expect(ports.batch).toHaveBeenCalledOnce();
+        expect(textarea(0).value).toBe('');
+        expect(textOf(taskbar())).toContain('已暂停');
+    });
+
+    it('uses the ten-minute document waiting budget without spending ten real minutes', async () => {
+        expect(defaultDocumentRetryWaitMs).toBe(600_000);
+        expect(defaultDocumentRetryDurationMs).toBe(600_000);
+        const waits: number[] = [];
+        Object.assign(documentRetryBackoff, {maxWaitMs: defaultDocumentRetryWaitMs, sleep: async (milliseconds: number) => {waits.push(milliseconds);}});
+        await importFiles(file('ten-minute-budget.txt'));
+        ports.batch.mockRejectedValue(new Error('503 service temporarily unavailable'));
+        await fire(translateButton(), 'click');
+        await vi.waitFor(() => expect(textOf(taskbar())).toContain('翻译中断'));
+        expect(waits.reduce((total, milliseconds) => total + milliseconds, 0)).toBe(600_000);
+        expect(Math.max(...waits)).toBeLessThanOrEqual(60_000);
+        expect(waits.some(milliseconds => milliseconds === 60_000)).toBe(true);
+        expect(ports.batch).toHaveBeenCalledTimes(waits.length + 1);
+        expect(textOf(taskbar())).not.toContain('将自动重试');
     });
 
     it('turns a typed disabled-service result into pause before the configuration broadcast arrives', async () => {

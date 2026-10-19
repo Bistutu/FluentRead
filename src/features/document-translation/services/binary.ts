@@ -1,6 +1,6 @@
 /**
  * @file src/features/document-translation/services/binary.ts
- * 文件职责：处理 PDF、EPUB 与 DOCX 二进制文档的受限解析和导出，把压缩包或页面文本转换为统一 ParsedDocument，并生成可下载的双语产物。
+ * 文件职责：处理 PDF、EPUB 与 DOCX 二进制文档的受限解析和导出，把压缩包或页面文本转换为统一 ParsedDocument，并生成可下载的双语产物；扫描页以图像并集和原生正文证据判定，兼容独立页码及拼接扫描图。
  * 主要内容：相同译文回退原文；Word 段落记下表格单元格供阅读视图排版；按实际字节限制导入、按需加载二进制依赖，包含归档安全上限、可取消 PDF 提取与译文回填；原生旋转内容必要时沿用 sourceRotation 展示坐标，PDF 字形边界回退无效的零/负 ascent 并包含有限负 descent，字号与基线保持不变；零宽文字项使用受限同行位置估算，不把组合标记当作额外字形；默认逐页原版左右对照，保留旋转裁剪并直接嵌入 JPEG，支持文字几何的光栅端口添加可搜索复制的 Unicode 层和溢出段落的可见全文续页，批注仍保留完整译文；ePub/DOCX 导出让出主线程并使用可取消归档流，ePub 保持首项 mimetype 无压缩及 XHTML 章节格式；未改资源保留原压缩方式，文本导出直接使用 core 的回退规则避免重复规范化。
  * 模块边界：此服务可以依赖 JSZip、pdf-lib 和二进制 I/O，但不负责调用翻译服务或渲染设置页；文本格式规则归 core/document，浏览器 Canvas 光栅实现由 ui/pdfPreview 通过接口注入。
  */
@@ -9,7 +9,7 @@ import type JSZip from 'jszip';
 import type {PDFDict, PDFEmbeddedPage} from 'pdf-lib';
 import pdfWorkerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import {generateDocumentArchive, preserveStoredDocumentEntries} from './archive';
-import {analyzePdfPageLayout, extractPdfGraphicsShapes, type PdfLayoutAtom, type PdfLayoutBlock} from '../core/pdfLayoutAnalysis';
+import {analyzePdfPageLayout, extractPdfGraphicsShapes, type PdfGraphicsShape, type PdfLayoutAtom, type PdfLayoutBlock} from '../core/pdfLayoutAnalysis';
 import {buildPdfReadingPlan, type PdfReadingPlan, type PdfReadingPresentation} from '../core/pdfReadingPlan';
 import {paginatePdfReadingPlan, type PdfReadingOutputPage, type PdfTextMeasure} from '../core/pdfTextLayout';
 
@@ -665,6 +665,47 @@ export function pdfTextBlocks(lines: PdfTextLine[], pageWidth: number): Array<Om
         .sort((left, right) => left.y - right.y || left.x - right.x);
 }
 
+/** 没有原生正文、只有独立页码的图片页也需要 OCR；重叠图像只能计一次覆盖面积。 */
+function isScannedPdfPage(atoms: readonly PdfLayoutAtom[], blocks: readonly PdfLayoutBlock[], graphics: readonly PdfGraphicsShape[], width: number, height: number): boolean {
+    const pageNumber = /^(?:\d{1,4}|(?:page\s+)?\d{1,4}\s*(?:\/|of)\s*\d{1,4})$/iu;
+    if (atoms.length && (!blocks.length || blocks.some(block => block.kind !== 'footer'
+        || block.y <= height * .92 || !pageNumber.test(block.source.trim())))) return false;
+
+    const target = width * height * .5;
+    const images = graphics.filter(shape => shape.kind === 'image').map(shape => ({
+        left: Math.max(0, shape.x), right: Math.min(width, shape.x + shape.width),
+        top: Math.max(0, shape.y), bottom: Math.min(height, shape.y + shape.height),
+    })).filter(image => image.right > image.left && image.bottom > image.top);
+    if (images.some(image => (image.right - image.left) * (image.bottom - image.top) >= target)) return true;
+    if (images.length < 2) return false;
+
+    // 扫描线配合区间覆盖计数，精确求图像并集；分块扫描件不要求单张图达到半页，重叠水印不会重复累加。
+    const ys = [...new Set(images.flatMap(image => [image.top, image.bottom]))].sort((a, b) => a - b);
+    const positions = new Map(ys.map((y, index) => [y, index]));
+    const events = images.flatMap(image => [
+        {x: image.left, from: positions.get(image.top)!, to: positions.get(image.bottom)!, delta: 1},
+        {x: image.right, from: positions.get(image.top)!, to: positions.get(image.bottom)!, delta: -1},
+    ]).sort((a, b) => a.x - b.x);
+    const counts = new Int32Array(ys.length * 4), lengths = new Float64Array(ys.length * 4);
+    const update = (node: number, left: number, right: number, from: number, to: number, delta: number): void => {
+        if (from <= left && right <= to) counts[node] += delta;
+        else {
+            const middle = (left + right) >>> 1;
+            if (from < middle) update(node * 2, left, middle, from, to, delta);
+            if (to > middle) update(node * 2 + 1, middle, right, from, to, delta);
+        }
+        lengths[node] = counts[node] > 0 ? ys[right] - ys[left] : right - left > 1 ? lengths[node * 2] + lengths[node * 2 + 1] : 0;
+    };
+    let area = 0, previous = events[0].x;
+    for (const event of events) {
+        area += (event.x - previous) * lengths[1];
+        if (area >= target) return true;
+        update(1, 0, ys.length - 1, event.from, event.to, event.delta);
+        previous = event.x;
+    }
+    return false;
+}
+
 async function parsePdf(fileName: string, bytes: Uint8Array, signal?: AbortSignal, onProgress?: ParseDocumentFileOptions['onPdfProgress']): Promise<ParsedDocument> {
     if (new TextDecoder('latin1').decode(bytes.slice(0, 5)) !== '%PDF-') {
         throw new Error('PDF 文件签名无效，文件可能已损坏或扩展名不正确');
@@ -727,8 +768,8 @@ async function parsePdf(fileName: string, bytes: Uint8Array, signal?: AbortSigna
                     preservedRegions,
                     layoutBoundaries: graphics.filter(shape => shape.kind === 'path' &&
                         (shape.width >= 12 && shape.height <= 5 || shape.height >= 12 && shape.width <= 5)),
-                    // 没有任何文字、且有一张图像盖住半页以上：这是扫描页。空白页和只有矢量图形的页不算。
-                    ...(atoms.length === 0 && graphics.some(shape => shape.kind === 'image' && shape.width * shape.height >= viewport.width * viewport.height * 0.5) ? {scanned: true} : {}),
+                    // 至少半页的图像并集，且没有原生正文（容许独立页码）；空白页、页脚小图和正文配图不算扫描页。
+                    ...(isScannedPdfPage(atoms, layoutBlocks, graphics, viewport.width, viewport.height) ? {scanned: true} : {}),
                 });
                 onProgress?.({completed: pageNumber, total: pdf.numPages});
             } finally {

@@ -1,11 +1,11 @@
 /**
  * @file tests/languageChineseInterface.test.ts
  * 中文短界面、自然语法、自然繁体和少量技术缩写的同目标预检；使用真实统一识别器，验证请求句架、
- * 人称情态、条件关系、完成体及操作标签可组合，同时不放宽外语角色、引文、共享日文汉字和简繁冲突。
+ * 人称情态、条件关系、完成体、示例引导句及操作标签可组合，同时不放宽外语角色、引文、共享日文汉字和简繁冲突。
  */
 import {describe, expect, it} from 'vitest';
 import {shouldSkipTranslationForTarget} from '@/src/core/language/detect';
-import {hasSimplifiedChineseEvidence, hasTraditionalChineseEvidence} from '@/src/core/language/chineseText';
+import {classifyChineseHan, hasSimplifiedChineseEvidence, hasTraditionalChineseEvidence} from '@/src/core/language/chineseText';
 import {identifyTextLanguage} from '@/src/core/language/identify';
 
 describe('中文操作和状态语境', () => {
@@ -210,5 +210,52 @@ describe('明确中文分句不能被少量假名覆盖', () => {
         expect(identifyTextLanguage(text)).toMatchObject({status: 'identified', languages: ['ja']});
         expect(shouldSkipTranslationForTarget(text, 'ja')).toBe(true);
         expect(shouldSkipTranslationForTarget(text, 'zh-Hant')).toBe(false);
+    });
+});
+
+describe('中文示例引导句的完整量词关系', () => {
+    it.each([
+        ['下面是一个普通的例子。', 'zh-Hans'],
+        ['以下是一个最小例子：', 'zh-Hans'],
+        ['下面是一個普通的例子。', 'zh-Hant'],
+        ['以下是一個最小例子：', 'zh-Hant'],
+    ])('完整句架确认中文而字形仍独立决定目标：%s', (text, target) => {
+        expect(identifyTextLanguage(text)).toMatchObject({status: 'identified', languages: [target]});
+        expect(shouldSkipTranslationForTarget(text, target)).toBe(true);
+        expect(shouldSkipTranslationForTarget(text, target === 'zh-Hans' ? 'zh-Hant' : 'zh-Hans')).toBe(false);
+        expect(shouldSkipTranslationForTarget(text, 'ja')).toBe(false);
+    });
+
+    it('完整宾语的上限为二十四字，超过上限不截取前缀制造语法证据', () => {
+        expect(classifyChineseHan(`下面是一个${'甲'.repeat(24)}。`)).toBe('Hans');
+        expect(classifyChineseHan(`以下是一個${'甲'.repeat(24)}。`)).toBe('Hant');
+        expect(classifyChineseHan(`下面是一个${'甲'.repeat(25)}。`)).toBeUndefined();
+        expect(classifyChineseHan(`以下是一個${'甲'.repeat(25)}。`)).toBeUndefined();
+    });
+
+    it.each([
+        '下面', '以下', '基本', '一個例子', '一个例子', '下面是一个', '以下是一個',
+        '下面是二个例子。', '以下是日本国立大学。',
+        '下面是\n一个例子。', '以下是一，個例子。', '下面是一个。',
+    ])('残缺、共享词和跨边界片段不提供中文语法证据：%s', text => {
+        expect(classifyChineseHan(text)).toBeUndefined();
+    });
+
+    it.each(['以下は一例です。', '以下の例を参照してください。'])('日文仍归日文：%s', text => {
+        expect(shouldSkipTranslationForTarget(text, 'ja')).toBe(true);
+        expect(shouldSkipTranslationForTarget(text, 'zh-Hans')).toBe(false);
+        expect(shouldSkipTranslationForTarget(text, 'zh-Hant')).toBe(false);
+    });
+
+    it.each([
+        '下面是一个普通例子：Please restart the process.',
+        '以下是一個普通例子。The request was denied.',
+        '下面是一个普通例子，英文原文是 Permission denied。',
+        '以下是一個普通例子：「Please try again.」',
+        '下面是一个普通例子。こんにちは。',
+    ])('完整中文句架不能吞掉外语句子或明确引文：%s', text => {
+        for (const target of ['zh-Hans', 'zh-Hant', 'en', 'ja']) {
+            expect(shouldSkipTranslationForTarget(text, target)).toBe(false);
+        }
     });
 });

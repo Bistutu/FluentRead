@@ -1,7 +1,7 @@
 /**
  * @file src/features/document-translation/services/translation.ts
  * 文件职责：编排文档片段的批量翻译流程，在固定语言和服务快照下按数量及字符预算拆批，并向调用方持续报告确定性进度。
- * 主要内容：定义进度与逐段提交契约，在本次文档调用中默认启用机器批量或 AI 多段槽请求而不改变全局设置，按阅读位置标识变化重排待译片段、其余批次复用游标并可收紧单批大小，同时保持数批请求在途、先返回的先提交，以章节内一次去重和游标领取避免重复原文挤占批量预算或反复扫描长文队列，按原生章节和位置构建有界篇章参考并区分人工确认译文，提交前移除服务凭空加入的表情符号，请求失败时可按退避间隔自动重试并报告真实等待数量，被服务原样返回的专名与短词保留原文而不中断全文，复用已有译文继续未完成片段，提供文件解析所有权，固定文件级上下文，透传全局暂停状态、校验批次结果，服务失败后停止派发但收齐在途成功译文，显式取消后立即退出并禁止迟到提交。
+ * 主要内容：定义进度与逐段提交契约，在本次文档调用中默认启用机器批量或 AI 多段槽请求而不改变全局设置，固定缓存策略并透传至批量和降级请求；在单批请求与重试总预算内尊重 Retry-After，暂时限频时由本任务冻结服务共享冷却派发闸门，自身退避与同伴尚余冷却都计入等待预算；禁用客户端叠加重试，冻结服务单次超时，绝对期限中止请求与等待并拒收迟到结果。按阅读位置变化重排待译片段并复用批次游标，以章节内去重避免重复原文挤占批量预算；构建有界篇章参考并区分人工确认译文，移除服务凭空加入的表情符号，报告真实等待数量。原样返回的专名与短词保留原文，复用已有译文续译，固定文件级上下文；不可恢复故障停止派发但收齐在途成功，显式取消立即退出并禁止迟到提交。
  * 模块边界：该层不解析文件、不持久化配置，也不直接绑定具体 provider；上层负责冻结用户设置并注入 gateway，文档结构由 core 提供，网络和缓存语义由应用翻译客户端承担。
  */
 import {serializeTranslationError, TranslationRequestError} from '@/src/services/translation/errors';
@@ -26,7 +26,10 @@ export interface DocumentTranslationOptions {
     modelOverride?: string;
     sourceLanguage?: string;
     targetLanguage?: string;
+    /** 本次任务的缓存策略；不传时沿用翻译客户端偏好，显式重译可关闭且不改写全局配置。 */
+    useCache?: boolean;
     signal?: AbortSignal;
+    /** 未启用文档退避时透传客户端；启用后由文档统一重试，客户端固定为 0。 */
     maxRetries?: number;
     /** 同一文档和语言对下已完成或人工校订的译文；切换服务或模型时仍复用，仅空白位置继续翻译。 */
     initialTranslations?: readonly string[];
@@ -43,10 +46,12 @@ export interface DocumentTranslationOptions {
     /** 支持批量的服务同时在途的批次数，默认 3；设为 1 即逐批顺序请求。 */
     batchConcurrency?: number;
     /**
-     * 请求失败时按 2、4、8…秒（单次不超过 30 秒）退避重试，累计等待不超过 maxWaitMs；
+     * 请求失败时按 2、4、8…秒（指数上限 60 秒）退避，服务指定的更长冷却优先；
+     * 自身退避及共享冷却均计入 maxWaitMs，共享等待按尚余计时窗口保守计费。
+     * maxDurationMs 同时限制单批首次请求、重试请求及退避的总耗时，至少保留服务原有的单次请求预算。
      * 不提供时保持“失败即停止”。sleep 仅供测试替换计时。
      */
-    retryBackoff?: {maxWaitMs: number; sleep?: (milliseconds: number, signal?: AbortSignal) => Promise<void>};
+    retryBackoff?: {maxWaitMs: number; maxDurationMs?: number; sleep?: (milliseconds: number, signal?: AbortSignal) => Promise<void>};
     /** 每次退避开始前通知页面：第几次重试、要等多久、上一次失败的原因。 */
     onRetry?: (retry: {attempt: number; delayMs: number; reason: string}) => void;
     /** 正在退避等待的请求数量；并发成功不能把其他请求的等待状态提前清除。 */
@@ -71,7 +76,11 @@ export interface DocumentTranslationRequestOptions {
     modelOverride?: string;
     sourceLanguage?: string;
     targetLanguage?: string;
+    /** 透传本次文档任务的缓存策略，包括批量协议降级后的逐段请求。 */
+    useCache?: boolean;
     maxRetries?: number;
+    /** 当前批次绝对预算的剩余时间，交给客户端限制后台传输。 */
+    timeout?: number;
     /** 显式使用翻译客户端已有的 AI 多段槽协议；只有具备该能力的服务批次携带此标记。 */
     aiMultiSegment?: boolean;
     /** 当前文档开启多段时才发送；后台校验入口，免费池按真实线路能力消费槽位。 */
@@ -87,6 +96,8 @@ export interface DocumentTranslationGateway {
     waitUntilReady(): PromiseLike<unknown> | unknown;
     getDefaultService(): string;
     getDefaultModel?(service: string): string;
+    /** 与客户端一致的单次预算；任务开始时冻结，文档总预算不得截短明确的服务设置。 */
+    getRequestTimeout?(service: string, batch: boolean): number;
     supportsBatch(service: string): boolean;
     /** AI 多段能力由组合根按服务和固定模型判断，feature 不读取全局 enableAIMultiSegment。 */
     supportsAIMultiSegment?(service: string, model?: string): boolean;
@@ -208,28 +219,86 @@ function waitWithAbort<T>(work: Promise<T>, signal?: AbortSignal): Promise<T> {
     });
 }
 
+interface DocumentTranslationAttempt {
+    signal?: AbortSignal;
+    timeout?: number;
+}
+
+function retryDeadline(options: DocumentTranslationOptions, requestTimeout?: number): number | undefined {
+    const duration = options.retryBackoff?.maxDurationMs;
+    return Number.isFinite(duration) && duration! > 0 ? Date.now() + Math.max(duration!, requestTimeout ?? 0) : undefined;
+}
+
+function documentTimeout(): TranslationRequestError {
+    return new TranslationRequestError(serializeTranslationError({
+        message: '文档翻译请求及重试已超时，请重试或更换服务', kind: 'timeout', retryable: true,
+    }));
+}
+
+/** 预算包含真正的请求耗时；即使网关忽略取消，也及时结束等待并观察迟到结算。 */
+async function runAttempt<T>(work: (attempt: DocumentTranslationAttempt) => Promise<T>, signal: AbortSignal | undefined, deadlineAt: number, requestTimeout?: number): Promise<T> {
+    const remaining = deadlineAt - Date.now();
+    if (remaining <= 0) throw documentTimeout();
+    const timeout = Math.min(remaining, requestTimeout ?? remaining);
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    signal?.addEventListener('abort', abort, {once: true});
+    if (signal?.aborted) abort();
+    let timedOut = false;
+    const timer = setTimeout(() => {timedOut = true; controller.abort();}, timeout);
+    let result: T;
+    try {
+        throwIfAborted(signal);
+        result = await waitWithAbort(work({signal: controller.signal, timeout}), controller.signal);
+    } catch (error) {
+        throwIfAborted(signal);
+        throw timedOut ? documentTimeout() : error;
+    } finally {
+        clearTimeout(timer);
+        signal?.removeEventListener('abort', abort);
+    }
+    return result;
+}
+
 /**
  * 限流和网络抖动多半是暂时的：隔一会儿再试往往就能继续，不必让读者反复手动点“继续翻译”。
  * 复用翻译服务的错误分类，认证、无效模型、缺少配置、暂停与取消不重试，也不消耗等待预算；协议不兼容直接交给有界回退，等待预算用完后抛出最后一次的错误。
  */
-async function withRetryBackoff<T>(work: () => Promise<T>, options: DocumentTranslationOptions, isStopped: () => boolean,
-    retryStop: AbortSignal, onWaiting: (started: boolean) => void, attempt = 1, waited = 0): Promise<T> {
+async function withRetryBackoff<T>(work: (attempt: DocumentTranslationAttempt) => Promise<T>, options: DocumentTranslationOptions, isStopped: () => boolean,
+    retryStop: AbortSignal, onWaiting: (started: boolean) => void, cooldown: DocumentRetryCooldown, attempt = 1, waited = 0,
+    deadlineAt = retryDeadline(options), requestTimeout?: number): Promise<T> {
+    const budget = options.retryBackoff?.maxWaitMs ?? 0;
+    const cooling = cooldown.wait(budget - waited, deadlineAt);
+    if (cooling) {
+        onWaiting(true);
+        try {waited += await cooling;} finally {onWaiting(false);}
+    }
+    throwIfAborted(retryStop);
     try {
-        return await work();
+        return await (deadlineAt === undefined ? work({signal: options.signal}) : runAttempt(work, options.signal, deadlineAt, requestTimeout));
     } catch (error) {
         throwIfAborted(options.signal);
         if (isStopped()) throw error;
-        const delayMs = Math.min(30_000, 2_000 * 2 ** (attempt - 1), (options.retryBackoff?.maxWaitMs ?? 0) - waited);
+        const details = serializeTranslationError(error);
+        const retryAfterMs = typeof details.retryAfterMs === 'number' && details.retryAfterMs > 0 ? details.retryAfterMs : 0;
+        const temporaryCooldown = retryAfterMs > 0 && (details.code === 'FREE_TRANSLATION_TEMPORARILY_UNAVAILABLE'
+            || (details.kind === 'rate-limit' && details.statusCode === 429));
+        const remaining = Math.min(budget - waited, deadlineAt === undefined ? Infinity : deadlineAt - Date.now());
+        const delayMs = Math.min(Math.max(Math.min(60_000, 2_000 * 2 ** (attempt - 1)), retryAfterMs), remaining);
         if (delayMs <= 0 || untranslatedEcho(error) || invalidAIMultiSegment(error)
             || (error instanceof TranslationRequestError && error.code === 'TRANSLATION_DISABLED')
-            || !serializeTranslationError(error).retryable) throw error;
+            || retryAfterMs > remaining || (!details.retryable && !temporaryCooldown)) throw error;
         onWaiting(true);
         try {
             options.onRetry?.({attempt, delayMs, reason: getErrorMessage(error)});
             // 服务失败只取消退避等待，不取消已发出的翻译请求；后者的成功结果仍可保留。
-            await waitWithAbort(options.retryBackoff?.sleep
+            const sleeping = waitWithAbort(options.retryBackoff?.sleep
                 ? options.retryBackoff.sleep(delayMs, options.signal)
                 : abortableSleep(delayMs, retryStop), retryStop);
+            await (details.kind === 'rate-limit' || retryAfterMs > 0 ? cooldown.track(sleeping, delayMs, error) : sleeping);
+            waited += delayMs;
+            const waitingForPeers = cooldown.wait(budget - waited, deadlineAt);
+            if (waitingForPeers) waited += await waitingForPeers;
         } catch (waitingError) {
             throwIfAborted(options.signal);
             if (isStopped()) throw error;
@@ -237,8 +306,37 @@ async function withRetryBackoff<T>(work: () => Promise<T>, options: DocumentTran
         } finally {onWaiting(false);}
         throwIfAborted(options.signal);
         if (isStopped()) throw error;
-        return withRetryBackoff(work, options, isStopped, retryStop, onWaiting, attempt + 1, waited + delayMs);
+        if (deadlineAt !== undefined && Date.now() >= deadlineAt) throw documentTimeout();
+        return withRetryBackoff(work, options, isStopped, retryStop, onWaiting, cooldown, attempt + 1, waited, deadlineAt, requestTimeout);
     }
+}
+
+interface DocumentRetryCooldown {
+    wait(remaining: number, deadlineAt?: number): Promise<number> | undefined;
+    track(sleeping: Promise<void>, delayMs: number, reason: unknown): Promise<void>;
+}
+
+/** 只协调当前冻结服务的文档任务；各自计时结束先撤下自己的闸门，再等待其它请求，避免相互等待。 */
+function createDocumentRetryCooldown(signal: AbortSignal): DocumentRetryCooldown {
+    const waits = new Map<Promise<void>, {sleeping: Promise<void>; delayMs: number; startedAt: number; reason: unknown}>();
+    return {
+        wait: (remaining, deadlineAt) => !waits.size ? undefined : (async () => {
+            let waited = 0;
+            while (waits.size) {
+                const now = Date.now();
+                const current = [...waits.values()].map(entry => ({...entry, delayMs: Math.max(0, entry.delayMs - (now - entry.startedAt))}));
+                const longest = current.reduce((left, right) => left.delayMs >= right.delayMs ? left : right);
+                if (longest.delayMs > Math.min(remaining - waited, deadlineAt === undefined ? Infinity : deadlineAt - now)) throw longest.reason;
+                await waitWithAbort(Promise.all(current.map(entry => entry.sleeping)), signal);
+                waited += longest.delayMs;
+            }
+            return waited;
+        })(),
+        track: async (sleeping, delayMs, reason) => {
+            waits.set(sleeping, {sleeping, delayMs, startedAt: Date.now(), reason});
+            try {await sleeping;} finally {waits.delete(sleeping);}
+        },
+    };
 }
 
 const PICTOGRAPH = /\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*/gu;
@@ -305,8 +403,11 @@ export function createDocumentSegmentTranslator(
         // 步骤 1：一次文档任务固定语言对，不能被设置页同步更新或用户中途改选污染后续批次。
         const sourceLanguage = options.sourceLanguage;
         const targetLanguage = options.targetLanguage;
+        const cacheOptions = options.useCache === undefined ? {} : {useCache: options.useCache};
         const service = options.serviceOverride || gateway.getDefaultService();
         const model = options.modelOverride || gateway.getDefaultModel?.(service);
+        const singleRequestTimeout = gateway.getRequestTimeout?.(service, false);
+        const batchRequestTimeout = gateway.getRequestTimeout?.(service, true);
         const enableAIContext = options.enableAIContext === true;
         const blocks = Object.freeze(documentDiscourseBlocks(segments).map(block => Object.freeze(block)));
         const blockSections = new Map(blocks.map(block => [Number(block.id), block.section]));
@@ -337,6 +438,7 @@ export function createDocumentSegmentTranslator(
             ...(discourse ? {discourseContext: prepareDiscourse(segment.id, origins)!.context} : {}),
         });
         const retryStop = new AbortController();
+        const cooldown = createDocumentRetryCooldown(retryStop.signal);
         let waitingRetries = 0;
         let callbacksActive = true;
         const reportRetryWaiting = (started: boolean) => {
@@ -421,6 +523,8 @@ export function createDocumentSegmentTranslator(
                 return taken;
             };
             const batchTranslation = options.batchTranslation !== false;
+            // 同一请求只由一层负责重试，避免客户端重试三次后文档再重复整轮等待。
+            const maxRetries = options.retryBackoff ? 0 : options.maxRetries;
             let stopped = false;
             let failure: Error | undefined;
             const stopAfterFailure = (error: unknown, id: number) => {
@@ -438,6 +542,15 @@ export function createDocumentSegmentTranslator(
                 throwIfAborted(options.signal);
                 if (failure) throw failure;
             };
+            const translateSegment = (segment: DocumentSegment, deadlineAt = retryDeadline(options, singleRequestTimeout)) => withRetryBackoff(async attempt => {
+                const received = await gateway.translateText(segment.source, context, {
+                    ...glossaryOptions, ...cacheOptions, ...discourseOptions(segment, [segment.source]),
+                    enableNativeBatch: false, ...attempt, pageContext,
+                    serviceOverride: service, modelOverride: model, sourceLanguage, targetLanguage, maxRetries,
+                });
+                if (typeof received !== 'string' || !received.trim()) throw new Error('翻译服务返回空译文，请重试');
+                return received;
+            }, options, () => stopped, retryStop.signal, reportRetryWaiting, cooldown, 1, 0, deadlineAt, singleRequestTimeout);
             // AI 篇章模式保留逐段按序提交，后文才能使用当前任务已完成的前文译法。
             const aiMultiSegment = batchTranslation && !enableAIContext && Boolean(gateway.supportsAIMultiSegment?.(service, model));
             if (batchTranslation && (gateway.supportsBatch(service) || aiMultiSegment)) {
@@ -451,19 +564,22 @@ export function createDocumentSegmentTranslator(
                     throwIfAborted(options.signal);
                     const single = singleFallback;
                     const batch = nextBatch(single ? 1 : itemLimit, characterLimit);
+                    const requestTimeout = single ? singleRequestTimeout : batchRequestTimeout;
+                    const deadlineAt = retryDeadline(options, requestTimeout);
                     try {
-                        const result = await withRetryBackoff(async () => {
+                        const result = await withRetryBackoff(async attempt => {
                         const requestOptions: DocumentTranslationRequestOptions = {
                             ...glossaryOptions,
+                            ...cacheOptions,
                             ...discourseOptions(batch[0], batch.map(segment => segment.source)),
                             enableNativeBatch: !single,
-                            signal: options.signal,
+                            ...attempt,
                             pageContext,
                             serviceOverride: service,
                             modelOverride: model,
                             sourceLanguage,
                             targetLanguage,
-                            maxRetries: options.maxRetries,
+                            maxRetries,
                         };
                         const result = single ? [await gateway.translateText(batch[0].source, context, requestOptions)] : await gateway.translateTextBatch(
                             batch.map((segment) => segment.source),
@@ -480,7 +596,7 @@ export function createDocumentSegmentTranslator(
                             throw new Error('翻译服务返回的片段不完整，请重试');
                         }
                         return result;
-                        }, options, () => stopped, retryStop.signal, reportRetryWaiting);
+                        }, options, () => stopped, retryStop.signal, reportRetryWaiting, cooldown, 1, 0, deadlineAt, requestTimeout);
                         result.forEach((translation, index) => commit(batch[index].id, translation));
                         reportProgress();
                     } catch (error) {
@@ -499,10 +615,7 @@ export function createDocumentSegmentTranslator(
                                 if (stopped) return;
                                 let translation = segment.source;
                                 try {
-                                    const received = await gateway.translateText(segment.source, context, {...glossaryOptions, ...discourseOptions(segment, [segment.source]), enableNativeBatch: false, signal: options.signal, pageContext,
-                                        serviceOverride: service, modelOverride: model, sourceLanguage, targetLanguage, maxRetries: options.maxRetries});
-                                    if (typeof received !== 'string' || !received.trim()) throw new Error('翻译服务返回空译文，请重试');
-                                    translation = received;
+                                    translation = await translateSegment(segment, deadlineAt);
                                 } catch (single) {
                                     throwIfAborted(options.signal);
                                     if (!untranslatedEcho(single)) {
@@ -532,23 +645,7 @@ export function createDocumentSegmentTranslator(
                     if (!segment) return;
 
                     try {
-                        const translation = await withRetryBackoff(async () => {
-                            const received = await gateway.translateText(segment.source, context, {
-                                ...glossaryOptions,
-                                ...discourseOptions(segment, [segment.source]),
-                                enableNativeBatch: false,
-                                signal: options.signal,
-                                pageContext,
-                                serviceOverride: service,
-                                modelOverride: model,
-                                sourceLanguage,
-                                targetLanguage,
-                                maxRetries: options.maxRetries,
-                            });
-                            // 其他 worker 已经失败时不再为这一段重试。
-                            if (typeof received !== 'string' || !received.trim()) throw new Error('翻译服务返回空译文，请重试');
-                            return received;
-                        }, options, () => stopped, retryStop.signal, reportRetryWaiting);
+                        const translation = await translateSegment(segment);
                         // 其他请求失败只能停止下一次领取；当前有效译文仍提交，避免续译重复消耗。
                         throwIfAborted(options.signal);
                         commit(segment.id, translation);

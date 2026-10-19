@@ -2,6 +2,12 @@
 
 网页兼容维护集与生命周期验收见 [网页翻译稳定性维护](maintainers/web-stability.md)。该入口显式选择十个独立站点，复用已有正文与保护区契约，并将宿主 DOM 探针、原生站点操作、在线供应商和不同浏览器的证据分开记录。`fullPageVisibilityScheduling` 新增路由观察选项刷新、断连 ShadowRoot 回收/重新插入，以及重连观察器时保留待投递保护区变化；`contentFeatureMounting` 与划词 `--lifecycle-only` 验证入口被移除后的恢复、取消、错误重试、禁用和窄屏键盘操作。
 
+## Hugging Face Spaces 内嵌正文
+
+扩展通过受限子 frame 入口翻译 Hugging Face Space 的 `*.hf.space` 应用正文，复用顶层全文会话、恢复原文和子 frame 快捷键；从 Hugging Face 其他页面软导航进入 Space 也会建立会话。后台核验浏览器提供的顶层 URL、子 frame URL 和 frameId，仅允许 Space 标识与应用子域精确配对。当前支持名称由英文字母、数字及单连字符组成的标准 Space 地址；含点、下划线或自定义域名的映射尚未覆盖。
+
+`pnpm test tests/issue146EmbeddedFrames.test.ts tests/supportedFrameEntrypoint.test.ts tests/qqMailFrameRuntime.test.ts tests/qqMailFrameSession.test.ts tests/extensionManifestContract.test.ts` 验证 URL 配对、命令授权、SPA 进入/退出、会话同步与清理。生产 Chrome 构建后运行 `node scripts/testing/run-huggingface-frame-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper scripts/testing/focus-safe-browser.cjs --artifacts-dir <证据目录>`，在第二屏临时 Edge 后台正常窗口验证翻译—恢复—再次翻译、frame 快捷键、动态正文、晚加载 frame、来源拒绝和唯一顶层浮球，并保存 DOM 与截图。网页响应与翻译传输受控；实站、在线供应商和 Firefox 运行证据须单独记录。
+
 ## 网页操作提示
 
 网页提示按每条内容独立收缩：小品牌图标、具体结果和关闭按钮一行优先显示，不再用「流畅阅读 · 操作完成」占一行标题。品牌和状态仍供辅助技术读取；长文自动换行，缺少凭据时保留设置入口，关闭按钮至少 28px。提示外的留白允许继续点击网页，悬停或键盘聚焦暂停自动消失。
@@ -228,6 +234,20 @@ PR #906 技术中文专项将上述模式参数替换为 `--technical-pr-906`，
 发行说明专项将模式参数替换为 `--target-release`，验证截图对应的十段中文、普通与行内 `code`/`strong` 结构、中文目标零请求、相邻英文翻译—恢复—再翻译、动态正文改写和目标切换，并单独打开真实 GitHub Releases 页面复核八个中文段落，包含产品名称枚举。翻译端点仍为回环夹具，真实页面证据不能作为线上供应商译文质量证明。
 
 `targetLanguageReleaseCorpus` 覆盖 52 个目录目标的自然段落、短标题、标记外壳和 Unicode 空白；所有文本逐一检查各目标与排除语言。`targetLanguageDetector` 和独立 `targetLanguageAdversarial` 覆盖名称预算、大写提示、引述、跨语种混合与代码字面量；`imageTargetLanguage`、`inputTranslationBackground`、`areaTextTranslation` 验证直接后台文本入口同目标零调用、原行映射、冻结目标和 AI 纠错协议保留。
+
+### 冻结真实网页的完整扩展 A/B
+
+语言跳过策略除了纯文本测试，还需要用同一批真实网页验证完整扩展。先冻结 HTML、自然选段、目标语言、人工预期和散列，再运行双方；不根据运行结果更改标签。以原 URL 重放，共享样式、字体与图片资源，阻止宿主脚本改写冻结正文。研究脚本、冻结样本和原始请求账本随实验单独保留，不作为产品构建或运行依赖。
+
+双方使用同版浏览器、独立临时 profile、相同目标语言及固定等待 20ms 的回环服务，两轮交换执行顺序。保留各自候选发现、语言判断、分段、批处理与限速；记录实际配置。`fullPageTranslationMode=all` 是整页压力测试，产品默认值为 `viewport`，不能将其结果描述为默认配置表现。发现范围不同的实验只比较双方共同可见的同一组选段，整页 HTTP 与队列耗时不能用于同范围效率排名。
+
+计时前核对唯一 selector、原文和布局，隐藏或零尺寸选段按原状态排除。自然段、含糊样本和代码对照分开统计；`ambiguous` 不进入语言判断的对错分母。`cold` 表示当前 profile 对该页、目标和模式的首遍，此前页面可能已经预热进程缓存。全文和悬浮分开运行，浏览器启动、页面准备与触发后的观察期限分别记录。
+
+漏译必须检查实际交付：译文可能位于专属容器，也可能直接替换原节点。原位译文要证明仍是同一选段节点，存在原生翻译标记及受控响应，且实际可见；不能用祖先、相邻段或整页的译文冒充。所有选段按相同顺序进入视口起点和末端，各停留 200ms 并等待两帧，最多两轮。保留历史可见证明，最终滚动到屏外不撤销已经显示的译文。
+
+请求证据保留原始 payload 与匹配方式。短标题仅作为长 payload 子串出现时，不能证明标题已发请求，应标记归属未知；无可靠请求的原因也不能直接归因语言识别。漏译再分为可靠已请求、未请求与请求归属未知，多余翻译按明确应跳过选段的可靠请求计数，并与整页 HTTP 总量分开报告。
+
+需要翻译的选段没有全部生成并显示时，完成耗时标为 `censored`；主耗时只比较双方均完成的配对样本，报告样本数。页面队列超时、测量错误和产品终态错误分别记录，不把部分交付包装为全部完成。连续安静至少 3000ms 的观察窗口还包含视口探测与等待，不能当作翻译耗时。固定响应不验证语义质量，耗时仍含候选发现、触发延迟与原生调度，也不代表在线服务延迟或纯语言识别速度。
 
 ## 原文回显与逐槽恢复
 
@@ -481,9 +501,9 @@ node scripts/testing/run-modal-first-translation-test.cjs \
 
 原生角标尺寸、内边距及字形由浏览器管理；使用蓝色、深绿色和橙色实心底色，并在 API 可用时指定白色文字。静态状态 PNG 不再用于运行时展示。`tests/translationToolbarStatus.test.ts` 验证真实状态判定，`tests/backgroundBadgeRuntime.test.ts` 验证角标映射、导航清理、异步顺序及 MV2 回退。
 
-角标直接替换状态文字，不在每次更新时先清空标识或重载底图；相同状态的在途更新合并为一次写入。完成或失败后的补译等待超过 180ms 才显示省略号，快速补译保留已显示结果；会话内候选扫描与入队之间的短暂空队列也等待 180ms 再清空标识。恢复原文、禁用、导航和关闭立即清空，并取消迟到的状态标识。
+角标直接替换状态文字，不在每次更新时先清空标识或重载底图；相同状态的在途更新合并为一次写入。完成或失败后的补译等待超过 180ms 才显示省略号，快速补译保留已显示结果；会话内候选扫描与入队之间的短暂空队列也等待 180ms 再清空标识。恢复原文、禁用和关闭取消迟到的状态标识。`tabs.onUpdated` 的 loading/complete 也可能来自同文档 History 更新或子 frame 加载，角标在这两种事件后向顶层内容脚本回源，而非直接清空；真正导航到原文页面后仍清空。加载结束会强制校准原生角标，避免浏览器重置后被本地同态缓存跳过。
 
-角标回归还覆盖各角标异步写入步骤中“完成 → 翻译中 → 完成”、底图初始化中恢复原文、迟到的完成文字与恢复原文、部分写入失败后重画原状态，防止缓存去重跳过被中断后必需的更新。浏览器专项逐状态断言原生文字、背景色与可用时的文字颜色，并记录真实 action 调用，检查完成后的动态样式重扫零重绘、新增正文正常补译且没有清空角标或重载底图。
+角标回归还覆盖各角标异步写入步骤中“完成 → 翻译中 → 完成”、底图初始化中恢复原文、迟到的完成文字与恢复原文、部分写入失败后重画原状态，防止缓存去重跳过被中断后必需的更新。另覆盖 loading 查询迟到于导航完成、恢复原文和关闭，旧回复不得复活完成状态。浏览器专项逐状态断言原生文字、背景色与可用时的文字颜色，并记录真实 action 调用，检查完成后的动态样式重扫零重绘、新增正文正常补译且没有清空角标或重载底图。翻译中、完成和失败三种状态还分别执行不改变地址的 `history.replaceState` 以及空 iframe 加载/重载，验证角标不被清空、无需内容脚本再次推送且供应商请求数不增加。此用例对应滚动保存位置的 Astro 页面，回归不依赖真实 AI 服务。
 
 FluentRead 把测试按意图分组，而不是把所有文件塞进一个难以诊断的命令。每个 `tests/**/*.test.ts` 必须且只能出现在 `tests/test-matrix.json` 的一个分组中；测试审计会拒绝漏归类、重复归类、重复用例名、`.only`、无原因 `.skip` 和覆盖率忽略指令。
 
@@ -1292,6 +1312,17 @@ node scripts/run-document-translation-test.cjs --suite scanned --playwright-root
 
 ## PDF 在线与本地划词
 
+原生在线 PDF 的右键划词交接可单独验证：
+
+```bash
+node scripts/run-native-pdf-selection-test.cjs \
+  --extension-dir .output/chrome-mv3 \
+  --playwright-root <Node包目录> \
+  --artifacts-dir /private/tmp/fluentread-native-pdf-selection
+```
+
+该范围直接打开 USENIX 论文的真实 PDF 地址，检查原查看器和地址保留、一次性选文交接、关闭后重新选词、并发结果归属、触发方式切换后关闭结果窗口及没有额外 PDF 下载。只在临时生产产物副本前置测试 hook，向浏览器实际注册的菜单监听器传入受控选文；结果页和划词卡片使用生产代码、翻译使用本机确定性服务。为了保护前台焦点，测试将记录到的真实 `windows.create` 参数映射到预建后台标签，保留目标窗口和标签身份校验。报告不代表原生系统右键手势、原生 PDF 内部选区捕获、真实弹窗激活或在线供应商验收。
+
 生产扩展构建后运行：
 
 ```bash
@@ -1317,6 +1348,12 @@ pnpm test:pdf-selection -- \
 `node scripts/run-selection-trigger-test.cjs --geometry-only --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper <浏览器测试技能>/scripts/focus-safe-browser.cjs --artifacts-dir /private/tmp/fluentread-selection-geometry` 使用临时 Edge profile 和第二屏后台窗口，检查顶部与内容空白处拖动、八个方向缩放、自动换行、正文选择、复制、滚动后位置保持、最小尺寸和视口边界，以及关闭、禁用、重新划词和迟到译文。截图涵盖放大、窄窗口和深色主题。页面及微软翻译响应为本地夹具，不代表真实供应商质量；窗口手势通过真实 CDP 输入执行。
 
 ## 单篇篇章参考
+
+### AI 多段请求合并
+
+生产 Chrome 构建后，运行 `node scripts/testing/run-ai-multi-segment-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <工作区 Node.js 包目录> --focus-safe-helper scripts/testing/focus-safe-browser.cjs --artifacts-dir /private/tmp/fluentread-ai-multi-segment`。
+
+专项在临时 Edge profile、第二屏后台可见窗口中，验证四个相邻纯文本/富文本段落实际形成一次包含四段来源的模型请求，并按 DOM 顺序回填；覆盖 AI 精翻开启和关闭、全文翻译—恢复—再次翻译、悬浮保持单段、关闭多段、动态新增内容、取消后的迟到响应与重新翻译。报告保存请求来源分组、DOM 断言、截图和原生焦点事件，测试结束删除自建 profile。响应来自虚构 DeepSeek 端点的确定性夹具，不读取用户密钥，也不代表真实供应商质量或 Firefox 实机验收。
 
 ### 短标题跨语言上下文误译（issue #980）
 

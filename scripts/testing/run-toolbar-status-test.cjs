@@ -29,8 +29,9 @@ async function main(){
  const popup=await helper.newPageWithoutForeground(context);await popup.goto(`chrome-extension://${report.actualId}/popup.html`);await sleep(800);
  let sequence=0;
  async function patch(updates){const r=await popup.evaluate(async({updates,sequence})=>{const r=await chrome.runtime.sendMessage({type:'configStorageRead',key:'local:config'});const c=typeof r.value==='string'?JSON.parse(r.value):r.value;return chrome.runtime.sendMessage({type:'persistConfig',mode:'patch',config:updates,expected:Object.fromEntries(Object.keys(updates).map(k=>[k,c[k]])),clientId:'pr523-review',sequence,baseRevision:c.__fluentConfigRevision});},{updates,sequence:++sequence});assert.equal(r.success,true);await sleep(400);}
- await patch({service:'microsoft',to:'zh-Hans',on:true,useCache:false,display:1,translationScope:'content',fullPageTranslationMode:'viewport',enableAIContext:false,enableAIMultiSegment:false,uiLanguage:'zh-CN',uiLanguageSetupCompleted:true});
+ await patch({service:'microsoft',to:'zh-Hans',on:true,useCache:false,animations:false,display:1,translationScope:'content',fullPageTranslationMode:'viewport',enableAIContext:false,enableAIMultiSegment:false,uiLanguage:'zh-CN',uiLanguageSetupCompleted:true});
  const html='<!doctype html><html lang="en"><head><meta charset="utf-8"><title>FluentRead PR 523 — Badge review</title><style>body{font:22px/1.7 system-ui;background:#f6f8fc;color:#182338;margin:0;padding:60px}article{max-width:850px;margin:auto;padding:36px;background:white;border-radius:16px}h1{font-size:32px}p{margin:28px 0}</style></head><body><article><h1>Reading across languages</h1><p>Reading in another language opens a window into new ideas and perspectives.</p><p>A translation should help readers understand the original text while keeping the page comfortable to use.</p></article></body></html>';
+ await context.route('https://badge-frame.example/**',r=>r.fulfill({status:200,contentType:'text/html',body:'<!doctype html><html><head><title>Empty frame</title></head><body></body></html>'}));
  await context.route('https://badge-review.example/**',r=>r.fulfill({status:200,contentType:'text/html',body:html}));
  const page=await helper.newPageWithoutForeground(context);await page.goto('https://badge-review.example/article');await page.waitForSelector('#fluent-read-page-styles',{state:'attached'});await helper.activateExtensionTabWithoutForeground(context,page);
  const tabId=await worker.evaluate(async()=>{const ts=await chrome.tabs.query({});return ts.find(t=>t.url==='https://badge-review.example/article').id});
@@ -50,10 +51,33 @@ async function main(){
  if(expected.background){assert.deepEqual(badge.background,expected.background,name+': native badge background');if(badge.foreground)assert.deepEqual(badge.foreground,[255,255,255,255],name+': native badge foreground');}
  return report.cases.at(-1);}
  report.messageTypes='contextMenuTranslate fullPage/restore';
+ async function sameDocumentLoads(name,expected) {
+   const before=await worker.evaluate(()=>globalThis.reviewRequests);
+   await worker.evaluate(()=>{globalThis.reviewBadgeWrites=[]});
+   // Astro 等站点通过 replaceState 保存滚动位置；地址和主文档都没有改变。
+   for(let i=0;i<3;i++) {await page.evaluate(i=>history.replaceState({...history.state,toolbarFixtureScroll:i},''),i);await sleep(300);}
+   let current=await snap(name+'-history');assert.equal(current.state.toolbarStatus,expected);
+   const [frame]=await Promise.all([
+     page.waitForEvent('framenavigated',{predicate:f=>f.url()==='https://badge-frame.example/first'}),
+     page.evaluate(()=>{const f=document.createElement('iframe');f.id='toolbar-fixture-frame';f.setAttribute('translate','no');f.src='https://badge-frame.example/first';document.body.append(f)}),
+   ]);await frame.waitForLoadState('load');
+   await Promise.all([
+     page.waitForEvent('framenavigated',{predicate:f=>f===frame&&f.url()==='https://badge-frame.example/second'}),
+     page.evaluate(()=>{document.querySelector('#toolbar-fixture-frame').src='https://badge-frame.example/second'}),
+   ]);await frame.waitForLoadState('load');
+   current=await snap(name+'-iframe');assert.equal(current.state.toolbarStatus,expected);
+   const writes=await worker.evaluate(tabId=>globalThis.reviewBadgeWrites.filter(w=>w.details.tabId===tabId),tabId);
+   assert.equal(writes.filter(w=>w.method==='setBadgeText'&&w.details.text==='').length,0,'same-document loading must not clear the badge');
+   assert.equal(await worker.evaluate(()=>globalThis.reviewRequests),before,'status synchronization must not request another translation');
+   report.cases.at(-1).loadingWrites=writes;
+   await page.evaluate(()=>document.querySelector('#toolbar-fixture-frame').remove());
+   await sleep(700);
+ }
  async function action(action){await helper.activateExtensionTabWithoutForeground(context,page);return worker.evaluate(({tabId,action})=>chrome.tabs.sendMessage(tabId,{type:'contextMenuTranslate',action}),{tabId,action})}
  assert.equal((await snap('01-original')).text,'');
  await worker.evaluate(()=>{globalThis.reviewBadgeWrites=[]});
  await worker.evaluate(()=>globalThis.reviewMode='pending');await action('fullPage');await sleep(700);const pending=await snap('02-pending');assert.equal(pending.translated,0);assert.equal(pending.state.toolbarStatus,'translating');
+ await sameDocumentLoads('02b-pending-loads','translating');
  await worker.evaluate(()=>{globalThis.reviewMode='success';globalThis.reviewPending.splice(0).forEach(r=>r())});await page.waitForSelector('.fluent-read-bilingual-content');assert.equal((await snap('03-translated')).state.toolbarStatus,'translated');
  const completedWrites=await worker.evaluate(tabId=>globalThis.reviewBadgeWrites.filter(w=>w.details.tabId===tabId),tabId);
  report.completedTransitionWrites=completedWrites;
@@ -76,9 +100,11 @@ async function main(){
  assert.equal(report.dynamicSupplement.writes.filter(w=>w.method==='setBadgeText'&&w.details.text==='').length,0);
  assert.equal(report.dynamicSupplement.writes.filter(w=>w.method==='setIcon').length,0);
  await page.evaluate(()=>document.querySelector('#dynamic-paragraph').remove());
+ await sameDocumentLoads('03b-completed-loads','translated');
  await action('restore');assert.equal((await snap('04-restored')).text,'');
  await worker.evaluate(()=>globalThis.reviewMode='failure');await action('fullPage');await sleep(9000);const failed=await snap('05-service-failure');assert.equal(failed.translated,0);assert.equal(failed.state.toolbarStatus,'error');
- await worker.evaluate(()=>globalThis.reviewMode='pending');while(await page.getByText('重试',{exact:true}).count())await page.getByText('重试',{exact:true}).first().click();
+ await sameDocumentLoads('05a-error-loads','error');
+ await worker.evaluate(()=>globalThis.reviewMode='pending');while(await page.getByText('重试',{exact:true}).count()){await page.getByText('重试',{exact:true}).first().click();await sleep(250);}
  const retry=await snap('05b-retrying');assert.equal(retry.state.toolbarStatus,'translating');
  await worker.evaluate(()=>{globalThis.reviewMode='success';globalThis.reviewPending.splice(0).forEach(r=>r())});await page.waitForFunction(()=>document.querySelectorAll('.fluent-read-bilingual-content').length===3);assert.equal((await snap('05c-retry-success')).state.toolbarStatus,'translated');
  await action('restore');await worker.evaluate(()=>globalThis.reviewMode='success');await action('fullPage');await page.waitForSelector('.fluent-read-bilingual-content');
@@ -86,6 +112,14 @@ async function main(){
  await helper.activateExtensionTabWithoutForeground(context,page);assert.equal((await snap('06-return-to-translated-tab')).state.toolbarStatus,'translated');
  report.workerRestart={verified:false,scope:'activation recovery covered; forced worker restart not exercised by this suite'};
  await page.reload();await page.waitForSelector('#fluent-read-page-styles',{state:'attached'});assert.equal((await snap('07-reloaded')).text,'');
+ await worker.evaluate(()=>globalThis.reviewMode='pending');await action('fullPage');await sleep(700);
+ assert.equal((await snap('08-pending-before-navigation')).state.toolbarStatus,'translating');
+ await page.goto('https://badge-review.example/next');await page.waitForSelector('#fluent-read-page-styles',{state:'attached'});
+ await worker.evaluate(()=>{globalThis.reviewMode='success';globalThis.reviewPending.splice(0).forEach(r=>r())});
+ assert.equal((await snap('09-new-document-after-late-result')).text,'');
+ await action('fullPage');await page.waitForSelector('.fluent-read-bilingual-content');
+ assert.equal((await snap('10-new-document-translated')).state.toolbarStatus,'translated');
+ await action('restore');assert.equal((await snap('11-new-document-restored')).text,'');
  report.completed=true;
  } catch (error) { primaryError = error; report.fatal = error.stack; throw error; } finally {
     const cleanupErrors = [];

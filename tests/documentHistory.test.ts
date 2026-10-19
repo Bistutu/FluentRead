@@ -1,7 +1,7 @@
 /**
  * @file tests/documentHistory.test.ts
  * 文件职责：验证“最近翻译”的本地存取与解析迁移：稳定标识、摘要列表、按原文恢复独立校订、淘汰与存储不可用时的安静降级。
- * 主要内容：使用内存 IndexedDB 真实执行读写；检查解析版本和分段位置变化时只复用未变化原文，重复片段仅凭唯一位置或邻文恢复而不跳过空译文，没有旧原文时仅采用同版本同数量的兼容恢复；检查列表不含文件字节并按最近更新时间排序，保存的是调用方数据的副本，条数与总字节超限时淘汰最旧记录，过大或没有标识的记录不保存，数据库缺失或出错时返回空结果而不抛出。
+ * 主要内容：使用内存 IndexedDB 真实执行读写；检查解析版本和分段位置变化时只复用未变化原文，重复片段仅凭唯一位置或邻文恢复而不跳过空译文，没有旧原文时仅采用同版本同数量的兼容恢复；检查列表不含文件字节并按最近更新时间排序，保存的是调用方数据的副本，重译缓存策略只保留显式 true，条数与总字节超限时淘汰最旧记录，过大或没有标识的记录不保存，数据库缺失或出错时返回空结果而不抛出。
  * 模块边界：只测试历史存储服务，不挂载页面、不解析文档、不发起翻译。
  */
 import {IDBFactory} from 'fake-indexeddb';
@@ -401,6 +401,80 @@ describe('document history identity', () => {
 });
 
 describe('document history storage', () => {
+    it('tolerates the restart deadline racing a committed transaction and can safely save the next revision', async () => {
+        vi.useFakeTimers({toFake: ['setTimeout', 'clearTimeout']});
+        try {
+            const factory = new IDBFactory(), open = factory.open.bind(factory);
+            let firstWrite = true;
+            vi.spyOn(factory, 'open').mockImplementation((name, version) => {
+                const opened = open(name, version);
+                opened.addEventListener('success', () => {
+                    const database = opened.result, transact = database.transaction.bind(database);
+                    vi.spyOn(database, 'transaction').mockImplementation((stores, mode, options) => {
+                        const transaction = transact(stores, mode, options);
+                        if (mode === 'readwrite' && firstWrite) {
+                            firstWrite = false;
+                            // 已提交时 abort 会抛 InvalidStateError；截止边界仍须报告未确认，之后能继续保存。
+                            transaction.addEventListener('complete', () => vi.advanceTimersByTime(20));
+                        }
+                        return transaction;
+                    });
+                });
+                return opened;
+            });
+            const history = createDocumentHistory(factory, 20);
+            const restarted = record('restart', 1, {bypassCache: true, translations: [], completed: 0});
+            expect(await history.save(restarted)).toBe(false);
+            expect(await history.load('restart')).toMatchObject({bypassCache: true, translations: [], completed: 0});
+            expect(await history.save({...restarted, translations: ['新译文'], completed: 1, updatedAt: 2})).toBe(true);
+            expect(await history.load('restart')).toMatchObject({bypassCache: true, translations: ['新译文'], completed: 1});
+        } finally {vi.useRealTimers();vi.restoreAllMocks();}
+    });
+
+    it('aborts an uncloneable restart snapshot without overwriting stored work, then saves the recoverable restart', async () => {
+        const history = createDocumentHistory(new IDBFactory());
+        expect(await history.save(record('restart', 1))).toBe(true);
+        const restarted = record('restart', 2, {bypassCache: true, translations: [], completed: 0});
+        expect(await history.save({...restarted, parsed: {callback: () => {}}})).toBe(false);
+        expect(await history.load('restart')).toMatchObject({translations: ['甲', '', '丙', ''], completed: 2});
+        expect(await history.save(restarted)).toBe(true);
+        expect(await history.load('restart')).toMatchObject({bypassCache: true, translations: [], completed: 0});
+    });
+
+    it('persists only explicit cache bypass and rejects malformed stored flags without changing the record content', async () => {
+        const factory = new IDBFactory(), history = createDocumentHistory(factory);
+        const values = [true, undefined, false, null, 'true', 1, {}];
+        for (const [index, bypassCache] of values.entries()) {
+            expect(await history.save(record(`cache-${index}`, index, {bypassCache: bypassCache as boolean}))).toBe(true);
+            const saved = await history.load(`cache-${index}`);
+            expect(saved?.translations).toEqual(['甲', '', '丙', '']);
+            if (bypassCache === true) expect(saved?.bypassCache).toBe(true);
+            else expect(saved).not.toHaveProperty('bypassCache');
+        }
+        const database = await new Promise<IDBDatabase>((resolve, reject) => {
+            const opened = factory.open('FluentReadDocumentHistory', 1);
+            opened.onsuccess = () => resolve(opened.result);opened.onerror = () => reject(opened.error);
+        });
+        const stored = await new Promise<DocumentHistoryRecord[]>((resolve, reject) => {
+            const request = database.transaction('documents', 'readonly').objectStore('documents').getAll();
+            request.onsuccess = () => resolve(request.result);request.onerror = () => reject(request.error);
+        });
+        expect(stored.find(value => value.id === 'cache-0')?.bypassCache).toBe(true);
+        expect(stored.filter(value => value.id !== 'cache-0').every(value => !('bypassCache' in value))).toBe(true);
+        await new Promise<void>((resolve, reject) => {
+            const transaction = database.transaction('documents', 'readwrite');
+            values.forEach((bypassCache, index) => transaction.objectStore('documents').put(record(`raw-${index}`, index, {bypassCache: bypassCache as boolean})));
+            transaction.oncomplete = () => resolve();transaction.onabort = () => reject(transaction.error);
+        });
+        for (const [index, bypassCache] of values.entries()) {
+            const restored = await history.load(`raw-${index}`);
+            if (bypassCache === true) expect(restored?.bypassCache).toBe(true);
+            else expect(restored).not.toHaveProperty('bypassCache');
+        }
+        expect((await history.list()).every(value => !('bypassCache' in value))).toBe(true);
+        database.close();
+    });
+
     it('lists summaries newest first without file bytes and restores a full independent copy', async () => {
         const history = createDocumentHistory(new IDBFactory());
         expect(await history.list()).toEqual([]); expect(await history.load('missing')).toBeNull();

@@ -60,7 +60,7 @@ describe('工具栏原生三态角标', () => {
         action.setBadgeText.mockClear();store.setTranslated(1,true,'translating');const pending=badge.update(1);
         if(mode==='restore') {store.reset(1);await badge.update(1);}
         if(mode==='disable') {store.setSiteDisabled(1,true);await badge.update(1);}
-        if(mode==='navigate') {tabs.onUpdated.emit(1,{status:'loading'});await settle();}
+        if(mode==='navigate') {store.reset(1);tabs.sendMessage.mockRejectedValueOnce(new Error('document unloaded'));tabs.onUpdated.emit(1,{status:'loading'});await settle();}
         if(mode==='close') tabs.onRemoved.emit(1);
         await vi.advanceTimersByTimeAsync(500);await pending;
         expect(action.setBadgeText.mock.calls.map(([details])=>details.text)).toEqual(mode==='close'?[]:['']);
@@ -117,9 +117,52 @@ describe('工具栏原生三态角标', () => {
     it('导航恢复原图，普通更新不清空，关闭取消还未写出的任务', async () => {
         const {store,badge,tabs,action}=setup();store.set(7,{isTranslated:true,isSiteDisabled:false,toolbarStatus:'translated'});await badge.update(7);
         tabs.onUpdated.emit(7,{status:'complete'});await settle();expect(action.setIcon).toHaveBeenCalledTimes(1);
+        store.reset(7);tabs.sendMessage.mockRejectedValueOnce(new Error('document unloaded'));
         tabs.onUpdated.emit(7,{status:'loading'});await settle();expect(action.setIcon.mock.lastCall?.[0].path[16]).toBe('icon/16.png');
         expect(action.setBadgeText).toHaveBeenLastCalledWith({tabId:7,text:''});
-        const pending=badge.update(8);tabs.onRemoved.emit(8);await pending;expect(action.setIcon).toHaveBeenCalledTimes(2);
+        const pending=badge.update(8);tabs.onRemoved.emit(8);await pending;expect(action.setIcon).toHaveBeenCalledTimes(1);
+    });
+    it.each(['translating', 'translated', 'error'] as const)('子页面 loading/complete 后回源保留 %s，内容脚本无需再次推送', async status => {
+        const reply = {status:'success', isTranslated:true, isSiteDisabled:false, toolbarStatus:status};
+        const {store,badge,tabs,action}=setup('action', vi.fn(async () => reply));
+        store.set(1,reply);await badge.update(1);action.setBadgeText.mockClear();
+        // 与生产菜单监听一致：loading 先使旧查询失效并重置后台缓存。
+        store.reset(1);tabs.onUpdated.emit(1,{status:'loading'});await settle();
+        tabs.onUpdated.emit(1,{status:'complete'});await settle();
+        expect(tabs.sendMessage).toHaveBeenCalledWith(1,{type:'getFullPageTranslationState'},{frameId:0});
+        expect(store.get(1)).toMatchObject({isTranslated:true,isSiteDisabled:false,toolbarStatus:status});
+        expect(action.setBadgeText).not.toHaveBeenCalledWith({tabId:1,text:''});
+        expect(action.setBadgeText).toHaveBeenLastCalledWith({tabId:1,text:{translating:'…',translated:'✓',error:'!'}[status]});
+        expect(action.setIcon).toHaveBeenCalledTimes(1);
+    });
+    it('加载完成强制重画同态角标，覆盖浏览器原生已清空但本地缓存仍存在的情况', async () => {
+        const {store,badge,tabs,action}=setup();store.setTranslated(1,true,'translated');await badge.update(1);
+        action.setBadgeText.mockClear();tabs.onUpdated.emit(1,{status:'complete'});await settle();
+        expect(action.setBadgeText.mock.calls.map(([details])=>details.text)).toEqual(['✓']);
+        tabs.onUpdated.emit(1,{title:'new title'});await settle();
+        expect(tabs.sendMessage).toHaveBeenCalledTimes(1);
+    });
+    it('真正导航完成后回源到新页面原文状态，旧 loading 查询迟到也不能复活对勾', async () => {
+        const {store,badge,tabs,action}=setup();store.setTranslated(1,true,'translated');await badge.update(1);
+        let release!:(value:any)=>void;
+        tabs.sendMessage.mockImplementationOnce(()=>new Promise(resolve=>{release=resolve}));
+        store.reset(1);tabs.onUpdated.emit(1,{status:'loading'});await settle();
+        tabs.sendMessage.mockResolvedValueOnce({status:'success',isTranslated:false,isSiteDisabled:false,toolbarStatus:'idle'});
+        tabs.onUpdated.emit(1,{status:'complete'});await settle();
+        release({status:'success',isTranslated:true,isSiteDisabled:false,toolbarStatus:'translated'});await settle();
+        expect(store.get(1).isTranslated).toBe(false);
+        expect(action.setBadgeText).toHaveBeenLastCalledWith({tabId:1,text:''});
+    });
+    it.each(['restore','close'] as const)('加载回源途中 %s 后，迟到回复不能覆盖最新状态', async mode => {
+        const {store,badge,tabs,action}=setup();store.setTranslated(1,true,'translated');await badge.update(1);
+        let release!:(value:any)=>void;
+        tabs.sendMessage.mockImplementationOnce(()=>new Promise(resolve=>{release=resolve}));
+        tabs.onUpdated.emit(1,{status:'complete'});await settle();action.setBadgeText.mockClear();
+        if(mode==='close') {store.delete(1);tabs.onRemoved.emit(1);}
+        else {store.setTranslated(1,false,'idle');await badge.update(1);}
+        release({status:'success',isTranslated:true,isSiteDisabled:false,toolbarStatus:'translated'});await settle();
+        expect(store.get(1).isTranslated).toBe(false);
+        expect(action.setBadgeText.mock.calls.map(([details])=>details.text)).toEqual(mode==='close'?[]:['']);
     });
     it('慢旧写入不能覆盖较新的恢复状态', async () => {
         const {store,badge,action}=setup();let release!:()=>void;action.setIcon.mockImplementationOnce(()=>new Promise<void>(resolve=>{release=resolve}));

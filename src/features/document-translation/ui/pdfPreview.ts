@@ -1,7 +1,7 @@
 /**
  * @file src/features/document-translation/ui/pdfPreview.ts
  * 文件职责：在浏览器 Canvas 环境中生成 PDF 预览和原版译页；显式重排导出按嵌入字体分页，仅公式图表编码为图像，由二进制服务绘制可复制文字。
- * 主要内容：共用 PDF.js 与有界单页 Canvas；每页一次像素读回复用阅读器的保护筛选、表格裁剪和有界拟合，超长译文返回完整批注与逐行搜索层，缺字或离线时可用带相同 Unicode 文字层的有界光栅续页；下载分批绘制并优先 JPEG 编码，预览和重排图表使用 PNG；取消、失败与完成释放画布，租约隔离阅读器与导出，迟到加载不能复活已释放资源。
+ * 主要内容：共用 PDF.js 与有界单页 Canvas；导出每页一次像素读回，阅读器每个新段只读回包含取样边缘的局部快照；复用保护筛选、表格裁剪和有界拟合，超长译文返回完整批注与逐行搜索层，缺字或离线时可用带相同 Unicode 文字层的有界光栅续页；下载分批绘制并优先 JPEG 编码，预览和重排图表使用 PNG；取消、失败与完成释放画布，租约隔离阅读器与导出，迟到加载不能复活已释放资源。
  * 模块边界：这里负责视觉光栅化而不决定片段翻译或文件结构；PDF 文本块来自 binary 服务，领域类型来自 core，Canvas/PDF.js 仅应在文档 UI 环境调用，不能进入通用纯算法层。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
@@ -65,7 +65,7 @@ function canvasToImageBytes(canvas: HTMLCanvasElement, signal?: AbortSignal, for
     });
 }
 
-interface PdfPixelSnapshot {data: Uint8ClampedArray; width: number; height: number}
+interface PdfPixelSnapshot {data: Uint8ClampedArray; width: number; height: number; x?: number; y?: number}
 
 interface BrowserPdfResource {
     promise: Promise<PDFDocumentProxy>;
@@ -237,7 +237,8 @@ export function sampledBackgroundRgb(
     points.forEach(([pointX, pointY]) => {
         const safeX = Math.max(0, Math.min(context.canvas.width - 1, Math.round(pointX)));
         const safeY = Math.max(0, Math.min(context.canvas.height - 1, Math.round(pointY)));
-        const pixel = snapshot ? snapshot.data.subarray((safeY * snapshot.width + safeX) * 4, (safeY * snapshot.width + safeX) * 4 + 4) : context.getImageData(safeX, safeY, 1, 1).data;
+        const offset = snapshot ? ((safeY - (snapshot.y ?? 0)) * snapshot.width + safeX - (snapshot.x ?? 0)) * 4 : 0;
+        const pixel = snapshot ? snapshot.data.subarray(offset, offset + 4) : context.getImageData(safeX, safeY, 1, 1).data;
         if (pixel[3] > 0) colors.push([pixel[0], pixel[1], pixel[2]]);
     });
     if (colors.length === 0) return [255, 255, 255];
@@ -267,7 +268,9 @@ export function sampledForegroundColor(
     const candidates: Array<{color: [number, number, number]; distance: number}> = [];
     for (let pointY = 0; pointY < safeHeight; pointY += stride) {
         for (let pointX = 0; pointX < safeWidth; pointX += stride) {
-            const offset = snapshot ? ((safeY + pointY) * snapshot.width + safeX + pointX) * 4 : (pointY * safeWidth + pointX) * 4;
+            const localX = safeX + pointX - (snapshot?.x ?? 0), localY = safeY + pointY - (snapshot?.y ?? 0);
+            if (snapshot && (localX < 0 || localY < 0 || localX >= snapshot.width || localY >= snapshot.height)) continue;
+            const offset = snapshot ? (localY * snapshot.width + localX) * 4 : (pointY * safeWidth + pointX) * 4;
             if (pixels[offset + 3] === 0) continue;
             const color: [number, number, number] = [pixels[offset], pixels[offset + 1], pixels[offset + 2]];
             const distance = Math.hypot(
@@ -283,6 +286,21 @@ export function sampledForegroundColor(
     const strongest = candidates.slice(0, Math.max(3, Math.ceil(candidates.length * 0.22)));
     const channel = (index: 0 | 1 | 2) => Math.round(median(strongest.map((entry) => entry.color[index])));
     return `rgb(${channel(0)}, ${channel(1)}, ${channel(2)})`;
+}
+
+/** 阅读器按段落一次读回局部像素；边界包含背景的两像素外沿与原有前景裁剪，不保存整页快照。 */
+export function sampledPdfBlockColors(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number): {background: [number, number, number]; foreground: string} {
+    const foregroundX = Math.max(0, Math.floor(x)), foregroundY = Math.max(0, Math.floor(y));
+    const foregroundRight = foregroundX + Math.max(1, Math.min(context.canvas.width - foregroundX, Math.ceil(width)));
+    const foregroundBottom = foregroundY + Math.max(1, Math.min(context.canvas.height - foregroundY, Math.ceil(height)));
+    const left = Math.max(0, Math.min(context.canvas.width - 1, Math.floor(x - 2)));
+    const top = Math.max(0, Math.min(context.canvas.height - 1, Math.floor(y - 2)));
+    const right = Math.max(left + 1, Math.min(context.canvas.width, Math.ceil(Math.max(x + width + 2, foregroundRight - 1)) + 1));
+    const bottom = Math.max(top + 1, Math.min(context.canvas.height, Math.ceil(Math.max(y + height + 2, foregroundBottom - 1)) + 1));
+    const snapshot: PdfPixelSnapshot = {data: context.getImageData(left, top, right - left, bottom - top).data,
+        width: right - left, height: bottom - top, x: left, y: top};
+    const background = sampledBackgroundRgb(context, x, y, width, height, snapshot);
+    return {background, foreground: sampledForegroundColor(context, x, y, width, height, background, snapshot)};
 }
 
 function* paintPdfTranslationSteps(

@@ -52,6 +52,7 @@ import {installWritingBackgroundRuntime} from './writingRuntime';
 import {installHarnessBackgroundRuntime} from './harnessRuntime';
 import {createImageGlossaryContext} from './imageGlossaryContext';
 import {createEmbeddedFrameBackgroundHandlers, type EmbeddedFrameBackgroundContext} from '@/src/features/full-page-translation/background/embeddedFrameHandlers';
+import {createNativePdfSelectionHandler} from './nativePdfSelection';
 import {buildGlossaryRevision} from '@/src/core/glossary';
 type BackgroundRuntimeContext = QQMailFrameBackgroundContext & NeteaseMailFrameBackgroundContext
     & EmbeddedFrameBackgroundContext & ConfigPersistenceContext & VocabularyBackgroundContext & SelectionTtsContext
@@ -61,7 +62,6 @@ export interface BackgroundMessageRuntimeOptions {
     onFullPageStateChanged(tabId: number): void;
     capabilities?: BrowserCapabilities;
 }
-/** 用静态 handler registry 组装唯一的 runtime.onMessage 入口。 */
 export function installBackgroundMessageRuntime(options: BackgroundMessageRuntimeOptions): void {
     const cancelWriting = installWritingBackgroundRuntime();
     const capabilities = options.capabilities ?? browserCapabilities;
@@ -83,6 +83,7 @@ export function installBackgroundMessageRuntime(options: BackgroundMessageRuntim
         getGlossaryRevision: () => buildGlossaryRevision(config.glossaryLibraries, config.glossaryEnabled),
     });
     const handlers: Array<BackgroundMessageHandler<BackgroundRuntimeContext>> = [
+        createNativePdfSelectionHandler(),
         ...createPersonalCorrectionRuntimeHandlers<BackgroundRuntimeContext>(),
         createChatGPTPlanHandler(),
         createTranslationCancelHandler(translationRequestRegistry),
@@ -163,8 +164,7 @@ export function installBackgroundMessageRuntime(options: BackgroundMessageRuntim
         ...createLocalModelMessageHandlers<BackgroundRuntimeContext>(),
         createDownloadProgressHandler({runtimeId: browser.runtime.id, offscreenUrl: browser.runtime.getURL('/offscreen.html'), storage: browser.storage.local}), createDownloadProgressQueryHandler({runtimeId: browser.runtime.id, storage: browser.storage.local}),
     ];
-    const router = createBackgroundMessageRouter(
-        handlers,
+    const router = createBackgroundMessageRouter(handlers,
         createTranslationRequestFallback({
             translate: translateWithCache,
             serializeError: serializeTranslationError,

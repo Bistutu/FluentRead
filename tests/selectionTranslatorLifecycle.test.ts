@@ -29,6 +29,7 @@ import * as modalDialogHost from '@/src/features/selection-translation/content/m
 import {setSelectionContextMenuHandler, translateSelectionFromContextMenu as translateSelectionThroughBridge} from '@/src/features/selection-translation/content/contextMenuBridge';
 import {beginMaterialCapture as beginCapture, completeMaterialCapture as completeCapture, type MaterialSelection} from '@/src/features/vocabulary/materialCapture';
 import {projectMaterialOriginalText} from '@/src/features/vocabulary/materialOriginalText';
+import {observeNativePdfSelectionCard} from '@/src/app/selection/cardVisibility';
 
 vi.mock('webextension-polyfill', () => ({default: {}}));
 const materialPorts = vi.hoisted(() => ({generation: vi.fn(), capture: vi.fn()}));
@@ -267,6 +268,36 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
         captureMaterialSelection, beginMaterialCapture, completeMaterialCapture, materialGeneration: materialPorts.generation, materialCapture: materialPorts.capture,
         lifecycleErrors, renderPort, unmount: () => { currentApp?.unmount(); app = undefined; }};
 }
+
+describe('native PDF result window follows shared card dismissal', () => {
+    it.each(['Control', 'contextMenu'])('closes the result owner when the real shared card hides after switching to %s', async trigger => {
+        const focusedDismiss = vi.fn();
+        const fixture = mountSelection(false, {acceptsRange: () => true}, {onFocusedCardDismiss: focusedDismiss}, true);
+        const port = fixture.renderPort!;
+        vi.stubGlobal('MutationObserver', port.domWindow.MutationObserver);
+        const root = port.root.querySelector<HTMLElement>('.fr-selection-translator-root')!;
+        let stop = () => {};
+        const dismiss = vi.fn(() => {stop(); fixture.unmount();});
+        stop = observeNativePdfSelectionCard(root, dismiss);
+        const text = 'Selected native PDF passage.';
+        fixture.state.snapshot = {text, parts: [{kind: 'text', text}], range: {}};
+        fixture.state.selectedText = text;
+        fixture.state.manuallyRequestedSelection = true;
+        fixture.state.translationResult = 'A completed translation';
+        fixture.state.showTooltip = true;
+        await Vue.nextTick(); await Promise.resolve();
+        expect(root.querySelector('.fr-translation-tooltip')).not.toBeNull();
+        expect(dismiss).not.toHaveBeenCalled();
+        fixture.config.selectionTranslatorTrigger = trigger;
+        fixture.notifyConfig();
+        await Vue.nextTick(); await Promise.resolve();
+        expect(dismiss).toHaveBeenCalledOnce();
+        expect(focusedDismiss).not.toHaveBeenCalled();
+        expect(port.root.querySelector('.fr-translation-tooltip')).toBeNull();
+        expect(fixture.unsubscribeConfig).toHaveBeenCalledOnce();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+});
 
 describe('explicit free selection explanation', () => {
     function prepare(configReady?: Promise<void>, browserTarget: SelectionBuildTarget = 'chrome') {

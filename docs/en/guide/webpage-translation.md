@@ -34,6 +34,8 @@ For eligible long passages that remain uncertain, a browser language check can p
 
 Paragraphs already in the target language keep their original text. A clearly Chinese paragraph can include browser names, build terms, parameters, units or repository links without triggering another translation. Foreign sentences, words explicitly marked for translation and uncertain mixed content still remain eligible, as does conversion between Simplified and Traditional Chinese.
 
+Complete Chinese example introductions and explicitly marked phonetic annotations in Chinese explanations also contribute to this contextual check. Ordinary text between slashes and quoted foreign passages remain eligible for translation.
+
 | What you want | What to use |
 | --- | --- |
 | Compare the translation with the original | Bilingual display |

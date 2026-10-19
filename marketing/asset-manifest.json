@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-02T07:46:24.634Z",
+  "generatedAt": "2026-10-18T10:55:53.532Z",
   "losslessWebPixelsVerified": true,
   "rawBytes": 3930079,
   "webBytes": 1927706,
@@ -333,7 +333,7 @@
       "height": 560,
       "format": "png",
       "alpha": false,
-      "bytes": 74233
+      "bytes": 72265
     },
     {
       "file": "marketing/chrome-web-store/promo/en-small-440x280.png",
@@ -353,7 +353,7 @@
       "height": 560,
       "format": "png",
       "alpha": false,
-      "bytes": 80561
+      "bytes": 80834
     }
   ]
 }

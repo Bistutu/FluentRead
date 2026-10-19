@@ -1,7 +1,7 @@
 /**
  * @file src/features/full-page-translation/content/translationRequest.ts
  * 文件职责：为单次全文翻译会话冻结请求配置，并执行文本槽的批量、原生数组和显式 AI 跨候选合并、分包、回退与会话级结果复用。
- * 主要内容：记录显式显示覆盖以隔离后续弹窗模式切换；冻结组合与成员连接摘要，组合数组交由 broker 按真实成员调用并保留通用 AI 成员可消费的篇章上下文；冻结调用时的长段落换行与译文位置，操作身份区分展示设置而 provider 结果键仍只包含请求维度；在调用入口复制原文与服务/模型/语言/术语/排除列表快照，先对原始文本槽执行可取消的目标及排除语言预检，再合批或组装内部包；显式传递同次排除快照到 client；缺失条目携带同次复制快照生成的逐槽键，保持键维度、512 条容量与整请求取消归属，避免登记结果时重复序列化；在本地保留尚未排版的三美元公式源码，构造显式 client 参数，按服务选择批译策略；标记内部单条槽协议，由 broker 按冻结术语和同一截止时间逐槽校验；为本地模型只构造一次整段语言样本，为 Chrome auto 逐槽翻译保留无哨兵整段检测样本，按冻结服务偏好自动原生数组合批，关闭后保留逐项请求，完整结构校验后才分发，AI 只合并同父直接相邻候选并在协议失败后停用同快照合批，严格隔离取消归属并维护有界会话缓存。
+ * 主要内容：记录显式显示覆盖以隔离后续弹窗模式切换；冻结组合与成员连接摘要，组合数组交由 broker 按真实成员调用并保留通用 AI 成员可消费的篇章上下文；冻结调用时的长段落换行与译文位置，操作身份区分展示设置而 provider 结果键仍只包含请求维度；在调用入口复制原文与服务/模型/语言/术语/排除列表快照，先对原始文本槽执行可取消的目标及排除语言预检，再合批或组装内部包；显式传递同次排除快照到 client；缺失条目携带同次复制快照生成的逐槽键，保持键维度、512 条容量与整请求取消归属，避免登记结果时重复序列化；在本地保留尚未排版的三美元公式源码，构造显式 client 参数，按服务选择批译策略；标记内部单条槽协议，由 broker 按冻结术语和同一截止时间逐槽校验；为本地模型只构造一次整段语言样本，为 Chrome auto 逐槽翻译保留无哨兵整段检测样本，按冻结服务偏好自动原生数组合批，关闭后保留逐项请求，完整结构校验后才分发；AI 以有界收集窗口等待异步准备和调度分片，按配置、章节与父节点隔离后恢复 DOM 顺序，只合并直接相邻候选，协议失败后停用同快照合批，严格隔离取消归属并维护有界会话缓存。
  * 模块边界：本文件不发现候选、不持有 DOM 翻译状态也不渲染译文；runtime 提供会话缓存和取消作用域，client 负责后台协议与队列执行。
  */
 import {preparePageDiscourseContext} from '@/src/services/translation/context/pageDiscourse';
@@ -40,6 +40,7 @@ const FULL_PAGE_TRANSLATION_REQUEST_CACHE_LIMIT = 512;
 const FULL_PAGE_TRANSLATION_REMOUNT_GRACE_MS = 250;
 const CROSS_CANDIDATE_MAX_TEXT_SLOTS = 4;
 const CROSS_CANDIDATE_MAX_CHARACTERS = 2_000;
+const AI_BATCH_COLLECTION_MS = 32;
 // 悬浮手势的每次配置捕获仍同步冻结字段；只有全库摘要经原始标量复验后复用。
 const readGlossaryRevision = createGlossaryRevisionMemoizer();
 
@@ -118,10 +119,12 @@ interface TranslationBatchTask {
 interface TranslationBatchQueue {
     pending: TranslationBatchTask[];
     flushScheduled: boolean;
+    flushTimer?: ReturnType<typeof setTimeout>;
     disabledAIKeys: Set<string>;
 }
 
 const translationBatchQueues = new WeakMap<FullPageTranslationSessionCache, TranslationBatchQueue>();
+const nativeTranslationBatchQueues = new WeakMap<FullPageTranslationSessionCache, TranslationBatchQueue>();
 const aiBatchOwnerIds = new WeakMap<Element, number>();
 let nextAIBatchOwnerId = 0;
 
@@ -701,8 +704,32 @@ async function executeTranslationBatch(tasks: TranslationBatchTask[], queue: Tra
     }
 }
 
-function flushTranslationBatchQueue(queue: TranslationBatchQueue): void {
+/** 异步预检可能乱序完成；同配置、章节与父节点内恢复阅读顺序后再检查直接相邻。 */
+function orderAITranslationBatchTasks(tasks: readonly TranslationBatchTask[]): TranslationBatchTask[] {
+    const scopes = new Map<string, Map<Node | undefined, TranslationBatchTask[]>>();
+    for (const task of tasks) {
+        if (task.settled || task.signal?.aborted) continue;
+        let parents = scopes.get(task.batchKey);
+        if (!parents) scopes.set(task.batchKey, parents = new Map());
+        const parent = task.owner?.parentNode ?? task.owner;
+        let siblings = parents.get(parent);
+        if (!siblings) parents.set(parent, siblings = []);
+        siblings.push(task);
+    }
+    return [...scopes.values()].flatMap(parents => [...parents.values()].flatMap(siblings => {
+        // 无 DOM owner 的显式调用保持提交顺序；同父元素的比较关系始终可传递。
+        if (siblings[0]!.owner) siblings.sort((left, right) => {
+            const position = left.owner!.compareDocumentPosition(right.owner!);
+            return position & 4 ? -1 : position & 2 ? 1 : 0;
+        });
+        return siblings;
+    }));
+}
+
+function flushTranslationBatchQueue(queue: TranslationBatchQueue, native: boolean): void {
     queue.flushScheduled = false;
+    queue.flushTimer = undefined;
+    if (!native) queue.pending = orderAITranslationBatchTasks(queue.pending);
     while (queue.pending.length > 0) {
         const batch = takeTranslationBatch(queue);
         if (batch.length === 0) continue;
@@ -720,10 +747,12 @@ function enqueueTranslationBatchTask(
     discourseContext?: string,
 ): Promise<string[]> {
     throwIfAborted(signal);
-    let queue = translationBatchQueues.get(session);
+    const native = supportsNativeTranslationBatch(snapshot.service);
+    const queues = native ? nativeTranslationBatchQueues : translationBatchQueues;
+    let queue = queues.get(session);
     if (!queue) {
         queue = {pending: [], flushScheduled: false, disabledAIKeys: new Set()};
-        translationBatchQueues.set(session, queue);
+        queues.set(session, queue);
     }
 
     return new Promise<string[]>((resolve, reject) => {
@@ -745,6 +774,12 @@ function enqueueTranslationBatchTask(
         const onAbort = () => {
             rejectTranslationBatchTask(task, createAbortError());
             task.abortSharedBatch?.();
+            if (queue!.flushTimer !== undefined && queue!.pending.every(pending => pending.settled)) {
+                clearTimeout(queue!.flushTimer);
+                queue!.flushTimer = undefined;
+                queue!.flushScheduled = false;
+                queue!.pending = [];
+            }
         };
         if (signal) {
             signal.addEventListener('abort', onAbort, {once: true});
@@ -753,9 +788,15 @@ function enqueueTranslationBatchTask(
         queue!.pending.push(task);
         if (!queue!.flushScheduled) {
             queue!.flushScheduled = true;
-            const schedule = globalThis.queueMicrotask
-                ?? ((callback: VoidFunction) => void Promise.resolve().then(callback));
-            schedule(() => flushTranslationBatchQueue(queue!));
+            if (native) {
+                const schedule = globalThis.queueMicrotask
+                    ?? ((callback: VoidFunction) => void Promise.resolve().then(callback));
+                schedule(() => flushTranslationBatchQueue(queue!, true));
+            } else {
+                // 富文本校订查询、语言预检及全文 8ms 分片会跨微任务/浏览器任务完成。
+                // 从首个候选开始固定计时，后续入队不续期，孤立段落也能及时发出。
+                queue!.flushTimer = setTimeout(() => flushTranslationBatchQueue(queue!, false), AI_BATCH_COLLECTION_MS);
+            }
         }
     });
 }
