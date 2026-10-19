@@ -31,7 +31,7 @@ const TRANSIENT_BADGE_DELAY_MS = 180;
 
 export function installBackgroundBadge(tabTranslationStates: TabTranslationStateStore): BackgroundBadgeRuntime {
     const action = (browser.action ?? browser.browserAction) as BadgeActionApi | undefined;
-    const isSupported = !!action;
+    if (!action) return {isSupported: false, update: async () => {}};
     const read = createTabTranslationStateReader(tabTranslationStates);
     const queues = new Map<number, Promise<void>>();
     const versions = new Map<number, object>();
@@ -49,7 +49,6 @@ export function installBackgroundBadge(tabTranslationStates: TabTranslationState
     };
 
     const render = (tabId: number, status: TranslationToolbarStatus): Promise<void> => {
-        if (!action) return Promise.resolve();
         const current = requested.get(tabId);
         if (current?.status === status && versions.get(tabId) === current.version) return current.job;
         const version = {}; versions.set(tabId, version);
@@ -90,7 +89,6 @@ export function installBackgroundBadge(tabTranslationStates: TabTranslationState
         return job;
     };
     const update = async (tabId: number): Promise<void> => {
-        if (!isSupported) return;
         const state = tabTranslationStates.get(tabId);
         const status = state.isTranslated && !state.isSiteDisabled
             ? normalizeTranslationToolbarStatus(state.toolbarStatus) : 'idle';
@@ -116,25 +114,22 @@ export function installBackgroundBadge(tabTranslationStates: TabTranslationState
         await render(tabId, status);
     };
     const refresh = async (tabId: number): Promise<void> => {
-        if (!isSupported) return;
         const token = {}; versions.set(tabId, token);
         await read(tabId, true);
         if (versions.get(tabId) === token) await update(tabId);
     };
-    if (isSupported) {
-        browser.tabs.onActivated.addListener((info: {tabId: number}) => { void refresh(info.tabId); });
-        browser.tabs.onUpdated.addListener((tabId: number, change: {status?: string}) => {
-            if (change.status === 'loading' || change.status === 'complete') {
-                // 子 frame 加载和同文档 History 更新也会触发 loading，不能据此清空译文状态。
-                // 回源顶层文档；complete 再校准一次，覆盖导航期间无接收端及浏览器原生重置。
-                cancelPendingStatus(tabId); rendered.delete(tabId);
-                void refresh(tabId);
-            }
-        });
-        browser.tabs.onRemoved.addListener((tabId: number) => {
-            cancelPendingStatus(tabId); versions.delete(tabId); rendered.delete(tabId);
-            initializedIcons.delete(tabId); requested.delete(tabId);
-        });
-    }
-    return {isSupported, update};
+    browser.tabs.onActivated.addListener((info: {tabId: number}) => { void refresh(info.tabId); });
+    browser.tabs.onUpdated.addListener((tabId: number, change: {status?: string}) => {
+        if (change.status === 'loading' || change.status === 'complete') {
+            // 子 frame 加载和同文档 History 更新也会触发 loading，不能据此清空译文状态。
+            // 回源顶层文档；complete 再校准一次，覆盖导航期间无接收端及浏览器原生重置。
+            cancelPendingStatus(tabId); rendered.delete(tabId);
+            void refresh(tabId);
+        }
+    });
+    browser.tabs.onRemoved.addListener((tabId: number) => {
+        cancelPendingStatus(tabId); versions.delete(tabId); rendered.delete(tabId);
+        initializedIcons.delete(tabId); requested.delete(tabId);
+    });
+    return {isSupported: true, update};
 }
