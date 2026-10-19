@@ -113,6 +113,21 @@ function createUiFactory(records: any[]) {
     });
 }
 
+function viewportEventTarget() {
+    const listeners = new Map<string, Set<Listener>>();
+    return {
+        listeners,
+        addEventListener: vi.fn((type: string, listener: Listener, _options?: unknown) => {
+            if (!listeners.has(type)) listeners.set(type, new Set());
+            listeners.get(type)!.add(listener);
+        }),
+        removeEventListener: vi.fn((type: string, listener: Listener, _options?: unknown) => {
+            listeners.get(type)?.delete(listener);
+        }),
+        emit(type: string) { for (const listener of [...(listeners.get(type) || [])]) listener({type}); },
+    };
+}
+
 function mountHarness(overrides: {
     config?: Partial<InputTranslationContentConfig>;
     isSiteDisabled?: () => boolean;
@@ -382,6 +397,177 @@ describe('input translation content feature', () => {
         harness.controller.abort();
         expect(view.removeEventListener).toHaveBeenCalledWith('scroll', position, true);
         expect(view.removeEventListener).toHaveBeenCalledWith('resize', position);
+    });
+
+    it('键盘缩小与平移可见视口时重新夹边，卸载移除全部定位监听且不滚动宿主页', async () => {
+        const records: any[] = [];
+        const base = createUiFactory(records);
+        const harness = mountHarness({createUi: (context: unknown, options: any) => base(context, {
+            ...options,
+            onMount(container: HTMLElement) {
+                const tooltip = options.onMount(container);
+                tooltip.getBoundingClientRect.mockImplementation(() => ({
+                    width: Math.min(240, Number.parseFloat(tooltip.style.maxWidth)),
+                    height: Math.min(100, Number.parseFloat(tooltip.style.maxHeight)),
+                }));
+                return tooltip;
+            },
+        })});
+        const viewport = Object.assign(viewportEventTarget(), {width: 390, height: 280, offsetLeft: 20, offsetTop: 80});
+        const view: any = Object.assign(viewportEventTarget(), {
+            innerWidth: 390, innerHeight: 760, scrollX: 23, scrollY: 41, scrollTo: vi.fn(), visualViewport: viewport,
+        });
+        (harness.fakeDocument as any).defaultView = view;
+        const input = fakeElement('textarea');
+        input.value = 'Hello';
+        let rect = {left: 350, width: 40, top: 300, bottom: 330};
+        input.getBoundingClientRect.mockImplementation(() => rect);
+        harness.fakeDocument.activeElement = input;
+        await harness.fakeDocument.emit('keydown', trustedKey({key: 'Enter', ctrlKey: true}));
+        const tooltip = records.at(-1).ui.mounted;
+        expect(tooltip.style).toMatchObject({left: '158px', top: '188px', maxWidth: '360px', maxHeight: '256px'});
+
+        Object.assign(viewport, {width: 260, height: 220, offsetLeft: 40, offsetTop: 100});
+        viewport.emit('resize');
+        expect(tooltip.style).toMatchObject({left: '52px', top: '188px', maxWidth: '236px', maxHeight: '196px'});
+        rect = {left: 100, width: 40, top: 160, bottom: 190};
+        Object.assign(viewport, {offsetLeft: 60, offsetTop: 130});
+        viewport.emit('scroll');
+        expect(tooltip.style).toMatchObject({left: '72px', top: '202px'});
+        expect(view.scrollTo).not.toHaveBeenCalled();
+        expect([view.scrollX, view.scrollY]).toEqual([23, 41]);
+        expect(input.value).toBe('你好');
+        expect([...viewport.listeners.values()].map(listeners => listeners.size)).toEqual([1, 1]);
+
+        harness.controller.abort();
+        for (const listeners of viewport.listeners.values()) expect(listeners.size).toBe(0);
+        for (const listeners of view.listeners.values()) expect(listeners.size).toBe(0);
+        const previous = {...tooltip.style};
+        viewport.emit('resize');
+        viewport.emit('scroll');
+        view.emit('scroll');
+        expect(tooltip.style).toEqual(previous);
+    });
+
+    it('提示使用所属窗口的安全区并及时释放测量探针', async () => {
+        const records: any[] = [];
+        const base = createUiFactory(records);
+        const harness = mountHarness({createUi: (context: unknown, options: any) => base(context, {
+            ...options,
+            onMount(container: HTMLElement) {
+                const tooltip = options.onMount(container);
+                tooltip.getBoundingClientRect.mockImplementation(() => {
+                    expect(tooltip.style.maxWidth).toBe('348px');
+                    expect(tooltip.style.maxHeight).toBe('206px');
+                    return {width: 300, height: 120};
+                });
+                return tooltip;
+            },
+        })});
+        const document: any = harness.fakeDocument;
+        document.body = {appendChild: vi.fn()};
+        const createElement = document.createElement.bind(document);
+        document.createElement = vi.fn((tag: string) => {
+            const node = createElement(tag);
+            if (tag === 'span') node.remove = vi.fn();
+            return node;
+        });
+        document.defaultView = Object.assign(viewportEventTarget(), {
+            innerWidth: 390, innerHeight: 760, document,
+            visualViewport: Object.assign(viewportEventTarget(), {width: 390, height: 280, offsetLeft: 20, offsetTop: 80}),
+            getComputedStyle: vi.fn(() => ({paddingTop: '20px', paddingRight: '10px', paddingBottom: '30px', paddingLeft: '8px'})),
+        });
+        const input = fakeElement('textarea');
+        input.value = 'Hello';
+        input.getBoundingClientRect.mockReturnValue({left: 10, width: 80, top: 110, bottom: 140});
+        document.activeElement = input;
+        await document.emit('keydown', trustedKey({key: 'Enter', ctrlKey: true}));
+        expect(records.at(-1).ui.mounted.style).toMatchObject({left: '40px', top: '152px'});
+        expect(document.body.appendChild).toHaveBeenCalled();
+        for (const [probe] of document.body.appendChild.mock.calls) expect(probe.remove).toHaveBeenCalledOnce();
+        harness.controller.abort();
+    });
+
+    it('手动复制预览先按短窄可见区限制测量尺寸且不写入被拒绝的编辑宿主', async () => {
+        const records: any[] = [];
+        const base = createUiFactory(records);
+        const harness = mountHarness({createUi: (context: unknown, options: any) => base(context, {
+            ...options,
+            onMount(container: HTMLElement) {
+                const tooltip = options.onMount(container);
+                tooltip.getBoundingClientRect.mockImplementation(() => ({
+                    width: Math.min(320, Number.parseFloat(tooltip.style.maxWidth)),
+                    height: Math.min(420, Number.parseFloat(tooltip.style.maxHeight)),
+                }));
+                return tooltip;
+            },
+        })});
+        const viewport = Object.assign(viewportEventTarget(), {width: 220, height: 180, offsetLeft: 40, offsetTop: 100});
+        (harness.fakeDocument as any).defaultView = Object.assign(viewportEventTarget(), {
+            innerWidth: 390, innerHeight: 760, visualViewport: viewport,
+        });
+        const rich = fakeElement('div', {contenteditable: 'true'});
+        rich.innerText = 'Hello';
+        rich.getBoundingClientRect.mockReturnValue({left: 80, width: 80, top: 160, bottom: 180});
+        harness.fakeDocument.activeElement = rich;
+        editable.replaceEditableText.mockResolvedValueOnce('unsupported');
+        await harness.fakeDocument.emit('keydown', trustedKey({key: 'Enter', ctrlKey: true}));
+        const tooltip = records.at(-1).ui.mounted;
+        expect(tooltip.style).toMatchObject({width: '320px', maxWidth: '196px', maxHeight: '156px', left: '52px', top: '112px'});
+        expect(tooltip.children.at(-1)).toMatchObject({readOnly: true, value: '你好'});
+        expect(rich.innerText).toBe('Hello');
+        harness.controller.abort();
+    });
+
+    it('58px可见区回收垂直留白，84px恢复原间距且卸载后不再重新定位', async () => {
+        const records: any[] = [];
+        const base = createUiFactory(records);
+        const harness = mountHarness({createUi: (context: unknown, options: any) => base(context, {
+            ...options,
+            onMount(container: HTMLElement) {
+                const tooltip = options.onMount(container);
+                tooltip.getBoundingClientRect.mockImplementation(() => ({
+                    width: Math.min(240, Number.parseFloat(tooltip.style.maxWidth)),
+                    height: Math.min(400, Number.parseFloat(tooltip.style.maxHeight)),
+                }));
+                return tooltip;
+            },
+        })});
+        const viewport = Object.assign(viewportEventTarget(), {width: 320, height: 58, offsetLeft: 20, offsetTop: 80});
+        const view: any = Object.assign(viewportEventTarget(), {
+            innerWidth: 390, innerHeight: 760, scrollX: 23, scrollY: 41, scrollTo: vi.fn(), visualViewport: viewport,
+        });
+        (harness.fakeDocument as any).defaultView = view;
+        const input = fakeElement('textarea');
+        input.value = 'Hello';
+        input.getBoundingClientRect.mockReturnValue({left: 300, width: 40, top: 100, bottom: 130});
+        harness.fakeDocument.activeElement = input;
+        await harness.fakeDocument.emit('keydown', trustedKey({key: 'Enter', ctrlKey: true}));
+        const tooltip = records.at(-1).ui.mounted;
+        expect(tooltip.style).toMatchObject({left: '88px', top: '80px', maxWidth: '296px', maxHeight: '58px', paddingBlock: '7px'});
+        expect(Number.parseFloat(tooltip.style.maxHeight) - Number.parseFloat(tooltip.style.paddingBlock) * 2).toBe(44);
+
+        viewport.height = 84;
+        viewport.emit('resize');
+        expect(tooltip.style).toMatchObject({left: '88px', top: '92px', maxWidth: '296px', maxHeight: '60px', paddingBlock: '8px'});
+        expect(records.at(-1).ui.mounted).toBe(tooltip);
+        viewport.height = 58;
+        viewport.offsetTop = 140;
+        viewport.emit('scroll');
+        expect(tooltip.style).toMatchObject({left: '88px', top: '140px', maxWidth: '296px', maxHeight: '58px', paddingBlock: '7px'});
+        expect(view.scrollTo).not.toHaveBeenCalled();
+        expect([view.scrollX, view.scrollY]).toEqual([23, 41]);
+        expect(input.value).toBe('你好');
+        expect([...viewport.listeners.values()].map(listeners => listeners.size)).toEqual([1, 1]);
+
+        harness.controller.abort();
+        for (const listeners of viewport.listeners.values()) expect(listeners.size).toBe(0);
+        for (const listeners of view.listeners.values()) expect(listeners.size).toBe(0);
+        const lastStyle = {...tooltip.style};
+        viewport.height = 84;
+        viewport.emit('resize');
+        view.emit('scroll');
+        expect(tooltip.style).toEqual(lastStyle);
     });
 
     it.each(['keydown', 'compositionstart', 'paste', 'cut', 'ctrl_key'])('恢复原文等待期间的 %s 能立即取消写入', async type => {

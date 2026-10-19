@@ -1,0 +1,4594 @@
+{
+  "kind": "production-share-card-touch-four-row-operation",
+  "ok": true,
+  "rows": [
+    {
+      "label": "coarse-320x760",
+      "width": 320,
+      "height": 760,
+      "touch": true,
+      "lang": "zh-CN",
+      "ok": true,
+      "measurements": {
+        "selection-indicator": {
+          "x": 191.3671875,
+          "y": 91.296875,
+          "rect": {
+            "left": 180.3671875,
+            "top": 80.296875,
+            "right": 202.3671875,
+            "bottom": 102.296875,
+            "width": 22,
+            "height": 22
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 320,
+            "bottom": 760
+          },
+          "clip": {
+            "left": 0,
+            "top": 0,
+            "right": 320,
+            "bottom": 760
+          },
+          "clipSources": [],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "SPAN",
+              "className": "fr-selection-indicator-glyph"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-selection-indicator fr-selection-indicator--icon"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-selection-indicator fr-selection-indicator--icon"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-selection-indicator fr-selection-indicator--icon"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-selection-indicator fr-selection-indicator--icon"
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "rendered": true,
+          "enabled": true
+        },
+        "share-entry": {
+          "x": 231,
+          "y": 114.296875,
+          "rect": {
+            "left": 209,
+            "top": 92.296875,
+            "right": 253,
+            "bottom": 136.296875,
+            "width": 44,
+            "height": 44
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 320,
+            "bottom": 760
+          },
+          "clip": {
+            "left": 13,
+            "top": 88.29913949275362,
+            "right": 307,
+            "bottom": 293.7633605072464
+          },
+          "clipSources": [
+            {
+              "className": "fr-translation-tooltip",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "path",
+              "className": "[object SVGAnimatedString]"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-action-btn fr-share-card-entry"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-action-btn fr-share-card-entry"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-action-btn fr-share-card-entry"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-action-btn fr-share-card-entry"
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "rendered": true,
+          "enabled": true
+        },
+        "initialClose": {
+          "rect": {
+            "left": 251,
+            "top": 46.5,
+            "right": 295,
+            "bottom": 90.5,
+            "width": 44,
+            "height": 44
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 320,
+            "bottom": 760
+          },
+          "clip": {
+            "left": 9,
+            "top": 34.5,
+            "right": 311,
+            "bottom": 725.5
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-close"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-close"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-close"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-close"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-close"
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 22,
+          "dialog": {
+            "left": 8,
+            "top": 33.5,
+            "right": 312,
+            "bottom": 726.5,
+            "width": 304,
+            "height": 693
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 25,
+              "top": 59,
+              "right": 89,
+              "bottom": 78
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "zh-CN",
+          "details": {
+            "more": false,
+            "edit": false
+          },
+          "scroll": {
+            "kind": "workspace",
+            "top": 0,
+            "client": 529,
+            "height": 529,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 160,
+              "y": 367
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        },
+        "auto": {
+          "rect": {
+            "left": 27,
+            "top": 569,
+            "right": 158.5,
+            "bottom": 613,
+            "width": 131.5,
+            "height": 44
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 320,
+            "bottom": 760
+          },
+          "clip": {
+            "left": 9,
+            "top": 77,
+            "right": 311,
+            "bottom": 657
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-workspace",
+              "x": "auto",
+              "y": "auto"
+            },
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 13,
+          "dialog": {
+            "left": 8,
+            "top": 8,
+            "right": 312,
+            "bottom": 752,
+            "width": 304,
+            "height": 744
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 25,
+              "top": 33.5,
+              "right": 89,
+              "bottom": 52.5
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "zh-CN",
+          "details": {
+            "more": true,
+            "edit": false
+          },
+          "scroll": {
+            "kind": "workspace",
+            "top": 0,
+            "client": 580,
+            "height": 955,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 160,
+              "y": 367
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        },
+        "square": {
+          "rect": {
+            "left": 161.5,
+            "top": 569,
+            "right": 293,
+            "bottom": 613,
+            "width": 131.5,
+            "height": 44
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 320,
+            "bottom": 760
+          },
+          "clip": {
+            "left": 9,
+            "top": 77,
+            "right": 311,
+            "bottom": 657
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-workspace",
+              "x": "auto",
+              "y": "auto"
+            },
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 13,
+          "dialog": {
+            "left": 8,
+            "top": 8,
+            "right": 312,
+            "bottom": 752,
+            "width": 304,
+            "height": 744
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 25,
+              "top": 33.5,
+              "right": 89,
+              "bottom": 52.5
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "zh-CN",
+          "details": {
+            "more": true,
+            "edit": false
+          },
+          "scroll": {
+            "kind": "workspace",
+            "top": 0,
+            "client": 580,
+            "height": 955,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 160,
+              "y": 367
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        },
+        "small": {
+          "rect": {
+            "left": 27,
+            "top": 601,
+            "right": 113.6640625,
+            "bottom": 645,
+            "width": 86.6640625,
+            "height": 44
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 320,
+            "bottom": 760
+          },
+          "clip": {
+            "left": 9,
+            "top": 77,
+            "right": 311,
+            "bottom": 657
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-workspace",
+              "x": "auto",
+              "y": "auto"
+            },
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 13,
+          "dialog": {
+            "left": 8,
+            "top": 8,
+            "right": 312,
+            "bottom": 752,
+            "width": 304,
+            "height": 744
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 25,
+              "top": 33.5,
+              "right": 89,
+              "bottom": 52.5
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "zh-CN",
+          "details": {
+            "more": true,
+            "edit": false
+          },
+          "scroll": {
+            "kind": "workspace",
+            "top": 57,
+            "client": 580,
+            "height": 955,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 160,
+              "y": 367
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        },
+        "medium": {
+          "rect": {
+            "left": 116.6640625,
+            "top": 601,
+            "right": 203.328125,
+            "bottom": 645,
+            "width": 86.6640625,
+            "height": 44
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 320,
+            "bottom": 760
+          },
+          "clip": {
+            "left": 9,
+            "top": 77,
+            "right": 311,
+            "bottom": 657
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-workspace",
+              "x": "auto",
+              "y": "auto"
+            },
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 13,
+          "dialog": {
+            "left": 8,
+            "top": 8,
+            "right": 312,
+            "bottom": 752,
+            "width": 304,
+            "height": 744
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 25,
+              "top": 33.5,
+              "right": 89,
+              "bottom": 52.5
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "zh-CN",
+          "details": {
+            "more": true,
+            "edit": false
+          },
+          "scroll": {
+            "kind": "workspace",
+            "top": 57,
+            "client": 580,
+            "height": 955,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 160,
+              "y": 367
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        },
+        "large": {
+          "rect": {
+            "left": 206.328125,
+            "top": 601,
+            "right": 292.9921875,
+            "bottom": 645,
+            "width": 86.6640625,
+            "height": 44
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 320,
+            "bottom": 760
+          },
+          "clip": {
+            "left": 9,
+            "top": 77,
+            "right": 311,
+            "bottom": 657
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-workspace",
+              "x": "auto",
+              "y": "auto"
+            },
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 13,
+          "dialog": {
+            "left": 8,
+            "top": 8,
+            "right": 312,
+            "bottom": 752,
+            "width": 304,
+            "height": 744
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 25,
+              "top": 33.5,
+              "right": 89,
+              "bottom": 52.5
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "zh-CN",
+          "details": {
+            "more": true,
+            "edit": false
+          },
+          "scroll": {
+            "kind": "workspace",
+            "top": 57,
+            "client": 580,
+            "height": 955,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 160,
+              "y": 367
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        },
+        "copy": {
+          "rect": {
+            "left": 23,
+            "top": 695,
+            "right": 156.5,
+            "bottom": 739,
+            "width": 133.5,
+            "height": 44
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 320,
+            "bottom": 760
+          },
+          "clip": {
+            "left": 9,
+            "top": 9,
+            "right": 311,
+            "bottom": 751
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 14,
+          "dialog": {
+            "left": 8,
+            "top": 8,
+            "right": 312,
+            "bottom": 752,
+            "width": 304,
+            "height": 744
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 25,
+              "top": 33.5,
+              "right": 89,
+              "bottom": 52.5
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "zh-CN",
+          "details": {
+            "more": true,
+            "edit": true
+          },
+          "scroll": {
+            "kind": "workspace",
+            "top": 371,
+            "client": 580,
+            "height": 1301,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 160,
+              "y": 367
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        },
+        "save": {
+          "rect": {
+            "left": 163.5,
+            "top": 695,
+            "right": 297,
+            "bottom": 739,
+            "width": 133.5,
+            "height": 44
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 320,
+            "bottom": 760
+          },
+          "clip": {
+            "left": 9,
+            "top": 9,
+            "right": 311,
+            "bottom": 751
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-primary"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-primary"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-primary"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-primary"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-primary"
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 14,
+          "dialog": {
+            "left": 8,
+            "top": 8,
+            "right": 312,
+            "bottom": 752,
+            "width": 304,
+            "height": 744
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 25,
+              "top": 33.5,
+              "right": 89,
+              "bottom": 52.5
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "zh-CN",
+          "details": {
+            "more": true,
+            "edit": true
+          },
+          "scroll": {
+            "kind": "workspace",
+            "top": 371,
+            "client": 580,
+            "height": 1301,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 160,
+              "y": 367
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        }
+      },
+      "wheels": [
+        {
+          "reason": "reveal-small",
+          "requestedDeltaY": 57,
+          "before": 0,
+          "after": 57,
+          "kind": "workspace"
+        },
+        {
+          "reason": "reveal-edit",
+          "requestedDeltaY": 314,
+          "before": 57,
+          "after": 371,
+          "kind": "workspace"
+        }
+      ],
+      "clicks": [
+        "selection-indicator",
+        "share-entry",
+        "more",
+        "large",
+        "edit",
+        "close"
+      ],
+      "screenshots": [
+        {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/share-card-touch-followup/share-current-root-attempt8/artifacts/coarse-320x760-first.png",
+          "bytes": 43768,
+          "sha256": "d14b73a07a84d114787099b1f17a710429d2a58f0145e379321af302c983863a"
+        },
+        {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/share-card-touch-followup/share-current-root-attempt8/artifacts/coarse-320x760-controls.png",
+          "bytes": 38804,
+          "sha256": "86bc2062cea870b80064c3ad42d7d888011ed4afe1cee3f4bebe4601cf944128"
+        }
+      ],
+      "media": {
+        "width": 320,
+        "height": 760,
+        "coarse": true,
+        "fine": false,
+        "vv": {
+          "width": 320,
+          "height": 760
+        }
+      },
+      "preferenceReadback": {
+        "theme": "coral",
+        "format": "auto",
+        "fontSize": "large",
+        "translationFirst": false,
+        "showSource": true,
+        "showBrand": true
+      },
+      "editFields": [
+        {
+          "value": "Somewhere, something incredible is waiting to be known.",
+          "font": 16,
+          "client": 272,
+          "scroll": 272
+        },
+        {
+          "value": "在某个地方，正有不可思议的事物，等待我们去发现。",
+          "font": 16,
+          "client": 272,
+          "scroll": 272
+        }
+      ],
+      "closed": {
+        "same": true,
+        "connected": true,
+        "sameText": true,
+        "dialogOpen": false,
+        "events": [
+          {
+            "kind": "click",
+            "trusted": true,
+            "tag": "SUMMARY",
+            "key": "summary"
+          },
+          {
+            "kind": "wheel",
+            "trusted": true,
+            "owned": true,
+            "deltaY": 114
+          },
+          {
+            "kind": "click",
+            "trusted": true,
+            "tag": "BUTTON",
+            "key": "large"
+          },
+          {
+            "kind": "wheel",
+            "trusted": true,
+            "owned": true,
+            "deltaY": 628
+          },
+          {
+            "kind": "click",
+            "trusted": true,
+            "tag": "SUMMARY",
+            "key": "summary"
+          },
+          {
+            "kind": "click",
+            "trusted": true,
+            "tag": "BUTTON",
+            "key": "close"
+          }
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "label": "coarse-390x280",
+      "width": 390,
+      "height": 280,
+      "touch": true,
+      "lang": "zh-CN",
+      "short": true,
+      "ok": true,
+      "measurements": {
+        "selection-indicator": {
+          "x": 128.125,
+          "y": 91.296875,
+          "rect": {
+            "left": 117.125,
+            "top": 80.296875,
+            "right": 139.125,
+            "bottom": 102.296875,
+            "width": 22,
+            "height": 22
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 390,
+            "bottom": 280
+          },
+          "clip": {
+            "left": 0,
+            "top": 0,
+            "right": 390,
+            "bottom": 280
+          },
+          "clipSources": [],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "SPAN",
+              "className": "fr-selection-indicator-glyph"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-selection-indicator fr-selection-indicator--icon"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-selection-indicator fr-selection-indicator--icon"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-selection-indicator fr-selection-indicator--icon"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-selection-indicator fr-selection-indicator--icon"
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "rendered": true,
+          "enabled": true
+        },
+        "share-entry": {
+          "x": 301,
+          "y": 114.296875,
+          "rect": {
+            "left": 279,
+            "top": 92.296875,
+            "right": 323,
+            "bottom": 136.296875,
+            "width": 44,
+            "height": 44
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 390,
+            "bottom": 280
+          },
+          "clip": {
+            "left": 13,
+            "top": 88.29523480662984,
+            "right": 377,
+            "bottom": 267.0016401933702
+          },
+          "clipSources": [
+            {
+              "className": "fr-translation-tooltip",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "path",
+              "className": "[object SVGAnimatedString]"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-action-btn fr-share-card-entry"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-action-btn fr-share-card-entry"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-action-btn fr-share-card-entry"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-action-btn fr-share-card-entry"
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "rendered": true,
+          "enabled": true
+        },
+        "initialClose": {
+          "rect": {
+            "left": 321,
+            "top": 21,
+            "right": 365,
+            "bottom": 65,
+            "width": 44,
+            "height": 44
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 390,
+            "bottom": 280
+          },
+          "clip": {
+            "left": 9,
+            "top": 9,
+            "right": 381,
+            "bottom": 271
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-close"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-close"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-close"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-close"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-close"
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 22,
+          "dialog": {
+            "left": 8,
+            "top": 8,
+            "right": 382,
+            "bottom": 272,
+            "width": 374,
+            "height": 264
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 25,
+              "top": 33.5,
+              "right": 89,
+              "bottom": 52.5
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "zh-CN",
+          "details": {
+            "more": false,
+            "edit": false
+          },
+          "scroll": {
+            "kind": "body",
+            "top": 0,
+            "client": 194,
+            "height": 623,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 195,
+              "y": 174
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        },
+        "auto": {
+          "rect": {
+            "left": 27,
+            "top": 215,
+            "right": 104.5,
+            "bottom": 259,
+            "width": 77.5,
+            "height": 44
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 390,
+            "bottom": 280
+          },
+          "clip": {
+            "left": 9,
+            "top": 77,
+            "right": 381,
+            "bottom": 271
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-body",
+              "x": "auto",
+              "y": "auto"
+            },
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 13,
+          "dialog": {
+            "left": 8,
+            "top": 8,
+            "right": 382,
+            "bottom": 272,
+            "width": 374,
+            "height": 264
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 25,
+              "top": 33.5,
+              "right": 89,
+              "bottom": 52.5
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "zh-CN",
+          "details": {
+            "more": true,
+            "edit": false
+          },
+          "scroll": {
+            "kind": "body",
+            "top": 354,
+            "client": 194,
+            "height": 960,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 195,
+              "y": 174
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        },
+        "square": {
+          "rect": {
+            "left": 107.5,
+            "top": 215,
+            "right": 185,
+            "bottom": 259,
+            "width": 77.5,
+            "height": 44
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 390,
+            "bottom": 280
+          },
+          "clip": {
+            "left": 9,
+            "top": 77,
+            "right": 381,
+            "bottom": 271
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-body",
+              "x": "auto",
+              "y": "auto"
+            },
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 13,
+          "dialog": {
+            "left": 8,
+            "top": 8,
+            "right": 382,
+            "bottom": 272,
+            "width": 374,
+            "height": 264
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 25,
+              "top": 33.5,
+              "right": 89,
+              "bottom": 52.5
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "zh-CN",
+          "details": {
+            "more": true,
+            "edit": false
+          },
+          "scroll": {
+            "kind": "body",
+            "top": 354,
+            "client": 194,
+            "height": 960,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 195,
+              "y": 174
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        },
+        "small": {
+          "rect": {
+            "left": 205,
+            "top": 215,
+            "right": 255.6640625,
+            "bottom": 259,
+            "width": 50.6640625,
+            "height": 44
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 390,
+            "bottom": 280
+          },
+          "clip": {
+            "left": 9,
+            "top": 77,
+            "right": 381,
+            "bottom": 271
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-body",
+              "x": "auto",
+              "y": "auto"
+            },
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 13,
+          "dialog": {
+            "left": 8,
+            "top": 8,
+            "right": 382,
+            "bottom": 272,
+            "width": 374,
+            "height": 264
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 25,
+              "top": 33.5,
+              "right": 89,
+              "bottom": 52.5
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "zh-CN",
+          "details": {
+            "more": true,
+            "edit": false
+          },
+          "scroll": {
+            "kind": "body",
+            "top": 354,
+            "client": 194,
+            "height": 960,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 195,
+              "y": 174
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        },
+        "medium": {
+          "rect": {
+            "left": 258.6640625,
+            "top": 215,
+            "right": 309.328125,
+            "bottom": 259,
+            "width": 50.6640625,
+            "height": 44
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 390,
+            "bottom": 280
+          },
+          "clip": {
+            "left": 9,
+            "top": 77,
+            "right": 381,
+            "bottom": 271
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-body",
+              "x": "auto",
+              "y": "auto"
+            },
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 13,
+          "dialog": {
+            "left": 8,
+            "top": 8,
+            "right": 382,
+            "bottom": 272,
+            "width": 374,
+            "height": 264
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 25,
+              "top": 33.5,
+              "right": 89,
+              "bottom": 52.5
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "zh-CN",
+          "details": {
+            "more": true,
+            "edit": false
+          },
+          "scroll": {
+            "kind": "body",
+            "top": 354,
+            "client": 194,
+            "height": 960,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 195,
+              "y": 174
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        },
+        "large": {
+          "rect": {
+            "left": 312.328125,
+            "top": 215,
+            "right": 362.9921875,
+            "bottom": 259,
+            "width": 50.6640625,
+            "height": 44
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 390,
+            "bottom": 280
+          },
+          "clip": {
+            "left": 9,
+            "top": 77,
+            "right": 381,
+            "bottom": 271
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-body",
+              "x": "auto",
+              "y": "auto"
+            },
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 13,
+          "dialog": {
+            "left": 8,
+            "top": 8,
+            "right": 382,
+            "bottom": 272,
+            "width": 374,
+            "height": 264
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 25,
+              "top": 33.5,
+              "right": 89,
+              "bottom": 52.5
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "zh-CN",
+          "details": {
+            "more": true,
+            "edit": false
+          },
+          "scroll": {
+            "kind": "body",
+            "top": 354,
+            "client": 194,
+            "height": 960,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 195,
+              "y": 174
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        },
+        "copy": {
+          "rect": {
+            "left": 23,
+            "top": 215.0625,
+            "right": 191.5,
+            "bottom": 259.0625,
+            "width": 168.5,
+            "height": 44
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 390,
+            "bottom": 280
+          },
+          "clip": {
+            "left": 9,
+            "top": 77,
+            "right": 381,
+            "bottom": 271
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-body",
+              "x": "auto",
+              "y": "auto"
+            },
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 14,
+          "dialog": {
+            "left": 8,
+            "top": 8,
+            "right": 382,
+            "bottom": 272,
+            "width": 374,
+            "height": 264
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 25,
+              "top": 33.5,
+              "right": 89,
+              "bottom": 52.5
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "zh-CN",
+          "details": {
+            "more": true,
+            "edit": true
+          },
+          "scroll": {
+            "kind": "body",
+            "top": 1096.5,
+            "client": 194,
+            "height": 1291,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 195,
+              "y": 174
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        },
+        "save": {
+          "rect": {
+            "left": 198.5,
+            "top": 215.0625,
+            "right": 367,
+            "bottom": 259.0625,
+            "width": 168.5,
+            "height": 44
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 390,
+            "bottom": 280
+          },
+          "clip": {
+            "left": 9,
+            "top": 77,
+            "right": 381,
+            "bottom": 271
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-body",
+              "x": "auto",
+              "y": "auto"
+            },
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-primary"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-primary"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-primary"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-primary"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-primary"
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 14,
+          "dialog": {
+            "left": 8,
+            "top": 8,
+            "right": 382,
+            "bottom": 272,
+            "width": 374,
+            "height": 264
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 25,
+              "top": 33.5,
+              "right": 89,
+              "bottom": 52.5
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "zh-CN",
+          "details": {
+            "more": true,
+            "edit": true
+          },
+          "scroll": {
+            "kind": "body",
+            "top": 1096.5,
+            "client": 194,
+            "height": 1291,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 195,
+              "y": 174
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        }
+      },
+      "wheels": [
+        {
+          "reason": "reveal-more",
+          "requestedDeltaY": 266,
+          "before": 0,
+          "after": 266,
+          "kind": "body"
+        },
+        {
+          "reason": "reveal-auto",
+          "requestedDeltaY": 88,
+          "before": 266,
+          "after": 354,
+          "kind": "body"
+        },
+        {
+          "reason": "reveal-edit",
+          "requestedDeltaY": 313.8125,
+          "before": 355.5,
+          "after": 669.5,
+          "kind": "body"
+        },
+        {
+          "reason": "reveal-copy",
+          "requestedDeltaY": 427.0625,
+          "before": 669.5,
+          "after": 1096.5,
+          "kind": "body"
+        }
+      ],
+      "clicks": [
+        "selection-indicator",
+        "share-entry",
+        "more",
+        "large",
+        "edit",
+        "close"
+      ],
+      "screenshots": [
+        {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/share-card-touch-followup/share-current-root-attempt8/artifacts/coarse-390x280-first.png",
+          "bytes": 22798,
+          "sha256": "94e2adf88d929bfc68a6c889748362acc9b38020b37471d00d7eb3618bf4f752"
+        },
+        {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/share-card-touch-followup/share-current-root-attempt8/artifacts/coarse-390x280-bottom.png",
+          "bytes": 14454,
+          "sha256": "6cc44017b0afe94b6f357d3300480c100cd74b62aa584f57a215379aa19fee7c"
+        }
+      ],
+      "media": {
+        "width": 390,
+        "height": 280,
+        "coarse": true,
+        "fine": false,
+        "vv": {
+          "width": 390,
+          "height": 280
+        }
+      },
+      "preferenceReadback": {
+        "theme": "coral",
+        "format": "auto",
+        "fontSize": "large",
+        "translationFirst": false,
+        "showSource": true,
+        "showBrand": true
+      },
+      "editFields": [
+        {
+          "value": "Somewhere, something incredible is waiting to be known.",
+          "font": 16,
+          "client": 342,
+          "scroll": 342
+        },
+        {
+          "value": "在某个地方，正有不可思议的事物，等待我们去发现。",
+          "font": 16,
+          "client": 342,
+          "scroll": 342
+        }
+      ],
+      "bottomClose": {
+        "rect": {
+          "left": 321,
+          "top": 21,
+          "right": 365,
+          "bottom": 65,
+          "width": 44,
+          "height": 44
+        },
+        "port": {
+          "left": 0,
+          "top": 0,
+          "right": 390,
+          "bottom": 280
+        },
+        "clip": {
+          "left": 9,
+          "top": 9,
+          "right": 381,
+          "bottom": 271
+        },
+        "clipSources": [
+          {
+            "className": "fr-card-dialog",
+            "x": "hidden",
+            "y": "hidden"
+          }
+        ],
+        "fiveHits": [
+          {
+            "hit": true,
+            "tag": "BUTTON",
+            "className": "fr-card-close"
+          },
+          {
+            "hit": true,
+            "tag": "BUTTON",
+            "className": "fr-card-close"
+          },
+          {
+            "hit": true,
+            "tag": "BUTTON",
+            "className": "fr-card-close"
+          },
+          {
+            "hit": true,
+            "tag": "BUTTON",
+            "className": "fr-card-close"
+          },
+          {
+            "hit": true,
+            "tag": "BUTTON",
+            "className": "fr-card-close"
+          }
+        ],
+        "withinPort": true,
+        "withinClip": true,
+        "enabled": true,
+        "rendered": true,
+        "fontSize": 22,
+        "dialog": {
+          "left": 8,
+          "top": 8,
+          "right": 382,
+          "bottom": 272,
+          "width": 374,
+          "height": 264
+        },
+        "dialogOverflow": false,
+        "documentOverflow": false,
+        "titleRects": [
+          {
+            "left": 25,
+            "top": 33.5,
+            "right": 89,
+            "bottom": 52.5
+          }
+        ],
+        "titleOverlapsClose": false,
+        "language": "zh-CN",
+        "details": {
+          "more": true,
+          "edit": true
+        },
+        "scroll": {
+          "kind": "body",
+          "top": 1096.5,
+          "client": 194,
+          "height": 1291,
+          "overflowY": "auto",
+          "wheelPoint": {
+            "x": 195,
+            "y": 174
+          },
+          "wheelOwned": true
+        },
+        "ready": true,
+        "headerPosition": "static"
+      },
+      "directCloseFromBottom": true,
+      "closed": {
+        "same": true,
+        "connected": true,
+        "sameText": true,
+        "dialogOpen": false,
+        "events": [
+          {
+            "kind": "wheel",
+            "trusted": true,
+            "owned": true,
+            "deltaY": 532
+          },
+          {
+            "kind": "click",
+            "trusted": true,
+            "tag": "SUMMARY",
+            "key": "summary"
+          },
+          {
+            "kind": "wheel",
+            "trusted": true,
+            "owned": true,
+            "deltaY": 176
+          },
+          {
+            "kind": "click",
+            "trusted": true,
+            "tag": "BUTTON",
+            "key": "large"
+          },
+          {
+            "kind": "wheel",
+            "trusted": true,
+            "owned": true,
+            "deltaY": 627.625
+          },
+          {
+            "kind": "click",
+            "trusted": true,
+            "tag": "SUMMARY",
+            "key": "summary"
+          },
+          {
+            "kind": "wheel",
+            "trusted": true,
+            "owned": true,
+            "deltaY": 854.125
+          },
+          {
+            "kind": "click",
+            "trusted": true,
+            "tag": "BUTTON",
+            "key": "close"
+          }
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "label": "coarse-fr-390x760",
+      "width": 390,
+      "height": 760,
+      "touch": true,
+      "lang": "fr-FR",
+      "ok": true,
+      "measurements": {
+        "selection-indicator": {
+          "x": 128.125,
+          "y": 91.296875,
+          "rect": {
+            "left": 117.125,
+            "top": 80.296875,
+            "right": 139.125,
+            "bottom": 102.296875,
+            "width": 22,
+            "height": 22
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 390,
+            "bottom": 760
+          },
+          "clip": {
+            "left": 0,
+            "top": 0,
+            "right": 390,
+            "bottom": 760
+          },
+          "clipSources": [],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "SPAN",
+              "className": "fr-selection-indicator-glyph"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-selection-indicator fr-selection-indicator--icon"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-selection-indicator fr-selection-indicator--icon"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-selection-indicator fr-selection-indicator--icon"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-selection-indicator fr-selection-indicator--icon"
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "rendered": true,
+          "enabled": true
+        },
+        "share-entry": {
+          "x": 301,
+          "y": 114.296875,
+          "rect": {
+            "left": 279,
+            "top": 92.296875,
+            "right": 323,
+            "bottom": 136.296875,
+            "width": 44,
+            "height": 44
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 390,
+            "bottom": 760
+          },
+          "clip": {
+            "left": 13,
+            "top": 88.29473684210527,
+            "right": 377,
+            "bottom": 275.8927631578947
+          },
+          "clipSources": [
+            {
+              "className": "fr-translation-tooltip",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "path",
+              "className": "[object SVGAnimatedString]"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-action-btn fr-share-card-entry"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-action-btn fr-share-card-entry"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-action-btn fr-share-card-entry"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-action-btn fr-share-card-entry"
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "rendered": true,
+          "enabled": true
+        },
+        "initialClose": {
+          "rect": {
+            "left": 321,
+            "top": 38.25,
+            "right": 365,
+            "bottom": 82.25,
+            "width": 44,
+            "height": 44
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 390,
+            "bottom": 760
+          },
+          "clip": {
+            "left": 9,
+            "top": 26.249295774647887,
+            "right": 381,
+            "bottom": 733.7507042253521
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-close"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-close"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-close"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-close"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-close"
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 22,
+          "dialog": {
+            "left": 8,
+            "top": 25.25,
+            "right": 382,
+            "bottom": 734.75,
+            "width": 374,
+            "height": 709.5
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 25,
+              "top": 50.75,
+              "right": 142.6953125,
+              "bottom": 69.75
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "fr-FR",
+          "details": {
+            "more": false,
+            "edit": false
+          },
+          "scroll": {
+            "kind": "workspace",
+            "top": 0,
+            "client": 546,
+            "height": 546,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 195,
+              "y": 367
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        },
+        "auto": {
+          "rect": {
+            "left": 27,
+            "top": 585.5,
+            "right": 193.5,
+            "bottom": 629.5,
+            "width": 166.5,
+            "height": 44
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 390,
+            "bottom": 760
+          },
+          "clip": {
+            "left": 9,
+            "top": 77,
+            "right": 381,
+            "bottom": 657
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-workspace",
+              "x": "auto",
+              "y": "auto"
+            },
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 13,
+          "dialog": {
+            "left": 8,
+            "top": 8,
+            "right": 382,
+            "bottom": 752,
+            "width": 374,
+            "height": 744
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 25,
+              "top": 33.5,
+              "right": 142.6953125,
+              "bottom": 52.5
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "fr-FR",
+          "details": {
+            "more": true,
+            "edit": false
+          },
+          "scroll": {
+            "kind": "workspace",
+            "top": 0,
+            "client": 580,
+            "height": 972,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 195,
+              "y": 367
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        },
+        "square": {
+          "rect": {
+            "left": 196.5,
+            "top": 585.5,
+            "right": 363,
+            "bottom": 629.5,
+            "width": 166.5,
+            "height": 44
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 390,
+            "bottom": 760
+          },
+          "clip": {
+            "left": 9,
+            "top": 77,
+            "right": 381,
+            "bottom": 657
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-workspace",
+              "x": "auto",
+              "y": "auto"
+            },
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 13,
+          "dialog": {
+            "left": 8,
+            "top": 8,
+            "right": 382,
+            "bottom": 752,
+            "width": 374,
+            "height": 744
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 25,
+              "top": 33.5,
+              "right": 142.6953125,
+              "bottom": 52.5
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "fr-FR",
+          "details": {
+            "more": true,
+            "edit": false
+          },
+          "scroll": {
+            "kind": "workspace",
+            "top": 0,
+            "client": 580,
+            "height": 972,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 195,
+              "y": 367
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        },
+        "small": {
+          "rect": {
+            "left": 27,
+            "top": 601,
+            "right": 137,
+            "bottom": 645,
+            "width": 110,
+            "height": 44
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 390,
+            "bottom": 760
+          },
+          "clip": {
+            "left": 9,
+            "top": 77,
+            "right": 381,
+            "bottom": 657
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-workspace",
+              "x": "auto",
+              "y": "auto"
+            },
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 13,
+          "dialog": {
+            "left": 8,
+            "top": 8,
+            "right": 382,
+            "bottom": 752,
+            "width": 374,
+            "height": 744
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 25,
+              "top": 33.5,
+              "right": 142.6953125,
+              "bottom": 52.5
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "fr-FR",
+          "details": {
+            "more": true,
+            "edit": false
+          },
+          "scroll": {
+            "kind": "workspace",
+            "top": 73.5,
+            "client": 580,
+            "height": 972,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 195,
+              "y": 367
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        },
+        "medium": {
+          "rect": {
+            "left": 140,
+            "top": 601,
+            "right": 250,
+            "bottom": 645,
+            "width": 110,
+            "height": 44
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 390,
+            "bottom": 760
+          },
+          "clip": {
+            "left": 9,
+            "top": 77,
+            "right": 381,
+            "bottom": 657
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-workspace",
+              "x": "auto",
+              "y": "auto"
+            },
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 13,
+          "dialog": {
+            "left": 8,
+            "top": 8,
+            "right": 382,
+            "bottom": 752,
+            "width": 374,
+            "height": 744
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 25,
+              "top": 33.5,
+              "right": 142.6953125,
+              "bottom": 52.5
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "fr-FR",
+          "details": {
+            "more": true,
+            "edit": false
+          },
+          "scroll": {
+            "kind": "workspace",
+            "top": 73.5,
+            "client": 580,
+            "height": 972,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 195,
+              "y": 367
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        },
+        "large": {
+          "rect": {
+            "left": 253,
+            "top": 601,
+            "right": 363,
+            "bottom": 645,
+            "width": 110,
+            "height": 44
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 390,
+            "bottom": 760
+          },
+          "clip": {
+            "left": 9,
+            "top": 77,
+            "right": 381,
+            "bottom": 657
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-workspace",
+              "x": "auto",
+              "y": "auto"
+            },
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 13,
+          "dialog": {
+            "left": 8,
+            "top": 8,
+            "right": 382,
+            "bottom": 752,
+            "width": 374,
+            "height": 744
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 25,
+              "top": 33.5,
+              "right": 142.6953125,
+              "bottom": 52.5
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "fr-FR",
+          "details": {
+            "more": true,
+            "edit": false
+          },
+          "scroll": {
+            "kind": "workspace",
+            "top": 73.5,
+            "client": 580,
+            "height": 972,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 195,
+              "y": 367
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        },
+        "copy": {
+          "rect": {
+            "left": 23,
+            "top": 695,
+            "right": 191.5,
+            "bottom": 739,
+            "width": 168.5,
+            "height": 44
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 390,
+            "bottom": 760
+          },
+          "clip": {
+            "left": 9,
+            "top": 9,
+            "right": 381,
+            "bottom": 751
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 14,
+          "dialog": {
+            "left": 8,
+            "top": 8,
+            "right": 382,
+            "bottom": 752,
+            "width": 374,
+            "height": 744
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 25,
+              "top": 33.5,
+              "right": 142.6953125,
+              "bottom": 52.5
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "fr-FR",
+          "details": {
+            "more": true,
+            "edit": true
+          },
+          "scroll": {
+            "kind": "workspace",
+            "top": 389,
+            "client": 580,
+            "height": 1319,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 195,
+              "y": 367
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        },
+        "save": {
+          "rect": {
+            "left": 198.5,
+            "top": 695,
+            "right": 367,
+            "bottom": 739,
+            "width": 168.5,
+            "height": 44
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 390,
+            "bottom": 760
+          },
+          "clip": {
+            "left": 9,
+            "top": 9,
+            "right": 381,
+            "bottom": 751
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-primary"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-primary"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-primary"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-primary"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-primary"
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 14,
+          "dialog": {
+            "left": 8,
+            "top": 8,
+            "right": 382,
+            "bottom": 752,
+            "width": 374,
+            "height": 744
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 25,
+              "top": 33.5,
+              "right": 142.6953125,
+              "bottom": 52.5
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "fr-FR",
+          "details": {
+            "more": true,
+            "edit": true
+          },
+          "scroll": {
+            "kind": "workspace",
+            "top": 389,
+            "client": 580,
+            "height": 1319,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 195,
+              "y": 367
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        }
+      },
+      "wheels": [
+        {
+          "reason": "reveal-small",
+          "requestedDeltaY": 73.5,
+          "before": 0,
+          "after": 73.5,
+          "kind": "workspace"
+        },
+        {
+          "reason": "reveal-edit",
+          "requestedDeltaY": 315.3125,
+          "before": 73.5,
+          "after": 389,
+          "kind": "workspace"
+        }
+      ],
+      "clicks": [
+        "selection-indicator",
+        "share-entry",
+        "more",
+        "large",
+        "edit",
+        "close"
+      ],
+      "screenshots": [
+        {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/share-card-touch-followup/share-current-root-attempt8/artifacts/coarse-fr-390x760-first.png",
+          "bytes": 50446,
+          "sha256": "af8f3aaed054a03eb9d4f8a7591873de04dd6fc99be1b9bc82128a57d55bb53d"
+        },
+        {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/share-card-touch-followup/share-current-root-attempt8/artifacts/coarse-fr-390x760-controls.png",
+          "bytes": 44487,
+          "sha256": "6d008defdfa9d5ebd5fcb86f2d458e00a4460e95aab67507f4b8d8a862c7139b"
+        }
+      ],
+      "media": {
+        "width": 390,
+        "height": 760,
+        "coarse": true,
+        "fine": false,
+        "vv": {
+          "width": 390,
+          "height": 760
+        }
+      },
+      "preferenceReadback": {
+        "theme": "coral",
+        "format": "auto",
+        "fontSize": "large",
+        "translationFirst": false,
+        "showSource": true,
+        "showBrand": true
+      },
+      "editFields": [
+        {
+          "value": "Somewhere, something incredible is waiting to be known.",
+          "font": 16,
+          "client": 342,
+          "scroll": 342
+        },
+        {
+          "value": "在某个地方，正有不可思议的事物，等待我们去发现。",
+          "font": 16,
+          "client": 342,
+          "scroll": 342
+        }
+      ],
+      "closed": {
+        "same": true,
+        "connected": true,
+        "sameText": true,
+        "dialogOpen": false,
+        "events": [
+          {
+            "kind": "click",
+            "trusted": true,
+            "tag": "SUMMARY",
+            "key": "summary"
+          },
+          {
+            "kind": "wheel",
+            "trusted": true,
+            "owned": true,
+            "deltaY": 147
+          },
+          {
+            "kind": "click",
+            "trusted": true,
+            "tag": "BUTTON",
+            "key": "large"
+          },
+          {
+            "kind": "wheel",
+            "trusted": true,
+            "owned": true,
+            "deltaY": 630.625
+          },
+          {
+            "kind": "click",
+            "trusted": true,
+            "tag": "SUMMARY",
+            "key": "summary"
+          },
+          {
+            "kind": "click",
+            "trusted": true,
+            "tag": "BUTTON",
+            "key": "close"
+          }
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "label": "fine-1280x900",
+      "width": 1280,
+      "height": 900,
+      "touch": false,
+      "lang": "zh-CN",
+      "ok": true,
+      "measurements": {
+        "selection-indicator": {
+          "x": 483.0234375,
+          "y": 62.5,
+          "rect": {
+            "left": 472.0234375,
+            "top": 51.5,
+            "right": 494.0234375,
+            "bottom": 73.5,
+            "width": 22,
+            "height": 22
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 1280,
+            "bottom": 900
+          },
+          "clip": {
+            "left": 0,
+            "top": 0,
+            "right": 1280,
+            "bottom": 900
+          },
+          "clipSources": [],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "SPAN",
+              "className": "fr-selection-indicator-glyph"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-selection-indicator fr-selection-indicator--icon"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-selection-indicator fr-selection-indicator--icon"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-selection-indicator fr-selection-indicator--icon"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-selection-indicator fr-selection-indicator--icon"
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "rendered": true,
+          "enabled": true
+        },
+        "share-entry": {
+          "x": 350,
+          "y": 76.5,
+          "rect": {
+            "left": 337,
+            "top": 63.5,
+            "right": 363,
+            "bottom": 89.5,
+            "width": 26,
+            "height": 26
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 1280,
+            "bottom": 900
+          },
+          "clip": {
+            "left": 13,
+            "top": 59.499075443786985,
+            "right": 399,
+            "bottom": 226.34467455621302
+          },
+          "clipSources": [
+            {
+              "className": "fr-translation-tooltip",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "svg",
+              "className": "[object SVGAnimatedString]"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-action-btn fr-share-card-entry"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-action-btn fr-share-card-entry"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-action-btn fr-share-card-entry"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-action-btn fr-share-card-entry"
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "rendered": true,
+          "enabled": true
+        },
+        "initialClose": {
+          "rect": {
+            "left": 867.6875,
+            "top": 113.78125,
+            "right": 897,
+            "bottom": 145.78125,
+            "width": 29.3125,
+            "height": 32
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 1280,
+            "bottom": 900
+          },
+          "clip": {
+            "left": 361,
+            "top": 97.78186968838527,
+            "right": 919,
+            "bottom": 802.2181303116148
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-close"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-close"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-close"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-close"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-close"
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 22,
+          "dialog": {
+            "left": 360,
+            "top": 96.78125,
+            "right": 920,
+            "bottom": 803.21875,
+            "width": 560,
+            "height": 706.4375
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 383,
+              "top": 120.28125,
+              "right": 447,
+              "bottom": 139.28125
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "zh-CN",
+          "details": {
+            "more": false,
+            "edit": false
+          },
+          "scroll": {
+            "kind": "workspace",
+            "top": 0,
+            "client": 572,
+            "height": 572,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 640,
+              "y": 443.75
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        },
+        "auto": {
+          "rect": {
+            "left": 387,
+            "top": 655.9375,
+            "right": 507,
+            "bottom": 689.9375,
+            "width": 120,
+            "height": 34
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 1280,
+            "bottom": 900
+          },
+          "clip": {
+            "left": 361,
+            "top": 111,
+            "right": 919,
+            "bottom": 776.5
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-workspace",
+              "x": "auto",
+              "y": "auto"
+            },
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 11,
+          "dialog": {
+            "left": 360,
+            "top": 50,
+            "right": 920,
+            "bottom": 850,
+            "width": 560,
+            "height": 800
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 383,
+              "top": 73.5,
+              "right": 447,
+              "bottom": 92.5
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "zh-CN",
+          "details": {
+            "more": true,
+            "edit": false
+          },
+          "scroll": {
+            "kind": "workspace",
+            "top": 0,
+            "client": 666,
+            "height": 889,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 640,
+              "y": 443.75
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        },
+        "square": {
+          "rect": {
+            "left": 510,
+            "top": 655.9375,
+            "right": 630,
+            "bottom": 689.9375,
+            "width": 120,
+            "height": 34
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 1280,
+            "bottom": 900
+          },
+          "clip": {
+            "left": 361,
+            "top": 111,
+            "right": 919,
+            "bottom": 776.5
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-workspace",
+              "x": "auto",
+              "y": "auto"
+            },
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 11,
+          "dialog": {
+            "left": 360,
+            "top": 50,
+            "right": 920,
+            "bottom": 850,
+            "width": 560,
+            "height": 800
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 383,
+              "top": 73.5,
+              "right": 447,
+              "bottom": 92.5
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "zh-CN",
+          "details": {
+            "more": true,
+            "edit": false
+          },
+          "scroll": {
+            "kind": "workspace",
+            "top": 0,
+            "client": 666,
+            "height": 889,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 640,
+              "y": 443.75
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        },
+        "small": {
+          "rect": {
+            "left": 650,
+            "top": 655.9375,
+            "right": 729,
+            "bottom": 689.9375,
+            "width": 79,
+            "height": 34
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 1280,
+            "bottom": 900
+          },
+          "clip": {
+            "left": 361,
+            "top": 111,
+            "right": 919,
+            "bottom": 776.5
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-workspace",
+              "x": "auto",
+              "y": "auto"
+            },
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 11,
+          "dialog": {
+            "left": 360,
+            "top": 50,
+            "right": 920,
+            "bottom": 850,
+            "width": 560,
+            "height": 800
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 383,
+              "top": 73.5,
+              "right": 447,
+              "bottom": 92.5
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "zh-CN",
+          "details": {
+            "more": true,
+            "edit": false
+          },
+          "scroll": {
+            "kind": "workspace",
+            "top": 0,
+            "client": 666,
+            "height": 889,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 640,
+              "y": 443.75
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        },
+        "medium": {
+          "rect": {
+            "left": 732,
+            "top": 655.9375,
+            "right": 811,
+            "bottom": 689.9375,
+            "width": 79,
+            "height": 34
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 1280,
+            "bottom": 900
+          },
+          "clip": {
+            "left": 361,
+            "top": 111,
+            "right": 919,
+            "bottom": 776.5
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-workspace",
+              "x": "auto",
+              "y": "auto"
+            },
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 11,
+          "dialog": {
+            "left": 360,
+            "top": 50,
+            "right": 920,
+            "bottom": 850,
+            "width": 560,
+            "height": 800
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 383,
+              "top": 73.5,
+              "right": 447,
+              "bottom": 92.5
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "zh-CN",
+          "details": {
+            "more": true,
+            "edit": false
+          },
+          "scroll": {
+            "kind": "workspace",
+            "top": 0,
+            "client": 666,
+            "height": 889,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 640,
+              "y": 443.75
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        },
+        "large": {
+          "rect": {
+            "left": 814,
+            "top": 655.9375,
+            "right": 893,
+            "bottom": 689.9375,
+            "width": 79,
+            "height": 34
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 1280,
+            "bottom": 900
+          },
+          "clip": {
+            "left": 361,
+            "top": 111,
+            "right": 919,
+            "bottom": 776.5
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-workspace",
+              "x": "auto",
+              "y": "auto"
+            },
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 11,
+          "dialog": {
+            "left": 360,
+            "top": 50,
+            "right": 920,
+            "bottom": 850,
+            "width": 560,
+            "height": 800
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 383,
+              "top": 73.5,
+              "right": 447,
+              "bottom": 92.5
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "zh-CN",
+          "details": {
+            "more": true,
+            "edit": false
+          },
+          "scroll": {
+            "kind": "workspace",
+            "top": 0,
+            "client": 666,
+            "height": 889,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 640,
+              "y": 443.75
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        },
+        "copy": {
+          "rect": {
+            "left": 730,
+            "top": 791.5,
+            "right": 810,
+            "bottom": 831,
+            "width": 80,
+            "height": 39.5
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 1280,
+            "bottom": 900
+          },
+          "clip": {
+            "left": 361,
+            "top": 51,
+            "right": 919,
+            "bottom": 849
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": ""
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 13,
+          "dialog": {
+            "left": 360,
+            "top": 50,
+            "right": 920,
+            "bottom": 850,
+            "width": 560,
+            "height": 800
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 383,
+              "top": 73.5,
+              "right": 447,
+              "bottom": 92.5
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "zh-CN",
+          "details": {
+            "more": true,
+            "edit": true
+          },
+          "scroll": {
+            "kind": "workspace",
+            "top": 247.5,
+            "client": 666,
+            "height": 1197,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 640,
+              "y": 443.75
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        },
+        "save": {
+          "rect": {
+            "left": 817,
+            "top": 791.5,
+            "right": 897,
+            "bottom": 831,
+            "width": 80,
+            "height": 39.5
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 1280,
+            "bottom": 900
+          },
+          "clip": {
+            "left": 361,
+            "top": 51,
+            "right": 919,
+            "bottom": 849
+          },
+          "clipSources": [
+            {
+              "className": "fr-card-dialog",
+              "x": "hidden",
+              "y": "hidden"
+            }
+          ],
+          "fiveHits": [
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-primary"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-primary"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-primary"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-primary"
+            },
+            {
+              "hit": true,
+              "tag": "BUTTON",
+              "className": "fr-card-primary"
+            }
+          ],
+          "withinPort": true,
+          "withinClip": true,
+          "enabled": true,
+          "rendered": true,
+          "fontSize": 13,
+          "dialog": {
+            "left": 360,
+            "top": 50,
+            "right": 920,
+            "bottom": 850,
+            "width": 560,
+            "height": 800
+          },
+          "dialogOverflow": false,
+          "documentOverflow": false,
+          "titleRects": [
+            {
+              "left": 383,
+              "top": 73.5,
+              "right": 447,
+              "bottom": 92.5
+            }
+          ],
+          "titleOverlapsClose": false,
+          "language": "zh-CN",
+          "details": {
+            "more": true,
+            "edit": true
+          },
+          "scroll": {
+            "kind": "workspace",
+            "top": 247.5,
+            "client": 666,
+            "height": 1197,
+            "overflowY": "auto",
+            "wheelPoint": {
+              "x": 640,
+              "y": 443.75
+            },
+            "wheelOwned": true
+          },
+          "ready": true,
+          "headerPosition": "static"
+        }
+      },
+      "wheels": [
+        {
+          "reason": "reveal-edit",
+          "requestedDeltaY": 247.4140625,
+          "before": 0,
+          "after": 247.5,
+          "kind": "workspace"
+        }
+      ],
+      "clicks": [
+        "selection-indicator",
+        "share-entry",
+        "more",
+        "large",
+        "edit",
+        "close"
+      ],
+      "screenshots": [
+        {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/share-card-touch-followup/share-current-root-attempt8/artifacts/fine-1280x900-first.png",
+          "bytes": 99353,
+          "sha256": "b6b3d414d31e183c3de67c2fba3a744a1edfb58aa6b7580d9aeb9d398d826191"
+        },
+        {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/share-card-touch-followup/share-current-root-attempt8/artifacts/fine-1280x900-controls.png",
+          "bytes": 91543,
+          "sha256": "f97bd0311cfd3a89f3c42e0905ac4bb2ad76629207a7102decf20fc81dd003d6"
+        }
+      ],
+      "media": {
+        "width": 1280,
+        "height": 900,
+        "coarse": false,
+        "fine": true,
+        "vv": {
+          "width": 1280,
+          "height": 900
+        }
+      },
+      "preferenceReadback": {
+        "theme": "coral",
+        "format": "auto",
+        "fontSize": "large",
+        "translationFirst": false,
+        "showSource": true,
+        "showBrand": true
+      },
+      "editFields": [
+        {
+          "value": "Somewhere, something incredible is waiting to be known.",
+          "font": 12,
+          "client": 512,
+          "scroll": 512
+        },
+        {
+          "value": "在某个地方，正有不可思议的事物，等待我们去发现。",
+          "font": 12,
+          "client": 512,
+          "scroll": 512
+        }
+      ],
+      "closed": {
+        "same": true,
+        "connected": true,
+        "sameText": true,
+        "dialogOpen": false,
+        "events": [
+          {
+            "kind": "click",
+            "trusted": true,
+            "tag": "SUMMARY",
+            "key": "summary"
+          },
+          {
+            "kind": "click",
+            "trusted": true,
+            "tag": "BUTTON",
+            "key": "large"
+          },
+          {
+            "kind": "wheel",
+            "trusted": true,
+            "owned": true,
+            "deltaY": 494.828125
+          },
+          {
+            "kind": "click",
+            "trusted": true,
+            "tag": "SUMMARY",
+            "key": "summary"
+          },
+          {
+            "kind": "click",
+            "trusted": true,
+            "tag": "BUTTON",
+            "key": "close"
+          }
+        ],
+        "overflow": false
+      }
+    }
+  ],
+  "errors": [],
+  "cleanupErrors": [],
+  "focusSamples": [
+    {
+      "label": "before",
+      "pid": 97878,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "after-four-rows",
+      "pid": 97878,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "after-cleanup",
+      "pid": 97878,
+      "name": "ChatGPT"
+    }
+  ],
+  "focusEvents": [],
+  "maximums": {
+    "rows": 4,
+    "selectionDrags": 4,
+    "coordinateClicks": 24,
+    "wheelsPerRow": 12,
+    "originalPNGs": 8
+  },
+  "selectionDrags": 4,
+  "coordinateClicks": 24,
+  "network": [],
+  "dynamicResources": [
+    {
+      "url": "chrome-extension://71b3ec95-63bb-479a-aa7b-a5fa9559c81a/content-scripts/content.css",
+      "relative": "content-scripts/content.css",
+      "resourceType": "fetch",
+      "status": 0,
+      "ok": true,
+      "productionFile": {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/content-scripts/content.css",
+        "bytes": 108299,
+        "sha256": "082e96160df038f717c285ddd42e158639a456cdb3b856747174547131c6926c"
+      },
+      "responseBodyVerified": false
+    },
+    {
+      "url": "chrome-extension://71b3ec95-63bb-479a-aa7b-a5fa9559c81a/icon/128.png",
+      "relative": "icon/128.png",
+      "resourceType": "image",
+      "status": 0,
+      "ok": true,
+      "productionFile": {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/icon/128.png",
+        "bytes": 16432,
+        "sha256": "61e692cb26510e0edff8e6367c3b3c849b9f4656c35ceb04055b074d715fac08"
+      },
+      "responseBodyVerified": false
+    },
+    {
+      "url": "chrome-extension://71b3ec95-63bb-479a-aa7b-a5fa9559c81a/content-scripts/content.css",
+      "relative": "content-scripts/content.css",
+      "resourceType": "fetch",
+      "status": 0,
+      "ok": true,
+      "productionFile": {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/content-scripts/content.css",
+        "bytes": 108299,
+        "sha256": "082e96160df038f717c285ddd42e158639a456cdb3b856747174547131c6926c"
+      },
+      "responseBodyVerified": false
+    },
+    {
+      "url": "chrome-extension://71b3ec95-63bb-479a-aa7b-a5fa9559c81a/content-scripts/content.css",
+      "relative": "content-scripts/content.css",
+      "resourceType": "fetch",
+      "status": 0,
+      "ok": true,
+      "productionFile": {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/content-scripts/content.css",
+        "bytes": 108299,
+        "sha256": "082e96160df038f717c285ddd42e158639a456cdb3b856747174547131c6926c"
+      },
+      "responseBodyVerified": false
+    },
+    {
+      "url": "chrome-extension://71b3ec95-63bb-479a-aa7b-a5fa9559c81a/icon/128.png",
+      "relative": "icon/128.png",
+      "resourceType": "image",
+      "status": 0,
+      "ok": true,
+      "productionFile": {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/icon/128.png",
+        "bytes": 16432,
+        "sha256": "61e692cb26510e0edff8e6367c3b3c849b9f4656c35ceb04055b074d715fac08"
+      },
+      "responseBodyVerified": false
+    },
+    {
+      "url": "chrome-extension://71b3ec95-63bb-479a-aa7b-a5fa9559c81a/content-scripts/content.css",
+      "relative": "content-scripts/content.css",
+      "resourceType": "fetch",
+      "status": 0,
+      "ok": true,
+      "productionFile": {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/content-scripts/content.css",
+        "bytes": 108299,
+        "sha256": "082e96160df038f717c285ddd42e158639a456cdb3b856747174547131c6926c"
+      },
+      "responseBodyVerified": false
+    },
+    {
+      "url": "chrome-extension://71b3ec95-63bb-479a-aa7b-a5fa9559c81a/i18n/fr-FR.json",
+      "relative": "i18n/fr-FR.json",
+      "resourceType": "fetch",
+      "status": 0,
+      "ok": true,
+      "productionFile": {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/i18n/fr-FR.json",
+        "bytes": 576738,
+        "sha256": "d71c3af731e5e6b7487b5bb6a43d5b12b44372fc8bf7c2564790b206277be874"
+      },
+      "responseBodyVerified": false
+    },
+    {
+      "url": "chrome-extension://71b3ec95-63bb-479a-aa7b-a5fa9559c81a/content-scripts/content.css",
+      "relative": "content-scripts/content.css",
+      "resourceType": "fetch",
+      "status": 0,
+      "ok": true,
+      "productionFile": {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/content-scripts/content.css",
+        "bytes": 108299,
+        "sha256": "082e96160df038f717c285ddd42e158639a456cdb3b856747174547131c6926c"
+      },
+      "responseBodyVerified": false
+    },
+    {
+      "url": "chrome-extension://71b3ec95-63bb-479a-aa7b-a5fa9559c81a/icon/128.png",
+      "relative": "icon/128.png",
+      "resourceType": "image",
+      "status": 0,
+      "ok": true,
+      "productionFile": {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/icon/128.png",
+        "bytes": 16432,
+        "sha256": "61e692cb26510e0edff8e6367c3b3c849b9f4656c35ceb04055b074d715fac08"
+      },
+      "responseBodyVerified": false
+    },
+    {
+      "url": "chrome-extension://71b3ec95-63bb-479a-aa7b-a5fa9559c81a/content-scripts/content.css",
+      "relative": "content-scripts/content.css",
+      "resourceType": "fetch",
+      "status": 0,
+      "ok": true,
+      "productionFile": {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/content-scripts/content.css",
+        "bytes": 108299,
+        "sha256": "082e96160df038f717c285ddd42e158639a456cdb3b856747174547131c6926c"
+      },
+      "responseBodyVerified": false
+    },
+    {
+      "url": "chrome-extension://71b3ec95-63bb-479a-aa7b-a5fa9559c81a/content-scripts/content.css",
+      "relative": "content-scripts/content.css",
+      "resourceType": "fetch",
+      "status": 0,
+      "ok": true,
+      "productionFile": {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/content-scripts/content.css",
+        "bytes": 108299,
+        "sha256": "082e96160df038f717c285ddd42e158639a456cdb3b856747174547131c6926c"
+      },
+      "responseBodyVerified": false
+    },
+    {
+      "url": "chrome-extension://71b3ec95-63bb-479a-aa7b-a5fa9559c81a/icon/128.png",
+      "relative": "icon/128.png",
+      "resourceType": "image",
+      "status": 0,
+      "ok": true,
+      "productionFile": {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/icon/128.png",
+        "bytes": 16432,
+        "sha256": "61e692cb26510e0edff8e6367c3b3c849b9f4656c35ceb04055b074d715fac08"
+      },
+      "responseBodyVerified": false
+    },
+    {
+      "url": "chrome-extension://71b3ec95-63bb-479a-aa7b-a5fa9559c81a/content-scripts/content.css",
+      "relative": "content-scripts/content.css",
+      "resourceType": "fetch",
+      "status": 0,
+      "ok": true,
+      "productionFile": {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/content-scripts/content.css",
+        "bytes": 108299,
+        "sha256": "082e96160df038f717c285ddd42e158639a456cdb3b856747174547131c6926c"
+      },
+      "responseBodyVerified": false
+    }
+  ],
+  "providerRestores": [
+    {
+      "calls": 4,
+      "unknownFetches": 0,
+      "localDynamicLocaleFetches": 1,
+      "restored": true
+    }
+  ],
+  "boundary": "Production Edge with controlled Microsoft JSON, synthetic coarse media and actual resized viewport. No OS touch/keyboard, clipboard/download, native Safari, translation-service quality or configuration-retention claim.",
+  "module": {
+    "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/share-card-touch-followup/share-card-touch-cases.cjs",
+    "bytes": 33463,
+    "sha256": "cc0b3b48d7c263802bdc4106af8f2753fc7806945f9306d987501dfabb9989df"
+  },
+  "productionManifest": {
+    "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/manifest.json",
+    "bytes": 3250,
+    "sha256": "d84f2ae185318d9f0add60b335e45056b476d2cce62f2dedc39a15fc9bd7ce1b"
+  },
+  "dynamicResourceHost": "71b3ec95-63bb-479a-aa7b-a5fa9559c81a",
+  "touchReset": true,
+  "cdpDetached": true,
+  "ownedPagesRestored": true,
+  "routeRemoved": true,
+  "configRestored": true,
+  "focusObserverClosed": true,
+  "controlledProviderCalls": 4,
+  "unknownWorkerFetches": 0,
+  "noVisualViewportOverrides": true,
+  "clipboardActions": 0,
+  "downloadActions": 0
+}

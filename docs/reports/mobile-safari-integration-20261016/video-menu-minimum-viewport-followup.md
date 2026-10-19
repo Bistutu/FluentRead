@@ -79,3 +79,32 @@
 [源码、生产产物和实际回执摘要](./mobile-touch-followup-evidence/summary.json)保留每次执行的不同产物身份；[原图副本索引](./mobile-touch-followup-evidence/copy-index.json)记录SHA256。赞赏专项早于最后的阅读/学习字号补充，Popup自身两个源码文件的字节在最终版保持相同，不将三次执行混称为同一整包验收。
 
 本补充仍是隔离Edge和本地翻译/解释响应；无供应商、真实触摸、原生键盘、Safari运行时或新全语言主题结论。当前专用原生App仍为此前e1fee产物，新源码的Safari Web构建已过，但新原生包装/更新/UI尚未验收。原生进程观察中断、正式UNKNOWN与既有SKIP保持原记录，未转写为通过。本轮未借鉴参考项目。
+
+## 2026-10-19 输入预览与分享卡补充
+
+输入翻译原先只按布局视口定位，拒绝粘贴后的译文预览可能落在可见区域之外。旧生产包实测 tooltip 底部437.89px超出受控可见区域底部360px，关闭按钮仅24×16.80px。现在使用所属窗口的安全 VisualViewport，先限制真实宽高再测量、定位，并随可见区域的 resize/scroll 更新；关闭与卸载撤销监听。触控操作至少44×44px、14px文字，预览文字16px，长内容保留自己的滚动。普通桌面维持12px文字。
+
+独立代码审查另发现固定上下留白会在58px可见高度把提示压成34px；生产包复现关闭按钮部分被裁切后，已在不足84px时逐步回收纵向留白，不足60px时回收内边距。最终58px提示位于y130–188，完整44px关闭按钮位于y137–181，五点命中及正常关闭通过。原预览对象保留在同一提示内，不声称所有译文都在58px内同屏可见。
+
+分享卡触控关闭、分段选择、折叠入口与导出按钮均至少44px；编辑框16px。短屏将标题和关闭区留在滚动体外，预览、选项、编辑和导出区在同一正文滚动体内访问，避免固定标题和底栏同时挤占正文。普通尺寸沿用原布局及桌面分段选择34px高度；配置、取消渲染、导出与关闭的业务脚本保持原样。
+
+| 最终生产扩展操作 | 实际受控结果 |
+| --- | --- |
+| 输入预览，6行 | 390px布局配合280/260px动态可见区、同一提示58px可见区、320×180短窗、1280×900桌面及普通textarea恢复。4次真实快捷键、4次正常关闭/恢复、4次预览双向滚轮；同一预览的内容与滚位随动态视口保持，宿主不滚动 |
+| 分享卡，4行 | 320×760、390×280、法语390×760、桌面1280×900。4次真实拖动选词、24次可信坐标点击、9次自有滚轮；真实打开更多选项、选择大字、展开编辑与关闭。短屏滚到底部后直接关闭，未先返回顶部；标题区原始像素与首屏一致 |
+
+最终3份相关测试121项通过、0跳过；类型检查及Chrome、Firefox、Safari Web、userscript生产构建和userscript校验均退出0，执行前后3个源码文件字节一致。userscript为2,100,290字节，小于2,101,100字节上限；本机结果不能提前代替新提交的远端CI。所有本地构建和浏览器操作串行使用40% CPU目标、1 worker、1 concurrency。
+
+以下均为原始PNG逐字节副本，完整16图及原始行记录见[副本索引](./mobile-input-share-touch-evidence/copy-index.json)、[输入记录](./mobile-input-share-touch-evidence/input-report.json)、[分享卡记录](./mobile-input-share-touch-evidence/share-report.json)与[源码/产物/回执摘要](./mobile-input-share-touch-evidence/summary.json)。旧包和58px修复前的红例也保留，未改记通过。
+
+| 动态可见区内的输入预览 | 58px内完整关闭按钮 |
+| --- | --- |
+| ![输入预览](./mobile-input-share-touch-evidence/input-coarse390-safe280.png) | ![58px关闭](./mobile-input-share-touch-evidence/input-same-tooltip-minimum-safe58.png) |
+
+| 短屏分享卡首屏 | 滚到底部后直接关闭 |
+| --- | --- |
+| ![短屏分享卡首屏](./mobile-input-share-touch-evidence/share-coarse-390x280-first.png) | ![短屏分享卡底部](./mobile-input-share-touch-evidence/share-coarse-390x280-bottom.png) |
+
+本轮使用隔离后台Edge、生产扩展及本地Microsoft协议响应；输入VisualViewport数值和coarse条件受控，分享卡为实际调整浏览器视口。没有真实软键盘、物理触摸、Safari运行时、缩放手势或live供应商验收；长预览只验了双向滚动，未验最后一行，恢复原文仅桌面行；分享卡未点击复制、下载。中途图片预览曾被误读为标题缺绘，但原PNG标题区域逐像素完全一致，已撤回该缺陷判断，不将几何命中或错误预览当成产品绘制结论。
+
+此前ce3源码的Safari本地包装及macOS/iOS Simulator/iPhoneOS编译已另行通过，467份Web资源在包装和三平台产物中一致；它们没有安装到专用模拟器，不能替代本轮新源码的原生构建或UI验收。已安装App仍是旧e1fee；原生UNKNOWN、SKIP和配置保留未知保持原记录。本轮未借鉴参考项目。
