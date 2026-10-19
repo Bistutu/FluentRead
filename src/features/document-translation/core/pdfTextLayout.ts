@@ -1,7 +1,7 @@
 /**
  * @file src/features/document-translation/core/pdfTextLayout.ts
  * 文件职责：将 PDF 阅读计划中的完整文字和原图区域分页为可读的下载版面。
- * 主要内容：正文固定可读字号与行距，按字素和词边界换行并缓存字宽；排版时忽略首尾无内容空段，保留正文内部空行，不改写存储文字；整页可容纳的公式或插图整体换页，长段落与真实超高原图跨页续排，保留每个字符和图像区域，不缩小文字、不裁剪译文；每页绘制项使用标准 PDF 点坐标。
+ * 主要内容：正文固定可读字号与行距，按字素和词边界换行并用有界先进先出缓存复用近期字宽；排版时忽略首尾无内容空段，保留正文内部空行，不改写存储文字；整页可容纳的公式或插图整体换页，长段落与真实超高原图跨页续排，把源坐标浮点尾差并入末条带并保全全部图像几何，不缩小文字、不裁剪译文；每页绘制项使用标准 PDF 点坐标。
  * 模块边界：只消费纯阅读计划和注入的字体测量，不使用 DOM、Canvas、浏览器 API 或文件 I/O；具体绘制与编码由 PDF 光栅端口负责。
  */
 import type {PdfReadingPlan, PdfReadingRect} from './pdfReadingPlan';
@@ -21,6 +21,7 @@ export interface PdfReadingOutputPage {width: number; height: number; items: Pdf
 
 const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
 const CLOSING = /^[，。！？；：、,.!?;:%）\]】》」』”’]/u;
+const MAX_MEASURED_TOKENS = 512;
 // 一张输入页的续页预算；损坏或极端的几何不能令分页无限增长。
 const MAX_READING_PAGES = 4096;
 
@@ -47,7 +48,9 @@ export function wrapPdfReadingText(value: string, width: number, font: PdfReadin
         if (cached !== undefined) return cached;
         const result = measure(text, font);
         const next = Number.isFinite(result) ? Math.max(0, result) : Math.max(1, Array.from(text).length) * maxWidth;
-        if (widths.size < 512) widths.set(text, next);
+        // 长前缀不能永久占满缓存，否则后续反复出现的正文字符每次都要重新测量。
+        if (widths.size >= MAX_MEASURED_TOKENS) widths.delete(widths.keys().next().value!);
+        widths.set(text, next);
         return next;
     };
     const segmenter = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(undefined, {granularity: 'grapheme'}) : undefined;
@@ -126,18 +129,25 @@ export function paginatePdfReadingPlan(plan: PdfReadingPlan, measure: PdfTextMea
             if (![rect.x, rect.y, rect.width, rect.height].every(Number.isFinite) || rect.width <= 0 || rect.height <= 0) continue;
             const scale = Math.min(1.5, availableWidth / rect.width);
             const totalHeight = rect.height * scale;
-            if (!Number.isFinite(totalHeight) || Math.ceil(totalHeight / (bottom - margin)) > MAX_READING_PAGES) throw new Error('PDF 原图区域过高，无法在合理页数内分页');
+            const maximumHeight = (bottom - margin) * MAX_READING_PAGES;
+            if (!Number.isFinite(totalHeight) || totalHeight > maximumHeight + Number.EPSILON * maximumHeight * 2) throw new Error('PDF 原图区域过高，无法在合理页数内分页');
             if (!(totalHeight > 0)) continue;
-            let consumed = 0;
+            let consumed = 0, stripCount = 0, firstPageHeight = 0;
             while (consumed < rect.height) {
                 // 整页能容纳的公式或图表保持原像素整体；只有真实超高图片继续条带分页。
                 ensure(totalHeight <= bottom - margin ? totalHeight : Math.min(80, rect.height * scale));
-                const sourceHeight = Math.min(rect.height - consumed, (bottom - y) / scale);
-                const drawHeight = sourceHeight * scale;
+                if (stripCount === 0) firstPageHeight = bottom - y;
+                // 从已占用的整页数反推源终点，避免数百次累加非整数条带高度后积出额外尾页。
+                const boundary = (firstPageHeight + stripCount * (bottom - margin)) / scale;
+                // 缩放可能留下几个源坐标 ULP；只把该浮点尾差并入末条带，真实细条仍单独续排。
+                const tolerance = Number.EPSILON * Math.max(rect.height, boundary) * 2;
+                const sourceEnd = rect.height <= boundary + tolerance ? rect.height : boundary;
+                const sourceHeight = sourceEnd - consumed;
+                const drawHeight = Math.min(bottom - y, sourceHeight * scale);
                 if (!(sourceHeight > 0) || !Number.isFinite(sourceHeight) || consumed + sourceHeight <= consumed) throw new Error('PDF 原图分页无法继续，请重新打开文件');
                 page!.items.push({kind: 'region', entryId: entry.id, sourceRect: {...rect, y: rect.y + consumed, height: sourceHeight}, x: margin, y, width: rect.width * scale, height: drawHeight});
-                // 最后一个条带直接到终点，避免浮点尾差形成额外的近零切片。
-                consumed = sourceHeight >= rect.height - consumed ? rect.height : consumed + sourceHeight;
+                consumed = sourceEnd;
+                stripCount += 1;
                 y += drawHeight;
                 if (consumed < rect.height) nextPage();
             }

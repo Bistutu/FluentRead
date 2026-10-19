@@ -1024,6 +1024,13 @@ describe('PDF layout analysis on real paper typography', () => {
         expect(result.blocks.find(block => block.source.startsWith('1 Note'))?.kind).toBe('text');
         expect(result.blocks.find(block => block.source.startsWith('10 MB'))).toMatchObject({kind: 'text', lineCount: 2});
     });
+    it.each(['II. RELATED WORK', 'A. Data Collection'])('recognises a body-sized Roman or letter section heading %s', title => {
+        const result = analyze([atom(title, 50, 200, 140),
+            atom('The following paragraph keeps its own source text and ordinary body size.', 50, 230, 420),
+            atom('Its next line continues as text instead of joining the section title above.', 50, 242, 420)]);
+        expect(result.blocks.find(block => block.source === title)).toMatchObject({kind: 'heading', fontSize: 10, preserveSource: false});
+        expect(result.blocks.find(block => block.source.startsWith('The following paragraph'))).toMatchObject({kind: 'text', lineCount: 2});
+    });
     it('joins wrapped titles, including centred ones, without absorbing the next numbered heading or a full first body line', () => {
         const left = analyze([atom('The effect of word predictability on reading time', 40, 100, 300, 14), atom('is logarithmic', 40, 117, 90, 14), atom('Nathaniel Smith, Roger Levy', 40, 140, 170, 10.6), atom('Department of Cognitive Science, University of California', 40, 156, 250, 6.4), atom('Department of Linguistics, University of California too', 40, 164, 250, 6.4),
             ...Array.from({length: 6}, (_, index) => atom('Ordinary body text keeps the dominant font size of the page.', 40, 300 + index * 12, 300, 8))]);
@@ -1144,6 +1151,24 @@ describe('PDF layout analysis on real paper typography', () => {
         expect(spaced.blocks.map(block => block.source)).toEqual(['院级党课结业心得', '学院：计算机学院']);
         expect(analyze([atom('建议教材 吕云翔 傅尔也 译', 60, 100, 200)]).blocks[0].source).toBe('建议教材 吕云翔 傅尔也 译');
         expect(analyze([atom('第 4 页', 60, 100, 60)]).blocks[0].source).toBe('第 4 页');
+    });
+    it.each([
+        ['中文', '正文', '中文正文'],
+        ['𠀀𠀁', '𠀂𠀃', '𠀀𠀁𠀂𠀃'],
+        ['汉𠀀', '正文', '汉𠀀正文'],
+        ['中文', '𠀁字', '中文𠀁字'],
+        ['𠀀，', '𠀁续', '𠀀，𠀁续'],
+        ['中文PDF', '𠀁汉字', '中文PDF 𠀁汉字'],
+        ['𠀀汉字', 'PDF正文', '𠀀汉字 PDF正文'],
+        ['Alpha', 'beta', 'Alpha beta'],
+    ])('uses complete Unicode boundary glyphs when joining %j and %j', (first, second, source) => {
+        const atoms = [atom(first, 20, 100, 100), atom(second, 20, 114, 100)];
+        const before = JSON.stringify(atoms);
+        const result = analyze(atoms);
+        expect(result.blocks).toHaveLength(1);
+        expect(result.blocks[0]).toMatchObject({source, kind: 'text', lineCount: 2});
+        expect(result.blocks[0].lines!.map(line => line.text)).toEqual([first, second]);
+        expect(JSON.stringify(atoms)).toBe(before);
     });
     it('keeps an author byline out of the headings and drops a raised footnote mark from the end of a title', () => {
         const mark = {...atom('q', 130, 94, 8, 9), baseline: 94};

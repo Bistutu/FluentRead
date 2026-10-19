@@ -137,11 +137,15 @@ describe('document import workflow ownership', () => {
         f.load.mockResolvedValueOnce(null);await f.workflow.openHistory('missing');expect(f.ports.onHistoryMissing).toHaveBeenCalledOnce();
     });
 
-    it('reparses an obsolete history snapshot and recovers edits by matching original text', async () => {
-        const f = importFixture();f.ports.history = {load: f.load};f.load.mockResolvedValue(record(document(), 15));
+    it.each([[15, 16], [17, 18]])('reparses an obsolete version %i history snapshot for version %i and recovers edits by matching original text', async (obsoleteVersion, currentVersion) => {
+        const f = importFixture();f.ports.history = {load: f.load};f.ports.parsedVersion = currentVersion;
+        f.load.mockResolvedValue(record(document(), obsoleteVersion));
         await f.workflow.openHistory('history');expect(f.ports.parseFile).toHaveBeenCalledOnce();
         expect(f.tasks[0].translations).toEqual(['Kept correction']);expect(f.tasks[0].historyId).toBeTruthy();
         await f.workflow.loadFiles([]);expect(f.ports.onFinished).toHaveBeenCalledOnce();
+        f.load.mockResolvedValue(record(f.tasks[0].document!, currentVersion));
+        await f.workflow.openHistory('history');expect(f.ports.parseFile).toHaveBeenCalledOnce();
+        expect(f.tasks[1].document).toBe(f.tasks[0].document);expect(f.tasks[1].translations).toEqual(['Kept correction']);
     });
 
     it.each([undefined, false, true, 'true', 1])('restores only an explicit cache bypass through same-file import and history snapshots: %j', async bypassCache => {
