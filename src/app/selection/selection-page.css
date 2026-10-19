@@ -1,0 +1,22 @@
+/**
+ * @file src/app/selection/selection-page.css
+ * 文件职责：让原生 PDF 右键划词窗口中的现有翻译卡片占满可用正文区域。
+ * 主要内容：保留一行只读原文及来源，限制重复原文的高度，覆盖卡片浮层定位并隐藏页面内拖拽缩放手柄；错误状态提供简洁退出入口。
+ * 模块边界：仅作用于自有扩展页面，不改卡片的业务状态、内容结构或来源选区规则。
+ */
+:root { color-scheme: light dark; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #29272d; background: #f7f7f9; }
+html, body, #app { box-sizing: border-box; width: 100%; height: 100%; min-width: 280px; margin: 0; }
+.native-pdf-selection-page { display: flex; flex-direction: column; overflow: hidden; }
+.native-pdf-selection-source { flex: none; min-width: 0; padding: 10px 14px 8px; }
+.native-pdf-selection-source small, .native-pdf-selection-source p { display: block; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.native-pdf-selection-source small { font-size: 11px; color: #77717d; }
+.native-pdf-selection-source p { margin-top: 5px; font-size: 12px; line-height: 1.6; color: #514b58; }
+.native-pdf-selection-card { position: relative; flex: 1; min-height: 0; margin: 0 8px 8px; }
+.native-pdf-selection-card .fr-selection-translator-root { position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important; }
+.native-pdf-selection-card .fr-translation-tooltip { position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important; max-width: none !important; max-height: none !important; transform: none !important; }
+.native-pdf-selection-card .fr-translation-tooltip > .fr-study-navigation { cursor: default; }
+.native-pdf-selection-card .fr-popup-resize-handle, .native-pdf-selection-card .fr-selection-indicator { display: none !important; }
+.native-pdf-selection-card .fr-study-toolbar { scrollbar-width: thin; }
+.native-pdf-selection-status { margin: auto 24px 14px; line-height: 1.7; font-size: 14px; }
+.native-pdf-selection-exit { align-self: center; margin: 0 24px auto; border: 1px solid #cfcbd3; border-radius: 7px; padding: 7px 16px; color: inherit; background: transparent; font: inherit; cursor: pointer; }
+@media (prefers-color-scheme: dark) { :root { color: #efedf1; background: #1c1b20; } .native-pdf-selection-source small { color: #a7a0ad; } .native-pdf-selection-source p { color: #cbc5d1; } }
