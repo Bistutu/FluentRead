@@ -1761,7 +1761,7 @@ async function startTranslation(restart = false): Promise<void> {
       initialTranslations: [...translatedSegments.value],
       confirmedTranslationIds: [...confirmedTranslationIds.value],
       signal: controller.signal,
-      // 文档层统一退避重试，单批请求与等待默认最多两分钟，保留更长的服务预算；失败时显示原因。
+      // 文档层统一退避重试，单批请求与等待默认最多十分钟，保留更长的服务预算；失败时显示原因。
       retryBackoff: documentRetryBackoff,
       onRetry: ({delayMs, reason}) => {
         if (requestId === translationRequestId && !controller.signal.aborted) retryNotice.value = `${translateLegacy('翻译服务暂时没有响应，将自动重试')} · ${Math.ceil(delayMs / 1000)}s · ${reason}`;

@@ -1119,6 +1119,210 @@ describe('document translation reading-order priority and batch sizing', () => {
 describe('document translation retry backoff', () => {
     const segments = [{id: 0, source: 'First'}, {id: 1, source: 'Second'}];
     const sleeper = () => {const waits: number[] = []; return {waits, sleep: async (milliseconds: number) => {waits.push(milliseconds);}};};
+    const rateLimit = (retryAfterMs: number) => new TranslationRequestError(serializeTranslationError({message: '429 limited', kind: 'rate-limit', retryable: true, retryAfterMs}));
+
+    it('automatically finishes a limited batch after more than two minutes of backoff without discarding completed text', async () => {
+        for (let attempt = 0; attempt < 8; attempt += 1) mocks.translateTextBatch.mockRejectedValueOnce(new Error('429 rate limited'));
+        mocks.translateTextBatch.mockResolvedValueOnce(['新译文']);
+        const {waits, sleep} = sleeper();
+        expect(await translateDocumentSegments(segments, {fileName: 'long.pdf', initialTranslations: ['人工校订', ''],
+            useCache: false, retryBackoff: {maxWaitMs: 600_000, sleep}})).toEqual(['人工校订', '新译文']);
+        expect(waits).toEqual([2000, 4000, 8000, 16000, 32000, 60000, 60000, 60000]);
+        expect(waits.reduce((total, delay) => total + delay, 0)).toBeGreaterThan(120_000);
+        expect(mocks.translateTextBatch).toHaveBeenCalledTimes(9);
+        for (const call of mocks.translateTextBatch.mock.calls) {
+            expect(call[0]).toEqual(['Second']); expect(call[2].useCache).toBe(false);
+        }
+    });
+
+    it.each([
+        {kind: 'rate-limit', retryable: true},
+        {kind: 'rate-limit', retryable: false, statusCode: 429},
+        {kind: 'provider', retryable: false, code: 'FREE_TRANSLATION_TEMPORARILY_UNAVAILABLE'},
+        {kind: 'timeout', retryable: false, code: 'FREE_TRANSLATION_TEMPORARILY_UNAVAILABLE'},
+    ])('honors a ninety-second service cooldown before automatically retrying: %j', async error => {
+        mocks.translateTextBatch.mockRejectedValueOnce(new TranslationRequestError(serializeTranslationError({...error, message: 'temporarily limited', retryAfterMs: 90_000})))
+            .mockResolvedValueOnce(['译一', '译二']);
+        const {waits, sleep} = sleeper();
+        expect(await translateDocumentSegments(segments, {fileName: 'hint.pdf', retryBackoff: {maxWaitMs: 600_000, sleep}})).toEqual(['译一', '译二']);
+        expect(waits).toEqual([90_000]); expect(mocks.translateTextBatch).toHaveBeenCalledTimes(2);
+    });
+
+    it.each([0, -1, Infinity, NaN, undefined])('does not reinterpret a permanently unavailable pool without a valid positive cooldown: %j', async retryAfterMs => {
+        mocks.translateTextBatch.mockRejectedValue(new TranslationRequestError(serializeTranslationError({message: 'pool unavailable', retryable: false,
+            code: 'FREE_TRANSLATION_TEMPORARILY_UNAVAILABLE', retryAfterMs})));
+        const {waits, sleep} = sleeper();
+        await expect(translateDocumentSegments(segments, {fileName: 'permanent.pdf', retryBackoff: {maxWaitMs: 600_000, sleep}})).rejects.toThrow('pool unavailable');
+        expect(waits).toEqual([]); expect(mocks.translateTextBatch).toHaveBeenCalledOnce();
+    });
+
+    it.each([
+        {kind: 'provider', retryable: false, retryAfterMs: 90_000},
+        {kind: 'rate-limit', retryable: false, retryAfterMs: 90_000},
+        {kind: 'authentication', retryable: false, statusCode: 429, retryAfterMs: 90_000},
+    ])('keeps unrelated explicitly permanent errors terminal even if they carry a cooldown: %j', async error => {
+        mocks.translateTextBatch.mockRejectedValue(new TranslationRequestError(serializeTranslationError({...error, message: 'permanent service failure'})));
+        const {waits, sleep} = sleeper();
+        await expect(translateDocumentSegments(segments, {fileName: 'permanent.pdf', retryBackoff: {maxWaitMs: 600_000, sleep}})).rejects.toThrow('permanent service failure');
+        expect(waits).toEqual([]); expect(mocks.translateTextBatch).toHaveBeenCalledOnce();
+    });
+
+    it('does not shorten a service cooldown to fit the remaining retry budget', async () => {
+        mocks.translateTextBatch.mockRejectedValueOnce(rateLimit(2_000)).mockRejectedValueOnce(rateLimit(90_000));
+        const {waits, sleep} = sleeper();
+        await expect(translateDocumentSegments(segments, {fileName: 'budget.pdf', retryBackoff: {maxWaitMs: 90_000, sleep}})).rejects.toThrow('429 limited');
+        expect(waits).toEqual([2000]); expect(mocks.translateTextBatch).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not shorten Retry-After to fit an absolute deadline after time was spent in the request', async () => {
+        vi.useFakeTimers();
+        try {
+            mocks.translateTextBatch.mockImplementation(() => new Promise((_resolve, reject) => setTimeout(() => reject(rateLimit(1000)), 500)));
+            const sleep = vi.fn(), waiting = vi.fn();
+            const task = translateDocumentSegments(segments, {fileName: 'hint-deadline.pdf',
+                retryBackoff: {maxWaitMs: 600_000, maxDurationMs: 1000, sleep}, onRetryStateChange: waiting});
+            const outcome = expect(task).rejects.toThrow('429 limited');
+            await vi.advanceTimersByTimeAsync(500); await outcome;
+            expect(mocks.translateTextBatch).toHaveBeenCalledOnce();
+            expect(mocks.translateTextBatch.mock.calls[0][2]).toMatchObject({timeout: 1000, maxRetries: 0});
+            expect(sleep).not.toHaveBeenCalled(); expect(waiting).not.toHaveBeenCalled(); expect(vi.getTimerCount()).toBe(0);
+        } finally {vi.useRealTimers();}
+    });
+
+    it('keeps a claimed batch absolute deadline while a later batch extends shared service cooling', async () => {
+        vi.useFakeTimers();
+        const controller = new AbortController();
+        let outcome: Promise<unknown> | undefined;
+        try {
+            const paragraphs = Array.from({length: 4}, (_, id) => ({id, source: `Paragraph ${id}`}));
+            const calls = new Map<string, number>();
+            const pending = new Map<string, {resolve(value: string[]): void; reject(error: Error): void}>();
+            mocks.translateTextBatch.mockImplementation(([source]: string[]) => {
+                const attempt = (calls.get(source) ?? 0) + 1; calls.set(source, attempt);
+                if (source === 'Paragraph 0' && attempt === 1) return Promise.reject(rateLimit(8000));
+                if (source === 'Paragraph 3') return Promise.reject(rateLimit(4000));
+                return new Promise((resolve, reject) => pending.set(source, {resolve, reject}));
+            });
+            const waiting: number[] = [], committed = vi.fn();
+            const task = translateDocumentSegments(paragraphs, {fileName: 'shared-deadline.pdf', batchLimits: {items: 1}, onSegment: committed,
+                signal: controller.signal, onRetryStateChange: state => waiting.push(state.waiting), retryBackoff: {maxWaitMs: 600_000, maxDurationMs: 10_000}});
+            outcome = task.catch(error => error);
+            await vi.advanceTimersByTimeAsync(2000);
+            pending.get('Paragraph 1')!.resolve(['第一份在途结果']);
+            await vi.advanceTimersByTimeAsync(6000);
+            expect(calls.get('Paragraph 0')).toBe(2); expect(calls.get('Paragraph 3')).toBe(1);
+            pending.get('Paragraph 2')!.resolve(['第二份在途结果']);
+            await vi.advanceTimersByTimeAsync(100);
+            pending.get('Paragraph 0')!.reject(rateLimit(1000));
+            await vi.advanceTimersByTimeAsync(1900); expect(await outcome).toMatchObject({message: expect.stringContaining('429 limited')});
+            expect(calls.get('Paragraph 0')).toBe(2); expect(calls.get('Paragraph 3')).toBe(1);
+            expect(committed.mock.calls.map(call => call[0].id)).toEqual([1, 2]);
+            expect(waiting.at(-1)).toBe(0); expect(vi.getTimerCount()).toBe(0);
+            expect(mocks.translateTextBatch.mock.calls.every(call => call[2].maxRetries === 0)).toBe(true);
+        } finally {controller.abort(); await vi.advanceTimersByTimeAsync(0); await outcome; vi.useRealTimers();}
+    });
+
+    it.each(['AI_MULTI_SEGMENT_RESPONSE_INVALID', 'UNTRANSLATED_RESPONSE'])('backs off a limited single request after %s fallback, preserving cache policy and echo handling', async code => {
+        const translate = createDocumentSegmentTranslator({waitUntilReady: mocks.waitUntilReady, getDefaultService: () => 'openai',
+            supportsBatch: () => false, supportsAIMultiSegment: () => true, translateText: mocks.translateText, translateTextBatch: mocks.translateTextBatch});
+        mocks.translateTextBatch.mockRejectedValueOnce(Object.assign(new Error('fallback'), {code}));
+        mocks.translateText.mockRejectedValueOnce(rateLimit(90_000)).mockResolvedValueOnce('译一')
+            .mockRejectedValueOnce(Object.assign(new Error('echo'), {code: 'UNTRANSLATED_RESPONSE'}));
+        const committed = vi.fn(), {waits, sleep} = sleeper();
+        expect(await translate(segments, {fileName: 'fallback.pdf', useCache: false, onSegment: committed,
+            retryBackoff: {maxWaitMs: 600_000, sleep}})).toEqual(['译一', 'Second']);
+        expect(waits).toEqual([90_000]); expect(mocks.translateTextBatch).toHaveBeenCalledOnce();
+        expect(mocks.translateText.mock.calls.map(call => call[0])).toEqual(['First', 'First', 'Second']);
+        expect(committed).toHaveBeenCalledTimes(2);
+        for (const call of mocks.translateText.mock.calls) expect(call[2]).toMatchObject({useCache: false, enableNativeBatch: false});
+    });
+
+    it('holds new batches and shorter retries behind the longest service cooldown while committing in-flight success', async () => {
+        const paragraphs = Array.from({length: 5}, (_, id) => ({id, source: `Paragraph ${id}`}));
+        const requests: Array<{resolve: (value: string[]) => void; reject: (error: Error) => void}> = [];
+        mocks.translateTextBatch.mockImplementation((sources: string[]) => requests.length < 3
+            ? new Promise((resolve, reject) => requests.push({resolve, reject})) : Promise.resolve(sources.map(source => `译 ${source}`)));
+        const sleeps: Array<{delay: number; resolve: () => void}> = [];
+        const committed = vi.fn(), waiting: number[] = [];
+        const task = translateDocumentSegments(paragraphs, {fileName: 'shared.pdf', batchLimits: {items: 1}, onSegment: committed,
+            retryBackoff: {maxWaitMs: 600_000, sleep: delay => new Promise(resolve => sleeps.push({delay, resolve}))},
+            onRetryStateChange: state => waiting.push(state.waiting)});
+        await vi.waitFor(() => expect(requests).toHaveLength(3));
+        requests[0].reject(rateLimit(90_000));
+        await vi.waitFor(() => expect(sleeps).toHaveLength(1));
+        requests[1].resolve(['已发成功']);
+        await vi.waitFor(() => expect(committed).toHaveBeenCalledWith({id: 1, translation: '已发成功'}));
+        requests[2].reject(rateLimit(120_000));
+        await vi.waitFor(() => expect(sleeps).toHaveLength(2));
+        expect(sleeps.map(entry => entry.delay)).toEqual([90_000, 120_000]);
+        expect(mocks.translateTextBatch).toHaveBeenCalledTimes(3);
+        sleeps[0].resolve(); await new Promise(resolve => setTimeout(resolve, 0));
+        expect(mocks.translateTextBatch).toHaveBeenCalledTimes(3); expect(waiting.at(-1)).toBe(3);
+        sleeps[1].resolve();
+        expect(await task).toEqual(['译 Paragraph 0', '已发成功', '译 Paragraph 2', '译 Paragraph 3', '译 Paragraph 4']);
+        expect(mocks.translateTextBatch).toHaveBeenCalledTimes(7); expect(committed).toHaveBeenCalledTimes(5);
+        expect(waiting.at(-1)).toBe(0);
+    });
+
+    it.each(['abort', 'fatal'])('releases shared cooldowns on %s without dispatching queued work or committing late results', async ending => {
+        const paragraphs = Array.from({length: 5}, (_, id) => ({id, source: `Paragraph ${id}`}));
+        const requests: Array<{resolve: (value: string[]) => void; reject: (error: Error) => void}> = [];
+        mocks.translateTextBatch.mockImplementation(() => new Promise((resolve, reject) => requests.push({resolve, reject})));
+        const controller = new AbortController(), committed = vi.fn(), failed = vi.fn(), waiting: number[] = [];
+        let releaseSleep!: () => void;
+        const task = translateDocumentSegments(paragraphs, {fileName: 'cancel-shared.pdf', batchLimits: {items: 1}, signal: controller.signal,
+            onSegment: committed, onFailure: failed, onRetryStateChange: state => waiting.push(state.waiting),
+            retryBackoff: {maxWaitMs: 600_000, sleep: () => new Promise(resolve => {releaseSleep = resolve;})}});
+        const outcome = ending === 'abort' ? expect(task).rejects.toMatchObject({name: 'AbortError'}) : expect(task).rejects.toThrow('401 unauthorized');
+        await vi.waitFor(() => expect(requests).toHaveLength(3));
+        requests[0].reject(rateLimit(90_000));
+        await vi.waitFor(() => expect(releaseSleep).toBeTypeOf('function'));
+        requests[1].resolve(['保留已发成功']);
+        await vi.waitFor(() => expect(waiting.at(-1)).toBe(2));
+        if (ending === 'abort') controller.abort(); else requests[2].reject(new Error('401 unauthorized'));
+        await outcome;
+        releaseSleep(); requests[2].resolve(['迟到']); await new Promise(resolve => setTimeout(resolve, 0));
+        expect(mocks.translateTextBatch).toHaveBeenCalledTimes(3);
+        expect(committed).toHaveBeenCalledOnce(); expect(committed).toHaveBeenCalledWith({id: 1, translation: '保留已发成功'});
+        expect(waiting.at(-1)).toBe(0); expect(failed).toHaveBeenCalledTimes(ending === 'abort' ? 0 : 1);
+    });
+
+    it('counts shared cooling against a request budget and stops instead of retrying early when its remaining budget is insufficient', async () => {
+        const requests: Array<{resolve: (value: string[]) => void; reject: (error: Error) => void}> = [];
+        mocks.translateTextBatch.mockImplementation(() => new Promise((resolve, reject) => requests.push({resolve, reject})));
+        const sleeps: Array<() => void> = [], committed = vi.fn(), waiting: number[] = [];
+        const task = translateDocumentSegments([...segments, {id: 2, source: 'Third'}], {fileName: 'shared-budget.pdf', batchLimits: {items: 1},
+            onSegment: committed, onRetryStateChange: state => waiting.push(state.waiting),
+            retryBackoff: {maxWaitMs: 6000, sleep: () => new Promise(resolve => sleeps.push(resolve))}});
+        const outcome = expect(task).rejects.toThrow('429 limited');
+        await vi.waitFor(() => expect(requests).toHaveLength(3));
+        requests[0].reject(rateLimit(4000)); requests[1].reject(rateLimit(6000)); requests[2].resolve(['保留已发成功']);
+        await vi.waitFor(() => expect(sleeps).toHaveLength(2));
+        sleeps[0](); await outcome; sleeps[1]();
+        expect(mocks.translateTextBatch).toHaveBeenCalledTimes(3);
+        expect(committed).toHaveBeenCalledOnce(); expect(committed).toHaveBeenCalledWith({id: 2, translation: '保留已发成功'});
+        expect(waiting.at(-1)).toBe(0);
+    });
+
+    it('charges only a peer cooldown remaining after overlapping real timer waits, so a late limit can still recover within budget', async () => {
+        vi.useFakeTimers();
+        try {
+            const requests: Array<{resolve: (value: string[]) => void; reject: (error: Error) => void}> = [];
+            mocks.translateTextBatch.mockImplementation((sources: string[]) => requests.length < 3
+                ? new Promise((resolve, reject) => requests.push({resolve, reject})) : Promise.resolve(sources.map(source => `译 ${source}`)));
+            const task = translateDocumentSegments([...segments, {id: 2, source: 'Third'}], {fileName: 'remaining-window.pdf', batchLimits: {items: 1},
+                retryBackoff: {maxWaitMs: 100_000}});
+            await vi.advanceTimersByTimeAsync(0); expect(requests).toHaveLength(3);
+            requests[0].reject(rateLimit(90_000)); requests[2].resolve(['已发成功']);
+            await vi.advanceTimersByTimeAsync(80_000);
+            requests[1].reject(rateLimit(20_000));
+            await vi.advanceTimersByTimeAsync(10_000);
+            expect(mocks.translateTextBatch).toHaveBeenCalledTimes(3);
+            await vi.advanceTimersByTimeAsync(10_000);
+            expect(await task).toEqual(['译 First', '译 Second', '已发成功']);
+            expect(mocks.translateTextBatch).toHaveBeenCalledTimes(5); expect(vi.getTimerCount()).toBe(0);
+        } finally {vi.useRealTimers();}
+    });
 
     it('reports the number of concurrent retry waits, including their end, without resetting progress on peer success', async () => {
         mocks.defaultService = 'openai';
@@ -1133,7 +1337,7 @@ describe('document translation retry backoff', () => {
         const sleeps: Array<() => void> = [];
         const waiting: number[] = [], progress: number[] = [];
         const task = translateDocumentSegments(paragraphs, {fileName: 'wait.pdf',
-            retryBackoff: {maxWaitMs: 2000, sleep: () => new Promise(resolve => sleeps.push(resolve))},
+            retryBackoff: {maxWaitMs: 120_000, sleep: () => new Promise(resolve => sleeps.push(resolve))},
             onRetryStateChange: state => waiting.push(state.waiting), onProgress: state => progress.push(state.completed),
         });
         await vi.waitFor(() => expect(sleeps).toHaveLength(2));
@@ -1142,8 +1346,9 @@ describe('document translation retry backoff', () => {
         await vi.waitFor(() => expect(progress).toEqual([0, 1]));
         expect(waiting).toEqual([1, 2]);
         sleeps[0]();
-        await vi.waitFor(() => expect(progress).toEqual([0, 1, 2]));
-        expect(waiting).toEqual([1, 2, 1]);
+        await new Promise(resolve => setTimeout(resolve, 0));
+        expect(progress).toEqual([0, 1]);
+        expect(waiting).toEqual([1, 2]);
         sleeps[1](); await task;
         expect(waiting).toEqual([1, 2, 1, 0]);
         expect(progress).toEqual([0, 1, 2, 3]);
@@ -1258,12 +1463,12 @@ describe('document translation retry backoff', () => {
         expect(retries).toEqual([{attempt: 1, delayMs: 2000, reason: '429 rate limited'}, {attempt: 2, delayMs: 4000, reason: '翻译服务返回的片段不完整，请重试'}]);
     });
 
-    it('caps a single wait at thirty seconds, spends at most the budget and then fails with the last reason', async () => {
+    it('caps exponential waits at sixty seconds, spends at most the budget and then fails with the last reason', async () => {
         mocks.translateTextBatch.mockRejectedValue(new Error('service unavailable'));
         const {waits, sleep} = sleeper();
         await expect(translateDocumentSegments(segments, {fileName: 'paper.pdf', retryBackoff: {maxWaitMs: 120_000, sleep}})).rejects.toThrow('第 1 段文档翻译失败：service unavailable');
-        expect(waits).toEqual([2000, 4000, 8000, 16000, 30000, 30000, 30000]); expect(waits.reduce((sum, value) => sum + value, 0)).toBe(120_000);
-        expect(mocks.translateTextBatch).toHaveBeenCalledTimes(8);
+        expect(waits).toEqual([2000, 4000, 8000, 16000, 32000, 58000]); expect(waits.reduce((sum, value) => sum + value, 0)).toBe(120_000);
+        expect(mocks.translateTextBatch).toHaveBeenCalledTimes(7);
     });
 
     it('does not retry without a budget, after the user disables translation, or once the task is cancelled', async () => {
@@ -1664,6 +1869,24 @@ describe('document book translation recovery', () => {
             expect(mocks.translateTextBatch).not.toHaveBeenCalled(); expect(mocks.translateText).not.toHaveBeenCalled();
             expect(vi.getTimerCount()).toBe(0);
         } finally {vi.useRealTimers();}
+    });
+
+    it('handles cancellation while the per-attempt cancellation listener is being installed without dispatch or timer leaks', async () => {
+        vi.useFakeTimers();
+        const controller = new AbortController();
+        const register = controller.signal.addEventListener.bind(controller.signal);
+        let listeners = 0;
+        const installed = vi.spyOn(controller.signal, 'addEventListener').mockImplementation((type, listener, options) => {
+            register(type, listener, options);
+            if (type === 'abort' && ++listeners === 2) controller.abort();
+        });
+        try {
+            await expect(createTranslator()(segments, {fileName: 'book.epub', signal: controller.signal,
+                retryBackoff: {maxWaitMs: 600_000, maxDurationMs: 1000},
+            })).rejects.toMatchObject({name: 'AbortError'});
+            expect(mocks.translateTextBatch).not.toHaveBeenCalled(); expect(mocks.translateText).not.toHaveBeenCalled();
+            expect(vi.getTimerCount()).toBe(0);
+        } finally {installed.mockRestore(); vi.useRealTimers();}
     });
 
     it('clears the deadline timer after success without an external cancellation signal', async () => {

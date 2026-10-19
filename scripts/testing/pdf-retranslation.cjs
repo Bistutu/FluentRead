@@ -132,6 +132,12 @@ async function runPdfRetranslation({page, fixture, report, shot, record, until, 
   await assertActions('canceled retranslation');
   report.retranslation.cancel = {requests: 0, correctionRetained: true, localHistoryRetained: true};
   record('canceling retranslation sends no request and preserves the corrected result in memory and local history');
+  await action().click(); await confirmation().waitFor(); await page.keyboard.press('Escape');
+  await until(async () => await confirmation().count() === 0, 'Escape 未关闭重译确认');
+  assert.equal(fixture.state.requests.length, canceledBefore, 'Escape 取消重译不得发送翻译请求');
+  assert.deepEqual(await snapshot(), corrected, 'Escape 取消重译必须保留人工校订');
+  report.retranslation.cancel.escapeRetained = true;
+  record('Escape cancels the retranslation confirmation without requests or correction changes');
 
   await page.setViewportSize({width: 1440, height: 960});
   const restartBefore = fixture.state.requests.length;
@@ -165,6 +171,50 @@ async function runPdfRetranslation({page, fixture, report, shot, record, until, 
   if (await downloadDialog.count()) await downloadDialog.getByRole('button', {name: '返回文档', exact: true}).click();
   await assertActions('after translated PDF download');
   record('retranslated PDF still downloads a nonempty real PDF through the existing download workflow');
+
+  // 显式关闭 provider 内部重试后，真实 HTTP 限频由文档等待状态接管；使用原默认批量模式。
+  await page.locator('aside.document-sidebar .document-settings-button').click();
+  await page.locator('.document-batch-translation input').check();
+  await page.locator('.document-settings-dialog[open] .dialog-actions .ghost-button').click();
+  const restart = async () => {
+    await action().click(); await confirmation().waitFor();
+    await confirmation().getByRole('button', {name: '重新翻译', exact: true}).click();
+  };
+  const waiting = page.locator('.translation-recovery[role="status"]');
+  const retryBefore = fixture.state.requests.length;
+  fixture.state.transientFailures.push({status: 429, retryAfterSeconds: 2});
+  await restart();
+  await until(async () => await waiting.count() > 0 && (await page.locator('.document-status').innerText()).includes('等待自动重试'), '真实 429 后文档未显示自动重试等待态');
+  assert((await page.locator('.document-status').innerText()).includes('等待自动重试'), '限频等待时文档状态必须保持自动等待而非失败');
+  assert.equal(await page.getByTestId('document-translation-recovery').count(), 0, '临时限频不应提前进入失败恢复态');
+  assert(await page.locator('.pause-button').isEnabled(), '自动重试等待时必须能暂停');
+  await shot('pdf-batch-429-waiting-auto-retry');
+  // 此处不再点击按钮，等待同一文档自行重试并完成。
+  await complete('automatic batch retry after HTTP 429');
+  const retryRequests = fixture.state.requests.slice(retryBefore);
+  const rejected = retryRequests.find(request => request.httpStatus === 429), retried = retryRequests.find(request => !request.httpStatus);
+  assert(rejected && retried && retried.startedAt - rejected.startedAt >= 1900, '真实请求必须遵守 Retry-After:2 后再自动重发');
+  assert(rejected.source.includes('___FLUENTREAD_'), '429 自动恢复必须使用真实多段批量请求');
+  await shot('pdf-batch-429-automatically-completed');
+  report.transientRetry = {providerInternalRetries: 0, batchTranslation: true, status: 429, retryAfterSeconds: 2,
+    attempts: retryRequests.length, actualWaitMs: retried.startedAt - rejected.startedAt, automaticCompletion: true, extraActionClicks: 0};
+  record('real batch HTTP 429 enters document waiting state and automatically completes after Retry-After without another click');
+
+  fixture.state.transientFailures.push({status: 503, retryAfterSeconds: 2});
+  await restart();
+  await until(async () => await waiting.count() > 0 && (await page.locator('.document-status').innerText()).includes('等待自动重试'), '真实 503 后文档未进入等待态');
+  const pauseRequests = fixture.state.requests.length;
+  await page.locator('.pause-button').click();
+  await until(async () => (await page.locator('.document-status').innerText()).includes('已暂停'), '暂停没有立即取消自动等待');
+  const paused = await snapshot();
+  await wait(2300);
+  assert.equal(fixture.state.requests.length, pauseRequests, '暂停后等待期结束仍不得发出迟到重试请求');
+  assert.deepEqual(await snapshot(), paused, '暂停后的迟到任务不得提交译文');
+  assert.equal(await waiting.count(), 0, '暂停后必须清除自动等待提示');
+  await shot('pdf-batch-503-wait-canceled');
+  report.transientRetry.pause = {status: 503, canceledImmediately: true, lateRequests: 0, unchangedAfterWaitMs: 2300};
+  record('pausing real batch HTTP 503 waiting cancels immediately and sends no late request after the retry deadline');
+  await action().click(); await complete('resume after canceled retry wait');
 }
 
 module.exports = {runPdfRetranslation};
