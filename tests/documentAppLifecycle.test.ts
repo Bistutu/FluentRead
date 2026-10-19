@@ -39,7 +39,11 @@ vi.mock('@/src/services/config/store', async () => {
 });
 vi.mock('@/src/services/translation/client', async original => ({...await original<typeof import('@/src/services/translation/client')>(), translateText: ports.translate, translateTextBatch: ports.batch}));
 vi.mock('@/src/ui/i18n', () => ({createUiI18nPlugin: (options: unknown) => options, useUiI18n: () => ({language: ref('zh-CN'), t: (key: string, values?: unknown) => {ports.i18n(key, values); return key;}, translateLegacy: (text: string) => text})}));
-vi.mock('@/src/ui/components/UiSelect.vue', () => ({default: {props: ['modelValue'], setup: (_props: any, {slots}: any) => () => h('select', slots.default?.())}}));
+vi.mock('@/src/ui/components/UiSelect.vue', () => ({default: {
+    props: ['modelValue'], emits: ['update:modelValue'],
+    setup: (props: any, {slots, emit}: any) => () => h('select', {value: props.modelValue,
+        onChange: (event: any) => emit('update:modelValue', event.target.value)}, slots.default?.()),
+}}));
 vi.mock('@/src/ui/components/GlossaryLibrarySelect.vue', () => ({default: {setup: () => () => h('div')}}));
 vi.mock('element-plus/es/components/select/style/css', () => ({}));
 vi.mock('element-plus', () => ({ElOption: {props: ['label', 'value'], setup: (props: any) => () => h('option', {value: props.value}, props.label)}}));
@@ -105,6 +109,140 @@ beforeEach(async () => {
 afterEach(async () => {ports.pagePending?.resolve(ports.tasks.find(value => value.role === 'preview')?.page); ports.renderPending?.resolve(); app?.unmount(); await flush(); await vi.dynamicImportSettled(); windowTimers.forEach(timer => clearTimeout(timer)); windowTimers.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals();});
 
 describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
+    const taskButton = (label: string) => {
+        const taskbar = walkHost(root).find(entry => entry.props['aria-label'] === '当前文档与翻译任务');
+        const button = taskbar && walkHost(taskbar).find(entry => entry.type === 'button' && hostText(entry) === label);
+        expect(button, `missing document toolbar action: ${label}`).toBeDefined();
+        return button!;
+    };
+    const restartConfirmation = () => walkHost(root).find(entry => entry.type === 'dialog' && entry.props['aria-labelledby'] === 'confirm-document-heading')!;
+    const confirmButton = (label: string) => walkHost(restartConfirmation()).find(entry => entry.type === 'button' && hostText(entry) === label)!;
+
+    it('keeps PDF retranslation and download available after completion, preserving the result until restart is confirmed', async () => {
+        await state.loadFiles([file('repeat.pdf')]); await flush();
+        await taskButton('开始翻译').props.onClick();
+        await vi.waitFor(() => expect(state.translationComplete).toBe(true)); await flush();
+        expect(ports.batch).toHaveBeenCalledOnce();
+        expect(ports.batch.mock.calls[0][2].useCache).toBeUndefined();
+        state.editSegment(0, '人工校订保留到确认'); await flush();
+        expect(taskButton('下载文件 ↓').props.disabled).toBe(false);
+        expect(taskButton('重新翻译').props.disabled).toBe(false);
+
+        await taskButton('重新翻译').props.onClick(); await flush();
+        expect(restartConfirmation().showModal).toHaveBeenCalledOnce();
+        expect(hostText(restartConfirmation())).toContain('重新翻译会替换现有译文和人工校订');
+        expect(ports.batch).toHaveBeenCalledOnce();
+        expect(state.translatedSegments).toEqual(['人工校订保留到确认']);
+        await confirmButton('返回文档').props.onClick(); await flush();
+        restartConfirmation().props.onClose(new Event('close')); await flush();
+        expect(restartConfirmation().close).toHaveBeenCalledOnce();
+        expect(state.pendingAction).toBeNull();
+        expect(ports.batch).toHaveBeenCalledOnce();
+        expect(state.translatedSegments).toEqual(['人工校订保留到确认']);
+        expect(taskButton('重新翻译').props.disabled).toBe(false);
+
+        ports.batch.mockResolvedValueOnce(['第二次译文']);
+        await taskButton('重新翻译').props.onClick(); await flush();
+        await confirmButton('重新翻译').props.onClick();
+        await vi.waitFor(() => expect(state.translationComplete).toBe(true)); await flush();
+        expect(ports.batch).toHaveBeenCalledTimes(2);
+        expect(ports.batch.mock.calls[1]).toEqual([['Original'], 'repeat.pdf', expect.objectContaining({useCache: false})]);
+        expect(state.translatedSegments).toEqual(['第二次译文']);
+        expect(state.confirmedTranslationIds).toEqual([]);
+        expect(taskButton('重新翻译').props.disabled).toBe(false);
+        expect(taskButton('下载文件 ↓').props.disabled).toBe(false);
+    });
+
+    it.each(['service', 'model'])('retranslates a completed PDF with the new %s through the toolbar confirmation', async change => {
+        Object.assign(state.config, {documentService: 'openai', enableAIContext: false,
+            token: {openai: 'fixture-key', deepseek: 'fixture-key'}, documentModel: {openai: 'gpt-5-mini', deepseek: 'deepseek-chat'}});
+        await state.loadFiles([file('switch.pdf')]); await flush();
+        await taskButton('开始翻译').props.onClick();
+        await vi.waitFor(() => expect(state.translationComplete).toBe(true)); await flush();
+        expect(ports.batch).toHaveBeenCalledOnce();
+        const field = walkHost(root).find(entry => entry.type === 'select' && entry.props['aria-label'] === (change === 'service' ? '翻译服务' : '模型'))!;
+        field.props.onChange({target: {value: change === 'service' ? 'deepseek' : 'gpt-5'}}); await flush();
+        // 服务和模型切换允许未完成任务续译；已完成任务仍必须保留完整重译入口。
+        expect(state.settingsChanged).toBe(false);
+        expect(taskButton('重新翻译').props.disabled).toBe(false);
+        await taskButton('重新翻译').props.onClick(); await flush();
+        expect(ports.batch).toHaveBeenCalledOnce();
+        await confirmButton('重新翻译').props.onClick();
+        await vi.waitFor(() => expect(state.translationComplete).toBe(true)); await flush();
+        expect(ports.batch).toHaveBeenCalledTimes(2);
+        expect(ports.batch.mock.calls[1][2]).toMatchObject({
+            serviceOverride: change === 'service' ? 'deepseek' : 'openai',
+            modelOverride: change === 'service' ? 'deepseek-chat' : 'gpt-5', useCache: false,
+        });
+        expect(taskButton('重新翻译').props.disabled).toBe(false);
+        expect(taskButton('下载文件 ↓').props.disabled).toBe(false);
+    });
+
+    it('persists a confirmed PDF history restart even when its first request fails, without restoring the replaced result', async () => {
+        const parsed = await binaryService.parseDocumentFile(file('history-repeat.pdf'));
+        if (parsed.binary?.kind !== 'pdf') throw new Error('expected PDF');
+        const bytes = parsed.binary.bytes, id = await documentHistoryId(bytes);
+        const factory = new IDBFactory(), history = createDocumentHistory(factory);
+        await history.save({id, name: parsed.fileName, format: 'pdf', size: bytes.length, total: parsed.segments.length,
+            completed: parsed.segments.length, updatedAt: 1, bytes, mimeType: 'application/pdf', translations: ['历史完整译文'],
+            fingerprint: state.currentFingerprint, parsed, parsedVersion: 17});
+        app.unmount(); vi.stubGlobal('indexedDB', factory);
+        root = node('root'); app = renderer.createApp(DocumentApp); app.mount(root); state = app._instance.setupState;
+        await flush(); await state.openHistory({id}); await flush();
+        expect(state.translationComplete).toBe(true);
+        expect(state.translatedSegments).toEqual(['历史完整译文']);
+        expect(taskButton('下载文件 ↓').props.disabled).toBe(false);
+        expect(taskButton('重新翻译').props.disabled).toBe(false);
+        expect(ports.batch).not.toHaveBeenCalled();
+        const restoredRevision = state.editRevision;
+
+        ports.batch.mockRejectedValueOnce(Object.assign(new Error('HTTP 400 invalid model'), {retryable: false}));
+        await taskButton('重新翻译').props.onClick(); await flush();
+        expect(state.translatedSegments).toEqual(['历史完整译文']);
+        await confirmButton('重新翻译').props.onClick();
+        await vi.waitFor(() => expect(state.runState).toBe('failed')); await flush();
+        expect(ports.batch).toHaveBeenCalledOnce();
+        expect(ports.batch.mock.calls[0][2].useCache).toBe(false);
+        expect(state.translatedSegments).toEqual([]);
+        expect(state.editRevision).toBeGreaterThan(restoredRevision);
+        await vi.waitFor(async () => {
+            expect(await history.load(id)).toMatchObject({completed: 0, translations: [], bypassCache: true});
+        });
+        state.resetDocument(); await flush();
+        await state.openHistory({id}); await flush();
+        expect(state.translationComplete).toBe(false);
+        expect(state.translatedSegments.some((value: string) => value.trim())).toBe(false);
+        expect(taskButton('开始翻译').props.disabled).toBe(false);
+        expect(ports.batch).toHaveBeenCalledOnce();
+        await taskButton('开始翻译').props.onClick();
+        await vi.waitFor(() => expect(state.translationComplete).toBe(true)); await flush();
+        expect(ports.batch).toHaveBeenCalledTimes(2);
+        expect(ports.batch.mock.calls[1][2].useCache).toBe(false);
+    });
+
+    it('keeps bypassing cached PDF translations when a confirmed restart is paused and continued', async () => {
+        await state.loadFiles([file('pause-repeat.pdf')]); await flush();
+        await taskButton('开始翻译').props.onClick();
+        await vi.waitFor(() => expect(state.translationComplete).toBe(true)); await flush();
+        expect(ports.batch.mock.calls[0][2].useCache).toBeUndefined();
+        const pending = deferred<string[]>(); ports.batch.mockReturnValueOnce(pending.promise);
+        await taskButton('重新翻译').props.onClick(); await flush();
+        await confirmButton('重新翻译').props.onClick();
+        await vi.waitFor(() => expect(ports.batch).toHaveBeenCalledTimes(2)); await flush();
+        expect(ports.batch.mock.calls[1][2].useCache).toBe(false);
+        await taskButton('暂停翻译').props.onClick(); await flush();
+        expect(ports.batch.mock.calls[1][2].signal.aborted).toBe(true);
+        pending.resolve(['迟到译文']); await flush();
+        expect(state.translatedSegments).toEqual([]);
+
+        ports.batch.mockResolvedValueOnce(['继续后重新生成的译文']);
+        await taskButton('继续翻译').props.onClick();
+        await vi.waitFor(() => expect(state.translationComplete).toBe(true)); await flush();
+        expect(ports.batch).toHaveBeenCalledTimes(3);
+        expect(ports.batch.mock.calls[2][2].useCache).toBe(false);
+        expect(state.translatedSegments).toEqual(['继续后重新生成的译文']);
+    });
+
     it('reuses the reading priority identity until rich-text scroll crosses a segment or document length changes', async () => {
         await state.loadFiles([file('priority.txt', Array.from({length: 10}, (_, index) => `Paragraph ${index}`).join('\n\n'))]); await flush();
         const scroller = {scrollHeight: 1_000, scrollTop: 0};

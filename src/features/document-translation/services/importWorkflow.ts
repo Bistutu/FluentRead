@@ -1,7 +1,7 @@
 /**
  * @file src/features/document-translation/services/importWorkflow.ts
  * 文件职责：拥有文档文件、在线 PDF 与本地历史重新打开的导入生命周期。
- * 主要内容：在同一取消代次中校验格式和大小、读取格式、恢复 OCR 与人工校订历史，再把完整任务交给页面；取消后丢弃迟到读取，失败文件独立入队，不改写已有文档的译文或翻译错误。
+ * 主要内容：在同一取消代次中校验格式和大小、读取格式、恢复 OCR 与人工校订历史以及当前任务的重译缓存策略，再把完整任务交给页面；取消后丢弃迟到读取，失败文件独立入队，不改写已有文档的译文或翻译错误。
  * 模块边界：不持有任务队列、当前选择、进度或历史提交副本；读取、任务提交和展示均经显式端口，历史保存仍由页面的 historyCommitter 负责。
  */
 import {getDocumentFormat, getDocumentMaxBytes, type ParsedDocument} from '../core/document';
@@ -77,7 +77,8 @@ export function createDocumentImportWorkflow(ports: DocumentImportPorts) {
                     if (saved) {
                         const restored = restoreDocumentHistoryPdfOcr(saved, parsed);
                         task.document = restored.document;
-                        Object.assign(task, restoreDocumentHistoryRevisions(saved, restored.document, ports.parsedVersion, restored.segmentOrigins), {fingerprint: saved.fingerprint});
+                        Object.assign(task, restoreDocumentHistoryRevisions(saved, restored.document, ports.parsedVersion, restored.segmentOrigins),
+                            {fingerprint: saved.fingerprint, bypassCache: saved.bypassCache === true});
                     }
                 }
             } catch (error) {
@@ -126,6 +127,7 @@ export function createDocumentImportWorkflow(ports: DocumentImportPorts) {
             const task = ports.createTask(file, record.sourceUrl);
             Object.assign(task, {document: snapshot, historyId: record.id, bytes: record.bytes, mimeType: record.mimeType,
                 ...restoreDocumentHistoryRevisions(record, snapshot, ports.parsedVersion), fingerprint: record.fingerprint,
+                bypassCache: record.bypassCache === true,
                 savedRevision: 0});
             ports.appendTask(task, true);
         }),

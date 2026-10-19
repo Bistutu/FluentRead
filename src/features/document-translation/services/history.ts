@@ -2,7 +2,7 @@
  * @file src/features/document-translation/services/history.ts
  * 文件职责：在浏览器本地保存最近翻译过的文档及其译文，使文档翻译首页可以列出记录并一键恢复阅读。
  * 主要内容：以文件内容摘要为稳定标识，在独立的 IndexedDB 库中保存原始文件字节、解析结果快照、译文、进度与设置指纹；解析规则变化后按原文与双向唯一的原生位置或邻文恢复未变化片段的独立校订，歧义校订独立保留，复用同文件中页号、展示尺寸与旋转一致的已识别扫描页；原文件、逐行及逐项稳定几何均一致时，保留因字体指标修正而合并的连续普通文字段，使用新字形重建边界而不拼接译文；其余文字页保持新解析结果，统一重编号全文片段；本次复用的旧索引保留独立校订与空槽并从原文匹配池排除，不写入解析快照；列表只返回不含文件字节的摘要并按最近更新时间排序；超过条数或总字节上限时淘汰最旧的记录；数据库不可用、被其他标签页占用而超时或读写失败时安静降级为“没有记录”，并在其他标签页需要升级或删除时让出连接，不影响打开和翻译文档。
- * 保存生命周期：超时撤销后续写入资格并取消活跃写事务，只有真实事务提交后才确认保存成功，避免迟到打开数据库的旧修订覆盖新校订。
+ * 保存生命周期：超时撤销后续写入资格并取消活跃写事务，只有真实事务提交后才确认保存成功，避免迟到打开数据库的旧修订覆盖新校订；重译跳过缓存只接受并保存显式 true，刷新后继续当前重译不会恢复旧缓存。
  * 模块边界：只负责本地存取与已有译文匹配，不解析文档、不发起翻译、不读取配置，也不把任何内容发送到网络；页面状态、解析版本与何时保存由文档页面组合根决定。
  */
 import {documentSourceLocators, matchDocumentSourceLocators} from '../core/materialLocator';
@@ -30,6 +30,8 @@ export interface DocumentHistoryRecord extends DocumentHistorySummary {
     translations: string[];
     /** 生成这些译文时的语言、服务与术语设置；恢复后据此判断设置是否已经改变。 */
     fingerprint: string;
+    /** 用户确认重译后持续跳过旧译文缓存；旧记录和未开启的任务不保存该字段。 */
+    bypassCache?: boolean;
     /** 解析结果的快照与产生它的解析版本：版本一致时刷新可以直接还原，不必重新解析文件。 */
     parsed?: unknown;
     parsedVersion?: number;
@@ -282,6 +284,12 @@ function summary(record: DocumentHistoryRecord): DocumentHistorySummary {
     return {id, name, format, size, ...(sourceUrl ? {sourceUrl} : {}), total, completed, updatedAt};
 }
 
+/** 兼容旧记录；不把字符串、数字或其它 truthy 值当作用户确认的重译策略。 */
+function normalizeDocumentHistoryCachePolicy(record: DocumentHistoryRecord): DocumentHistoryRecord {
+    const {bypassCache, ...snapshot} = record;
+    return bypassCache === true ? {...snapshot, bypassCache: true} : snapshot;
+}
+
 export function createDocumentHistory(factory: IDBFactory | undefined = globalThis.indexedDB, timeoutMs = 3000): DocumentHistory {
     let opening: Promise<IDBDatabase> | undefined;
     const open = () => opening ??= new Promise<IDBDatabase>((resolve, reject) => {
@@ -333,10 +341,13 @@ export function createDocumentHistory(factory: IDBFactory | undefined = globalTh
     const all = async (signal: AbortSignal) => (await request((await readStore(signal)).getAll()) as DocumentHistoryRecord[]).sort((left, right) => right.updatedAt - left.updatedAt);
     return {
         list: () => guarded<DocumentHistorySummary[]>([], async signal => (await all(signal)).map(summary)),
-        load: id => guarded<DocumentHistoryRecord | null>(null, async signal => (await request((await readStore(signal)).get(id)) as DocumentHistoryRecord | undefined) ?? null),
+        load: id => guarded<DocumentHistoryRecord | null>(null, async signal => {
+            const record = await request((await readStore(signal)).get(id)) as DocumentHistoryRecord | undefined;
+            return record ? normalizeDocumentHistoryCachePolicy(record) : null;
+        }),
         save: record => guarded(false, async signal => {
             if (!record.id || record.bytes.byteLength > DOCUMENT_HISTORY_MAX_BYTES) return false;
-            const saved = {...record, bytes: record.bytes.slice(), translations: [...record.translations],
+            const saved = {...normalizeDocumentHistoryCachePolicy(record), bytes: record.bytes.slice(), translations: [...record.translations],
                 retainedRevisions: retainedDocumentRevisions(Array.isArray(record.retainedRevisions) ? record.retainedRevisions : [])};
             await write(signal, target => {target.put(saved);});
             // 先写入再淘汰：保留最近的记录，直到条数与总字节都回到上限以内。

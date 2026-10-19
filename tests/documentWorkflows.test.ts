@@ -98,6 +98,35 @@ describe('document import workflow ownership', () => {
         expect(f.tasks[0].document).toBe(pdf);expect(f.tasks[0].error).toBe('');expect(f.tasks[1].error).toBe('broken file');
     });
 
+    it('uses parsed PDF source bytes for restart history and forwards progress only while import owns the document', async () => {
+        const f = importFixture();f.ports.history = {load: f.load};
+        const bytes = new Uint8Array([1, 2, 3]);
+        const pdf = {...document(), fileName: 'restart.pdf', format: 'pdf', binary: {kind: 'pdf', bytes, pages: []}} as ParsedDocument;
+        const saved = {...record(pdf), bypassCache: true, translations: [''], completed: 0, bytes};
+        f.load.mockResolvedValue(saved);
+        vi.mocked(f.ports.parseFile).mockImplementationOnce(async (_file, options) => {
+            options!.onPdfProgress!({completed: 1, total: 2});
+            return pdf;
+        });
+        const input = new File([bytes], 'restart.pdf');
+        const reading = vi.spyOn(input, 'arrayBuffer');
+        await f.workflow.loadFiles([input]);
+        expect(reading).not.toHaveBeenCalled();
+        expect(f.ports.onReadProgress).toHaveBeenCalledWith({completed: 1, total: 2});
+        expect(f.tasks[0]).toMatchObject({bytes, bypassCache: true, translations: ['']});
+    });
+
+    it('ignores an obsolete parsing rejection after cancel instead of publishing a failed restart task', async () => {
+        const f = importFixture(), parsed = pending(document());
+        vi.mocked(f.ports.parseFile).mockReturnValueOnce(parsed.promise);
+        const running = f.workflow.loadFiles([new File(['Source.'], 'restart.txt')]);
+        f.workflow.cancel();parsed.reject(new Error('late parse failure'));
+        await running;
+        expect(f.tasks).toEqual([]);
+        expect(f.ports.onOnlineError).not.toHaveBeenCalled();
+        expect(f.ports.onFinished).not.toHaveBeenCalled();
+    });
+
     it('restores matching history from file bytes and reuses a current history snapshot without parsing', async () => {
         const f = importFixture();f.ports.history = {load: f.load};f.load.mockResolvedValue(record());
         await f.workflow.loadFiles([new File(['Source.'], 'source.txt', {type: 'text/plain'})]);
@@ -115,15 +144,36 @@ describe('document import workflow ownership', () => {
         await f.workflow.loadFiles([]);expect(f.ports.onFinished).toHaveBeenCalledOnce();
     });
 
+    it.each([undefined, false, true, 'true', 1])('restores only an explicit cache bypass through same-file import and history snapshots: %j', async bypassCache => {
+        const f = importFixture();f.ports.history = {load: f.load};
+        const saved = {...record(), bypassCache: bypassCache as boolean, translations: [''], completed: 0};
+        f.load.mockResolvedValue(saved);
+        await f.workflow.loadFiles([new File(['Source.'], 'source.txt', {type: 'text/plain'})]);
+        expect(f.tasks[0]).toMatchObject({bypassCache: bypassCache === true, translations: ['']});
+        await f.workflow.openHistory('history');
+        expect(f.tasks[1]).toMatchObject({bypassCache: bypassCache === true, translations: ['']});
+        saved.parsedVersion = 15;
+        await f.workflow.openHistory('history');
+        expect(f.tasks[2]).toMatchObject({bypassCache: bypassCache === true, translations: ['']});
+        f.load.mockResolvedValueOnce(null);
+        await f.workflow.loadFiles([new File(['New.'], 'different.txt')]);
+        expect(f.tasks[3].bypassCache).toBe(false);
+    });
+
     it.each(['bytes', 'history'] as const)('checks cancellation again after pending %s before advancing import', async stage => {
         const f = importFixture();f.ports.history = {load: f.load};
         const buffer = new ArrayBuffer(7);new Uint8Array(buffer).set(new TextEncoder().encode('Source.'));
         const bytes = pending(buffer), saved = pending<DocumentHistoryRecord | null>(record());
         const input = new File(['Source.'], 'source.txt');
-        if (stage === 'bytes') vi.spyOn(input, 'arrayBuffer').mockReturnValueOnce(bytes.promise);
+        const reading = vi.spyOn(input, 'arrayBuffer');
+        if (stage === 'bytes') {
+            vi.mocked(f.ports.parseFile).mockResolvedValueOnce(document());
+            reading.mockReturnValueOnce(bytes.promise);
+        }
         else f.load.mockReturnValueOnce(saved.promise);
         const running = f.workflow.loadFiles([input]);
-        if (stage === 'history') await vi.waitFor(() => expect(f.load).toHaveBeenCalledOnce());else await settle();
+        if (stage === 'history') await vi.waitFor(() => expect(f.load).toHaveBeenCalledOnce());
+        else await vi.waitFor(() => expect(reading).toHaveBeenCalledOnce());
         f.workflow.cancel();bytes.resolve(buffer);saved.resolve(record());await running;
         expect(f.tasks).toEqual([]);expect(f.ports.onFinished).not.toHaveBeenCalled();
     });

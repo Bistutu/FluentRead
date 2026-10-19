@@ -39,10 +39,10 @@ export const translateDocumentSegments = createDocumentSegmentTranslator({
 });
 
 /**
- * 文档页的失败重试预算：限流或暂时不可用时自动退避，单批请求与退避合计默认最多两分钟；服务的单次预算更长时保留该预算。
+ * 文档页的失败重试预算：限流或暂时不可用时自动退避，单批请求与退避合计默认最多十分钟；服务的单次预算更长时保留该预算。
  * 作为可替换的组合根设置导出，测试可以把等待换成即时完成而不改变页面逻辑。
  */
-export const documentRetryBackoff: {maxWaitMs: number; maxDurationMs: number; sleep?: (milliseconds: number, signal?: AbortSignal) => Promise<void>} = {maxWaitMs: 120_000, maxDurationMs: 120_000};
+export const documentRetryBackoff: {maxWaitMs: number; maxDurationMs: number; sleep?: (milliseconds: number, signal?: AbortSignal) => Promise<void>} = {maxWaitMs: 600_000, maxDurationMs: 600_000};
 
 /** 默认原版导出使用 Canvas；显式重排导出保留可复制文字，其他格式仍走纯二进制服务。 */
 export async function createDocumentDownload(
