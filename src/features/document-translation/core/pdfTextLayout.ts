@@ -1,7 +1,7 @@
 /**
  * @file src/features/document-translation/core/pdfTextLayout.ts
  * 文件职责：将 PDF 阅读计划中的完整文字和原图区域分页为可读的下载版面。
- * 主要内容：正文固定可读字号与行距，按字素和词边界换行并缓存字宽；整页可容纳的公式或插图整体换页，长段落与真实超高原图跨页续排，保留每个字符和图像区域，不缩小文字、不裁剪译文；每页绘制项使用标准 PDF 点坐标。
+ * 主要内容：正文固定可读字号与行距，按字素和词边界换行并缓存字宽；排版时忽略首尾无内容空段，保留正文内部空行，不改写存储文字；整页可容纳的公式或插图整体换页，长段落与真实超高原图跨页续排，保留每个字符和图像区域，不缩小文字、不裁剪译文；每页绘制项使用标准 PDF 点坐标。
  * 模块边界：只消费纯阅读计划和注入的字体测量，不使用 DOM、Canvas、浏览器 API 或文件 I/O；具体绘制与编码由 PDF 光栅端口负责。
  */
 import type {PdfReadingPlan, PdfReadingRect} from './pdfReadingPlan';
@@ -38,7 +38,7 @@ export function pdfReadingFont(role: string): PdfReadingFont {
     return {size: 12, weight: 400, lineHeight: 19.2};
 }
 
-/** 测量只作用于词或独立字素，避免反复测量越来越长的中文字符串。 */
+/** 测量只作用于词或独立字素；首尾空段不占排版高度，正文内部空行保持原样。 */
 export function wrapPdfReadingText(value: string, width: number, font: PdfReadingFont, measure: PdfTextMeasure): string[] {
     const maxWidth = Math.max(1, Number.isFinite(width) ? width : 1);
     const widths = new Map<string, number>();
@@ -63,7 +63,12 @@ export function wrapPdfReadingText(value: string, width: number, font: PdfReadin
         return characters;
     };
     const lines: string[] = [];
-    for (const paragraph of value.replace(/\r\n?/gu, '\n').split('\n')) {
+    const paragraphs = value.replace(/\r\n?/gu, '\n').split('\n');
+    let first = 0, last = paragraphs.length;
+    while (first < last && !paragraphs[first].trim()) first += 1;
+    while (last > first && !paragraphs[last - 1].trim()) last -= 1;
+    for (let index = first; index < last; index += 1) {
+        const paragraph = paragraphs[index];
         if (!paragraph.trim()) {lines.push(''); continue;}
         const tokens: string[] = [];
         let word = '';
@@ -109,6 +114,7 @@ export function paginatePdfReadingPlan(plan: PdfReadingPlan, measure: PdfTextMea
         if (entry.kind === 'text') {
             const font = pdfReadingFont(entry.role);
             const lines = wrapPdfReadingText(entry.text, availableWidth, font, measure);
+            if (!lines.length) continue;
             for (const line of lines) {
                 ensure(font.lineHeight);
                 page!.items.push({kind: 'text', entryId: entry.id, segmentIndex: entry.segmentIndex, text: line, x: margin, y, width: availableWidth, font});

@@ -37,6 +37,8 @@ PDF 阅读器公开 `captureMaterialLocation()`、`resolveMaterialSelection(rang
 
 ## PDF 导出
 
+文字换行与分页只忽略首尾全空白段，不改写原文、译文或校订存储；正文内部空行保持。纯空白条目不创建页面或段间距，短译文也不能因为末尾换行被判为原位放不下而追加全文续页。
+
 原版页保留图像外观，并根据 Canvas 实际绘制的每行几何生成不可见 CID/ToUnicode 文字层。此层不用下载字体；必须保全 Unicode，不得覆盖图表或生成可见的缺字方框。源块只有实际绘制了有效译文行时才从原文文字层排除。
 
 阅读器原版排版中，完整译文放不下时保留可读的一行预览，全文仍在全文弹窗；该预览不代表全文已经显示。导出时保留完整批注，并在对应原版页后添加完整可见续页。续页有源页、段落和页码标识，底部链接返回原版页。标准 PDF `PageLabels` 记录 `1`、`1 · 译文续页 1`、`2` 等关系，验收应检查原版页相对顺序及连续续页编号，不能再假设每个源页只有一个输出页。
@@ -51,6 +53,7 @@ PDF 阅读器公开 `captureMaterialLocation()`、`resolveMaterialSelection(rang
 
 - `run-document-corpus-audit.cjs`：校验 manifest 来源及 SHA，检查指定真实页的字形、片段、顺序、跨页边界和内存样本。其通过不等于视觉或翻译通过。
 - `run-pro-document-ui-test.cjs`：在第二屏后台临时 Edge 中用真实人工校订验证弹窗、键盘、复制事件、搜索、迁移、取消、下载、响应式及卸载；不模拟普通文档的供应商。
+- `run-document-export-pages-test.cjs --extension-dir <生产扩展目录> --playwright-root <Node包目录> --artifacts-dir <证据目录>`：经文档页校订与实际导出按钮，检查带首尾空行的短译文、36 行重排及长译文续页；重开下载文件核对页数、全文与逐页渲染。仅使用受控 PDF 与人工校订，不代表反馈原文件或在线供应商验收。
 - `run-document-live-translation.cjs --inputs <明确文件>`：公开原页节选的实际免费服务翻译与下载，独立记录供应商成功、错误及未覆盖项。
 - `run-pdf-export-benchmark.cjs --self-test-expectations`：离线检查页序与批注验收逻辑。Mock 压力模式仍要求至少 300 页，不用于普通公开文档的翻译质量验证。
 

@@ -99,6 +99,13 @@ describe('PDF layout overlay text fitting', () => {
         const fit = fitPdfBlockText({text: '一二三四五六七八九十', width: 100, height: 24, fontSize: 10, lineHeight: 13, minFontSize: 6, weight: 400}, monospace);
         expect(fit).toEqual({fontSize: 10, lineHeight: 13, lines: ['一二三四五六七八九十'], overflow: false});
     });
+    it.each(['短译文\n', '\n短译文', '\r\n \t\r\n短译文\r\n \t\r\n'])
+    ('does not mark a short translation as overflowing because of boundary blank paragraphs: %j', text => {
+        const input = {text, width: 100, height: 10, fontSize: 10, lineHeight: 10, minFontSize: 6, weight: 400 as const};
+        const before = {...input};
+        expect(fitPdfBlockText(input, monospace)).toEqual({fontSize: 10, lineHeight: 12.5, lines: ['短译文'], overflow: false});
+        expect(input).toEqual(before);
+    });
     it('clamps the leading ratio for single-line and very loose sources', () => {
         expect(fitPdfBlockText({text: '标题', width: 100, height: 10, fontSize: 10, lineHeight: 10, minFontSize: 6, weight: 700}, monospace).lineHeight).toBe(12.5);
         expect(fitPdfBlockText({text: '正文', width: 100, height: 40, fontSize: 10, lineHeight: 30, minFontSize: 6, weight: 400}, monospace).lineHeight).toBe(16);

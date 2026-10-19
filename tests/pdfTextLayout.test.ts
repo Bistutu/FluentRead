@@ -20,6 +20,29 @@ describe('PDF fixed-font complete-text pagination', () => {
         expect(lines.some(line => line.includes('👩‍💻'))).toBe(true);
         expect(lines.filter(Boolean).every(line => measure(line) <= 72)).toBe(true);
     });
+    it('ignores empty boundary paragraphs while retaining every internal blank line', () => {
+        const value = '\r\n \t\r\n首段\r\n\r\n \t\r\n尾段\r\n \t\r\n';
+        expect(wrapPdfReadingText(value, 528, body, measure)).toEqual(['首段', '', '', '尾段']);
+    });
+    it('keeps a full text page on one page when its translation ends with blank paragraphs', () => {
+        const text = '译文\n'.repeat(36);
+        const plan = textPlan(text + ' \t\r\n\r\n');
+        const before = JSON.stringify(plan);
+        const pages = paginatePdfReadingPlan(plan, measure);
+        expect(pages).toHaveLength(1);
+        expect(pages[0].items).toHaveLength(36);
+        expect(pages[0].items.every(item => item.kind === 'text' && item.text === '译文')).toBe(true);
+        expect(JSON.stringify(plan)).toBe(before);
+    });
+    it('does not allocate pages or vertical space for whitespace-only text entries', () => {
+        const text = '\r\n \t\n\u3000\r\n';
+        const blank = textPlan(text);
+        expect(wrapPdfReadingText(text, 528, body, measure)).toEqual([]);
+        expect(paginatePdfReadingPlan(blank, measure)).toEqual([]);
+        const content = textPlan('正文');
+        expect(paginatePdfReadingPlan({...content, entries: [...blank.entries, ...content.entries, ...blank.entries]}, measure))
+            .toEqual(paginatePdfReadingPlan(content, measure));
+    });
     it('bounds repeated Chinese width measurements and handles unavailable segmentation and invalid measurements', () => {
         const measured = vi.fn(measure);
         const lines = wrapPdfReadingText('重复中文'.repeat(10000), 528, body, measured);
