@@ -141,6 +141,46 @@ describe('UiLanguageOnboarding 实际保存与生命周期', () => {
     for (const key of ['Tab', 'Enter', ' ', 'Escape']) expect(press(keyboardAction('es-ES'), key).preventDefault).not.toHaveBeenCalled()
     await settle();expect(focus).not.toHaveBeenCalled();expect(setLanguage).not.toHaveBeenCalled();expect(state.selectedLanguage).toBe('es-ES')
   })
+  it.each(['list', 'shell'] as const)('%s 受限滚动区内 End/Home 只滚动所属容器并保持焦点 preventScroll，不保存或滚动宿主', async mode => {
+    await mount({initialLanguage: 'zh-CN'});await languageStep()
+    const options = button('.onboarding-language-options') as HTMLElement
+    const shell = button('#app') as HTMLElement;shell.classList.add('popup-shell')
+    const first = button('[data-language="zh-CN"]'), last = button('[data-language="es-ES"]')
+    const scrollIntoView = vi.fn(), writes: Record<'list' | 'shell', number[]> = {list: [], shell: []}
+    const scrollTop = {list: 0, shell: 0}, otherMode = mode === 'list' ? 'shell' : 'list'
+    const bounds = (top: number, height: number) => ({x: 0, y: top, top, bottom: top + height,
+      left: 0, right: 320, width: 320, height, toJSON: () => ({})})
+    for (const [kind, element] of [['list', options], ['shell', shell]] as const) Object.defineProperties(element, {
+      clientHeight: {configurable: true, value: kind === 'list' && mode === 'shell' ? 336 : 96},
+      scrollHeight: {configurable: true, value: 336}, clientTop: {configurable: true, value: 2},
+      getBoundingClientRect: {configurable: true, value: () => bounds(100 - (kind === 'list' ? scrollTop.shell : 0), kind === 'list' && mode === 'shell' ? 340 : 100)},
+      scrollTop: {configurable: true, get: () => scrollTop[kind], set: (value: number) => {scrollTop[kind] = value;writes[kind].push(value)}},
+    })
+    for (const [element, contentTop] of [[first, 0], [last, 288]] as const) Object.defineProperties(element, {
+      getBoundingClientRect: {configurable: true, value: () => bounds(102 + contentTop - scrollTop.list - scrollTop.shell, 44)},
+      scrollIntoView: {configurable: true, value: scrollIntoView},
+    })
+    Object.defineProperty(document.documentElement, 'scrollTop', {configurable: true, writable: true, value: 23})
+    Object.defineProperty(document.body, 'scrollTop', {configurable: true, writable: true, value: 41})
+
+    focus.mockClear();press(keyboardAction('zh-CN'), 'End');await settle()
+    expect(scrollTop[mode]).toBeGreaterThan(0);expect(scrollTop[mode]).toBeLessThanOrEqual(240)
+    expect(last.getBoundingClientRect().top).toBeGreaterThanOrEqual(102)
+    expect(last.getBoundingClientRect().bottom).toBeLessThanOrEqual(198)
+    expect(focused).toBe(last);expect(focus).toHaveBeenCalledOnce();expect(focus).toHaveBeenCalledWith(last, {preventScroll: true})
+    expect(scrollTop[otherMode]).toBe(0);expect(writes[otherMode]).toEqual([])
+    expect(document.documentElement.scrollTop).toBe(23);expect(document.body.scrollTop).toBe(41)
+
+    focus.mockClear();press(keyboardAction('es-ES'), 'Home');await settle()
+    expect(scrollTop[mode]).toBe(0);expect(writes[mode]).toHaveLength(2)
+    expect(first.getBoundingClientRect().top).toBeGreaterThanOrEqual(102)
+    expect(first.getBoundingClientRect().bottom).toBeLessThanOrEqual(198)
+    expect(focused).toBe(first);expect(focus).toHaveBeenCalledOnce();expect(focus).toHaveBeenCalledWith(first, {preventScroll: true})
+    expect(scrollTop[otherMode]).toBe(0);expect(writes[otherMode]).toEqual([])
+    expect(document.documentElement.scrollTop).toBe(23);expect(document.body.scrollTop).toBe(41)
+    expect(scrollIntoView).not.toHaveBeenCalled();expect(setLanguage).not.toHaveBeenCalled()
+    expect(saved).not.toHaveBeenCalled();expect(confirmed).not.toHaveBeenCalled()
+  })
   it('键盘仅预览，确认一次保存最后选择，等待及交接阶段旧键盘回调均不再操作', async () => {
     await mount({initialLanguage: 'en-US'});await languageStep()
     press(keyboardAction('en-US'), 'End');await settle();press(keyboardAction('es-ES'), 'ArrowLeft');await settle()

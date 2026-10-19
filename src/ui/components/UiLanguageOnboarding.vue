@@ -1,7 +1,7 @@
 <!--
  * @file src/ui/components/UiLanguageOnboarding.vue
- * 文件职责：在 Popup 首次打开时，以紧凑单屏选择并确认界面语言。
- * 主要内容：直接展示七语原生名称与轻量中英文标题；单一 Tab 单选组支持方向键和 Home/End；冻结持久化提交并隔离旧事件、排队焦点与退出后的回复，失败就地重试，成功立即预加载并交接主菜单，不增加欢迎步骤或固定等待。
+ * 文件职责：在 Popup 首次打开时，按可见高度紧凑呈现界面语言选择与确认。
+ * 主要内容：直接展示七语原生名称与轻量中英文标题；单一 Tab 单选组支持方向键和 Home/End，并只在所属列表或极矮 Popup 内显露焦点；冻结持久化提交并隔离旧事件、排队焦点与退出后的回复，失败就地重试，成功立即预加载并交接主菜单，不增加欢迎步骤或固定等待。
  * 模块边界：组件不读取配置、不决定浏览器 locale 映射、不加载完整词库；保存由共享 i18n 负责，主菜单加载及重开由 Popup 根组件负责。
 -->
 <template>
@@ -133,7 +133,18 @@ function focusSelectedLanguage(): void {
     if (!current() || sequence !== focusSequence
       || (document.activeElement !== before && document.activeElement !== document.body)) return;
     const target = languageOptionButtons.value.find(button => button.dataset.language === selectedLanguage.value);
-    if (target?.isConnected && target !== document.activeElement) target.focus({preventScroll: true});
+    if (!target?.isConnected) return;
+    if (target !== document.activeElement) target.focus({preventScroll: true});
+    // 优先滚动语言列表；极矮布局改由所属 Popup 滚动，始终不滚动宿主页面。
+    const options = target.parentElement;
+    const shell = onboardingRoot.value?.closest<HTMLElement>('.popup-shell');
+    const scrollOwner = options?.clientHeight && options.scrollHeight > options.clientHeight ? options : shell;
+    if (!scrollOwner?.clientHeight || scrollOwner.scrollHeight <= scrollOwner.clientHeight) return;
+    const visibleTop = scrollOwner.getBoundingClientRect().top + scrollOwner.clientTop;
+    const visibleBottom = visibleTop + scrollOwner.clientHeight;
+    const frame = target.getBoundingClientRect();
+    const delta = frame.top < visibleTop ? frame.top - visibleTop : Math.max(0, frame.bottom - visibleBottom);
+    scrollOwner.scrollTop += delta;
   });
 }
 
@@ -179,13 +190,16 @@ watch(context.active, active => {if (active) focusSelectedLanguage();}, {immedia
   position: relative;
   z-index: 20;
   background: var(--surface);
+  max-height: var(--fluentread-onboarding-height, none);
+  min-height: 0;
 }
-.language-onboarding-card { padding: 16px; }
+.language-onboarding-card { display: var(--fluentread-onboarding-layout, block); flex-direction: column; min-height: 0; max-height: inherit; padding: 16px; }
+.onboarding-form > :not(.onboarding-language-options) { flex-shrink: 0; }
 .onboarding-brand { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; color: var(--ink); font-size: 15px; }
 .onboarding-brand img { width: 28px; height: 28px; }
 h1 { margin: 0 0 14px; color: var(--ink); font-size: 17px; line-height: 1.4; }
 h1 small { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; font-weight: 400; }
-.onboarding-language-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.onboarding-language-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; flex: 0 1 auto; min-height: var(--fluentread-onboarding-list-min, 0); align-content: start; overflow-y: var(--fluentread-onboarding-list-overflow, visible); overscroll-behavior: contain; }
 .onboarding-language-option { display: flex; align-items: center; justify-content: space-between; gap: 4px; min-width: 0; min-height: 40px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-soft); color: var(--ink); font-size: 13px; cursor: pointer; }
 .onboarding-language-option.selected { border-color: var(--brand); background: var(--brand-soft); }
 .onboarding-language-check { color: var(--brand); visibility: hidden; }

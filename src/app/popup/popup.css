@@ -772,6 +772,24 @@ footer button { font-weight: 500; color: var(--muted); }
 :root[data-fluentread-safari-touch-popup]:not([data-fluentread-embedded-popup]),
 :root[data-fluentread-safari-touch-popup]:not([data-fluentread-embedded-popup]) body,
 :root[data-fluentread-safari-touch-popup]:not([data-fluentread-embedded-popup]) #app { width: 100%; }
+/* 原生 sheet 可以比桌面内容上限更矮；让语言列表承担滚动，确认按钮保留在可见卡片内。 */
+:root[data-fluentread-safari-touch-popup]:not([data-fluentread-embedded-popup]) .popup-shell {
+  max-height: min(560px, 100dvh);
+  --fluentread-onboarding-height: min(560px, 100dvh);
+  --fluentread-onboarding-layout: flex;
+  --fluentread-onboarding-list-min: 46px;
+  --fluentread-onboarding-list-overflow: auto;
+}
+/* 为覆盖式滚动条留出空隙；焦点轮廓收进按钮，避免被列表边缘裁切。 */
+:root[data-fluentread-safari-touch-popup]:not([data-fluentread-embedded-popup]) .onboarding-language-options { padding-inline-end: 20px; }
+:root[data-fluentread-safari-touch-popup]:not([data-fluentread-embedded-popup]) .onboarding-language-option:focus-visible { outline-offset: -4px; }
+/* 极矮视口容不下标题、列表和确认时，整卡滚动保留全部内容的可达性。 */
+@media (max-height: 280px) {
+  :root[data-fluentread-safari-touch-popup]:not([data-fluentread-embedded-popup]) .popup-shell {
+    --fluentread-onboarding-layout: block;
+    --fluentread-onboarding-list-overflow: visible;
+  }
+}
 /* 只替换 Safari 触摸独立 Popup 的外层排列；各皮肤的间距与卡片内部网格仍由原规则决定。 */
 :root[data-fluentread-safari-touch-popup]:not([data-fluentread-embedded-popup]) .feature-grid {
   display: flex;
