@@ -259,6 +259,18 @@ describe('PDF readable export complete content and resource lifecycle', () => {
 });
 
 describe('PDF rasterizer resource lifecycle', () => {
+    it.each(['短译文\n', '\n短译文\r\n \t\r\n'])('does not add a continuation note for boundary blank lines: %j', async text => {
+        const model = previewDocument();
+        if (model.binary?.kind !== 'pdf') throw new Error('PDF expected');
+        const original = model.binary.pages[0].blocks[0];
+        // 紧贴下方的保留块限制借位；旧算法会把首尾空行算进 10pt 的单行区域并误判溢出。
+        const blocks = [{...original, height: 10, fontSize: 10, lineHeight: 10},
+            {...original, segmentIndex: -1, y: original.y + 10, preserveSource: true}];
+        const result = await rasterizePdfTranslationPage({...input(), blocks, translations: [text]});
+        if (result instanceof Uint8Array) throw new Error('PDF raster metadata expected');
+        expect(result.overflowNotes).toEqual([]);
+        expect(result.textItems?.map(item => item.text)).toEqual(['短译文']);
+    });
     it('exports a readable excerpt and full overflow note using one JPEG canvas and one pixel readback', async () => {
         const model = previewDocument();
         const binary = model.binary;

@@ -623,6 +623,33 @@ describe('binary document translation formats', () => {
         expect(pdfPagesNeedingOcr(parsed)).toEqual([1]);
     });
 
+    it('扫描判定使用图像并集覆盖，容许独立页码但保留原生正文与小图页面', async () => {
+        const pdf = await PDFDocument.create();
+        const picture = await pdf.embedPng(onePixelPng);
+        const imagePage = () => {
+            const page = pdf.addPage([320, 480]);
+            page.drawImage(picture, {x: 0, y: 0, width: 320, height: 480});
+            return page;
+        };
+        imagePage().drawText('12', {x: 150, y: 16, size: 10});
+        const tiled = pdf.addPage([320, 480]);
+        for (let index = 0; index < 3; index += 1) tiled.drawImage(picture, {x: 0, y: index * 160, width: 320, height: 160});
+        imagePage().drawText('Native body text must remain available.', {x: 20, y: 240, size: 12});
+        const logo = pdf.addPage([320, 480]);
+        logo.drawImage(picture, {x: 20, y: 16, width: 60, height: 60});
+        logo.drawText('12', {x: 150, y: 16, size: 10});
+        // 两个重叠图像的面积相加超过半页，实际并集只有 40%，不能据此触发 OCR。
+        const overlap = pdf.addPage([320, 480]);
+        for (let index = 0; index < 2; index += 1) overlap.drawImage(picture, {x: index * 32, y: 0, width: 96, height: 480});
+        const nonFooter = imagePage();
+        nonFooter.drawText('12', {x: 150, y: 240, size: 10});
+
+        const parsed = await parseBinaryDocument('scanned-coverage.pdf', await pdf.save());
+        expect(parsed.binary?.kind === 'pdf' && parsed.binary.pages.map(page => !!page.scanned)).toEqual([true, true, false, false, false, false]);
+        expect(pdfPagesNeedingOcr(parsed)).toEqual([0, 1]);
+        expect(parsed.segments.some(segment => segment.source.includes('Native body text'))).toBe(true);
+    });
+
     it('拒绝解压后单项过大的 ePub/DOCX 压缩包', async () => {
         const zip = new JSZip();
         zip.file('oversized.txt', 'x'.repeat(24 * 1024 * 1024 + 1));

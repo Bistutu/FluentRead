@@ -2,6 +2,7 @@
  * @file src/features/document-translation/core/pdfLayoutAnalysis.ts
  * 文件职责：从 PDF 原始字形和绘图操作推导阅读顺序、段落与必须保留的公式、表格、插图区域。
  * 主要内容：在未旋转内容坐标中追踪绘图矩阵；按相邻行共同让出的竖带识别栏间距，松散的两端对齐行不被拆散；页眉页脚、数字/罗马数字/字母编号的标题、中英文题注与公式碎片分别归类，分栏由并排的正文段落确定、同栏内缩进不同的块按稳定基线组织阅读，字体顶边修正不打乱相邻栏的行序；图形在题注处断开，幻灯片内容框、段落底色和标题色带这类装文字的容器不算插图，原位重复描画的文字只读一次，表格碎横边先连接、按真实单元格及合并行边界切分并逐行阅读，含词语的单元格可以翻译；先按局部字形端点及父链关联上下标、避免跨表头基线吸附，以赋值、紧邻左花括号、多行值及同基线数学条件共同确认分段公式，保留其右侧条件和有几何/近邻证据的 TeX 大算符，已关联根号的下伸矩形覆盖相邻被开方字符，以同基线的冒号和纯符号箭头类型、或细线两端的数学节点及直接由数学节点支撑的正交短边确认独立数学标签，两端不复用支撑节点，有限 U 形返回箭头还须匹配同页已确认的类型函数名，先识别图表和独立公式，再按列与段落边界组织正文，仅对同段相邻行中以斜杠结束的 HTTP(S) 地址和含斜杠及数字的路径首词省去人工行间空格；重排保留列表符号并清理排版软连字符，保留逐行字形几何供阅读和导出使用。
+ * 拼接边界：用 Unicode 锚定规则判断行尾与下一行首字，补充平面的汉字与常见汉字遵守相同规则，拉丁文折行仍保留必要的词间空格。
  * 模块边界：纯几何分析，不加载 PDF.js、不访问 Canvas、网络或 DOM，不修改来源文字或文件。
  */
 import type {PdfDocumentBlock, PdfDocumentLine, PdfDocumentRun, PdfPreservedRegion} from './document';
@@ -216,7 +217,8 @@ const cjkGlyph = new RegExp(`[${CJK}]`, 'u');
 /** 以中日韩文字为主的一行：这些文字占去非空白字符的一半以上。 */
 const cjkLine = (text: string) => (text.match(cjkGlyphs)?.length ?? 0) * 2 >= text.replace(/\s/gu, '').length;
 /** 上一行以中日韩文字或全角标点结尾、下一行以它们开头时，折行处不应补空格。 */
-const cjkEdge = new RegExp(`^[${CJK}，。、；：！？（）《》“”][${CJK}，。、；：！？（）《》“”]$`, 'u');
+const cjkLineEnd = new RegExp(`[${CJK}，。、；：！？（）《》“”]$`, 'u');
+const cjkLineStart = new RegExp(`^[${CJK}，。、；：！？（）《》“”]`, 'u');
 /** 作者署名：以逗号分隔的多个“名 姓”，或带单位标记（上标字母、数字、星号等）的人名；只用 and 连接的两个词组更像标题，不算署名。 */
 const byline = /^(?=.*(?:,|[*†‡⇑]|\s[a-z\d]\b))(?:(?:[A-Z][\p{L}.'’-]*\s+){1,3}[A-Z][\p{L}'’-]+(?:\s*[a-z\d*†‡⇑](?:\s*,\s*[a-z\d*†‡⇑])*)?\s*(?:,|\band\b|&|$)\s*)+$/u;
 /** 一行的“词数”：按空白分出的词，加上不用空格分词的中日韩文字（两个字约合一个词）。 */
@@ -748,7 +750,7 @@ export function analyzePdfPageLayout(input: {atoms: readonly PdfLayoutAtom[]; gr
             if (/(?:^|[\s(["'])https?:\/\/[^\s<>"'`，。、；：！？（）【】《》「」“”‘’]+\/$/u.test(draft.lines[index - 1].text)
                 && path?.includes('/') && /\d/u.test(path)) return text + line.text;
             return /[-‐‑\u00AD]$/u.test(text) && /^[a-z]/u.test(line.text) ? text.slice(0, -1) + line.text
-                : cjkEdge.test(text.slice(-1) + line.text.slice(0, 1)) ? text + line.text : `${text} ${line.text}`;
+                : cjkLineEnd.test(text) && cjkLineStart.test(line.text) ? text + line.text : `${text} ${line.text}`;
         }, '');
         // 标题末尾抬高的小字是脚注标记（☆、*、a），不属于标题文字。
         const lastLine = draft.lines.at(-1)!, mark = lastLine.runs.at(-1) as PdfLayoutAtom;

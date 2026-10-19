@@ -5,7 +5,7 @@ import PdfReader from '@/src/features/document-translation/ui/PdfReader.vue';
 import {buildPdfReadingPlan, type PdfReadingRegionEntry} from '@/src/features/document-translation/core/pdfReadingPlan';
 import type {ParsedDocument, PdfDocumentPage} from '@/src/features/document-translation/core/document';
 import {createPdfReaderRenderPort, PDF_READER_MAX_CANVAS_EDGE, PDF_READER_MAX_PAGE_PIXELS, PDF_READER_MAX_RESIDENT_PAGES, pdfReaderCanvasSize, pdfReaderDisplayRect, pdfReaderPageHasTranslation, pdfReaderPageKey, pdfReaderPageWindow, PdfReaderScheduler, type PdfReaderPageState, type PdfReaderRenderedPage, type PdfReaderSettings} from '@/src/features/document-translation/ui/pdfReader';
-import {acquirePdfDocument, releasePdfDocument, rasterizePdfReadingPages} from '@/src/features/document-translation/ui/pdfPreview';
+import {acquirePdfDocument, releasePdfDocument, rasterizePdfReadingPages, sampledBackgroundRgb, sampledForegroundColor, sampledPdfBlockColors} from '@/src/features/document-translation/ui/pdfPreview';
 import {DEFAULT_INFORMATION_HIGHLIGHT_PREFERENCES} from '@/src/core/config/informationHighlight';
 import {scoreInformationKeywords} from '@/src/features/information-highlight/domain/keywords';
 import {INFORMATION_HIGHLIGHT_NAME} from '@/src/features/information-highlight/public';
@@ -461,6 +461,72 @@ async function componentFlush(): Promise<void> {for (let index = 0; index < 12; 
 const click = (element: Element | null | undefined): void => {element!.dispatchEvent(new document.defaultView!.Event('click'));};
 const classes = (element: Element | null | undefined): string[] => (element!.getAttribute('class') ?? '').split(/\s+/).filter(Boolean);
 function flushFrames(): void {const callbacks = [...frames.values()]; frames.clear(); callbacks.forEach(callback => callback(0));}
+
+describe('PDF reader color readback performance', () => {
+    function coloredContext() {
+        const canvas = {width: 1224, height: 1584};
+        const getImageData = vi.fn((left: number, top: number, width: number, height: number) => {
+            const data = new Uint8ClampedArray(width * height * 4);
+            for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+                const px = left + x, py = top + y;
+                if (px < 0 || py < 0 || px >= canvas.width || py >= canvas.height) continue;
+                data.set(px % 17 < 6 && py % 13 < 6 ? [20, 40, 70, 255] : [96 + px % 127, 96 + py % 127, 240, 255], (y * width + x) * 4);
+            }
+            return {data};
+        });
+        return {canvas, getImageData} as unknown as CanvasRenderingContext2D;
+    }
+    it('局部取色快照保持缩放及画布边缘结果，每 60 段从 2220 次读回减少至 60 次', () => {
+        const reference = coloredContext(), optimized = coloredContext();
+        const rectangles = Array.from({length: 60}, (_, index) => [20 + index % 2 * 420.3, 30 + Math.floor(index / 2) * 42.2, 310.7, 26.4] as const);
+        const previous = rectangles.map(([x, y, width, height]) => {
+            const background = sampledBackgroundRgb(reference, x, y, width, height);
+            return {background, foreground: sampledForegroundColor(reference, x, y, width, height, background)};
+        });
+        expect(rectangles.map(rect => sampledPdfBlockColors(optimized, ...rect))).toEqual(previous);
+        expect(reference.getImageData).toHaveBeenCalledTimes(2220);
+        expect(optimized.getImageData).toHaveBeenCalledTimes(60);
+        const patches = vi.mocked(optimized.getImageData).mock.calls;
+        expect(patches.every(([x, y, width, height]) => x >= 0 && y >= 0 && x + width <= optimized.canvas.width && y + height <= optimized.canvas.height)).toBe(true);
+        expect(patches.every(([, , width, height]) => width < optimized.canvas.width && height < optimized.canvas.height)).toBe(true);
+        console.info('PDF_COLOR_READBACK_METRICS', JSON.stringify({paragraphs: rectangles.length, baselineReadbacks: 2220, optimizedReadbacks: 60,
+            largestPatchPixels: Math.max(...patches.map(([, , width, height]) => width * height)), wholePagePixels: optimized.canvas.width * optimized.canvas.height}));
+        for (const ratio of [0.3, 0.7, 1.3, 2]) for (const rect of [[0, 0, 20.6, 13.4], [-100, -100, 50, 40], [610, 788, 22, 15], [700, 900, 20, 15]]) {
+            const [x, y, width, height] = rect.map(value => value * ratio);
+            const background = sampledBackgroundRgb(reference, x, y, width, height);
+            expect(sampledPdfBlockColors(optimized, x, y, width, height)).toEqual({background,
+                foreground: sampledForegroundColor(reference, x, y, width, height, background)});
+        }
+    });
+    it('组件按新段取色一次，增量译文与翻页调度不重复读取既有段落', async () => {
+        const doc = model(3), translations = ['Translated first paragraph', '', ''];
+        const reader = mountReader(doc, 'bilingual', translations);
+        await componentFlush(); flushFrames(); await componentFlush();
+        await vi.waitFor(() => expect(reader.state.blockColors.size).toBe(1));
+        const count = () => canvases.reduce((total, canvas) => total + vi.mocked(canvas.getContext('2d').getImageData).mock.calls.length, 0);
+        expect(count()).toBe(1);
+        const renders = pdfPage.render.mock.calls.length;
+        reader.currentTranslations.value = ['Corrected first paragraph', 'Translated second paragraph', ''];
+        await componentFlush(); flushFrames(); await componentFlush();
+        await vi.waitFor(() => expect(reader.state.blockColors.size).toBe(2));
+        expect(count()).toBe(2);
+        reader.state.updateViewport(); await componentFlush(); flushFrames(); await componentFlush();
+        expect(count()).toBe(2); expect(pdfPage.render).toHaveBeenCalledTimes(renders);
+        mountedApp.unmount(); mountedApp = undefined;
+        expect(canvases.filter(canvas => canvas.getAttribute('data-pdf-resource')).every(canvas => canvas.width === 0 && canvas.height === 0)).toBe(true);
+    });
+    it.each([90, 180, 270] as const)('旋转 %i 度页面保留默认配色，不从未旋转的段落坐标读取像素', async rotation => {
+        const doc = model();
+        if (doc.binary?.kind !== 'pdf') throw new Error('Expected PDF model');
+        doc.binary.pages[0].rotation = rotation;
+        const reader = mountReader(doc, 'bilingual', ['Translated paragraph']);
+        await componentFlush(); flushFrames(); await componentFlush();
+        await vi.waitFor(() => expect(pdfPage.render).toHaveBeenCalledOnce());
+        expect(reader.root.querySelector('.pdf-translation-block')).not.toBeNull();
+        expect(reader.state.blockColors.size).toBe(0);
+        expect(canvases.every(canvas => vi.mocked(canvas.getContext('2d').getImageData).mock.calls.length === 0)).toBe(true);
+    });
+});
 
 describe('PDF material resume ownership', () => {
     it('restores after initial layout work and preserves the requested page through the first resize', async () => {

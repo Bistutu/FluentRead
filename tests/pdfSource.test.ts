@@ -30,6 +30,56 @@ describe('PDF source entry URL boundary', () => {
 });
 
 describe('Online PDF streamed import ownership and memory', () => {
+    it('declared oversize rejection does not wait for stalled body cancellation or leak its late failure', async () => {
+        let rejectCancel!: (error: Error) => void;
+        const cancellation = new Promise<void>((_resolve, reject) => {rejectCancel = reject;});
+        const response = new Response(new ReadableStream({cancel: () => cancellation}), {headers: {'content-length': String(PDF_MAX_BYTES + 1)}});
+        let failure: unknown;
+        const work = fetchOnlinePdf('https://example.com/a.pdf', {fetch: download(response)}).catch(error => {failure = error;});
+        await vi.waitFor(() => expect(failure).toBeInstanceOf(Error));
+        expect((failure as Error).message).toContain('MB');
+        rejectCancel(new Error('Late cancellation failure'));
+        await work; await Promise.resolve();
+    });
+    it('releases the reader before stalled cancellation completes when import progress fails', async () => {
+        let rejectCancel!: (error: Error) => void;
+        const cancellation = new Promise<void>((_resolve, reject) => {rejectCancel = reject;});
+        const response = new Response(new ReadableStream<Uint8Array>({start(controller) {controller.enqueue(pdfBytes);}, cancel: () => cancellation}));
+        const expected = new Error('Import replaced'); let failure: unknown;
+        const work = fetchOnlinePdf('https://example.com/a.pdf', {fetch: download(response), onProgress: () => {throw expected;}}).catch(error => {failure = error;});
+        await vi.waitFor(() => expect(failure).toBe(expected));
+        expect(response.body!.locked).toBe(false);
+        rejectCancel(new Error('Late cancellation failure'));
+        await work; await Promise.resolve();
+    });
+    it.each(['read', 'arrayBuffer'] as const)('abort rejects a stalled %s without awaiting its late failure', async phase => {
+        let rejectRead!: (error: Error) => void, rejectCancel!: (error: Error) => void;
+        const pending = new Promise<never>((_resolve, reject) => {rejectRead = reject;});
+        const cancellation = new Promise<void>((_resolve, reject) => {rejectCancel = reject;});
+        const reader = {read: vi.fn(() => pending), cancel: vi.fn(() => cancellation), releaseLock: vi.fn()};
+        const arrayBuffer = vi.fn(() => pending);
+        const response = {ok: true, headers: new Headers(), body: phase === 'read' ? {getReader: () => reader} : null, arrayBuffer} as unknown as Response;
+        const controller = new AbortController(), expected = new Error('Stopped pending read'); let failure: unknown;
+        const work = fetchOnlinePdf('https://example.com/a.pdf', {fetch: download(response), signal: controller.signal}).catch(error => {failure = error;});
+        await vi.waitFor(() => expect(phase === 'read' ? reader.read : arrayBuffer).toHaveBeenCalledOnce());
+        controller.abort(expected);
+        await vi.waitFor(() => expect(failure).toBe(expected));
+        if (phase === 'read') expect(reader.releaseLock).toHaveBeenCalledOnce();
+        rejectRead(new Error('Late read failure')); rejectCancel(new Error('Late cancellation failure'));
+        // The fallback has no reader and therefore owns no cancellation promise.
+        if (phase === 'arrayBuffer') void cancellation.catch(() => undefined);
+        await work; await Promise.resolve();
+    });
+    it('keeps synchronous adapter cancellation authoritative when its late read succeeds and cancel throws', async () => {
+        const controller = new AbortController(), expected = new Error('Stopped while starting read');
+        const reader = {read: vi.fn(() => {controller.abort(expected); return Promise.resolve({done: false, value: pdfBytes});}),
+            cancel: vi.fn(() => {throw new Error('Adapter cancellation failed');}), releaseLock: vi.fn()};
+        const response = {ok: true, headers: new Headers(), body: {getReader: () => reader}} as unknown as Response;
+        const progress = vi.fn();
+        await expect(fetchOnlinePdf('https://example.com/a.pdf', {fetch: download(response), signal: controller.signal, onProgress: progress})).rejects.toBe(expected);
+        expect(reader.read).toHaveBeenCalledOnce();expect(reader.releaseLock).toHaveBeenCalledOnce();
+        expect(progress).not.toHaveBeenCalled();
+    });
     it('reads a streamed PDF including a split signature and reports actual received bytes', async () => {
         const progress = vi.fn();
         const request = download(new Response(stream([pdfBytes.slice(0, 2), pdfBytes.slice(2, 4), pdfBytes.slice(4)]), {headers: {'content-length': String(pdfBytes.length)}}));

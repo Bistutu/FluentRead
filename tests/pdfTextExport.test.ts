@@ -70,6 +70,19 @@ function saveEvidence(name: string, bytes: Uint8Array): void {
 }
 
 describe('visible Unicode PDF reading export', () => {
+    it('exports a full reading page without a blank second page caused by trailing newlines', async () => {
+        const document = await fixture();
+        if (document.binary?.kind !== 'pdf') throw new Error('PDF expected');
+        document.segments = [{...document.segments[1], id: 0}];
+        document.binary.pages[0].blocks = [{...document.binary.pages[0].blocks[1], segmentIndex: 0}];
+        document.binary.pages[0].segmentIndexes = [0];
+        const text = '译文\n'.repeat(36) + ' \t\r\n\r\n';
+        const download = await createDocumentDownload(document, [text], 'translated', {...textOnlyOptions, pdfPresentation: 'readable'});
+        const pages = await extract(download.data as Uint8Array);
+        expect(pages).toHaveLength(1);
+        expect(compact(pages[0])).toBe('译文'.repeat(36));
+        saveEvidence('readable-no-trailing-blank-page.pdf', download.data as Uint8Array);
+    });
     it.each([0, 90, 180, 270] as const)('keeps original-layout translated lines extractable in their rotated translated-side bounds at %s degrees', async rotation => {
         const document = await fixture();
         if (document.binary?.kind !== 'pdf') throw new Error('PDF expected');

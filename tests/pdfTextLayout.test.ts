@@ -20,6 +20,29 @@ describe('PDF fixed-font complete-text pagination', () => {
         expect(lines.some(line => line.includes('👩‍💻'))).toBe(true);
         expect(lines.filter(Boolean).every(line => measure(line) <= 72)).toBe(true);
     });
+    it('ignores empty boundary paragraphs while retaining every internal blank line', () => {
+        const value = '\r\n \t\r\n首段\r\n\r\n \t\r\n尾段\r\n \t\r\n';
+        expect(wrapPdfReadingText(value, 528, body, measure)).toEqual(['首段', '', '', '尾段']);
+    });
+    it('keeps a full text page on one page when its translation ends with blank paragraphs', () => {
+        const text = '译文\n'.repeat(36);
+        const plan = textPlan(text + ' \t\r\n\r\n');
+        const before = JSON.stringify(plan);
+        const pages = paginatePdfReadingPlan(plan, measure);
+        expect(pages).toHaveLength(1);
+        expect(pages[0].items).toHaveLength(36);
+        expect(pages[0].items.every(item => item.kind === 'text' && item.text === '译文')).toBe(true);
+        expect(JSON.stringify(plan)).toBe(before);
+    });
+    it('does not allocate pages or vertical space for whitespace-only text entries', () => {
+        const text = '\r\n \t\n\u3000\r\n';
+        const blank = textPlan(text);
+        expect(wrapPdfReadingText(text, 528, body, measure)).toEqual([]);
+        expect(paginatePdfReadingPlan(blank, measure)).toEqual([]);
+        const content = textPlan('正文');
+        expect(paginatePdfReadingPlan({...content, entries: [...blank.entries, ...content.entries, ...blank.entries]}, measure))
+            .toEqual(paginatePdfReadingPlan(content, measure));
+    });
     it('bounds repeated Chinese width measurements and handles unavailable segmentation and invalid measurements', () => {
         const measured = vi.fn(measure);
         const lines = wrapPdfReadingText('重复中文'.repeat(10000), 528, body, measured);
@@ -37,6 +60,14 @@ describe('PDF fixed-font complete-text pagination', () => {
         const lines = wrapPdfReadingText(value, 100, body, measure);
         expect(lines.join('')).toBe(value);
         expect(wrapPdfReadingText('  甲 乙', 12, body, measure)).toEqual(['甲', '乙']);
+    });
+    it('keeps measuring repeated body glyphs once after a long distinct prefix fills the bounded cache', () => {
+        const prefix = Array.from({length: 600}, (_, index) => String.fromCodePoint(0x4e00 + index)).join('');
+        const value = prefix + '重复中文'.repeat(10000);
+        const measured = vi.fn(measure);
+        const lines = wrapPdfReadingText(value, 528, body, measured);
+        expect(lines).toEqual(Array.from({length: Math.ceil(value.length / 44)}, (_, index) => value.slice(index * 44, (index + 1) * 44)));
+        expect(measured).toHaveBeenCalledTimes(604);
     });
     it('keeps BMP and supplementary variation selectors with their base at word and CJK wrap boundaries, including without Segmenter', () => {
         expect([0xFDFF, 0xFE00, 0xFE0F, 0xFE10, 0xE00FF, 0xE0100, 0xE01EF, 0xE01F0].map(code =>
@@ -91,12 +122,71 @@ describe('PDF fixed-font complete-text pagination', () => {
         expect(() => paginatePdfReadingPlan(region(100, Number.MAX_VALUE), measure)).toThrow('合理页数');
         const pages = paginatePdfReadingPlan(region(100, 944.0000000000001), measure);
         const strips = pages.flatMap(page => page.items).filter(item => item.kind === 'region');
-        expect(strips.length).toBeLessThanOrEqual(3);
+        expect(strips).toHaveLength(2);
         expect(strips.reduce((sum, item) => sum + item.sourceRect.height, 0)).toBeCloseTo(944.0000000000001);
         expect(paginatePdfReadingPlan(region(Number.MAX_VALUE, Number.MIN_VALUE), measure)).toEqual([]);
     });
+    it.each([352, 353.1, 528, 734, 999.9, 1056])('merges only floating-point image tails at width %s while retaining every source coordinate', width => {
+        const scale = Math.min(1.5, 528 / width);
+        for (const count of [1, 2, 7, 31, 100, 1000]) {
+            const exactHeight = 708 * count / scale;
+            for (const delta of [-exactHeight * Number.EPSILON, 0, exactHeight * Number.EPSILON, 0.001, 0.5]) {
+                const height = exactHeight + delta;
+                const plan: PdfReadingPlan = {pageNumber: 1, hasTranslation: true, entries: [
+                    {kind: 'region', id: 'image', pageNumber: 1, role: 'figure', sourceRect: {x: 13, y: 27, width, height}, segmentIndexes: []},
+                ]};
+                const original = JSON.stringify(plan);
+                const pages = paginatePdfReadingPlan(plan, measure);
+                const strips = pages.flatMap(page => page.items).filter(item => item.kind === 'region');
+                expect(pages, `scale ${scale}, ${count} pages, delta ${delta}`).toHaveLength(count + Number(delta >= 0.001));
+                expect(strips.every(item => item.height > 0 && item.y + item.height <= 750)).toBe(true);
+                expect(strips[0].sourceRect.y).toBe(27);
+                expect(strips.reduce((sum, item) => sum + item.sourceRect.height, 0)).toBeCloseTo(height, 9);
+                expect(strips.at(-1)!.sourceRect.y + strips.at(-1)!.sourceRect.height).toBeCloseTo(27 + height, 9);
+                for (let index = 1; index < strips.length; index += 1) {
+                    expect(strips[index].sourceRect.y).toBeCloseTo(strips[index - 1].sourceRect.y + strips[index - 1].sourceRect.height, 9);
+                }
+                expect(JSON.stringify(plan)).toBe(original);
+            }
+        }
+    });
+    it.each([353.1, 734, 999.9])('keeps cumulative source boundaries after a partially used first page at width %s', width => {
+        const scale = Math.min(1.5, 528 / width);
+        for (const count of [31, 100, 1000]) {
+            const exactHeight = (708 * count - body.lineHeight * 2 - 12) / scale;
+            for (const delta of [-exactHeight * Number.EPSILON, 0, exactHeight * Number.EPSILON, 0.001]) {
+                const height = exactHeight + delta;
+                const plan: PdfReadingPlan = {...textPlan('前文\n继续'), entries: [textPlan('前文\n继续').entries[0],
+                    {kind: 'region', id: 'image', pageNumber: 1, role: 'figure', sourceRect: {x: 13, y: 27, width, height}, segmentIndexes: []}]};
+                const pages = paginatePdfReadingPlan(plan, measure);
+                const strips = pages.flatMap(page => page.items).filter(item => item.kind === 'region');
+                expect(pages, `${count} pages, delta ${delta}`).toHaveLength(count + Number(delta >= 0.001));
+                expect(strips[0].y).toBeCloseTo(42 + body.lineHeight * 2 + 12);
+                expect(strips.every(item => item.height > 0 && item.y + item.height <= 750)).toBe(true);
+                expect(strips.reduce((sum, item) => sum + item.sourceRect.height, 0)).toBeCloseTo(height, 9);
+                expect(strips.at(-1)!.sourceRect.y + strips.at(-1)!.sourceRect.height).toBeCloseTo(27 + height, 9);
+                for (let index = 1; index < strips.length; index += 1) {
+                    expect(strips[index].sourceRect.y).toBeCloseTo(strips[index - 1].sourceRect.y + strips[index - 1].sourceRect.height, 9);
+                }
+            }
+        }
+    });
     it('bounds continuation page allocation for an oversized text entry', () => {
         expect(() => paginatePdfReadingPlan(textPlan('line\n'.repeat(160_000)), measure)).toThrow('单页内容过长');
+    });
+    it.each([353.1, 734, 999.9])('accepts the exact 4096-page image limit and rejects real excess height at width %s', width => {
+        const scale = Math.min(1.5, 528 / width), exactHeight = 708 * 4096 / scale;
+        const plan = (height: number): PdfReadingPlan => ({pageNumber: 1, hasTranslation: true, entries: [
+            {kind: 'region', id: 'limit', pageNumber: 1, role: 'figure', sourceRect: {x: 0, y: 0, width, height}, segmentIndexes: []}]});
+        for (const delta of [-exactHeight * Number.EPSILON, 0, exactHeight * Number.EPSILON]) {
+            const height = exactHeight + delta, pages = paginatePdfReadingPlan(plan(height), measure);
+            expect(pages).toHaveLength(4096);
+            const last = pages.at(-1)!.items[0];
+            expect(last.kind).toBe('region');
+            if (last.kind === 'region') expect(last.sourceRect.y + last.sourceRect.height).toBe(height);
+        }
+        expect(() => paginatePdfReadingPlan(plan(exactHeight + .001), measure)).toThrow('合理页数');
+        expect(() => paginatePdfReadingPlan(plan(708 * 4097 / scale), measure)).toThrow('合理页数');
     });
     it('fails fast when a damaged geometry port changes its validated height before strip consumption', () => {
         // 防御性 fault injection：正常解析的 PDF 使用稳定数据对象；这里显式模拟读取途中损坏的端口。
