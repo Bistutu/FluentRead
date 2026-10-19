@@ -107,6 +107,7 @@
 import {hasDistinctTranslation} from '@/src/core/translation/result';
 import {useUiI18n} from "@/src/ui/i18n";
 import {useRenderDateFormatter} from '@/src/ui/dateFormat';
+import {getSafeVisualViewportRect} from '@/src/platform/dom/visualViewport';
 const {t, translateLegacy} = useUiI18n();
 import {computed, getCurrentInstance, h, nextTick, onBeforeUnmount, onMounted, ref, vModelText, watch, withCtx, withDirectives, withKeys, withModifiers, type VNodeChild} from 'vue';
 import browser from 'webextension-polyfill';
@@ -285,10 +286,17 @@ function fitToolsMenu(): void {
   if (!summary || !menu || !view) return;
   const rect = summary.getBoundingClientRect();
   const scale = rect.height > 0 ? rect.height / (summary.offsetHeight || rect.height) : 1;
-  const below = Math.max(0, view.innerHeight - rect.bottom - 8);
-  const above = Math.max(0, rect.top - 8);
+  const viewport = getSafeVisualViewportRect(view);
+  const below = Math.max(0, viewport.bottom - rect.bottom - 8);
+  const above = Math.max(0, rect.top - viewport.top - 8);
   const upward = below < Math.min(310, menu.scrollHeight) * scale && above > below;
-  menu.style.width = `${Math.min(204, Math.max(0, (view.innerWidth - 24) / scale))}px`;
+  const width = Math.min(204, Math.max(0, (viewport.width - 24) / scale));
+  const origin = details.getBoundingClientRect();
+  const naturalLeft = view.getComputedStyle(details).direction === 'rtl' ? rect.left : rect.right - width * scale;
+  const left = Math.max(viewport.left + 12, Math.min(naturalLeft, viewport.right - 12 - width * scale));
+  menu.style.width = `${width}px`;
+  menu.style.insetInlineEnd = 'auto';
+  menu.style.left = `${(left - origin.left) / scale}px`;
   menu.style.top = upward ? 'auto' : `${summary.offsetHeight + 4}px`;
   menu.style.bottom = upward ? `${summary.offsetHeight + 4}px` : 'auto';
   menu.style.maxHeight = `${Math.min(310, Math.max(0, (upward ? above : below) / scale - 4))}px`;
@@ -799,6 +807,12 @@ onBeforeUnmount(() => { closeTools(); recordsGeneration += 1; restoreEpoch += 1;
 /* 避免 Safari 聚焦小字号追问框时自动放大、滚动宿主页并收起卡片。 */
 @media (any-pointer: coarse) {
   .fr-reading-followup input, .fr-reading-followup input::placeholder { font-size: 16px; }
+  .fr-reading button, .fr-reading .fr-reading-session, .fr-reading summary,
+  .fr-reading-controls > button, .fr-reading-controls > .fr-reading-inline-stop,
+  .fr-reading-tools :deep(button), .fr-reading-tools :deep(.fr-reading-tool-list button),
+  .fr-reading-tools :deep(summary) { min-width: 44px; min-height: 44px; font-size: 14px; }
+  .fr-reading-controls > .fr-reading-inline-stop { flex-basis: 44px; width: 44px; height: 44px; }
+  .fr-reading-tools :deep(.fr-reading-tool-list) { top: 48px; }
 }
 @keyframes fr-reading-breathe { 50% { opacity: .3; } }
 @media (prefers-reduced-motion: reduce) { .fr-reading-pulse { animation: none; } }

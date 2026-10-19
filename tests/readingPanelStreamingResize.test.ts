@@ -7,6 +7,7 @@
 import {createRequire} from 'node:module';
 import {parseHTML} from 'linkedom';
 import {useRenderDateFormatter} from '@/src/ui/dateFormat';
+import {getSafeVisualViewportRect} from '@/src/platform/dom/visualViewport';
 import {compileVueFixture} from './helpers/compiledVueFixture';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {DEFAULT_HARNESS_PREFERENCES, HARNESS_ACTIONS, isReadingActionSupported, isReadingFollowUpSupported} from '@/src/core/config/harness';
@@ -29,7 +30,7 @@ afterEach(async()=>{dispose?.();dispose=undefined;await tick();expect(frames.siz
 
 async function mountPanel(overrides:Record<string,unknown>={}) {
   const {document,window}=parseHTML('<html><body></body></html>');
-  const view={innerHeight:800,innerWidth:390,addEventListener:document.addEventListener.bind(document),removeEventListener:document.removeEventListener.bind(document),dispatchEvent:document.dispatchEvent.bind(document)};
+  const view={innerHeight:800,innerWidth:390,getComputedStyle:()=>({direction:'ltr'}),addEventListener:document.addEventListener.bind(document),removeEventListener:document.removeEventListener.bind(document),dispatchEvent:document.dispatchEvent.bind(document)};
   Object.defineProperty(document,'defaultView',{configurable:true,value:view});
   vi.stubGlobal('document',document);
   vi.stubGlobal('CustomEvent',window.CustomEvent);
@@ -52,6 +53,7 @@ async function mountPanel(overrides:Record<string,unknown>={}) {
     vue:runtime,
     // 日期复用属于本组件的真实 Vue update 生命周期，不能以格式化 stub 绕过。
     '@/src/ui/dateFormat':{useRenderDateFormatter},
+    '@/src/platform/dom/visualViewport':{getSafeVisualViewportRect},
     '@/src/core/translation/result':{hasDistinctTranslation},
     '@/src/core/harness/evidence':{buildReadingEvidence, readingEvidenceText},
     '@/src/ui/i18n':{useUiI18n:()=>({t:(key:string)=>key,translateLegacy})},
@@ -243,17 +245,18 @@ describe('reading panel streaming resize boundaries through actual setup and tem
     const menu=details.querySelector('.fr-reading-tool-list') as HTMLElement;
     Object.defineProperty(summary,'offsetHeight',{configurable:true,value:32});
     Object.defineProperty(menu,'scrollHeight',{configurable:true,value:320});
-    let rect={top:740,bottom:772,height:32};
+    let rect={left:310,right:342,width:32,top:740,bottom:772,height:32};
     summary.getBoundingClientRect=()=>rect as DOMRect;
+    details.getBoundingClientRect=()=>rect as DOMRect;
     const view=details.ownerDocument.defaultView!;
     const add=vi.spyOn(view,'addEventListener'), remove=vi.spyOn(view,'removeEventListener');
     const open=()=>{details.open=true;details.dispatchEvent(new window.Event('toggle'));};
     open();
     expect(menu.style.top).toBe('auto');expect(menu.style.bottom).toBe('36px');expect(menu.style.maxHeight).toBe('310px');
     expect(add).toHaveBeenCalledWith('resize',panel.fitToolsMenu);
-    rect={top:20,bottom:52,height:32};view.dispatchEvent(new window.Event('resize'));
+    rect={left:310,right:342,width:32,top:20,bottom:52,height:32};view.dispatchEvent(new window.Event('resize'));
     expect(menu.style.top).toBe('36px');expect(menu.style.bottom).toBe('auto');expect(menu.style.maxHeight).toBe('310px');
-    rect={top:620,bottom:684,height:64};view.dispatchEvent(new window.Event('resize'));
+    rect={left:260,right:324,width:64,top:620,bottom:684,height:64};view.dispatchEvent(new window.Event('resize'));
     expect(menu.style.top).toBe('auto');expect(menu.style.maxHeight).toBe('302px');expect(menu.style.width).toBe('183px');
     panel.dismissToolsOutside({target:menu.querySelector('button')});expect(details.open).toBe(true);
     const focus=vi.fn();summary.focus=focus;
@@ -273,6 +276,46 @@ describe('reading panel streaming resize boundaries through actual setup and tem
     remove.mockClear();unmount();await tick();
     expect(remove).toHaveBeenCalledWith('resize',panel.fitToolsMenu);
     expect(host.querySelector('.fr-reading-tools')).toBeNull();
+  });
+
+  it.each([
+    {name:'short keyboard viewport',visual:{offsetLeft:0,offsetTop:0,width:390,height:280},safe:{left:0,top:0,right:390,bottom:280},
+      rect:{left:310,right:342,width:32,top:60,bottom:92,height:32},direction:'ltr',insets:[0,0,0,0],up:false},
+    {name:'offset viewport with safe insets',visual:{offsetLeft:120,offsetTop:180,width:200,height:260},safe:{left:128,top:186,right:316,bottom:430},
+      rect:{left:135,right:167,width:32,top:365,bottom:397,height:32},direction:'ltr',insets:[6,4,10,8],up:true},
+    {name:'scaled trigger in a narrow offset viewport',visual:{offsetLeft:100,offsetTop:200,width:220,height:300},safe:{left:100,top:200,right:320,bottom:500},
+      rect:{left:260,right:324,width:64,top:410,bottom:474,height:64},direction:'ltr',insets:[0,0,0,0],up:true},
+    {name:'RTL inline-end anchor',visual:{offsetLeft:0,offsetTop:0,width:390,height:280},safe:{left:0,top:0,right:390,bottom:280},
+      rect:{left:30,right:62,width:32,top:60,bottom:92,height:32},direction:'rtl',insets:[0,0,0,0],up:false},
+  ])('keeps the teleported menu within the actual visible bounds: $name',async({visual,safe,rect,direction,insets,up})=>{
+    const {host,window,viewport,errors}=await mountPanel({externalNavigation:true});
+    const details=host.querySelector('.fr-reading-tools') as unknown as HTMLDetailsElement;
+    const summary=details.querySelector('summary')!;
+    const menu=details.querySelector('.fr-reading-tool-list') as HTMLElement;
+    // Linkedom loses the first inline-style write when creating its backing attribute; do not prefill any measured size.
+    menu.setAttribute('style','');
+    Object.defineProperty(summary,'offsetHeight',{configurable:true,value:32});
+    Object.defineProperty(menu,'scrollHeight',{configurable:true,value:320});
+    summary.getBoundingClientRect=()=>rect as DOMRect;
+    details.getBoundingClientRect=()=>rect as DOMRect;
+    const view=details.ownerDocument.defaultView!;
+    Object.defineProperty(view,'visualViewport',{configurable:true,value:visual});
+    Object.defineProperty(view,'document',{configurable:true,value:details.ownerDocument});
+    vi.spyOn(view,'getComputedStyle').mockReturnValue({direction,paddingTop:`${insets[0]}px`,paddingRight:`${insets[1]}px`,
+      paddingBottom:`${insets[2]}px`,paddingLeft:`${insets[3]}px`} as CSSStyleDeclaration);
+    const focus=vi.fn();summary.focus=focus;viewport.scrollTop=41;
+    details.open=true;details.dispatchEvent(new window.Event('toggle'));
+    expect(errors).not.toHaveBeenCalled();expect(details.open).toBe(true);
+    expect(menu.style.top==='auto').toBe(up);
+    // Interpret the resulting CSS box in viewport coordinates, rather than recomputing the fitting algorithm.
+    const scale=rect.height/32,width=Number.parseFloat(menu.style.width)*scale,height=Number.parseFloat(menu.style.maxHeight)*scale;
+    const left=rect.left+Number.parseFloat(menu.style.left)*scale;
+    const top=up ? rect.bottom-Number.parseFloat(menu.style.bottom)*scale-height : rect.top+Number.parseFloat(menu.style.top)*scale;
+    expect(width).toBeGreaterThan(0);expect(height).toBeGreaterThan(0);
+    expect(left).toBeGreaterThanOrEqual(safe.left+12);expect(left+width).toBeLessThanOrEqual(safe.right-12);
+    expect(top).toBeGreaterThanOrEqual(safe.top+8);expect(top+height).toBeLessThanOrEqual(safe.bottom-8);
+    if(direction==='rtl') expect(left).toBe(rect.left);
+    expect(viewport.scrollTop).toBe(41);expect(focus).not.toHaveBeenCalled();
   });
 
   it('enters records without restoring focus to the removed menu trigger and keeps source viewing focused on the answer',async()=>{

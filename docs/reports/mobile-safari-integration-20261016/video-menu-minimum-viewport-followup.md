@@ -47,3 +47,35 @@
 执行时源码基于 `00c9770bfbb6e392ba5f44da69059230b19a9e01` 加未提交的三个产品文件改动，尚无本修复的新提交 SHA。测试、构建与浏览器回执记录同一文件字节；[公开摘要](./video-menu-minimum-viewport-evidence/summary.json) 保留这三个源码的完整 SHA256、生产 content 脚本与 manifest 摘要，manifest 相同本身不能证明产品源码相同。[复制索引](./video-menu-minimum-viewport-evidence/copy-index.json) 记录六张副本与原图的相同字节和 SHA256。
 
 本轮是隔离 Chromium、受控 HTML／字幕／翻译响应及真实生产扩展的布局与操作验证。极矮高度来自 VisualViewport 数值夹具，不是真实软键盘；coarse 和 DOM 全屏属性也属受控条件。实际 safe-area inset 模拟接口不可用，不能将已有 offset／root-transform 检查称为系统安全区通过。没有新 Safari／Firefox 运行时、原生 UI、物理设备、供应商或全语言主题验收，不沿用旧原生 PASS，不证明系统全屏字幕绘制。本修复未借鉴参考仓库。
+
+## 2026-10-19 手机触摸与阅读菜单补充
+
+后续逐图和实际操作又发现：阅读菜单按 layout viewport 计算位置，短可见区域中可能越界；菜单项仅30px、入口32px；完整句学习的模式和编辑目标过小、交互文字仅11px；赞赏 Close 为28px。现将阅读菜单定位改为已有安全 VisualViewport 公共接口，并保留宿主缩放、RTL、上下展开和原有关闭生命周期。触摸模式下阅读按钮及菜单至少44 CSS px、14px字号；整句学习模式及编辑目标至少44px，交互文字13px、译文至少14px、编辑框至少16px，并保留用户配置的更大字号。赞赏 Close 在触摸与 Android Popup 条件下46px，桌面保持28px。
+
+| 真实生产扩展操作 | 本轮受控结果 |
+| --- | --- |
+| 阅读菜单，两组粗指针 | 390×760页面，数值可见区域366×280、offset(12,80)；菜单在可见区域内。原尺寸入口44×44、菜单项高44/字号14；宿主0.8变换后的实际目标35.2px，仅证明缩放可达性。正常滚轮到首末项、查看精确原文、打开并只关闭本次设置页均通过 |
+| 整句学习，两组短播放器 | 实际播放器374×260和320×180，卡片高196与116。每行9次可信点击，循环/正常、译文与解释编辑完成、回到当前句、解释和关闭均通过；编辑不改原文，实际编辑框至少16px。仅滚自有卡片，8与11次滚轮可达首末目标，宿主页不滚动 |
+| 赞赏弹窗，四组 | 粗指针320×760及390×280、受控 Android marker、桌面 fine。4次打开/关闭、短卡2次可信滚轮到末尾链接再返回；46/28px及标题不重叠、同一入口还焦通过。没有点击支付或外链 |
+
+最终五份专项测试为226项通过、0跳过；类型检查、Chrome／Firefox／Safari Web／userscript生产构建及完整userscript校验全部退出0。userscript为2,099,416字节，小于2,101,100字节上限。构建不代表这些浏览器均完成运行时验收。
+
+首次滚动定位和点击记录器的失败均保留：学习脚本原固定128px步长跨过目标反复振荡，现按实时sticky顶栏下方区域滚动；点击记录改在捕获阶段读取原动作，避免Vue处理后动作属性已变。滚动后右缘命中一度落到自有滚动容器，有限2秒只读观察后恢复到按钮；最终点击仍要求完整尺寸、可见区域及五点命中，没有重复点击或放宽门槛，也不据此推断系统滚动条的具体原因。
+
+以下六张图为原图逐字节副本；截图中的部分正文通过自有滚动访问，并非全部同屏。
+
+| 阅读首项 | 阅读缩放后末项 |
+| --- | --- |
+| ![阅读首项](./mobile-touch-followup-evidence/optimized-reading-keyboard-offset-first.png) | ![阅读缩放末项](./mobile-touch-followup-evidence/optimized-reading-keyboard-offset-scaled-last.png) |
+
+| 较短学习卡 | 极短学习卡 |
+| --- | --- |
+| ![374x260学习卡](./mobile-touch-followup-evidence/mobile-learning-390x260-bottom.png) | ![320x180学习卡](./mobile-touch-followup-evidence/mobile-learning-320x180-bottom.png) |
+
+| 矮屏赞赏卡 | 桌面赞赏卡 |
+| --- | --- |
+| ![矮屏赞赏](./mobile-touch-followup-evidence/coarse-390x280-donation-close.png) | ![桌面赞赏](./mobile-touch-followup-evidence/desktop-fine-1280x900-donation-close.png) |
+
+[源码、生产产物和实际回执摘要](./mobile-touch-followup-evidence/summary.json)保留每次执行的不同产物身份；[原图副本索引](./mobile-touch-followup-evidence/copy-index.json)记录SHA256。赞赏专项早于最后的阅读/学习字号补充，Popup自身两个源码文件的字节在最终版保持相同，不将三次执行混称为同一整包验收。
+
+本补充仍是隔离Edge和本地翻译/解释响应；无供应商、真实触摸、原生键盘、Safari运行时或新全语言主题结论。当前专用原生App仍为此前e1fee产物，新源码的Safari Web构建已过，但新原生包装/更新/UI尚未验收。原生进程观察中断、正式UNKNOWN与既有SKIP保持原记录，未转写为通过。本轮未借鉴参考项目。

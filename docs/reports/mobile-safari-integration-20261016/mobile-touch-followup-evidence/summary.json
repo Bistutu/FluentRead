@@ -1,0 +1,573 @@
+{
+  "kind": "MOBILE_TOUCH_FOLLOWUP_CONTROLLED_PRODUCTION_ACCEPTANCE",
+  "baselineCommit": "4497ed774f64708a7429ac77d26e19ccba165687",
+  "executionSubject": "baseline plus exact source pins below; no new commit existed at execution",
+  "sourcePins": [
+    {
+      "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/src/features/reading-assistant/ui/ReadingPanel.vue",
+      "bytes": 59778,
+      "sha256": "6c63c11f81e8fc57a50c04ea950c185597e36b5f58e5398b70265e44877593cc"
+    },
+    {
+      "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/src/features/video-subtitle/ui/videoSentenceLearning.css",
+      "bytes": 19901,
+      "sha256": "5eeead615daf328ee64299279d8a604a6a6e01f113ad4b62ea82fe70a8c0ca9e"
+    },
+    {
+      "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/src/app/popup/popup.css",
+      "bytes": 71648,
+      "sha256": "45d7fb42e13038a993e4a16836449ec9e8aa471b0abe46d4e9c9e9f91dbce3e8"
+    },
+    {
+      "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/tests/readingPanelStreamingResize.test.ts",
+      "bytes": 45954,
+      "sha256": "d78895b332eb488d0faa7251a4c9efb48fd001907a9f3f38b22cdd7c6411828f"
+    }
+  ],
+  "verification": {
+    "sourceBefore": [
+      {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/src/features/reading-assistant/ui/ReadingPanel.vue",
+        "bytes": 59778,
+        "sha256": "6c63c11f81e8fc57a50c04ea950c185597e36b5f58e5398b70265e44877593cc"
+      },
+      {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/src/features/video-subtitle/ui/videoSentenceLearning.css",
+        "bytes": 19901,
+        "sha256": "5eeead615daf328ee64299279d8a604a6a6e01f113ad4b62ea82fe70a8c0ca9e"
+      },
+      {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/src/app/popup/popup.css",
+        "bytes": 71648,
+        "sha256": "45d7fb42e13038a993e4a16836449ec9e8aa471b0abe46d4e9c9e9f91dbce3e8"
+      },
+      {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/tests/readingPanelStreamingResize.test.ts",
+        "bytes": 45954,
+        "sha256": "d78895b332eb488d0faa7251a4c9efb48fd001907a9f3f38b22cdd7c6411828f"
+      }
+    ],
+    "sourceAfter": [
+      {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/src/features/reading-assistant/ui/ReadingPanel.vue",
+        "bytes": 59778,
+        "sha256": "6c63c11f81e8fc57a50c04ea950c185597e36b5f58e5398b70265e44877593cc"
+      },
+      {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/src/features/video-subtitle/ui/videoSentenceLearning.css",
+        "bytes": 19901,
+        "sha256": "5eeead615daf328ee64299279d8a604a6a6e01f113ad4b62ea82fe70a8c0ca9e"
+      },
+      {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/src/app/popup/popup.css",
+        "bytes": 71648,
+        "sha256": "45d7fb42e13038a993e4a16836449ec9e8aa471b0abe46d4e9c9e9f91dbce3e8"
+      },
+      {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/tests/readingPanelStreamingResize.test.ts",
+        "bytes": 45954,
+        "sha256": "d78895b332eb488d0faa7251a4c9efb48fd001907a9f3f38b22cdd7c6411828f"
+      }
+    ],
+    "commands": [
+      {
+        "label": "tests",
+        "argv": [
+          "/opt/homebrew/opt/node@22/bin/node",
+          "node_modules/vitest/vitest.mjs",
+          "run",
+          "tests/readingPanelStreamingResize.test.ts",
+          "tests/readingPanelLifecycle.test.ts",
+          "tests/videoSentenceLearningComponent.test.ts",
+          "tests/videoSentenceLearningPlacement.test.ts",
+          "tests/popupAppLifecycle.test.ts"
+        ],
+        "exitCode": 0,
+        "seconds": 46.5584495,
+        "log": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/verification-5/tests.log",
+          "bytes": 39831,
+          "sha256": "9d62d259391f27a3680fa5c1b68519a7dd49e94e35595fd8d19e43998a657a1b"
+        }
+      },
+      {
+        "label": "types",
+        "argv": [
+          "/opt/homebrew/opt/node@22/bin/node",
+          "node_modules/vue-tsc/bin/vue-tsc.js",
+          "--noEmit"
+        ],
+        "exitCode": 0,
+        "seconds": 36.3463955,
+        "log": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/verification-5/types.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      {
+        "label": "chrome",
+        "argv": [
+          "/opt/homebrew/opt/node@22/bin/node",
+          "node_modules/wxt/bin/wxt.mjs",
+          "build"
+        ],
+        "exitCode": 0,
+        "seconds": 23.562346290999997,
+        "log": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/verification-5/chrome.log",
+          "bytes": 84239,
+          "sha256": "a951cb0450e5f0c50ea9e582d718a6637a7a63f279f5113f1a793ef5714554fe"
+        }
+      },
+      {
+        "label": "firefox",
+        "argv": [
+          "/opt/homebrew/opt/node@22/bin/node",
+          "node_modules/wxt/bin/wxt.mjs",
+          "build",
+          "-b",
+          "firefox"
+        ],
+        "exitCode": 0,
+        "seconds": 23.229423874999995,
+        "log": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/verification-5/firefox.log",
+          "bytes": 84751,
+          "sha256": "10dd4c8399b2335be8020760cc4eafdbf4497c0659c699f005a3316f052fef12"
+        }
+      },
+      {
+        "label": "safari-web",
+        "argv": [
+          "/opt/homebrew/opt/node@22/bin/node",
+          "node_modules/wxt/bin/wxt.mjs",
+          "build",
+          "-b",
+          "safari",
+          "--mv2"
+        ],
+        "exitCode": 0,
+        "seconds": 22.693711957999994,
+        "log": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/verification-5/safari-web.log",
+          "bytes": 82975,
+          "sha256": "c7a2a38b8838b058caf96446ab1a2632bed95735cbad6094e8999bda3f7c4152"
+        }
+      },
+      {
+        "label": "userscript",
+        "argv": [
+          "/opt/homebrew/opt/node@22/bin/node",
+          "node_modules/vite/bin/vite.js",
+          "build",
+          "--config",
+          "userscript/vite.config.ts"
+        ],
+        "exitCode": 0,
+        "seconds": 4.925972041999984,
+        "log": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/verification-5/userscript.log",
+          "bytes": 219,
+          "sha256": "a337bb2e1a2a7bec652d130400e27f6e5629b93c302dcef7c12e193f2d14c0d9"
+        }
+      },
+      {
+        "label": "verify-userscript",
+        "argv": [
+          "/opt/homebrew/opt/node@22/bin/node",
+          "scripts/verify-userscript-build.mjs"
+        ],
+        "exitCode": 0,
+        "seconds": 0.13803604099999234,
+        "log": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/verification-5/verify-userscript.log",
+          "bytes": 66,
+          "sha256": "96038b819805e59d58a75b889d818686f473bf863122f739ba0ab7c9687df2eb"
+        }
+      }
+    ],
+    "nativeRuntimeAcceptance": false,
+    "userscript": {
+      "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/userscript/fluent-read.user.js",
+      "bytes": 2099416,
+      "sha256": "bfe86284d6ced5105da3c4a52d3fc43cf40c07a78068e37c2df23564ae94a382"
+    },
+    "userscriptCap": 2101100
+  },
+  "browserCases": [
+    {
+      "surface": "reading",
+      "rows": 2,
+      "ok": true,
+      "report": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/reading-production-attempt2/report.json",
+        "bytes": 191092,
+        "sha256": "5260ee66a607a6b01d8926cc2e3a3df04e1e212a0ec912430b69a2483bc178d9"
+      },
+      "execution": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/reading-production-attempt2/root-execution-receipt.json",
+        "bytes": 5612,
+        "sha256": "9ade8e9db5ebda330efb641370a9624a78928220ee6d3a63470afb72bc5133e1"
+      },
+      "actualExit": 0,
+      "seconds": 14.034850597381592,
+      "commandSubject": {
+        "cwd": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016",
+        "argv": [
+          "/opt/homebrew/opt/node@22/bin/node",
+          "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/scripts/testing/run-resource-safe.mjs",
+          "--cpu-target",
+          "40",
+          "--max-workers",
+          "1",
+          "--concurrency",
+          "1",
+          "--",
+          "/opt/homebrew/opt/node@22/bin/node",
+          "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/run-reading-tools-responsive-attempt2.cjs",
+          "--reading-tools-only",
+          "--phase",
+          "optimized",
+          "--extension-dir",
+          "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3",
+          "--playwright-root",
+          "/Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules",
+          "--artifacts-dir",
+          "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/reading-production-attempt2"
+        ],
+        "source": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/run-reading-tools-responsive-attempt2.cjs",
+          "bytes": 88442,
+          "sha256": "ff49bfbb7ef62a235965f452d2c9f7067b16a9e15195fd2e4e1f318601953ceb"
+        },
+        "callback": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/reading-tools-responsive-attempt2-cases.cjs",
+          "bytes": 18091,
+          "sha256": "2ec961f2f12113d4bfd8ec9ee7c02c6d422c111a320b460982103660b39bb25c"
+        },
+        "manifest": {
+          "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/manifest.json",
+          "bytes": 3250,
+          "sha256": "d84f2ae185318d9f0add60b335e45056b476d2cce62f2dedc39a15fc9bd7ce1b"
+        },
+        "readingSource": {
+          "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/src/features/reading-assistant/ui/ReadingPanel.vue",
+          "bytes": 59278,
+          "sha256": "e53e9b9fec01caaa8f636da192e02692488b083d051296a693eb3f11a27c5658"
+        },
+        "productSources": [
+          {
+            "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/src/features/reading-assistant/ui/ReadingPanel.vue",
+            "bytes": 59778,
+            "sha256": "6c63c11f81e8fc57a50c04ea950c185597e36b5f58e5398b70265e44877593cc"
+          },
+          {
+            "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/src/features/video-subtitle/ui/videoSentenceLearning.css",
+            "bytes": 19901,
+            "sha256": "5eeead615daf328ee64299279d8a604a6a6e01f113ad4b62ea82fe70a8c0ca9e"
+          },
+          {
+            "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/src/app/popup/popup.css",
+            "bytes": 71648,
+            "sha256": "45d7fb42e13038a993e4a16836449ec9e8aa471b0abe46d4e9c9e9f91dbce3e8"
+          }
+        ],
+        "compiledContent": [
+          {
+            "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/content-scripts/youtubeBridge.js",
+            "bytes": 5497,
+            "sha256": "f5304857608090e874b144266f0def19809b0ba228765f3c7d14ef22faa57af3"
+          },
+          {
+            "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/content-scripts/supportedFrame.js",
+            "bytes": 1743322,
+            "sha256": "89513e896f542c1097a3963a8d9da69df8b83fafb20ef1852d40da255483b688"
+          },
+          {
+            "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/content-scripts/shadowBridge.js",
+            "bytes": 3351,
+            "sha256": "ac4cd36fa2f66d591c031c44f3d0b7bc58a39888aee263037b71be2fad686e39"
+          },
+          {
+            "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/content-scripts/neteaseMailFrame.js",
+            "bytes": 1970479,
+            "sha256": "8c713600b12a768ae127155d4a3ff20a9ae2f33310fa7c21ed2af22acb4c6b26"
+          },
+          {
+            "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/content-scripts/xVideoBridge.js",
+            "bytes": 8036,
+            "sha256": "f22318b71931cfc573c8aae63086438e4d186f4f654616a85ebd0c6178c50331"
+          },
+          {
+            "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/content-scripts/content.js",
+            "bytes": 2781185,
+            "sha256": "9c1ebf99070cff37c5d011a028cb1554acedffa1df50639368aa3b957adddd4b"
+          }
+        ],
+        "startedUnix": 1792372390.7457962,
+        "input": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/root-reading-command2.json",
+          "bytes": 4828,
+          "sha256": "1bbd37ff8320ff65f3e71ce2c7fcc7d45640a32cdf18c9529e87d5dc9cff284b"
+        },
+        "outerTimedOut": false,
+        "exitCode": 0,
+        "finishedUnix": 1792372404.7806468,
+        "log": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/reading-production-attempt2/root-outer.log",
+          "bytes": 1136,
+          "sha256": "b08b050f1f64971a046a69969b9fa8c3cde618c51817a962afe6aa4e7a828814"
+        }
+      },
+      "focusAndCleanup": {
+        "cleanupErrors": [],
+        "readingFixturesRestored": true,
+        "ownedBrowserClosed": true,
+        "profileRemoved": true,
+        "focusEvents": []
+      }
+    },
+    {
+      "surface": "learning",
+      "rows": 2,
+      "ok": true,
+      "report": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/learning-production-attempt4/report.json",
+        "bytes": 2994629,
+        "sha256": "c323c4110ea8ae6ae62ee7090bb489e894cc798e50d3e003a83423ddcab8e322"
+      },
+      "execution": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/learning-production-attempt4/root-execution-receipt.json",
+        "bytes": 5749,
+        "sha256": "9f58ef1afe58f17938265378f1feeffa84a4ef5169526348b58592da12c6f27f"
+      },
+      "actualExit": 0,
+      "seconds": 14.427769184112549,
+      "commandSubject": {
+        "argv": [
+          "/opt/homebrew/opt/node@22/bin/node",
+          "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/scripts/testing/run-resource-safe.mjs",
+          "--cpu-target",
+          "40",
+          "--max-workers",
+          "1",
+          "--concurrency",
+          "1",
+          "--",
+          "/opt/homebrew/opt/node@22/bin/node",
+          "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/run-learning-mobile-responsive-production-attempt4.cjs",
+          "--compact-probe-only",
+          "--platforms",
+          "youtube",
+          "--extension-dir",
+          "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3",
+          "--focus-safe-helper",
+          "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/scripts/testing/focus-safe-browser.cjs",
+          "--playwright-root",
+          "/Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules",
+          "--browser-path",
+          "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+          "--ffmpeg",
+          "/opt/homebrew/bin/ffmpeg",
+          "--artifacts-dir",
+          "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/learning-production-attempt4"
+        ],
+        "source": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/run-learning-mobile-responsive-production-attempt4.cjs",
+          "bytes": 145878,
+          "sha256": "b3ddb85a55efbb3c121001d287516a7e156ab2d0e8aaa6d291fb4df2b15a3c30"
+        },
+        "productionManifest": {
+          "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/manifest.json",
+          "bytes": 3250,
+          "sha256": "d84f2ae185318d9f0add60b335e45056b476d2cce62f2dedc39a15fc9bd7ce1b"
+        },
+        "productSources": [
+          {
+            "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/src/features/reading-assistant/ui/ReadingPanel.vue",
+            "bytes": 59778,
+            "sha256": "6c63c11f81e8fc57a50c04ea950c185597e36b5f58e5398b70265e44877593cc"
+          },
+          {
+            "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/src/features/video-subtitle/ui/videoSentenceLearning.css",
+            "bytes": 19901,
+            "sha256": "5eeead615daf328ee64299279d8a604a6a6e01f113ad4b62ea82fe70a8c0ca9e"
+          },
+          {
+            "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/src/app/popup/popup.css",
+            "bytes": 71648,
+            "sha256": "45d7fb42e13038a993e4a16836449ec9e8aa471b0abe46d4e9c9e9f91dbce3e8"
+          }
+        ],
+        "cwd": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016",
+        "manifest": {
+          "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/manifest.json",
+          "bytes": 3250,
+          "sha256": "d84f2ae185318d9f0add60b335e45056b476d2cce62f2dedc39a15fc9bd7ce1b"
+        },
+        "compiledContent": [
+          {
+            "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/content-scripts/youtubeBridge.js",
+            "bytes": 5497,
+            "sha256": "f5304857608090e874b144266f0def19809b0ba228765f3c7d14ef22faa57af3"
+          },
+          {
+            "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/content-scripts/supportedFrame.js",
+            "bytes": 1743322,
+            "sha256": "89513e896f542c1097a3963a8d9da69df8b83fafb20ef1852d40da255483b688"
+          },
+          {
+            "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/content-scripts/shadowBridge.js",
+            "bytes": 3351,
+            "sha256": "ac4cd36fa2f66d591c031c44f3d0b7bc58a39888aee263037b71be2fad686e39"
+          },
+          {
+            "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/content-scripts/neteaseMailFrame.js",
+            "bytes": 1970479,
+            "sha256": "8c713600b12a768ae127155d4a3ff20a9ae2f33310fa7c21ed2af22acb4c6b26"
+          },
+          {
+            "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/content-scripts/xVideoBridge.js",
+            "bytes": 8036,
+            "sha256": "f22318b71931cfc573c8aae63086438e4d186f4f654616a85ebd0c6178c50331"
+          },
+          {
+            "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/content-scripts/content.js",
+            "bytes": 2781185,
+            "sha256": "9c1ebf99070cff37c5d011a028cb1554acedffa1df50639368aa3b957adddd4b"
+          }
+        ],
+        "ledgerCorrection": "Capture trusted action identity before Vue click handler changes data-learning-action or stops propagation; same strict counts and real UI effects.",
+        "startedUnix": 1792372479.7278259,
+        "input": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/root-learning-command4.json",
+          "bytes": 4964,
+          "sha256": "6efd9c71b3501fb72d7fa5e112b640dd6633997581b4746dc46ad64180ce10c7"
+        },
+        "outerTimedOut": false,
+        "exitCode": 0,
+        "finishedUnix": 1792372494.155595,
+        "log": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/learning-production-attempt4/root-outer.log",
+          "bytes": 1893,
+          "sha256": "b7ccc7ae23c42f9d770158f75f2378424dfed0b09eea646c36f537821b09f144"
+        }
+      },
+      "focusAndCleanup": {
+        "cleanup": {
+          "browserClosed": true,
+          "profileRemoved": true
+        },
+        "focusEvents": {
+          "nativeObserver": true,
+          "browserActivations": 0,
+          "observerClosed": true
+        }
+      }
+    },
+    {
+      "surface": "donation",
+      "rows": 4,
+      "ok": true,
+      "report": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/donation-production-attempt2/report.json",
+        "bytes": 67795,
+        "sha256": "06c63d142f247aaccfa2b6d9a42a9643c050cde5f13291a5d864ca887b9e6edc"
+      },
+      "execution": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/donation-production-attempt2/root-execution-receipt.json",
+        "bytes": 3932,
+        "sha256": "17de2fb371be0843d2614647b44488fdba7f23bea982b0f22a83042a6fb9d26b"
+      },
+      "actualExit": 0,
+      "seconds": 10.884940147399902,
+      "commandSubject": {
+        "argv": [
+          "/opt/homebrew/opt/node@22/bin/node",
+          "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/scripts/testing/run-resource-safe.mjs",
+          "--cpu-target",
+          "40",
+          "--max-workers",
+          "1",
+          "--concurrency",
+          "1",
+          "--wait-ms",
+          "30000",
+          "--",
+          "/opt/homebrew/opt/node@22/bin/node",
+          "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/mobile-youtube-fr-node-identity-probe-20261017/same-scope-clone-repair-20261017/safari-touch-flex-production-build-20261017/run-popup-feature-grid-ui.cjs",
+          "--suite",
+          "popup-feature-grid",
+          "--feature-grid-case-module",
+          "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/donation-case-module-attempt2.cjs",
+          "--focus-safe-helper",
+          "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/scripts/testing/focus-safe-browser.cjs",
+          "--playwright-root",
+          "/Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules",
+          "--extension-dir",
+          "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3",
+          "--expected-manifest-sha256",
+          "d84f2ae185318d9f0add60b335e45056b476d2cce62f2dedc39a15fc9bd7ce1b",
+          "--artifacts-dir",
+          "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/donation-production-attempt2"
+        ],
+        "source": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/donation-case-module-attempt2.cjs",
+          "bytes": 23625,
+          "sha256": "f2c3275c98b97836d5078b0986b3e7b354d1a3cee404ccb22889448d20f6ab1f"
+        },
+        "runner": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/mobile-youtube-fr-node-identity-probe-20261017/same-scope-clone-repair-20261017/safari-touch-flex-production-build-20261017/run-popup-feature-grid-ui.cjs",
+          "bytes": 13599,
+          "sha256": "30f35fe15d9132b4c4452f22d58f7ec011b3616b5f4df4565a6d56e94818e4b8"
+        },
+        "productionManifest": {
+          "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/manifest.json",
+          "bytes": 3250,
+          "sha256": "d84f2ae185318d9f0add60b335e45056b476d2cce62f2dedc39a15fc9bd7ce1b"
+        },
+        "productSources": [
+          {
+            "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/src/app/popup/popup.css",
+            "bytes": 71648,
+            "sha256": "45d7fb42e13038a993e4a16836449ec9e8aa471b0abe46d4e9c9e9f91dbce3e8"
+          },
+          {
+            "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/src/app/popup/PopupApp.vue",
+            "bytes": 79629,
+            "sha256": "8ed6a2afaf30ee9f2a3294ab1c4555039412bf42d7e1b39dc0e3608894505fae"
+          }
+        ],
+        "cwd": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016",
+        "startedUnix": 1792372052.076201,
+        "input": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/root-donation-command2.json",
+          "bytes": 3148,
+          "sha256": "e2850724bea076e2beb210b32d0902f0ad3125d124bd72e3ee8b9b148137ff73"
+        },
+        "outerTimedOut": false,
+        "exitCode": 0,
+        "finishedUnix": 1792372062.961141,
+        "log": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/donation-production-attempt2/root-outer.log",
+          "bytes": 1478,
+          "sha256": "27a6871a937c3b7b8002cfa2c009d400674e18cdc96f8d5d0fe67c4127b49ca4"
+        }
+      },
+      "focusAndCleanup": {}
+    }
+  ],
+  "nativeRuntimeAccepted": false,
+  "physicalDeviceAccepted": false,
+  "liveProviderAccepted": false,
+  "referenceProjectCodeCopied": false,
+  "limitations": [
+    "Numeric VisualViewport fixtures are controlled geometry, not an actual OS keyboard.",
+    "Touch emulation and Android Popup marker are CSS conditions, not Android or Safari runtime acceptance.",
+    "Scale0.8 yields actual35.2px targets from44CSSpx; transformed reachability does not prove physical44px.",
+    "Donation ran before final Reading and learning typography changes; final PopupApp.vue and popup.css source bytes are identical to its subject.",
+    "Safari Web build passed; current dedicated native app remains the e1fee package. New native UI outcomes remain unknown.",
+    "Six-key Popup restoration and disposable-profile deletion do not prove complete configuration retention."
+  ]
+}

@@ -825,6 +825,8 @@ footer button { font-weight: 500; color: var(--muted); }
 /* any-pointer 同时覆盖触屏与连接鼠标的 iPad；46px 为原生 sheet 缩放留余量，并非任意缩放下 44px 的保证。 */
 @media (any-pointer: coarse) {
   :root .popup-shell .brand-icon-link { min-width: 46px; min-height: 46px; align-items: center; justify-content: center; }
+  :root .popup-shell .donation-close { width: 46px; height: 46px; }
+  :root .popup-shell .donation-card h2 { padding-right: 44px; }
   :root .popup-shell[data-interface-skin] .translate-action > .translate-button,
   :root .popup-shell[data-interface-skin] .translate-action > .section-translate-button {
     min-height: 46px;
@@ -872,6 +874,8 @@ footer button { font-weight: 500; color: var(--muted); }
 
 /* Firefox Android 的固定扩展容器可能报告 fine pointer；已确认的 Android 容器仍使用与 coarse 相同的触摸命中预算。 */
 :root[data-fluentread-android-popup] .popup-shell .brand-icon-link { min-width: 46px; min-height: 46px; align-items: center; justify-content: center; }
+:root[data-fluentread-android-popup] .popup-shell .donation-close { width: 46px; height: 46px; }
+:root[data-fluentread-android-popup] .popup-shell .donation-card h2 { padding-right: 44px; }
 :root[data-fluentread-android-popup] .popup-shell[data-interface-skin] .translate-action > .translate-button,
 :root[data-fluentread-android-popup] .popup-shell[data-interface-skin] .translate-action > .section-translate-button {
   min-height: 46px;
