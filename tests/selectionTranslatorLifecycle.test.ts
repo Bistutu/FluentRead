@@ -1,7 +1,7 @@
 /**
  * @file tests/selectionTranslatorLifecycle.test.ts
  * 文件职责：执行划词组件的实际挂载与卸载回调，验证扩展消息端口撤销不会留下宿主页面资源。
- * 主要内容：覆盖注销清理、原生右键菜单选区恢复与重复翻译复用、免费讲解明确启用及保存确认、用户 AI 偏好保护、关闭/换区/卸载后的迟到保存隔离、朗读生成与降级、取消、迟到响应、进度隔离和富文本 trim 后的 UTF-16 跟读偏移、顶栏菜单外点/焦点关闭边界、导航空白拖动、按配置与显式反向请求确定翻译语言和窗口尺寸变化清理、鉴权配置动作归属；可选真实 SFC 模板模式验证两处错误入口，并组合实际 selection runtime 验证 Safari 已消费选区的 host 恢复、正文失效及离开清理。
+ * 主要内容：覆盖注销清理、原生右键菜单选区恢复与重复翻译复用、免费讲解明确启用及保存确认、用户 AI 偏好保护、关闭/换区/卸载后的迟到保存隔离、朗读生成与降级、取消、迟到响应、进度隔离和富文本 trim 后的 UTF-16 跟读偏移、顶栏菜单外点/焦点关闭边界、导航空白拖动、按配置与显式反向请求确定翻译语言和窗口尺寸变化清理、鉴权配置动作归属；可选真实 SFC 模板模式验证两处错误入口与极矮视口下同一卡片的滚动退化及关闭，并组合实际 selection runtime 验证 Safari 已消费选区的 host 恢复、正文失效及离开清理。
  * 模块边界：默认编译真实 Vue setup 并使用原有空渲染；材料捕获使用真实代次冻结与完成逻辑，只替换来源提取和后台客户端；新增入口可选官方模板和独立 Linkedom 节点树；组合模式将真实组件交给原始 runtime 的平台挂载端口，浏览器、子组件与语言是受控 ports，不声称 CSS、原生焦点或真实浏览器验证。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
@@ -1593,6 +1593,76 @@ it('keeps an existing ordinary translation running when opening the learning vie
 
 
 describe('selection card geometry across content changes', () => {
+    it('keeps the same card scrollable and its close action owned in a 58px visible viewport', async () => {
+        const fixture = mountSelection(false, undefined, 'safari', true);
+        const port = fixture.renderPort!;
+        vi.stubGlobal('Element', port.domWindow.Element);
+        const text = 'Keep the selected source and its answer while the keyboard reduces the viewport.';
+        const selected = Vue.markRaw({text, range: {getClientRects: () => []}, parts: [{kind: 'text', text}],
+            anchor: {left: 40, right: 280, top: 400, bottom: 424}, isForward: true});
+        const controller = new AbortController();
+        Object.assign(fixture.state, {snapshot: selected, selectedText: text, showTooltip: true, touchInteraction: true,
+            translationResult: '保留已有译文。'.repeat(40), translationAbortController: controller});
+        fixture.config.selectionTranslatorAutoDismiss = false;
+        await Vue.nextTick();
+        const card = port.root.querySelector('.fr-translation-tooltip') as HTMLElement;
+        const close = card.querySelector('[aria-label="关闭翻译结果"]')!;
+        card.getBoundingClientRect = () => ({left: 12, top: 400, right: 390, bottom: 640, width: 378, height: 240}) as DOMRect;
+        fixture.state.tooltipRef = Vue.markRaw(card);
+        fixture.state.manualPopupPosition = {left: 12, top: 400};
+        Object.assign(fixture.window, {visualViewport: {width: 402, height: 58, offsetLeft: 0, offsetTop: 320}});
+        const resize = [...fixture.listeners.get('window:resize')!];
+        resize.forEach(listener => listener({}));
+        await vi.advanceTimersByTimeAsync(32); await Vue.nextTick();
+        // Linkedom proves the bounded same-card fallback and actual close action.
+        // CSS scrolling and 44px hit geometry require production-browser evidence.
+        expect(card.style.getPropertyValue('max-height')).toBe('58px');
+        expect(card.classList.contains('fr-short-viewport')).toBe(true);
+        expect(card.style.getPropertyValue('top')).toBe('320px');
+        expect(port.root.querySelector('.fr-translation-tooltip')).toBe(card);
+        expect(card.querySelector('[aria-label="关闭翻译结果"]')).toBe(close);
+        expect(card.textContent).toContain(text);
+        expect(fixture.state.snapshot).toBe(selected);
+        expect(controller.signal.aborted).toBe(false);
+        await port.click(close); await Vue.nextTick();
+        expect(fixture.state.showTooltip).toBe(false);
+        expect(controller.signal.aborted).toBe(true);
+        expect(port.root.querySelector('.fr-translation-tooltip')).toBeNull();
+        fixture.unmount();
+        expect([...fixture.listeners.values()].every(listeners => listeners.size === 0)).toBe(true);
+        expect(vi.getTimerCount()).toBe(0);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it.each([{height: 32, zoom: 1}, {height: 44, zoom: 1}, {height: 58, zoom: 2}])(
+        'temporarily bounds a user card without consuming its size or position: %j', async ({height, zoom}) => {
+            const fixture = mountSelection();
+            await Vue.nextTick();
+            const {state, window} = fixture;
+            state.tooltipRef = {getBoundingClientRect: () => ({width: 450, height: 240})};
+            state.manualPopupPosition = {left: 510, top: 490};
+            state.manualPopupSize = {width: 450, height: 240};
+            state.pageZoom = zoom;
+            Object.assign(window, {visualViewport: {width: 402, height, offsetLeft: 80, offsetTop: 320}});
+            state.viewportSize = visualViewport.getSafeVisualViewportRect(window as unknown as Window);
+            state.applyManualPopupGeometry();
+            expect(state.isShortViewport()).toBe(true);
+            expect(parseFloat(state.tooltipStyle.top)).toBe(320);
+            expect(parseFloat(state.tooltipStyle.height) * state.popupScale).toBe(height);
+            expect(parseFloat(state.tooltipStyle.maxHeight) * state.popupScale).toBe(height);
+            // A 32px viewport remains a physical limitation; the action is not reduced to fit.
+            expect(state.manualPopupPosition).toEqual({left: 510, top: 490});
+            expect(state.manualPopupSize).toEqual({width: 450, height: 240});
+            Object.assign(window, {visualViewport: undefined});
+            state.viewportSize = visualViewport.getSafeVisualViewportRect(window as unknown as Window);
+            state.applyManualPopupGeometry(); await Vue.nextTick();
+            expect(state.isShortViewport()).toBe(false);
+            expect(state.tooltipStyle).toMatchObject({left: '510px', top: '490px', width: `${450 * zoom}px`, height: `${240 * zoom}px`});
+            fixture.unmount();
+            expect(vi.getTimerCount()).toBe(0);
+        },
+    );
+
     it.each([
         {isForward: true, left: 100, right: 150, expected: 222},
         {isForward: false, left: 100, right: 150, expected: 28},
@@ -2346,6 +2416,31 @@ describe('automatic card audio height ownership', () => {
         fixture.state.stopAudio();
         expect(fixture.state.tooltipStyle.height).toBeUndefined();
     });
+
+    it.each([false, true])('does not adopt a short viewport as the natural audio height (starts short: %s)', async startsShort => {
+        const fixture = await audioCard();
+        const {state, window} = fixture;
+        const short = () => {
+            Object.assign(window, {visualViewport: {width: 402, height: 58, offsetLeft: 0, offsetTop: 320}});
+            state.handleViewportResize();
+        };
+        if (startsShort) short();
+        prepareTts(fixture, [Promise.resolve({success: true, transport: 'offscreen'})]);
+        await state.toggleAudio('Practice helps.', 'source');
+        if (!startsShort) short();
+        await vi.advanceTimersByTimeAsync(32);
+        expect(state.isPlaying).toBe(true);
+        expect(state.audioPopupHeight).toBe(startsShort ? null : 180);
+        expect(state.manualPopupSize).toBeNull();
+        expect(state.tooltipStyle).toMatchObject({top: '320px', maxHeight: '58px'});
+        Object.assign(window, {visualViewport: undefined});
+        state.handleViewportResize(); await vi.advanceTimersByTimeAsync(32);
+        expect(state.manualPopupPosition).toEqual({left: 200, top: 100});
+        expect(state.tooltipStyle.height).toBe(startsShort ? undefined : '180px');
+        state.stopAudio(); fixture.unmount();
+        expect(state.audioPopupHeight).toBeNull();
+        expect(vi.getTimerCount()).toBe(0);
+    });
 });
 
 describe('context menu selection ownership', () => {
@@ -2826,6 +2921,27 @@ describe('selection card bounded layout work', () => {
         const flush = () => {const pending = [...frames.values()];frames.clear();pending.forEach(callback => callback(0));};
         return {...fixture, element, frames, pointer, flush};
     }
+
+    it('leaves short-card touch pans native instead of capturing a title drag, then restores normal dragging', async () => {
+        const {state, window, element, pointer, frames} = await gestureFixture();
+        state.stopPopupGesture();
+        window.innerHeight = 58;
+        state.handleViewportResize();
+        const down = {...pointer('pointerdown', 205, 110), pointerType: 'touch'};
+        state.beginPopupGesture(down);
+        state.movePopupGesture({...pointer('pointermove', 205, 70), pointerType: 'touch'});
+        expect(down.preventDefault).not.toHaveBeenCalled();
+        expect(element.captured).toBe(false);
+        expect(state.popupManipulating).toBe(false);
+        expect(frames.size).toBe(1); // the viewport update, not a captured gesture
+        window.innerHeight = 800;
+        state.handleViewportResize();
+        const normal = {...pointer('pointerdown', 205, 110), pointerType: 'touch'};
+        state.beginPopupGesture(normal);
+        expect(normal.preventDefault).toHaveBeenCalledOnce();
+        expect(element.captured).toBe(true);
+        expect(state.popupManipulating).toBe(true);
+    });
 
     it.each([
         ['horizontal tab scrollbar', 'fr-study-toolbar', 300, 132],
@@ -4024,6 +4140,33 @@ describe('Safari reading input keyboard transition', () => {
         expect(f.controller.signal.aborted).toBe(false);
         await vi.advanceTimersByTimeAsync(20);
         expect(f.state.viewportSize).toMatchObject({width: 402, height: 376, top: 284});
+        expect(f.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('keeps the same focused reading input and request through short-card fallback and viewport recovery', async () => {
+        const f = await keyboardTransitionFixture();
+        f.focus();
+        Object.assign(f.viewport, {height: 58, offsetTop: 320});
+        f.send('window', 'resize');
+        await vi.advanceTimersByTimeAsync(32); await Vue.nextTick();
+        expect(f.card.classList.contains('fr-short-viewport')).toBe(true);
+        expect(f.shadow.querySelector('.fr-translation-tooltip')).toBe(f.card);
+        expect(f.card.querySelector('.fr-reading-followup input')).toBe(f.input);
+        expect(f.shadow.activeElement).toBe(f.input);
+        expect(f.state.readingKeyboardFocus.input).toBe(f.input);
+        expect(f.state.snapshot).toBe(f.selected);
+        expect(f.controller.signal.aborted).toBe(false);
+        Object.assign(f.viewport, {height: 754, offsetTop: 0});
+        f.send('window', 'resize');
+        await vi.advanceTimersByTimeAsync(32); await Vue.nextTick();
+        expect(f.card.classList.contains('fr-short-viewport')).toBe(false);
+        expect(f.card.querySelector('.fr-reading-followup input')).toBe(f.input);
+        expect(f.shadow.activeElement).toBe(f.input);
+        expect(f.controller.signal.aborted).toBe(false);
+        f.unmount();
+        expect(f.controller.signal.aborted).toBe(true);
+        expect(f.listeners.get('window:wheel')?.size).toBe(0);
+        expect(vi.getTimerCount()).toBe(0);
         expect(f.lifecycleErrors).not.toHaveBeenCalled();
     });
 

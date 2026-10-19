@@ -257,5 +257,43 @@
       "files": 761,
       "cases": 14257
     }
+  },
+  "installed703fNativeFollowup": {
+    "A6": {
+      "rootReview": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-local-safari-article-6/root-execution-review.json",
+        "bytes": 1981,
+        "sha256": "c0eee5377d2cf02f5c482b58905d13de8dcdaf9b3bc8ee97957021575d705c27"
+      },
+      "report": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-local-safari-article-6/article6-execution-report.json",
+        "bytes": 48850,
+        "sha256": "ee24bc41ade656e1c960893838fec02c5562ffbab44c848227a3318b5b4bf8b1"
+      },
+      "Translate": 1,
+      "permissionChoices": 0,
+      "Restore": 0,
+      "formal": "0pass/1skip/0fail",
+      "nativeMicrosoftPromptObservedAndOriginalViewed": true,
+      "grantOrProviderAcceptance": false
+    },
+    "A7": {
+      "rootReview": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-local-safari-article-7/root-execution-review.json",
+        "bytes": 1220,
+        "sha256": "34f732e7088a3da2835dc4878fbe8eece0ed71481f19f3e74c4429a7d3861ec0"
+      },
+      "report": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-local-safari-article-7/article7-execution-report.json",
+        "bytes": 50194,
+        "sha256": "fd2fb7cd00957fc7c1bc452a95797e5e8a237d8520c7a2484e96372909720994"
+      },
+      "Translate": 0,
+      "permissionChoices": 0,
+      "Restore": 0,
+      "formal": "0pass/1skip/0fail",
+      "stop": "Original pending Microsoft exact-host prompt absent/unknown; no Translate/navigation/permission fallback"
+    },
+    "completeSafariTranslationRestoreAccepted": false
   }
 }

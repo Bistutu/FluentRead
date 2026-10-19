@@ -1,0 +1,180 @@
+{
+  "kind": "selection-card-short-viewport-evidence",
+  "sourceBase": "703f4767aed8ad038ee14b987d15c79827205773",
+  "source": [
+    {
+      "path": "src/features/selection-translation/ui/SelectionTranslator.vue",
+      "bytes": 164478,
+      "sha256": "eadaa67b19e0039c33a566eafccd6b87c57e7c305c8a34997a4d5563dea15ddb"
+    },
+    {
+      "path": "tests/selectionTranslatorLifecycle.test.ts",
+      "bytes": 264564,
+      "sha256": "6ba6429ff930ae49ae893e9d8f4af4b559a0152ad7dc4057befa6c15fefb62fc"
+    }
+  ],
+  "red": {
+    "executedTests": 1,
+    "failed": 1,
+    "filteredNotExecuted": 352,
+    "oldCardHeight": 34,
+    "closeHeight": 44,
+    "bottomHit": "FOOTER",
+    "originalPNG": {
+      "path": "before-58.png",
+      "bytes": 24519,
+      "sha256": "ed490a6292b1ff712935a895930e9e389d6b003477d5f5678de016ef140d4b89"
+    }
+  },
+  "validation": {
+    "executedTests": 432,
+    "passed": 432,
+    "failed": 0,
+    "skipped": 0,
+    "typecheckExitCode": 0,
+    "chromeBuildExitCode": 0,
+    "firefoxBuildExitCode": 0,
+    "safariWebBuildExitCode": 0,
+    "safariPackageVerifyExitCode": 0,
+    "userscriptVerifierExitCode": 0,
+    "userscriptBytes": 2101091,
+    "unchangedUserscriptBudget": 2101100,
+    "userscriptSHA256": "782f2924d6a7ffc573d49fb4e03ca8499bf73f8129c81df0d230d200975d0851",
+    "nativeBuildOrInstall": false
+  },
+  "browser": {
+    "outerExitCode": 0,
+    "rows": 6,
+    "originalPNGs": 10,
+    "scope": "Production MV3 main selection card in one temporary visible secondary Edge window. Actual product indicator and close, controlled Microsoft response, DOM Range fixture and isolated-world numeric VisualViewport override. Not a live provider, OS keyboard, mobile device, Firefox or Safari result.",
+    "sourceAndBuildUnchanged": true,
+    "ownedActivationCount": 0,
+    "sameForegroundPid": true,
+    "cleanup": {
+      "browserClosed": true,
+      "serverClosed": true,
+      "profileDeleted": true,
+      "optionsTabsClosed": true
+    },
+    "cleanupErrors": [],
+    "rowsSummary": [
+      {
+        "name": "390-main-card-safe58",
+        "passed": true,
+        "safeHeight": 58,
+        "cardHeight": 58,
+        "closeHeight": 44,
+        "initialCloseFullyVisible": true,
+        "touchPanCount": 6,
+        "bodyScrollTop": 26,
+        "reverseScrollTop": 0,
+        "physicalLimit": null,
+        "sameCard": true,
+        "requestCount": 1
+      },
+      {
+        "name": "390-main-card-safe44",
+        "passed": true,
+        "safeHeight": 44,
+        "cardHeight": 44,
+        "closeHeight": 44,
+        "initialCloseFullyVisible": true,
+        "touchPanCount": 7,
+        "bodyScrollTop": 35,
+        "reverseScrollTop": 0,
+        "physicalLimit": null,
+        "sameCard": true,
+        "requestCount": 1
+      },
+      {
+        "name": "320-main-card-safe32-dark",
+        "passed": true,
+        "safeHeight": 32,
+        "cardHeight": 32,
+        "closeHeight": 44,
+        "initialCloseFullyVisible": false,
+        "touchPanCount": 6,
+        "bodyScrollTop": 50,
+        "reverseScrollTop": null,
+        "physicalLimit": "32px cannot contain a 44px close target; target retained, normal viewport restored before close",
+        "sameCard": true,
+        "requestCount": 1
+      },
+      {
+        "name": "320-main-card-safe116-dark",
+        "passed": true,
+        "safeHeight": 116,
+        "cardHeight": 116,
+        "closeHeight": 44,
+        "initialCloseFullyVisible": true,
+        "touchPanCount": 3,
+        "bodyScrollTop": 7,
+        "reverseScrollTop": 0,
+        "physicalLimit": null,
+        "sameCard": true,
+        "requestCount": 1
+      },
+      {
+        "name": "390-main-card-normal280",
+        "passed": true,
+        "safeHeight": 280,
+        "cardHeight": 186,
+        "closeHeight": 44,
+        "initialCloseFullyVisible": true,
+        "touchPanCount": 0,
+        "bodyScrollTop": null,
+        "reverseScrollTop": null,
+        "physicalLimit": null,
+        "sameCard": true,
+        "requestCount": 1
+      },
+      {
+        "name": "1280-main-card-normal-fine",
+        "passed": true,
+        "safeHeight": 900,
+        "cardHeight": 132,
+        "closeHeight": 26,
+        "initialCloseFullyVisible": true,
+        "touchPanCount": 0,
+        "bodyScrollTop": null,
+        "reverseScrollTop": null,
+        "physicalLimit": null,
+        "sameCard": true,
+        "requestCount": 1
+      }
+    ]
+  },
+  "reviews": {
+    "rootCodeLogicAndTenPNGs": true,
+    "independentP4CodeLogicAndTenPNGs": true,
+    "sourcePreparationTitleAgentCodeReview": true
+  },
+  "rawEvidence": {
+    "redObservation": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/selection-card-short-viewport-followup-1/root-red-observation.json",
+      "bytes": 2146,
+      "sha256": "bf09d27a46b03e7f5bd7107f950703953c3d750d308a025ce0680eba8b433ea6"
+    },
+    "greenObservation": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/selection-card-short-viewport-followup-1/root-green-observation.json",
+      "bytes": 1348,
+      "sha256": "78533194dfa0e20c22ea0f16519c7fb36af1f95021d0bc48371550cf85c8c99e"
+    },
+    "validation": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/selection-card-short-viewport-followup-1/validation-9/validation-result.json",
+      "bytes": 17558,
+      "sha256": "167223de191123fc44885806c785e759d9d8de4e6e01a08440194038231e121e"
+    },
+    "browser": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/selection-card-short-viewport-followup-1/browser-green-1/report.json",
+      "bytes": 91943,
+      "sha256": "407fae461bec4887984821b92411e1dd03bdab0d6bb7b9210b89e8a7bbfff45b"
+    }
+  },
+  "remaining": {
+    "nativeIMEAndSafariShortCard": false,
+    "physicalDevice": false,
+    "liveTranslationProvider": false,
+    "wholeGoalComplete": false
+  }
+}

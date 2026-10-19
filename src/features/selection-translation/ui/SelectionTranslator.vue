@@ -1,6 +1,7 @@
 <!--
  * @file src/features/selection-translation/ui/SelectionTranslator.vue
  * 通知布局：收藏与语音设置通知沿用安全可见视口订阅，触摸动作保留完整命中区；通知不增加独立监听或请求。
+ * 极矮视口：同一卡片改为整卡滚动并收紧顶栏间距，保留输入与请求、手动几何和语音锁；恢复尺寸后沿用原定位，不增加监听或计时器。
  * 文件职责：实现划词翻译的主要页面组件，覆盖选区捕获、触摸原生句柄稳定等待、避开原生菜单上下区域的行侧入口、可见视口与安全区定位、后台及宿主恢复来源校验、图标/小点/悬停/快捷键/仅右键菜单/直接弹出、原生菜单可信选区恢复与重复请求复用、翻译与词卡展示、免费 AI 讲解的显式启用、朗读、收藏选中的单词/表达/句子、双语分享卡片、鉴权服务配置入口、重试和关闭。
  * 主要内容：相同译文保留原文且不重复展示；Firefox 触摸入口为原生手柄保留独立侧距，以绑定来源快照的可信触摸处理缺少 click 的情况并取消拖动；Safari/Firefox 触摸入口成功开卡后保留当前快照并清空同一原生选区，异步空选区不误关卡片；组件管理可信手势、已关闭选区与选择丢失宽限、继续阅读或复制原文时自动收起、请求 token、按既有错误种类显示有限提示并仅为当前鉴权失败提供通用设置入口、行内代码保护与纯文本安全渲染、按标签页页面缩放补偿的弹窗定位、空白拖动、边角缩放、主题及可换行的多语言标题；普通译文先于完整原文，单行可横向滚动的导航与右侧固定分享、收藏、关闭及更多操作把高度留给正文，次级菜单按可见窗口覆盖显示；指针移动按帧合并并在结束时提交最后位置，已定位卡片不重复读取选区几何；富文本 UTF-16 跟读偏移一次计算并复用；默认过滤同语言选区，按配置开放中英反向入口，翻译方向始终按现有语言配置判断；统一卡片默认显示翻译并以同一导航进入学习；首次定位后保持弹窗锚点，手动尺寸下内容与播放状态变化只影响内部布局；闲置语音栏不占空间，自动卡生成与播放期间用独立临时高度保持外框，停止恢复自然尺寸；学习短回答自然收拢、长回答受高度上限约束，完整原文和译文按需对照并允许翻译继续完成；单词先展示原文与可用词卡，再补充辅助释义，以紧凑状态提示等待、未命中与网络失败；关闭或更换选区取消等待并阻止旧响应覆盖新结果；区分语音生成和播放，按实际音频时钟或浏览器词边界显示完整词高亮，并提供真实音频时间与前后 5 秒跳转。
  * 材料关联：主动收藏与阅读时捕获当前选区的稳定来源和文本位置，词书真实保存后才关联材料引用，隐私窗口不采集。
@@ -12,7 +13,7 @@
       <span class="fr-selection-indicator-glyph" aria-hidden="true">译</span>
     </button>
 
-    <section v-if="showTooltip" ref="tooltip-ref" class="fr-translation-tooltip" :class="{ 'fr-dark-theme': isDarkTheme, 'fr-reading-tooltip': readingMode, 'fr-popup-manipulating': popupManipulating }" :data-placement="popupPlacement" :style="[tooltipScaleStyle, tooltipStyle]" role="dialog" aria-label="划词翻译结果" data-presentation="card" @pointerdown.stop="beginPopupGesture" @pointermove="movePopupGesture" @pointerup="stopPopupGesture" @pointercancel="stopPopupGesture" @lostpointercapture="stopPopupGesture">
+    <section v-if="showTooltip" ref="tooltip-ref" class="fr-translation-tooltip" :class="{ 'fr-dark-theme': isDarkTheme, 'fr-reading-tooltip': readingMode, 'fr-popup-manipulating': popupManipulating, 'fr-short-viewport': isShortViewport() }" :data-placement="popupPlacement" :style="[tooltipScaleStyle, tooltipStyle]" role="dialog" aria-label="划词翻译结果" data-presentation="card" @pointerdown.stop="beginPopupGesture" @pointermove="movePopupGesture" @pointerup="stopPopupGesture" @pointercancel="stopPopupGesture" @lostpointercapture="stopPopupGesture">
       <div class="fr-study-navigation">
         <img class="fr-tooltip-brand-icon" :src="selectionTranslatorIconUrl" alt="" aria-hidden="true" draggable="false" />
         <div class="fr-study-toolbar" role="group" aria-label="划词卡片内容" :title="isWordSelection ? '词典释义 · 按词性分类' : '先看译文，按需深入'" @focusin="handleStudyToolbarFocus">
@@ -290,6 +291,7 @@ const popupPlacement = ref<'top' | 'bottom'>('top');
 const pageZoom = ref(1);
 const viewportSize = ref(getSafeVisualViewportRect());
 const touchInteraction = ref(false);
+const px = (value: number) => value + 'px';
 const noticeViewportStyle = computed(() => {
   const viewport = viewportSize.value, gap = touchInteraction.value ? 12 : 18;
   // 44px 动作加两侧9px内边距；先收外边距，极矮时再收内边距，不压小动作。
@@ -297,21 +299,26 @@ const noticeViewportStyle = computed(() => {
   const height = Math.max(1, viewport.height - gapY * 2), padding = Math.min(9, Math.max(0, (height - 44) / 2));
   // 与主卡使用相同的布局坐标；不假设键盘出现后的 innerHeight 仍是布局视口高度。
   return {
-    left: `${viewport.right - gap}px`, top: `${viewport.bottom - gapY}px`,
+    left: px(viewport.right - gap), top: px(viewport.bottom - gapY),
     right: 'auto', bottom: 'auto', transform: 'translate(-100%, -100%)',
-    maxWidth: `${Math.max(1, viewport.width - gap * 2)}px`,
-    maxHeight: `${height}px`, paddingBlock: `${padding}px`,
-    '--fr-notice-content-height': `${Math.max(1, height - padding * 2)}px`,
+    maxWidth: px(Math.max(1, viewport.width - gap * 2)),
+    maxHeight: px(height), paddingBlock: px(padding),
+    '--fr-notice-content-height': px(Math.max(1, height - padding * 2)),
     alignItems: height < 44 ? 'flex-start' : 'center',
   };
 });
 const popupScale = computed(() => 1 / pageZoom.value);
-const tooltipScaleStyle = computed(() => ({
-  transform: `scale(${popupScale.value})`,
-  transformOrigin: 'top left',
-  maxWidth: `${Math.max(1, viewportSize.value.width - 24) / popupScale.value}px`,
-  maxHeight: `${Math.min(520, Math.max(1, viewportSize.value.height - 20) / popupScale.value)}px`,
-}));
+// 正常卡至少保留140px内容外框和上下12px间距；不足时让整卡成为滚动所有者。
+const isShortViewport = () => viewportSize.value.height < 140 * popupScale.value + 24;
+const tooltipScaleStyle = computed(() => {
+  const {width, height} = viewportSize.value, scale = popupScale.value, compact = isShortViewport();
+  return {
+    transform: `scale(${scale})`, transformOrigin: 'top left',
+    maxWidth: px(Math.max(1, width - 24) / scale),
+    maxHeight: px(Math.min(520, Math.max(1, height - (compact ? 0 : 20)) / scale)),
+    ...(compact ? {'--fr-pad': px(Math.min(4, Math.max(0, (height / scale - 44) / 2)))} : {}),
+  };
+});
 const snapshot = ref<SelectionSnapshot | null>(null);
 watch(snapshot, current => {
   if (readingKeyboardFocus && current !== readingKeyboardFocus.selection) clearReadingKeyboardFocus();
@@ -829,13 +836,13 @@ function clearAudioPopupHeightLock(): void {
 
 function beginAudioPopupHeightLock(): void {
   const element = tooltipRef.value;
-  if (!showTooltip.value || !element || manualPopupSize || audioPopupHeight !== null) return;
+  if (isShortViewport() || !showTooltip.value || !element || manualPopupSize || audioPopupHeight !== null) return;
   const height = element.getBoundingClientRect().height;
   if (!Number.isFinite(height) || height <= 0) return;
   audioPopupHeightRevision += 1;
   audioPopupHeight = height;
   if (manualPopupPosition) applyManualPopupGeometry();
-  else tooltipStyle.value = {...tooltipStyle.value, height: `${height / popupScale.value}px`};
+  else tooltipStyle.value = {...tooltipStyle.value, height: px(height / popupScale.value)};
 }
 
 function applyManualPopupGeometry(measured?: Pick<DOMRect, 'width'>): void {
@@ -843,23 +850,23 @@ function applyManualPopupGeometry(measured?: Pick<DOMRect, 'width'>): void {
   if (!element || !manualPopupPosition) return;
   const scale = popupScale.value;
   const viewport = viewportSize.value;
-  const widthLimit = Math.max(1, viewport.width - 24);
-  const heightLimit = Math.max(1, viewport.height - 24);
-  const width = Math.min(manualPopupSize?.width ?? measured?.width ?? element.getBoundingClientRect().width, widthLimit);
+  const width = Math.min(manualPopupSize?.width ?? measured?.width ?? element.getBoundingClientRect().width, Math.max(1, viewport.width - 24));
   const left = Math.max(viewport.left + 12, Math.min(manualPopupPosition.left, viewport.right - width - 12));
-  // 内容变多时保留左上角，以当前位置下方的可用空间限制高度；仅视口缩小时夹回可操作区域。
-  const minHeight = Math.min(140 * scale, heightLimit);
-  const top = Math.max(viewport.top + 12, Math.min(manualPopupPosition.top, viewport.bottom - minHeight - 12));
-  const availableHeight = Math.max(1, viewport.bottom - top - 12);
+  const compact = isShortViewport();
+  // 临时退化只改变呈现，不写回用户几何；常规卡仍保留左上角和原高度限制。
+  const top = compact ? viewport.top : Math.max(viewport.top + 12, Math.min(manualPopupPosition.top, viewport.bottom - Math.min(140 * scale, Math.max(1, viewport.height - 24)) - 12));
+  const availableHeight = compact ? viewport.height : Math.max(1, viewport.bottom - top - 12);
   const preferredHeight = manualPopupSize?.height ?? audioPopupHeight;
   const height = preferredHeight !== null ? Math.min(preferredHeight, availableHeight) : undefined;
-  manualPopupPosition = {left, top};
-  if (manualPopupSize) manualPopupSize = {width, height: height!};
+  if (!compact) {
+    manualPopupPosition = {left, top};
+    if (manualPopupSize) manualPopupSize = {width, height: height!};
+  }
   tooltipStyle.value = {
-    left: `${left}px`, top: `${top}px`, visibility: 'visible',
-    maxWidth: `${widthLimit / scale}px`, maxHeight: `${Math.min(manualPopupSize ? availableHeight : 520 * scale, availableHeight) / scale}px`,
-    ...(manualPopupSize ? {width: `${width / scale}px`} : {}),
-    ...(height !== undefined ? {height: `${height / scale}px`} : {}),
+    left: px(left), top: px(top),
+    maxHeight: px((compact || manualPopupSize ? availableHeight : Math.min(520 * scale, availableHeight)) / scale),
+    ...(manualPopupSize ? {width: px(width / scale)} : {}),
+    ...(height !== undefined ? {height: px(height / scale)} : {}),
   };
 }
 
@@ -886,7 +893,7 @@ watch([readingMode, showTooltip], () => {
 function beginPopupGesture(event: PointerEvent): void {
   const element = tooltipRef.value;
   const target = event.target;
-  if (!event.isTrusted || !event.isPrimary || event.button !== 0 || !element || !(target instanceof HTMLElement)) return;
+  if (isShortViewport() || !event.isTrusted || !event.isPrimary || event.button !== 0 || !element || !(target instanceof HTMLElement)) return;
   if (target.closest('button, summary, a, input, textarea, select, [contenteditable]')) return;
   const edge = target.dataset.resizeEdge ?? '';
   const blank = target.matches('.fr-translation-tooltip, .fr-tooltip-content, .fr-translation-container, .fr-text-block');
@@ -983,8 +990,8 @@ function updatePosition(refreshSelection = true): void {
   }
   const entryTop = touchInteraction.value ? (anchor.top + anchor.bottom) / 2 : anchor.bottom + anchorOffset;
   indicatorStyle.value = {
-    left: `${Math.max(minEntryLeft, Math.min(maxEntryLeft, entryLeft))}px`,
-    top: `${Math.max(viewport.top + viewportInset, Math.min(viewport.bottom - viewportInset, entryTop))}px`,
+    left: px(Math.max(minEntryLeft, Math.min(maxEntryLeft, entryLeft))),
+    top: px(Math.max(viewport.top + viewportInset, Math.min(viewport.bottom - viewportInset, entryTop))),
   };
   if (showTooltip.value) void nextTick(() => {
     const tooltip = tooltipRef.value;
@@ -2738,15 +2745,13 @@ onBeforeUnmount(() => {
 .fr-dark-theme { border-color: #44444e; background: rgba(40, 40, 48, .98); color: #f1f1f4; }
 .fr-reading-tooltip.fr-dark-theme { background: #282830; }
 .fr-dark-theme .fr-action-btn:hover, .fr-dark-theme .fr-close-btn:hover { background: #50505b; color: #fff; }
-.fr-dark-theme .fr-text-copy-btn { border-color:transparent; background:transparent; color:#b4aab3; }
-.fr-dark-theme .fr-text-copy-btn:hover, .fr-dark-theme .fr-text-copy-btn:focus-visible { border-color: #c96a8b; background: #553846; color: #ffd9e7; }
+.fr-dark-theme :is(.fr-text-copy-btn, .fr-text-audio-btn) { border-color:transparent; background:transparent; color:#b4aab3; }
+.fr-dark-theme :is(.fr-text-copy-btn, .fr-text-audio-btn):is(:hover, :focus-visible) { border-color: #c96a8b; background: #553846; color: #ffd9e7; }
 .fr-dark-theme .fr-text-copy-btn.fr-copied { border-color: #98617a; background: rgba(93, 52, 71, .62); color: #f2bdcd; }
-.fr-dark-theme .fr-text-audio-btn { border-color:transparent; background:transparent; color:#b4aab3; }
-.fr-dark-theme .fr-text-audio-btn:hover, .fr-dark-theme .fr-text-audio-btn:focus-visible { border-color: #c96a8b; background: #553846; color: #ffd9e7; }
 .fr-dark-theme .fr-original-text { color: #d0d0d7; }
 .fr-dark-theme .fr-translation-result { color: #f1ecef; }
 .fr-dark-theme .fr-word-learning-card { background: transparent; }
-.fr-dark-theme .fr-word-heading, .fr-dark-theme .fr-word-pronunciations, .fr-dark-theme .fr-word-translation, .fr-dark-theme .fr-word-card-footer { border-color: #4b4148; }
+.fr-dark-theme :is(.fr-word-heading, .fr-word-pronunciations, .fr-word-translation, .fr-word-card-footer) { border-color: #4b4148; }
 .fr-dark-theme .fr-word-heading h3, .fr-dark-theme .fr-word-meaning, .fr-dark-theme .fr-word-translation { color: #f2e8ed; }
 .fr-dark-theme .fr-word-meaning-toolbar { color: #c8aab5; }
 .fr-dark-theme .fr-word-meaning-toolbar button { color: #f0b9cb; }
@@ -2756,7 +2761,7 @@ onBeforeUnmount(() => {
 .fr-dark-theme .fr-word-ipa { color: #f0dce4; }
 .fr-dark-theme .fr-word-meaning > strong { border-color: #684b58; background: #493842; color: #ffd9e7; }
 .fr-dark-theme .fr-word-meaning em { border-color: #684b58; }
-.fr-dark-theme .fr-word-meaning em, .fr-dark-theme .fr-word-definition-zh, .fr-dark-theme .fr-word-example-zh, .fr-dark-theme .fr-word-translation-loading, .fr-dark-theme .fr-word-empty { color: #c8aab5; }
+.fr-dark-theme .fr-word-meaning em, .fr-dark-theme :is(.fr-word-definition-zh, .fr-word-example-zh, .fr-word-translation-loading, .fr-word-empty) { color: #c8aab5; }
 .fr-dark-theme .fr-word-fallback-note { background: #4a303b; }
 /* 保持桌面紧凑；触摸操作用完整命中区，点模式仍只显示小点，不挤占正文。 */
 .fr-touch-selection .fr-selection-indicator { width:44px; height:44px; border-radius:12px; touch-action:manipulation; }
@@ -2773,6 +2778,13 @@ onBeforeUnmount(() => {
   .fr-translation-tooltip button, .fr-action-toast button { min-width:44px; min-height:44px; touch-action:manipulation; }
   .fr-playing-status { height:auto; min-height:52px; flex-wrap:wrap; }
 }
+/* 极矮时标题、正文和语音栏共用外框滚动；不替换或隐藏已聚焦的阅读输入。 */
+.fr-translation-tooltip.fr-short-viewport { overflow-y:auto; border-block-width:0; overscroll-behavior:contain; }
+.fr-short-viewport .fr-study-navigation { align-items:flex-start; padding-block:var(--fr-pad); border-bottom:0; touch-action:auto; }
+.fr-short-viewport .fr-study-toolbar { touch-action:auto; overscroll-behavior-y:auto; }
+.fr-short-viewport .fr-close-btn { min-width:44px; min-height:44px; }
+.fr-short-viewport .fr-tooltip-content, .fr-short-viewport :deep(.fr-reading), .fr-short-viewport :deep(.fr-reading-scroll) { flex:none; height:auto; max-height:none; overflow:visible; }
+.fr-short-viewport .fr-popup-resize-handle { display:none; }
 @media (prefers-reduced-motion: reduce) { .fr-selection-indicator, .fr-loading-spinner { transition: none; animation: none; } }
 
 </style>
