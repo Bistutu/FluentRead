@@ -1310,6 +1310,17 @@ node scripts/run-document-translation-test.cjs --suite scanned --playwright-root
 
 ## PDF 在线与本地划词
 
+原生在线 PDF 的右键划词交接可单独验证：
+
+```bash
+node scripts/run-native-pdf-selection-test.cjs \
+  --extension-dir .output/chrome-mv3 \
+  --playwright-root <Node包目录> \
+  --artifacts-dir /private/tmp/fluentread-native-pdf-selection
+```
+
+该范围直接打开 USENIX 论文的真实 PDF 地址，检查原查看器和地址保留、一次性选文交接、关闭后重新选词、并发结果归属、触发方式切换后关闭结果窗口及没有额外 PDF 下载。只在临时生产产物副本前置测试 hook，向浏览器实际注册的菜单监听器传入受控选文；结果页和划词卡片使用生产代码、翻译使用本机确定性服务。为了保护前台焦点，测试将记录到的真实 `windows.create` 参数映射到预建后台标签，保留目标窗口和标签身份校验。报告不代表原生系统右键手势、原生 PDF 内部选区捕获、真实弹窗激活或在线供应商验收。
+
 生产扩展构建后运行：
 
 ```bash

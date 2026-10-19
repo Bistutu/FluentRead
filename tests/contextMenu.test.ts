@@ -3,6 +3,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 const state = vi.hoisted(() => ({
     config: {} as Record<string, unknown>,
     capability: {browser: 'chrome', imageTranslation: true, areaTranslation: true},
+    openPdfSelection: vi.fn(),
 }));
 const subscriptions: Array<(config: unknown) => void> = [];
 
@@ -15,6 +16,7 @@ vi.mock('@/src/services/config/store', () => ({
     },
 }));
 vi.mock('@/src/platform/browser/capabilities', () => ({browserCapabilities: state.capability}));
+vi.mock('@/src/app/background/nativePdfSelection', () => ({openNativePdfSelection: state.openPdfSelection}));
 
 import {
     buildContextMenuPlan,
@@ -90,6 +92,7 @@ beforeEach(() => {
     state.capability.imageTranslation = true;
     state.capability.areaTranslation = true;
     state.capability.browser = 'chrome';
+    state.openPdfSelection.mockReset().mockResolvedValue(true);
 });
 
 afterEach(() => {
@@ -318,25 +321,55 @@ describe('右键菜单动作执行', () => {
         expect(sendMessage).toHaveBeenCalledWith({type: 'documentSelectionTranslate', tabId: 12});
         expect(tabMessage).not.toHaveBeenCalled();
     });
-    it.each(['translatePage', 'translateSelection'] as const)('原生在线 PDF 的 %s 打开阅读器，不向受限查看器发消息或自动翻译', async action => {
+    it('原生在线 PDF 的整页入口仍打开阅读器，不向内部查看器发消息', async () => {
         const sendMessage = vi.fn(), create = vi.fn().mockResolvedValue({id: 8});
         vi.stubGlobal('browser', {tabs: {sendMessage, create}, runtime: {getURL: () => 'chrome-extension://test/document.html'}});
         const source = 'https://arxiv.org/pdf/1706.03762';
-        expect(await runContextMenuAction(action, 7, {pageUrl: 'chrome-extension://native-pdf/index.html'}, {id: 7, url: source}, false))
+        expect(await runContextMenuAction('translatePage', 7, {pageUrl: 'chrome-extension://native-pdf/index.html'}, {id: 7, url: source}, false))
             .toEqual({handled: true});
         expect(create).toHaveBeenCalledWith({url: `chrome-extension://test/document.html#pdf=${encodeURIComponent(source)}`});
         expect(sendMessage).not.toHaveBeenCalled();
+        expect(state.openPdfSelection).not.toHaveBeenCalled();
+    });
+
+    it.each([true, false])('原生 PDF 划词交接本次菜单文本，窗口打开结果 %s 如实返回', async handled => {
+        const sendMessage = vi.fn(), create = vi.fn();
+        vi.stubGlobal('browser', {tabs: {sendMessage, create}});
+        state.openPdfSelection.mockResolvedValue(handled);
+        const source = 'https://www.usenix.org/system/files/conference/fast27/fast27spring_prepub-kong.pdf';
+        const text = 'Time series databases (TSDBs) are crucial for performance';
+        expect(await runContextMenuAction('translateSelection', 7, {pageUrl: 'chrome-extension://native-pdf/index.html', selectionText: text}, {id: 7, url: source, title: 'PromTCS'}, false))
+            .toEqual(handled ? {handled: true} : {handled: false, reason: 'selectionUnavailable'});
+        expect(state.openPdfSelection).toHaveBeenCalledWith({text, sourceUrl: source, title: 'PromTCS'});
+        expect(sendMessage).not.toHaveBeenCalled(); expect(create).not.toHaveBeenCalled();
+    });
+
+    it('原生 PDF 菜单没有选区时不改为打开整份阅读器', async () => {
+        const create = vi.fn(); vi.stubGlobal('browser', {tabs: {create}});
+        state.openPdfSelection.mockResolvedValue(false);
+        expect(await runContextMenuAction('translateSelection', 7, {pageUrl: 'https://example.com/paper.pdf'}, {}, false)).toEqual({handled: false, reason: 'selectionUnavailable'});
+        expect(state.openPdfSelection).toHaveBeenCalledWith({text: '', sourceUrl: 'https://example.com/paper.pdf', title: ''});
+        expect(create).not.toHaveBeenCalled();
+    });
+
+    it.each([{on: false}, {disableSelectionTranslator: true}, {selectionTranslatorMode: 'disabled'}, {disabledExtensionDomains: ['usenix.org']}])('原生查看器外壳也遵守源站与划词开关 %j', async change => {
+        vi.stubGlobal('browser', {tabs: {}});
+        Object.assign(state.config, change);
+        expect(await runContextMenuAction('translateSelection', 7, {pageUrl: 'chrome-extension://native-pdf/index.html', selectionText: 'selected text'}, {url: 'https://www.usenix.org/paper.pdf'}, false))
+            .toEqual({handled: false, reason: 'disabled'});
+        expect(state.openPdfSelection).not.toHaveBeenCalled();
     });
 
     it('嵌入 PDF 的选区入口使用 frame 源，整页入口继续作用于普通宿主页', async () => {
         const sendMessage = vi.fn().mockResolvedValue({status: 'success', isTranslated: true}), create = vi.fn().mockResolvedValue({});
         vi.stubGlobal('browser', {tabs: {sendMessage, create}, runtime: {getURL: () => 'chrome-extension://test/document.html'}});
         const source = 'https://cdn.example.com/book.pdf?download=1', pageUrl = 'https://example.com/article';
-        await runContextMenuAction('translateSelection', 7, {frameId: 3, frameUrl: source, pageUrl}, {id: 7, url: pageUrl}, false);
-        expect(create).toHaveBeenCalledWith({url: `chrome-extension://test/document.html#pdf=${encodeURIComponent(source)}`});
+        await runContextMenuAction('translateSelection', 7, {frameId: 3, frameUrl: source, pageUrl, selectionText: 'selected PDF text'}, {id: 7, url: pageUrl}, false);
+        expect(state.openPdfSelection).toHaveBeenCalledWith({text: 'selected PDF text', sourceUrl: source, title: ''});
+        expect(create).not.toHaveBeenCalled();
         expect(sendMessage).not.toHaveBeenCalled();
         await runContextMenuAction('translatePage', 7, {frameId: 3, frameUrl: source, pageUrl}, {id: 7, url: pageUrl}, false);
-        expect(create).toHaveBeenCalledTimes(1);
+        expect(create).not.toHaveBeenCalled();
         expect(sendMessage).toHaveBeenCalledWith(7, {type: 'contextMenuTranslate', action: 'fullPage'}, {frameId: 0});
     });
 
