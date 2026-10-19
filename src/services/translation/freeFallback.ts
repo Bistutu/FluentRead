@@ -1,13 +1,13 @@
 /**
  * @file src/services/translation/freeFallback.ts
  * 文件职责：在健康免费服务间加权均衡并自动回退，持久遵守各类错误的恢复窗口。
- * 主要内容：协调总预算、单次超时、服务并发与间隔、错误退避、恢复单探测、异步持久化、有预算的延迟备用竞争、取消代际保护；公开调用在取消或超时后及时结束，候选和总并发许可仍跟随实际在途 Promise 及内部传输租约结算；线路容量或间隔等待不占许可，唤醒后重新校验；无剩余容量时不追加竞速，把特定文本的无效结果作为不冷却线路的请求失败，并旁路上报每次尝试。
+ * 主要内容：协调总预算、单次超时、服务并发与间隔、错误退避、恢复单探测、异步持久化、有预算的延迟备用竞争、取消代际保护；公开调用在取消或超时后及时结束，候选和总并发许可仍跟随实际在途 Promise 及内部传输租约结算；线路容量或间隔等待不占许可，唤醒后重新校验；无剩余容量时不追加竞速，把特定文本的无效结果作为不冷却线路的请求失败，并旁路上报每次尝试；临时线路耗尽或总预算到期时提供最早恢复提示，保留全局不可重试边界，供拥有独立等待预算的文档任务恢复。
  * 模块边界：只接收匿名身份、provider 回调和注入的存储端口；不读取用户配置或供应商凭据。
  */
 import {abortErrorFromSignal} from '@/src/platform/http/runtime';
 import {FREE_TRANSLATION_TOTAL_TIMEOUT_MS} from '@/src/core/config/freeTranslation';
 import {
-    getFreeFailureStatus, getFreeFailureCooldown, selectWeightedFreeCandidate, getFreeHedgeDelayMs,
+    classifyFreeFailure, getFreeFailureStatus, getFreeFailureCooldown, selectWeightedFreeCandidate, getFreeHedgeDelayMs,
     MAX_FREE_COOLDOWN_MS, type FreeFailureCategory,
     getDynamicFreeProviderWeight, observeFreeProviderPerformance, type FreeProviderPerformance,
 } from './freeRoutingPolicy';
@@ -304,6 +304,26 @@ export function createFreeFallbackRunner(maxConcurrency = 3, dependencies: FreeF
         let ownsPermit = false;
         const attempted = new Set<string>();
         const failures: string[] = [];
+        // 本次文本的请求错误不能借用该线路此前的暂时故障获得恢复资格。
+        const failureCategories = new Map<string, FreeFailureCategory>();
+        const withTemporaryRecoveryHint = (error: FreePoolExhaustedError | AttemptTimeoutError) => {
+            const timestamp = Date.now();
+            let recovery: {category: FreeFailureCategory; delayMs: number} | undefined;
+            for (const candidate of candidates) {
+                const state = getHealth(candidate.identity);
+                const category = failureCategories.get(candidate.identity) ?? state.category;
+                if (category !== 'rate-limit' && category !== 'unavailable') continue;
+                const delayMs = Math.max(1, state.retryAt > timestamp ? state.retryAt - timestamp : 1_000,
+                    state.nextAttemptAt - timestamp);
+                if (!recovery || delayMs < recovery.delayMs) recovery = {category, delayMs};
+            }
+            if (recovery) Object.assign(error, {
+                code: 'FREE_TRANSLATION_TEMPORARILY_UNAVAILABLE', retryAfterMs: recovery.delayMs,
+                // 总预算超时仍保持 timeout；单线路超时后的全池耗尽不能冒充总超时。
+                ...(error instanceof FreePoolExhaustedError && recovery.category === 'rate-limit' ? {kind: 'rate-limit'} : {}),
+            });
+            return error;
+        };
         let hedged = false;
         const pendingCandidates = () => candidates.filter(item => !attempted.has(item.identity));
         const readyCandidates = () => pendingCandidates().filter(candidate => {
@@ -365,6 +385,7 @@ export function createFreeFallbackRunner(maxConcurrency = 3, dependencies: FreeF
                     observe({identity: candidate.identity, outcome: attemptOutcome(error, signal), durationMs: Date.now() - startedAt});
                     if (signal.aborted) return {error: abortErrorFromSignal(signal)};
                     if (error instanceof Error && error.name === 'AbortError') return {error};
+                    failureCategories.set(candidate.identity, classifyFreeFailure(error));
                     if (error instanceof AttemptTimeoutError && remaining < options.timeoutMs && Date.now() >= deadline) return {error};
                     const cooldown = getFreeFailureCooldown(error, state.failures + 1, options.cooldownMs, random());
                     // 原文回显、错语种、长度等只属于当前文本，不暂停其他段落的线路。
@@ -387,7 +408,7 @@ export function createFreeFallbackRunner(maxConcurrency = 3, dependencies: FreeF
             while (pendingCandidates().length) {
                 if (options.signal?.aborted) throw abortErrorFromSignal(options.signal);
                 const remaining = deadline - Date.now();
-                if (remaining <= 0) throw new AttemptTimeoutError();
+                if (remaining <= 0) throw withTemporaryRecoveryHint(new AttemptTimeoutError());
                 const ready = readyCandidates();
                 if (!ready.length) {
                     const waiting = pendingCandidates().filter(item => getHealth(item.identity).retryAt <= Date.now());
@@ -406,7 +427,8 @@ export function createFreeFallbackRunner(maxConcurrency = 3, dependencies: FreeF
                 }
                 if (!ownsPermit) {
                     // 没有可用线路的 owner 不进入全局队列；取得许可后重新校验线路容量和取消。
-                    release = await acquire(deadline, options.signal);
+                    try { release = await acquire(deadline, options.signal); }
+                    catch (error) { throw error instanceof AttemptTimeoutError ? withTemporaryRecoveryHint(error) : error; }
                     ownsPermit = true;
                     continue;
                 }
@@ -458,7 +480,7 @@ export function createFreeFallbackRunner(maxConcurrency = 3, dependencies: FreeF
                         return outcome.value;
                     }
                     if (outcome.error instanceof Error && outcome.error.name === 'AbortError') throw outcome.error;
-                    if (Date.now() >= deadline) throw new AttemptTimeoutError();
+                    if (Date.now() >= deadline) throw withTemporaryRecoveryHint(new AttemptTimeoutError());
                 } finally {
                     clearTimeout(timer);
                     controller.abort();
@@ -471,7 +493,7 @@ export function createFreeFallbackRunner(maxConcurrency = 3, dependencies: FreeF
                 }
             }
             const reason = failures.length ? failures.join('；') : '所选服务正在冷却，请稍后重试';
-            throw new FreePoolExhaustedError(`免费翻译服务均不可用：${reason}`);
+            throw withTemporaryRecoveryHint(new FreePoolExhaustedError(`免费翻译服务均不可用：${reason}`));
         } finally { release(); }
     };
 

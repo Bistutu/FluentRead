@@ -1,5 +1,6 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
-import {createFreeFallbackRunner, type FreeFallbackAttempt, type FreeFallbackCandidate, type FreeFallbackLease} from '@/src/services/translation/freeFallback';
+import {createFreeFallbackRunner, UntranslatedFreeResultError, WrongLanguageFreeResultError, type FreeFallbackAttempt, type FreeFallbackCandidate, type FreeFallbackLease} from '@/src/services/translation/freeFallback';
+import {serializeTranslationError} from '@/src/services/translation/errors';
 
 const options = {timeoutMs: 100, cooldownMs: 1_000};
 const failure = (statusCode: number) => Object.assign(new Error('secret text https://secret.example/?key=hidden'), {statusCode});
@@ -16,6 +17,75 @@ beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date('2026-09-05T00:
 afterEach(() => { vi.useRealTimers(); });
 
 describe('free provider fallback coordinator', () => {
+    it('reports the earliest temporary recovery without repeating the pool or borrowing permanent routes', async () => {
+        const run = createFreeFallbackRunner(3, {random: () => 0});
+        const routes = [
+            candidate('quota', vi.fn().mockRejectedValue(Object.assign(failure(402), {retryAfterMs: 1000}))),
+            candidate('blocked', vi.fn().mockRejectedValue(Object.assign(failure(403), {retryAfterMs: 1000}))),
+            candidate('limited', vi.fn().mockRejectedValue(Object.assign(failure(429), {retryAfterMs: 5000}))),
+            candidate('temporary', vi.fn().mockRejectedValueOnce(Object.assign(failure(503), {retryAfterMs: 2000})).mockResolvedValue('恢复后的译文')),
+            candidate('request', vi.fn().mockRejectedValue(failure(400))),
+        ];
+        const result = await run(routes, options).catch(serializeTranslationError);
+        expect(result).toMatchObject({code: 'FREE_TRANSLATION_TEMPORARILY_UNAVAILABLE', kind: 'provider', retryable: false, retryAfterMs: 2000});
+        await expect(run(routes, options)).rejects.toMatchObject({code: 'FREE_TRANSLATION_TEMPORARILY_UNAVAILABLE', retryAfterMs: 2000, retryable: false});
+        expect(routes.slice(0, 4).every(route => vi.mocked(route.translate).mock.calls.length === 1)).toBe(true);
+        expect(routes[4].translate).toHaveBeenCalledTimes(2);
+        await vi.advanceTimersByTimeAsync(2000);
+        await expect(run(routes, options)).resolves.toBe('恢复后的译文');
+        expect(routes[3].translate).toHaveBeenCalledTimes(2);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('keeps the remaining rate-limit recovery hint while every selected route is cooling', async () => {
+        const run = createFreeFallbackRunner(3, {random: () => 0});
+        const route = candidate('limited', vi.fn().mockRejectedValue(Object.assign(failure(429), {retryAfterMs: 5000})));
+        await expect(run([route], options)).rejects.toMatchObject({kind: 'rate-limit', retryable: false,
+            code: 'FREE_TRANSLATION_TEMPORARILY_UNAVAILABLE', retryAfterMs: 5000});
+        await vi.advanceTimersByTimeAsync(1000);
+        await expect(run([route], options)).rejects.toMatchObject({kind: 'rate-limit', retryAfterMs: 4000,
+            code: 'FREE_TRANSLATION_TEMPORARILY_UNAVAILABLE', retryable: false});
+        expect(route.translate).toHaveBeenCalledOnce();
+    });
+
+    it.each([400, 401, 402, 403, 404, 410, 456, new UntranslatedFreeResultError(), new WrongLanguageFreeResultError()])
+        ('does not advertise temporary recovery for a permanent or text-specific failure: %s', async status => {
+            const run = createFreeFallbackRunner(3, {random: () => 0});
+            const route = candidate('permanent', vi.fn().mockRejectedValue(typeof status === 'number' ? failure(status) : status));
+            const error = await run([route], options).catch(serializeTranslationError);
+            expect(error).toMatchObject({kind: 'provider', retryable: false});
+            expect(error).not.toHaveProperty('code', 'FREE_TRANSLATION_TEMPORARILY_UNAVAILABLE');
+            expect((error as {retryAfterMs?: number}).retryAfterMs).toBeUndefined();
+        });
+
+    it('does not let a request error inherit recovery from an earlier temporary failure or an empty pool', async () => {
+        const run = createFreeFallbackRunner(3, {random: () => 0});
+        const route = candidate('changed', vi.fn().mockRejectedValueOnce(failure(503)).mockRejectedValue(failure(400)));
+        await expect(run([route], options)).rejects.toHaveProperty('code', 'FREE_TRANSLATION_TEMPORARILY_UNAVAILABLE');
+        await vi.advanceTimersByTimeAsync(1000);
+        const error = await run([route], options).catch(serializeTranslationError);
+        expect((error as {code?: string}).code).toBeUndefined();
+        const empty = await run([], options).catch(serializeTranslationError);
+        expect((empty as {code?: string}).code).toBeUndefined();
+        expect((empty as {retryAfterMs?: number}).retryAfterMs).toBeUndefined();
+    });
+
+    it('provides a bounded recovery hint on real total timeout but excludes a pool with only blocked routes', async () => {
+        const run = createFreeFallbackRunner(3, {random: () => 0});
+        const route = candidate('slow', vi.fn(() => new Promise(() => undefined)));
+        const request = run([route], {...options, timeoutMs: 5000, deadline: Date.now() + 1000});
+        const outcome = expect(request).rejects.toMatchObject({kind: 'timeout', retryable: false,
+            code: 'FREE_TRANSLATION_TEMPORARILY_UNAVAILABLE', retryAfterMs: 1000});
+        await vi.advanceTimersByTimeAsync(1000);await outcome;
+        expect(route.translate).toHaveBeenCalledOnce();
+        expect(vi.mocked(route.translate).mock.calls[0][0].aborted).toBe(true);
+        const blocked = candidate('blocked', vi.fn().mockRejectedValue(failure(403)));
+        await expect(run([blocked], options)).rejects.toMatchObject({kind: 'provider'});
+        const expired = await run([blocked], {...options, deadline: Date.now()}).catch(serializeTranslationError);
+        expect(expired).toMatchObject({kind: 'timeout', retryable: false});
+        expect((expired as {code?: string}).code).toBeUndefined();
+    });
+
     it('超时会中止不响应的服务并在预算内进入下一服务', async () => {
         const run = createFreeFallbackRunner(3, {random: () => 0});
         let signal!: AbortSignal;
@@ -814,7 +884,8 @@ describe('free pool availability waits keep global attempt capacity usable', () 
         await vi.advanceTimersByTimeAsync(999);
         expect(events).toEqual([]);
         await vi.advanceTimersByTimeAsync(1);
-        await expect(parkedOutcome).resolves.toMatchObject({error: {kind: 'timeout', retryable: false}});
+        await expect(parkedOutcome).resolves.toMatchObject({error: {kind: 'timeout', retryable: false,
+            code: 'FREE_TRANSLATION_TEMPORARILY_UNAVAILABLE', retryAfterMs: 1000}});
         expect(Date.now()).toBe(start + 1_000);
         expect(events).toEqual([]);
         expect(limitedTranslate).toHaveBeenCalledOnce();
