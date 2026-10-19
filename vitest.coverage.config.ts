@@ -421,6 +421,7 @@ export default defineConfig({
                 'src/features/selection-translation/background/nativePdfSelection.ts',
                 'src/app/background/nativePdfSelection.ts',
                 'src/app/selection/page.ts',
+                'src/app/selection/cardVisibility.ts',
                 'src/features/document-translation/core/materialLocator.ts',
                 'src/app/document-translation/materialResume.ts',
                 'src/features/document-translation/ui/pdfMaterialNavigation.ts',

@@ -1,7 +1,7 @@
 /**
  * @file src/app/selection/page.ts
  * 文件职责：在扩展独立窗口中领取原生 PDF 右键选区，并以真实本页 Range 复用既有划词翻译卡片。
- * 主要内容：等待配置水合、消费一次性令牌、显示紧凑只读来源，严格限定唯一原文节点及其文本身份；卡片继续使用现有翻译、词典、复制和朗读链路，关闭或离开页面时取消组件请求并释放选区。
+ * 主要内容：等待配置水合、消费一次性令牌、显示紧凑只读来源，严格限定唯一原文节点及其文本身份；卡片继续使用现有翻译、词典、复制和朗读链路，观察自有卡片根的直接子节点，在已显示卡片自行收起时关闭结果窗口，关闭或离开页面时取消组件请求并释放选区。
  * 模块边界：不下载或解析 PDF、不修改来源页面、不放宽普通网页选区规则；后台负责令牌与窗口身份，当前页面只把已领取文本适配成自有 DOM 选区。
  */
 import {createApp, nextTick, type Component} from 'vue';
@@ -11,6 +11,7 @@ import {translateSelectionFromContextMenu} from '@/src/features/selection-transl
 import {config, configReady, subscribeConfig} from '@/src/services/config/store';
 import {isExtensionDisabledOnSite} from '@/src/core/site-rules/domain';
 import {createUiI18nPlugin} from '@/src/ui/i18n';
+import {observeNativePdfSelectionCard} from './cardVisibility';
 import './selection-page.css';
 
 export interface NativePdfSelectionPayload {text: string; sourceUrl: string; title: string}
@@ -65,15 +66,18 @@ export function createNativePdfSelectionAdapter(source: Text, payload: NativePdf
 
 function mountExistingSelectionCard(host: HTMLElement, adapter: NativePdfSelectionAdapter, dismiss: () => void): NativePdfSelectionCard {
     const app = createApp(SelectionTranslator as Component, {selectionAdapter: adapter, onFocusedCardDismiss: dismiss});
+    let stopVisibility: (() => void) | undefined;
     try {
         app.use(createUiI18nPlugin({documentRoot: host, documentTitleKey: 'contextMenu.translateSelection'}));
         app.mount(host);
+        const root = host.querySelector<HTMLElement>('.fr-selection-translator-root');
+        if (root) stopVisibility = observeNativePdfSelectionCard(root, dismiss);
     } catch (error) {app.unmount(); throw error;}
     return {translate: translateSelectionFromContextMenu, async focus() {
         await nextTick();
         const card = host.querySelector<HTMLElement>('.fr-translation-tooltip');
         if (card) {card.tabIndex = -1; card.focus({preventScroll: true});}
-    }, dispose: () => app.unmount()};
+    }, dispose: () => {stopVisibility?.(); app.unmount();}};
 }
 
 /** 依赖端口仅用于页面生命周期验证；生产始终装配同一配置客户端与 SelectionTranslator。 */

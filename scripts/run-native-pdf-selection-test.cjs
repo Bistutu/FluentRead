@@ -23,6 +23,8 @@ const SOURCES = [
     'spite of prior efforts in hybrid storage to reduce storage costs,',
     'storage devices to deliver superior performance.',
     'We propose PromTCS, which introduces two novel tech-',
+    'monitoring in Internet applications and infrastructure. As the',
+    '(labels) and data points (samples) increases significantly. In',
     'A'.repeat(4097),
 ];
 
@@ -217,6 +219,22 @@ async function main() {
         assert(report.requests.find(entry => entry.source === SOURCES[3]).completedAt < report.requests.find(entry => entry.source === SOURCES[2]).completedAt, '并发夹具需要确实让后请求先完成');
         await shot(slow.destination, 'concurrent-slow-native-pdf-result'); await shot(fast.destination, 'concurrent-fast-native-pdf-result');
         record('concurrent result pages keep their own selection after reversed completion', {slow: {selection: slow.source, card: slowCard}, fast: {selection: fast.source, card: fastCard}});
+        const triggerDismissals = [];
+        for (const [index, trigger] of [[5, 'Control'], [6, 'contextMenu']]) {
+            await support.patchStoredConfig(configPage, {selectionTranslatorTrigger: 'icon'}); await wait(150);
+            const proof = await dispatch(index); await completed(proof);
+            await shot(proof.destination, `trigger-icon-result-before-${trigger}`);
+            const requestsBeforeTrigger = report.requests.length;
+            await support.patchStoredConfig(configPage, {selectionTranslatorTrigger: trigger});
+            await until(() => proof.destination.isClosed(), `切换触发方式至 ${trigger} 后结果窗口未关闭，仍可能留下来源摘要空窗`, 5000);
+            assert.equal(report.requests.length, requestsBeforeTrigger, '更换触发方式不应重新请求译文');
+            assert.equal(native.isClosed(), false, '更换划词触发方式不得关闭原生 PDF');
+            assert.equal(native.url(), sourceUrl, '更换划词触发方式不得导航原生 PDF');
+            await checkFocus(`trigger ${trigger} closes standalone result`);
+            triggerDismissals.push({from: 'icon', to: trigger, closed: true, nativePdfRetained: true});
+        }
+        await support.patchStoredConfig(configPage, {selectionTranslatorTrigger: 'contextMenu'}); await wait(150);
+        record('changing selection trigger closes standalone result windows without a blank source shell', {transitions: triggerDismissals});
         const requestsBeforeLong = report.requests.length, tooLong = await dispatch(SOURCES.length - 1);
         await until(async () => (await tooLong.destination.locator('body').innerText()).includes('4096'), '超长选区缺少4096字符限制提示');
         await wait(200); assert.equal(report.requests.length, requestsBeforeLong); assert(!await ui(tooLong.destination, 'fr-translation-tooltip'));

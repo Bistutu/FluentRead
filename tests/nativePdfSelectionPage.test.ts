@@ -8,6 +8,7 @@ import {parseHTML} from 'linkedom';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {createNativePdfSelectionAdapter, mountNativePdfSelectionApp, parseNativePdfSelectionPayload, readNativePdfSelectionToken,
     type NativePdfSelectionPageDependencies} from '@/src/app/selection/page';
+import {observeNativePdfSelectionCard} from '@/src/app/selection/cardVisibility';
 
 const ports = vi.hoisted(() => ({createApp: vi.fn(), plugin: vi.fn(), sendMessage: vi.fn(), translate: vi.fn(), subscribeConfig: vi.fn(),
     config: {on: true, disableSelectionTranslator: false, selectionTranslatorMode: 'bilingual', disabledExtensionDomains: [] as string[]}}));
@@ -43,6 +44,7 @@ function fixture(hash = `#token=${token}`, selected = true) {
     const window = Object.assign(new EventTarget(), {location: {hash, pathname: '/selection.html', search: ''}, history: {replaceState: vi.fn()},
         getSelection: () => selected ? selection : null, close: vi.fn()});
     vi.stubGlobal('document', document); vi.stubGlobal('window', window);
+    vi.stubGlobal('MutationObserver', document.defaultView!.MutationObserver);
     const card = {translate: vi.fn(() => true), focus: vi.fn(), dispose: vi.fn()};
     const listeners = new Set<() => void>(); const unsubscribe = vi.fn();
     let enabled = true;
@@ -189,6 +191,28 @@ describe('原生 PDF 划词窗口生命周期', () => {
 });
 
 describe('既有划词卡片的生产默认装配', () => {
+    it('曾显示的真实卡片自行移除后关闭窗口一次，初次空根不会误关', async () => {
+        const f = fixture(); const root = f.document.createElement('div'); root.className = 'fr-selection-translator-root';
+        const app = {use: vi.fn(), mount: vi.fn((host: HTMLElement) => host.append(root)), unmount: vi.fn(() => root.remove())};
+        ports.createApp.mockReturnValue(app); ports.sendMessage.mockResolvedValue(payload); ports.translate.mockReturnValue(true);
+        const page = mountNativePdfSelectionApp('#app'); cleanups.push(page.dispose); await page.ready; await tick();
+        expect(f.window.close).not.toHaveBeenCalled();
+        const card = f.document.createElement('section'); card.className = 'fr-translation-tooltip'; root.append(card); await tick();
+        card.remove(); await tick();
+        expect(f.window.close).toHaveBeenCalledOnce(); expect(app.unmount).toHaveBeenCalledOnce();
+        root.append(card); card.remove(); await tick(); expect(f.window.close).toHaveBeenCalledOnce();
+    });
+    it.each(['disabled', 'dispose'])('默认卡片在 %s 销毁前停止观察，不把页面提示误作窗口关闭', async reason => {
+        const f = fixture(); const root = f.document.createElement('div'); root.className = 'fr-selection-translator-root';
+        const card = f.document.createElement('section'); card.className = 'fr-translation-tooltip'; root.append(card);
+        const app = {use: vi.fn(), mount: vi.fn((host: HTMLElement) => host.append(root)), unmount: vi.fn(() => card.remove())};
+        let notify!: () => void; ports.subscribeConfig.mockImplementation(listener => {notify = listener; return () => {};});
+        ports.createApp.mockReturnValue(app); ports.sendMessage.mockResolvedValue(payload); ports.translate.mockReturnValue(true);
+        const page = mountNativePdfSelectionApp('#app'); cleanups.push(page.dispose); await page.ready;
+        if (reason === 'disabled') {ports.config.on = false; notify();} else page.dispose();
+        await tick(); expect(app.unmount).toHaveBeenCalledOnce(); expect(f.window.close).not.toHaveBeenCalled();
+        if (reason === 'disabled') expect(f.document.querySelector('[role="status"]')!.textContent).toContain('划词翻译已关闭');
+    });
     it.each(['plugin', 'mount'])('默认 %s 挂载失败时立即释放已创建应用', async failure => {
         const f = fixture(); const app = {use: vi.fn(), mount: vi.fn(), unmount: vi.fn()};
         ports.createApp.mockReturnValue(app); ports.sendMessage.mockResolvedValue(payload);
@@ -224,5 +248,32 @@ describe('既有划词卡片的生产默认装配', () => {
         expect(ports.createApp).not.toHaveBeenCalled(); expect(ports.translate).not.toHaveBeenCalled();
         expect(f.document.querySelector('[role="status"]')!.textContent).toContain('划词翻译已关闭');
         if (setting === 'site') expect(ports.sendMessage).toHaveBeenCalledOnce(); else expect(ports.sendMessage).not.toHaveBeenCalled();
+    });
+});
+
+describe('结果窗口的自有卡片可见性观察', () => {
+    it('首次 tooltip 在同一批中加入后又移除时也退出，不依赖最终 DOM 仍保留卡片', () => {
+        const f = fixture(); let notify!: MutationCallback;
+        vi.stubGlobal('MutationObserver', class {constructor(callback: MutationCallback) {notify = callback;} observe() {} disconnect() {}});
+        const root = f.document.createElement('div'), card = f.document.createElement('section'); card.className = 'fr-translation-tooltip';
+        const dismiss = vi.fn(); const stop = observeNativePdfSelectionCard(root as unknown as HTMLElement, dismiss);
+        root.append(card); card.remove();
+        notify([{addedNodes: [card]}, {addedNodes: []}] as unknown as MutationRecord[], {} as MutationObserver);
+        expect(dismiss).toHaveBeenCalledOnce(); stop();
+    });
+    it('只观察直接子节点，初次注释和流式正文变化不关闭，同批出现并移除也退出一次', () => {
+        const f = fixture(); let notify!: MutationCallback; const disconnect = vi.fn(); const observe = vi.fn();
+        vi.stubGlobal('MutationObserver', class {constructor(callback: MutationCallback) {notify = callback;} observe = observe; disconnect = disconnect;});
+        const root = f.document.createElement('div'), card = f.document.createElement('section'); card.className = 'fr-translation-tooltip';
+        const dismiss = vi.fn(); const stop = observeNativePdfSelectionCard(root as unknown as HTMLElement, dismiss);
+        expect(observe).toHaveBeenCalledWith(root, {childList: true});
+        const records = (nodes: Node[]) => [{addedNodes: nodes}] as unknown as MutationRecord[];
+        notify(records([f.document.createComment('v-if'), f.document.createElement('p')]), {} as MutationObserver);
+        expect(dismiss).not.toHaveBeenCalled();
+        root.append(card); notify(records([card]), {} as MutationObserver);
+        card.textContent = 'Streamed text'; notify([], {} as MutationObserver); expect(dismiss).not.toHaveBeenCalled();
+        card.remove(); notify(records([card]), {} as MutationObserver); expect(dismiss).toHaveBeenCalledOnce();
+        notify([], {} as MutationObserver); expect(dismiss).toHaveBeenCalledOnce(); stop(); stop();
+        notify(records([card]), {} as MutationObserver); expect(dismiss).toHaveBeenCalledOnce(); expect(disconnect).toHaveBeenCalledTimes(2);
     });
 });
