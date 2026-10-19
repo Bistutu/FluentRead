@@ -1336,6 +1336,12 @@ pnpm test:pdf-selection -- \
 
 ## 单篇篇章参考
 
+### AI 多段请求合并
+
+生产 Chrome 构建后，运行 `node scripts/testing/run-ai-multi-segment-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <工作区 Node.js 包目录> --focus-safe-helper scripts/testing/focus-safe-browser.cjs --artifacts-dir /private/tmp/fluentread-ai-multi-segment`。
+
+专项在临时 Edge profile、第二屏后台可见窗口中，验证四个相邻纯文本/富文本段落实际形成一次包含四段来源的模型请求，并按 DOM 顺序回填；覆盖 AI 精翻开启和关闭、全文翻译—恢复—再次翻译、悬浮保持单段、关闭多段、动态新增内容、取消后的迟到响应与重新翻译。报告保存请求来源分组、DOM 断言、截图和原生焦点事件，测试结束删除自建 profile。响应来自虚构 DeepSeek 端点的确定性夹具，不读取用户密钥，也不代表真实供应商质量或 Firefox 实机验收。
+
 ### 短标题跨语言上下文误译（issue #980）
 
 ```bash
