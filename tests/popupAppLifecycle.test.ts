@@ -397,6 +397,40 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
     shown.value=true;await drain();expect(state.freePoolAccess.grantedIds).toEqual([]);app.unmount();await drain();expect(permissionEvents.size).toBe(0)
     const closed=readAccess.mock.calls.length;permissionEvent('added');win.dispatchEvent(new win.Event('focus'));expect(readAccess).toHaveBeenCalledTimes(closed)
   })
+  it('Safari persisted pagehide/pageshow 恢复当前按钮但不复活旧回调或在途翻译',async()=>{
+    await safariFree(['microsoft'])
+    const exits=handoff.mock.calls.length
+    const stale=eventOf(button('page-translation')),lookup=deferred<Array<{id:number;windowId:number;url:string}>>()
+    getTab.mockReturnValueOnce(lookup.promise)
+    const lookups=getTab.mock.calls.length,pending=stale();await drain()
+    expect(getTab).toHaveBeenCalledTimes(lookups+1)
+    expect(commands()).toHaveLength(0);expect(requestAccess).not.toHaveBeenCalled()
+    const hide=new win.Event('pagehide');Object.defineProperty(hide,'persisted',{value:true});win.dispatchEvent(hide);await drain()
+    expect(handoff).toHaveBeenCalledTimes(exits+1)
+    readAccess.mockResolvedValue({supported:true,grantedIds:[],preferredGrant:{id:'microsoft',origins:['https://edge.microsoft.com/*']}})
+    const restoredQueries=getTab.mock.calls.length,restoredReads=readAccess.mock.calls.length
+    const show=new win.Event('pageshow');Object.defineProperty(show,'persisted',{value:true});win.dispatchEvent(show);await drain()
+    expect(getTab).toHaveBeenCalledTimes(restoredQueries+1);expect(readAccess.mock.calls.length).toBeGreaterThan(restoredReads)
+    expect(requestAccess).not.toHaveBeenCalled();expect(commands()).toHaveLength(0)
+    lookup.resolve([{id:7,windowId:3,url:'https://example.com/a'}]);await pending;await drain()
+    await stale();await drain()
+    expect(requestAccess).not.toHaveBeenCalled();expect(commands()).toHaveLength(0)
+    requestAccess.mockResolvedValue(false)
+    const reads=readAccess.mock.calls.length,queries=getTab.mock.calls.length
+    const current=eventOf(button('page-translation'))()
+    // 新按钮必须在任何 await、授权复查或标签页查询之前同步申请一次；恢复事件本身不申请或翻译。
+    expect(requestAccess).toHaveBeenCalledTimes(1);expect(requestAccess).toHaveBeenCalledWith('microsoft')
+    expect(readAccess).toHaveBeenCalledTimes(reads);expect(getTab).toHaveBeenCalledTimes(queries)
+    await current;await drain();expect(commands()).toHaveLength(0)
+    win.dispatchEvent(hide);await drain();expect(handoff).toHaveBeenCalledTimes(exits+2)
+    app.unmount();await drain();expect(handoff).toHaveBeenCalledTimes(exits+2)
+    const closedQueries=getTab.mock.calls.length,closedReads=readAccess.mock.calls.length
+    expect(state.pageExited).toBe(true)
+    win.dispatchEvent(show);await drain()
+    expect(state.pageExited).toBe(true)
+    expect(getTab).toHaveBeenCalledTimes(closedQueries);expect(readAccess).toHaveBeenCalledTimes(closedReads)
+    expect(requestAccess).toHaveBeenCalledTimes(1);expect(commands()).toHaveLength(0)
+  })
   it('P2 denial updates after language switch and delayed lazy bundle without another request',async()=>{
     localized=true;await safariFree();requestAccess.mockResolvedValue(false);await eventOf(button('page-translation'))();await drain()
     expect(state.freePoolStatus).toBe(catalogs['zh-CN']['safari.freePool.requestDenied']);const reads=readAccess.mock.calls.length

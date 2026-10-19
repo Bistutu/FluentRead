@@ -1157,6 +1157,7 @@ onUnmounted(() => {
   persistOnPageExit();
   pageExited.value = true;
   window.removeEventListener('pagehide', saveOnPageHide);
+  window.removeEventListener('pageshow', resumeOnPageShow);
   configEditor.dispose();
   browser.runtime.onMessage.removeListener(handlePageResultMessage);
   document.removeEventListener('keydown', handlePopupKeydown);
@@ -1172,7 +1173,15 @@ function saveOnPageHide() {
   persistOnPageExit();
   pageExited.value = true;
 }
+function resumeOnPageShow() {
+  if (!pageExited.value) return;
+  pageExitSaveStarted = false;
+  pageExited.value = false;
+  // 新生命周期由已有 active watch 重读权限，站点只在本次恢复读取；旧 capture 仍已失效。
+  if (popupContext.active.value) void hydrateCurrentSite();
+}
 window.addEventListener('pagehide', saveOnPageHide);
+window.addEventListener('pageshow', resumeOnPageShow);
 
 // Firefox 可能同时触发 pagehide 和 unmounted；只执行一次关闭交接。
 // 乐观配置相等不代表补丁已交给后台：先捕获尚未触发 watcher 的修改，
