@@ -854,6 +854,68 @@ describe('explicit selection sentence collection', () => {
     });
 });
 
+describe('selection action notice viewport ownership', () => {
+    it.each([
+        ['open-vocabulary', '查看', 'settings-vocabulary'],
+        ['open-local-tts', '设置', 'settings-selection'],
+    ] as const)('reserves the %s action in short visible viewports and dispatches only its existing action', async (action, label, section) => {
+        const fixture = mountSelection(false, undefined, 'safari', true);
+        const port = fixture.renderPort!;
+        const notice = 'A long notice that may wrap in the narrow visible viewport. '.repeat(100);
+        fixture.state.showNotice(notice, action);
+        await Vue.nextTick();
+        let toast = port.root.querySelector('.fr-action-toast') as HTMLElement;
+        expect(toast.style.getPropertyValue('left')).toBe('982px');
+        expect(toast.style.getPropertyValue('top')).toBe('782px');
+        const viewport = {width: 296, height: 200, offsetLeft: 80, offsetTop: 240};
+        // innerHeight may already shrink while VisualViewport retains a nonzero layout offset.
+        Object.assign(fixture.window, {innerWidth: 390, innerHeight: 200, visualViewport: viewport});
+        fixture.state.touchInteraction = true;
+        const resize = [...fixture.listeners.get('window:resize')!];
+        expect(resize).toHaveLength(1); // reuse the component's existing viewport observer
+        resize.forEach(listener => listener({}));
+        await vi.advanceTimersByTimeAsync(16); await Vue.nextTick();
+        toast = port.root.querySelector('.fr-action-toast') as HTMLElement;
+        expect(toast.style.getPropertyValue('left')).toBe('364px');
+        expect(toast.style.getPropertyValue('top')).toBe('428px');
+        expect(toast.style.getPropertyValue('max-width')).toBe('272px');
+        expect(toast.style.getPropertyValue('max-height')).toBe('176px');
+        expect(toast.style.getPropertyValue('padding-block')).toBe('9px');
+        expect(toast.style.getPropertyValue('--fr-notice-content-height')).toBe('158px');
+        for (const [height, padding, contentHeight, alignment] of [
+            [32, 0, 32, 'flex-start'], [44, 0, 44, 'center'], [58, 7, 44, 'center'],
+        ] as const) {
+            Object.assign(viewport, {height, offsetTop: 320});
+            resize.forEach(listener => listener({}));
+            await vi.advanceTimersByTimeAsync(16); await Vue.nextTick();
+            expect(toast.style.getPropertyValue('top')).toBe(`${320 + height}px`);
+            expect(toast.style.getPropertyValue('max-height')).toBe(`${height}px`);
+            expect(toast.style.getPropertyValue('padding-block')).toBe(`${padding}px`);
+            expect(toast.style.getPropertyValue('--fr-notice-content-height')).toBe(`${contentHeight}px`);
+            expect(toast.style.getPropertyValue('align-items')).toBe(alignment);
+            expect(toast.querySelector('span')!.textContent).toBe(notice);
+        }
+        expect(fixture.browser.runtime.sendMessage.mock.calls.filter(([message]) => message.type === 'openOptionsPage')).toHaveLength(0);
+        const button = toast.querySelector('button')!;
+        expect(button.textContent).toBe(label);
+        await port.click(button); await Vue.nextTick();
+        expect(fixture.browser.runtime.sendMessage.mock.calls.filter(([message]) => message.type === 'openOptionsPage'))
+            .toEqual([[{type: 'openOptionsPage', section}]]);
+        expect(port.root.querySelector('.fr-action-toast')).toBeNull();
+        expect(fixture.translateText).not.toHaveBeenCalled();
+        fixture.state.showNotice('Another notice.', action); await Vue.nextTick();
+        const lastViewport = fixture.state.viewportSize;
+        fixture.unmount();
+        expect([...fixture.listeners.values()].every(listeners => listeners.size === 0)).toBe(true);
+        Object.assign(viewport, {height: 100, offsetTop: 300});
+        resize.forEach(listener => listener({}));
+        await vi.advanceTimersByTimeAsync(2601);
+        expect(fixture.state.viewportSize).toBe(lastViewport);
+        expect(vi.getTimerCount()).toBe(0);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+});
+
 describe('SelectionTranslator lifecycle after extension reload', () => {
     it.each(['normal', 'runtime removed', 'event removed', 'removeListener throws'] as const)(
         'cleans up all selection resources when %s', async failure => {

@@ -1,5 +1,6 @@
 <!--
  * @file src/features/selection-translation/ui/SelectionTranslator.vue
+ * 通知布局：收藏与语音设置通知沿用安全可见视口订阅，触摸动作保留完整命中区；通知不增加独立监听或请求。
  * 文件职责：实现划词翻译的主要页面组件，覆盖选区捕获、触摸原生句柄稳定等待、避开原生菜单上下区域的行侧入口、可见视口与安全区定位、后台及宿主恢复来源校验、图标/小点/悬停/快捷键/仅右键菜单/直接弹出、原生菜单可信选区恢复与重复请求复用、翻译与词卡展示、免费 AI 讲解的显式启用、朗读、收藏选中的单词/表达/句子、双语分享卡片、鉴权服务配置入口、重试和关闭。
  * 主要内容：相同译文保留原文且不重复展示；Firefox 触摸入口为原生手柄保留独立侧距，以绑定来源快照的可信触摸处理缺少 click 的情况并取消拖动；Safari/Firefox 触摸入口成功开卡后保留当前快照并清空同一原生选区，异步空选区不误关卡片；组件管理可信手势、已关闭选区与选择丢失宽限、继续阅读或复制原文时自动收起、请求 token、按既有错误种类显示有限提示并仅为当前鉴权失败提供通用设置入口、行内代码保护与纯文本安全渲染、按标签页页面缩放补偿的弹窗定位、空白拖动、边角缩放、主题及可换行的多语言标题；普通译文先于完整原文，单行可横向滚动的导航与右侧固定分享、收藏、关闭及更多操作把高度留给正文，次级菜单按可见窗口覆盖显示；指针移动按帧合并并在结束时提交最后位置，已定位卡片不重复读取选区几何；富文本 UTF-16 跟读偏移一次计算并复用；默认过滤同语言选区，按配置开放中英反向入口，翻译方向始终按现有语言配置判断；统一卡片默认显示翻译并以同一导航进入学习；首次定位后保持弹窗锚点，手动尺寸下内容与播放状态变化只影响内部布局；闲置语音栏不占空间，自动卡生成与播放期间用独立临时高度保持外框，停止恢复自然尺寸；学习短回答自然收拢、长回答受高度上限约束，完整原文和译文按需对照并允许翻译继续完成；单词先展示原文与可用词卡，再补充辅助释义，以紧凑状态提示等待、未命中与网络失败；关闭或更换选区取消等待并阻止旧响应覆盖新结果；区分语音生成和播放，按实际音频时钟或浏览器词边界显示完整词高亮，并提供真实音频时间与前后 5 秒跳转。
  * 材料关联：主动收藏与阅读时捕获当前选区的稳定来源和文本位置，词书真实保存后才关联材料引用，隐私窗口不采集。
@@ -168,7 +169,7 @@
       <div v-for="edge in popupResizeEdges" :key="edge" class="fr-popup-resize-handle" :class="`fr-popup-resize-${edge}`" :data-resize-edge="edge" aria-hidden="true" />
     </section>
 
-    <div v-if="noticeMessage" class="fr-action-toast" :class="{ 'fr-dark-theme': isDarkTheme }" role="status"><span>{{ noticeMessage }}</span><button v-if="noticeAction === 'open-vocabulary'" type="button" @click="openVocabularyBook">查看</button><button v-else-if="noticeAction === 'open-local-tts'" type="button" @click="openLocalTtsSettings">设置</button></div>
+    <div v-if="noticeMessage" class="fr-action-toast" :class="{ 'fr-dark-theme': isDarkTheme }" :style="noticeViewportStyle" role="status"><span>{{ noticeMessage }}</span><button v-if="noticeAction === 'open-vocabulary'" type="button" @click="openVocabularyBook">查看</button><button v-else-if="noticeAction === 'open-local-tts'" type="button" @click="openLocalTtsSettings">设置</button></div>
     <div v-else-if="copySuccess" class="fr-copy-success-toast" :class="{ 'fr-dark-theme': isDarkTheme }" role="status">{{ copySuccessMessage }}</div>
   </div>
 </template>
@@ -289,6 +290,21 @@ const popupPlacement = ref<'top' | 'bottom'>('top');
 const pageZoom = ref(1);
 const viewportSize = ref(getSafeVisualViewportRect());
 const touchInteraction = ref(false);
+const noticeViewportStyle = computed(() => {
+  const viewport = viewportSize.value, gap = touchInteraction.value ? 12 : 18;
+  // 44px 动作加两侧9px内边距；先收外边距，极矮时再收内边距，不压小动作。
+  const gapY = Math.min(gap, Math.max(0, (viewport.height - 62) / 2));
+  const height = Math.max(1, viewport.height - gapY * 2), padding = Math.min(9, Math.max(0, (height - 44) / 2));
+  // 与主卡使用相同的布局坐标；不假设键盘出现后的 innerHeight 仍是布局视口高度。
+  return {
+    left: `${viewport.right - gap}px`, top: `${viewport.bottom - gapY}px`,
+    right: 'auto', bottom: 'auto', transform: 'translate(-100%, -100%)',
+    maxWidth: `${Math.max(1, viewport.width - gap * 2)}px`,
+    maxHeight: `${height}px`, paddingBlock: `${padding}px`,
+    '--fr-notice-content-height': `${Math.max(1, height - padding * 2)}px`,
+    alignItems: height < 44 ? 'flex-start' : 'center',
+  };
+});
 const popupScale = computed(() => 1 / pageZoom.value);
 const tooltipScaleStyle = computed(() => ({
   transform: `scale(${popupScale.value})`,
@@ -2715,8 +2731,10 @@ onBeforeUnmount(() => {
 .fr-playing-status button:focus-visible { outline:2px solid currentColor; outline-offset:2px; }
 .fr-playing-status .fr-seek-btn:disabled { opacity:.35; cursor:default; }
 .fr-copy-success-toast { position: fixed; right: 18px; bottom: 18px; padding: 9px 13px; border-radius: 9px; background: #2c2c35; color: #fff; font-size: 12px; box-shadow: 0 6px 18px rgba(0, 0, 0, .18); }
-.fr-action-toast { position: fixed; right: 18px; bottom: 18px; display: flex; align-items: center; gap: 10px; padding: 9px 13px; border-radius: 9px; background: #2c2c35; color: #fff; font-size: 12px; box-shadow: 0 6px 18px rgba(0, 0, 0, .18); }
-.fr-action-toast button { padding: 0; border: 0; color: #ffc2d5; background: transparent; cursor: pointer; font: inherit; font-weight: 700; }
+.fr-action-toast { position: fixed; right: 18px; bottom: 18px; box-sizing: border-box; display: flex; align-items: center; gap: 10px; width: max-content; overflow: auto; padding: 9px 13px; border-radius: 9px; background: #2c2c35; color: #fff; font-size: 12px; box-shadow: 0 6px 18px rgba(0, 0, 0, .18); }
+.fr-action-toast > span { min-width: 0; max-height: var(--fr-notice-content-height); overflow: auto; overflow-wrap: anywhere; }
+.fr-action-toast button { flex: none; padding: 0; border: 0; color: #ffc2d5; background: transparent; cursor: pointer; font: inherit; font-weight: 700; }
+.fr-action-toast button:focus-visible { outline: 2px solid currentColor; outline-offset: -2px; }
 .fr-dark-theme { border-color: #44444e; background: rgba(40, 40, 48, .98); color: #f1f1f4; }
 .fr-reading-tooltip.fr-dark-theme { background: #282830; }
 .fr-dark-theme .fr-action-btn:hover, .fr-dark-theme .fr-close-btn:hover { background: #50505b; color: #fff; }
@@ -2744,15 +2762,15 @@ onBeforeUnmount(() => {
 .fr-touch-selection .fr-selection-indicator { width:44px; height:44px; border-radius:12px; touch-action:manipulation; }
 .fr-touch-selection .fr-selection-indicator--dot { background:transparent; box-shadow:none; }
 .fr-touch-selection .fr-selection-indicator--dot::after { content:''; position:absolute; inset:18px; border-radius:50%; background:#ef4b86; }
-.fr-touch-selection .fr-translation-tooltip button { min-width:44px; min-height:44px; touch-action:manipulation; }
+.fr-touch-selection .fr-translation-tooltip button, .fr-touch-selection .fr-action-toast button { min-width:44px; min-height:44px; touch-action:manipulation; }
 .fr-touch-selection .fr-study-navigation { touch-action:none; }
 .fr-touch-selection .fr-study-toolbar { touch-action:pan-x; }
 .fr-touch-selection .fr-popup-resize-handle { display:none; }
 .fr-touch-selection .fr-playing-status { height:auto; min-height:52px; flex-wrap:wrap; }
 .fr-touch-selection .fr-tooltip-content { -webkit-overflow-scrolling:touch; }
-.fr-touch-selection .fr-copy-success-toast, .fr-touch-selection .fr-action-toast { right:max(12px, env(safe-area-inset-right)); bottom:max(12px, env(safe-area-inset-bottom)); }
+.fr-touch-selection .fr-copy-success-toast { right:max(12px, env(safe-area-inset-right)); bottom:max(12px, env(safe-area-inset-bottom)); }
 @media (any-pointer: coarse) {
-  .fr-translation-tooltip button { min-width:44px; min-height:44px; touch-action:manipulation; }
+  .fr-translation-tooltip button, .fr-action-toast button { min-width:44px; min-height:44px; touch-action:manipulation; }
   .fr-playing-status { height:auto; min-height:52px; flex-wrap:wrap; }
 }
 @media (prefers-reduced-motion: reduce) { .fr-selection-indicator, .fr-loading-spinner { transition: none; animation: none; } }
