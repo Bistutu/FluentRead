@@ -1,7 +1,7 @@
 <!--
  @file src/app/popup/PopupApp.vue
  文件职责：实现浏览器 Popup 的主交互界面，连接当前标签页状态、翻译配置、可插拔皮肤、功能抽屉和高频操作，让现场开关与显示操作保持简短，将长期偏好引导到对应设置页。
- 主要内容：翻译卡片右下角的双语/仅译文图标与网站规则同行，模式回调随服务和操作变化失效；品牌官网入口保留稳定点击区域，内部图标在悬停和键盘聚焦时缓慢单次摇摆并遵循动画偏好，停留后显示可用 Escape 关闭的官网提示；复用真实全文完成状态呈现首次翻译指引和就地自助诊断，配置修复定位当前服务，本地报告由用户预览并手动导出；在配置 hydration 后汇总翻译服务，直接展示网页默认服务与适用的配置模型；翻译与局部同排，主操作用短标题合并平台快捷键并保留加载状态，长组合在悬停提示中完整显示，站点开关保留独立按钮；赞赏码在当前弹窗内切换放大与还原，关闭后重置；悬停、划词与图片抽屉优先展示开关和操作示意，首次单屏语言选择独占内容，保存后立即显示主菜单；页面操作、抽屉和导航绑定活跃会话，等待期间独占请求，关闭和配置切换使旧回复失效；网站规则写前复验标签页，等待后台确认并呈现保存忙碌、暂停与失败反馈；Safari 免费池精确授权，撤权取消待发操作，授权事件合并刷新，错误随语言资源更新；打开的实际 teleport 抽屉复用平台可见视口订阅跟随键盘与缩放，极矮区域由同一订阅派生紧凑布局，整页遮罩保持背景拦截，可见高度扩大时仅修正当前聚焦服务搜索被吸顶标题遮住的外框，关闭、缓存失活和卸载立即释放，根画布保持固有尺寸。
+ 主要内容：翻译卡片右下角的双语/仅译文图标与网站规则同行，模式回调随服务和操作变化失效；品牌官网入口保留稳定点击区域，内部图标在悬停和键盘聚焦时缓慢单次摇摆并遵循动画偏好，停留后显示可用 Escape 关闭的官网提示；复用真实全文完成状态呈现首次翻译指引和就地自助诊断，配置修复定位当前服务，本地报告由用户预览并手动导出；在配置 hydration 后汇总翻译服务，直接展示网页默认服务与适用的配置模型；翻译与局部同排，主操作用短标题合并平台快捷键并保留加载状态，长组合在悬停提示中完整显示，站点开关保留独立按钮；赞赏码在当前弹窗内切换放大与还原，关闭后重置；悬停、划词与图片抽屉优先展示开关和操作示意，首次单屏语言选择独占内容，保存后立即显示主菜单；页面操作、抽屉和导航绑定活跃会话，等待期间独占请求，关闭和配置切换使旧回复失效；网站规则写前复验标签页，等待后台确认并呈现保存忙碌、暂停与失败反馈；Safari 免费池精确授权，焦点复查保留已就绪按钮，点击接管旧读取并重新确认实际许可，撤权取消待发操作，授权事件合并刷新，错误随语言资源更新；打开的实际 teleport 抽屉复用平台可见视口订阅跟随键盘与缩放，极矮区域由同一订阅派生紧凑布局，整页遮罩保持背景拦截，可见高度扩大时仅修正当前聚焦服务搜索被吸顶标题遮住的外框，关闭、缓存失活和卸载立即释放，根画布保持固有尺寸。
  模块边界：组件编排 UI、浏览器导航事件与生命周期；页内面板通过授权来源固定发起网页，页面消息归属由 pageActions 管理，不实现翻译 provider、缓存存储或 content 挂载；公共配置由 services/config 管理；配置草稿复用共享编辑会话，保留 post 合并和关闭补丁交接。
 -->
 <!-- Popup 页面归 app 层所有；WXT 入口只负责调用挂载函数。 -->
@@ -824,28 +824,32 @@ const freePoolStatus = computed(() => {
   const provider = FREE_TRANSLATION_PROVIDERS.find(item => item.id === access?.preferredGrant?.id);
   return t('safari.freePool.needsAccess', {provider: provider ? translateLegacy(provider.label) : ''});
 });
-function refreshFreePoolAccess(clearError = true): void {
+function refreshFreePoolAccess(clearError = true, preserveReady = false): void {
   const generation = ++freePoolGeneration, current = popupContext.capture();
+  const shouldRead = popupContext.active.value && safariFreePool.value;
+  const keepReady = preserveReady && shouldRead && freePoolAccess.value !== null;
   freePoolReadController?.abort();freePoolReadController = undefined;
-  freePoolAccess.value = null;if (clearError) freePoolError.value = '';freePoolBusy.value = false;freePoolRefreshQueued = false;
-  freePoolLoading.value = popupContext.active.value && safariFreePool.value;
-  if (!freePoolLoading.value) return;
+  // 焦点回程只复查已有快照，不在 pointerdown 与 click 之间禁用已经就绪的按钮。
+  if (!keepReady) freePoolAccess.value = null;
+  if (clearError) freePoolError.value = '';freePoolBusy.value = false;freePoolRefreshQueued = false;
+  freePoolLoading.value = shouldRead && !keepReady;
+  if (!shouldRead) return;
   const controller = new AbortController();freePoolReadController = controller;
   void waitForSettingsTask(readFreePoolAccess(config.value.freeTranslationOrder, {signal: controller.signal}), controller.signal, 10_000, t('safari.freePool.error')).then(access => {
     if (current() && generation === freePoolGeneration) freePoolAccess.value = access;
   }).catch(() => {
-    if (current() && generation === freePoolGeneration) freePoolError.value = 'safari.freePool.error';
+    if (current() && generation === freePoolGeneration) {freePoolAccess.value = null;freePoolError.value = 'safari.freePool.error';}
   }).finally(() => {if (generation === freePoolGeneration) freePoolLoading.value = false;});
 }
 watch(() => [popupContext.active.value, popupContext.revision.value, safariFreePool.value, config.value.freeTranslationOrder.join('\0')], () => refreshFreePoolAccess(), {flush: 'sync', immediate: true});
-function freePoolAccessChanged(change: 'added' | 'removed' = 'added'): void {
+function freePoolAccessChanged(change: 'added' | 'removed' = 'added', preserveReady = false): void {
   // 自己授权时的 added/focus 不能淘汰最初点击；removed 始终取消迟到的继续操作。
   if (change === 'added' && freePoolBusy.value) {freePoolRefreshQueued = true;return;}
   if (change === 'removed' && freePoolBusy.value) pageActions.invalidate();
-  refreshFreePoolAccess();
+  refreshFreePoolAccess(true, change === 'added' && preserveReady);
 }
-function freePoolPageFocused(): void {freePoolAccessChanged();}
-function freePoolPageVisible(): void {if (document.visibilityState === 'visible') freePoolAccessChanged();}
+function freePoolPageFocused(): void {freePoolAccessChanged('added', true);}
+function freePoolPageVisible(): void {if (document.visibilityState === 'visible') freePoolPageFocused();}
 onMounted(() => {
   if (browserCapabilities.browser !== 'safari') return;
   stopFreePoolEvents = subscribeFreeProviderAccessChanges(freePoolAccessChanged);
@@ -886,33 +890,32 @@ function runPageWithFreePoolAccess(action: 'toggle' | 'section' | 'retry'): Prom
   if (!pageContext.active.value || !config.value.on || translating.value || pageState.savingRule || currentSiteExtensionDisabled.value
       || freePoolBusy.value || freePoolLoading.value) return;
   const access = freePoolAccess.value;
-  if (access?.grantedIds.length) {
-    // 已授权路径同样持有待发页面操作，撤权时不能让旧标签页查询继续发送翻译。
-    const generation = freePoolGeneration;
-    freePoolBusy.value = true;
-    return (async () => {try {await run();} finally {finishFreePoolAction(generation);}})();
-  }
-  const provider = access?.preferredGrant;
-  if (!provider) {freePoolError.value = 'safari.freePool.error';return;}
-  const current = pageContext.capture(), generation = freePoolGeneration, owner = config.value, render = pageRenderRevision.value;
+  const provider = access?.grantedIds.length ? undefined : access?.preferredGrant;
+  if (!access || (!access.grantedIds.length && !provider)) {freePoolError.value = 'safari.freePool.error';return;}
+  const current = pageContext.capture(), owner = config.value, render = pageRenderRevision.value;
+  // 点击持有独立读取代次；旧焦点查询的成功、失败和 finally 都不能接管本次操作。
+  freePoolReadController?.abort();
+  const generation = ++freePoolGeneration, controller = new AbortController();freePoolReadController = controller;
   const identity = [owner.service, owner.from, owner.to, owner.freeTranslationOrder.join('\0'), pageState.tabId, pageState.url];
   const owns = () => current() && generation === freePoolGeneration && config.value === owner && render === pageRenderRevision.value
     && identity.every((value, index) => value === [owner.service, owner.from, owner.to, owner.freeTranslationOrder.join('\0'), pageState.tabId, pageState.url][index]);
-  let request: Promise<boolean>;
+  let request: Promise<boolean> | undefined;
   // request 必须在实际 click 中同步调用；此处之前不能 await、查询标签页或转交 background。
-  freePoolBusy.value = true;freePoolError.value = '';
-  try {request = requestFreeProviderAccess(provider.id);} catch {
+  freePoolBusy.value = true;freePoolLoading.value = false;freePoolError.value = '';
+  try {if (provider) request = requestFreeProviderAccess(provider.id);} catch {
     if (owns()) {freePoolError.value = 'safari.freePool.error';freePoolBusy.value = false;}
     return;
   }
   return (async () => {
     try {
-      if (!await request) {if (owns()) freePoolError.value = 'safari.freePool.requestDenied';return;}
+      if (request && !await request) {if (owns()) freePoolError.value = 'safari.freePool.requestDenied';return;}
       if (!owns()) return;
-      const refreshed = await waitForSettingsTask(readFreePoolAccess(owner.freeTranslationOrder, {signal: freePoolReadController!.signal}), freePoolReadController!.signal, 10_000, t('safari.freePool.error'));
+      // 展示中的旧 grant 不授权翻译；先读当前许可，失败时也不继续展示旧 grant。
+      freePoolAccess.value = null;
+      const refreshed = await waitForSettingsTask(readFreePoolAccess(owner.freeTranslationOrder, {signal: controller.signal}), controller.signal, 10_000, t('safari.freePool.error'));
       if (!owns()) return;
       freePoolAccess.value = refreshed;
-      if (!refreshed.grantedIds.includes(provider.id)) {freePoolError.value = 'safari.freePool.requestDenied';return;}
+      if (provider ? !refreshed.grantedIds.includes(provider.id) : !refreshed.grantedIds.length) {freePoolError.value = 'safari.freePool.requestDenied';return;}
       freePoolError.value = '';
       // pageActions 仍复验实际标签页；授权等待中导航不能把旧翻译意图移交到新网页。
       return await run();
@@ -923,7 +926,7 @@ function runPageWithFreePoolAccess(action: 'toggle' | 'section' | 'retry'): Prom
 function finishFreePoolAction(generation: number): void {
   if (generation !== freePoolGeneration) return;
   freePoolBusy.value = false;
-  if (freePoolRefreshQueued) refreshFreePoolAccess(false);
+  if (freePoolRefreshQueued) refreshFreePoolAccess(false, true);
 }
 const donationRevision = ref(0);
 watch(donationVisible, () => {donationRevision.value += 1}, {flush: 'sync'});

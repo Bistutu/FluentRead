@@ -1,7 +1,7 @@
 /**
  * @file tests/popupAppLifecycle.test.ts
  * 文件职责：执行实际 Popup 与站点按钮客户端模板，验证生命周期、页面竞态、缓存事件及焦点归属。
- * 主要内容：保持真实 Vue/KeepAlive、缓存和诊断模板，受控浏览器、持久化及展示端口覆盖延迟回复、失活、消息来源、诊断动作失败、状态切换、抽屉和弹窗；真实服务选择子组件以布局端口验证键盘恢复时仅修正所属 scroller 的搜索外框；网站和显示模式保存执行真实共享 store，验证同 tick 草稿捕获、关闭交接与在途确认的字段归属。
+ * 主要内容：保持真实 Vue/KeepAlive、缓存和诊断模板，受控浏览器、持久化及展示端口覆盖延迟回复、失活、消息来源、诊断动作失败、状态切换、抽屉和弹窗；Safari 授权覆盖焦点复查与首次点击、旧许可重验和迟到读取隔离；真实服务选择子组件以布局端口验证键盘恢复时仅修正所属 scroller 的搜索外框；网站和显示模式保存执行真实共享 store，验证同 tick 草稿捕获、关闭交接与在途确认的字段归属。
  * 模块边界：Linkedom 保留节点/事件树，动画、Element Plus、外部存储和浏览器为受控端口，普通 UI 用例控制保存端口；真实样式与浏览器流程另行验证。
  */
 import {createRequire} from 'node:module'
@@ -350,6 +350,50 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
     expect(requestAccess).toHaveBeenCalledTimes(1);expect(readAccess).toHaveBeenCalledTimes(before);expect(commands()).toHaveLength(0)
     readAccess.mockResolvedValue({supported:true,grantedIds:['microsoft'],preferredGrant:null});gate.resolve(true);await pending;await drain()
     expect(commands().map(call=>call[1].action)).toEqual(['fullPage']);expect(state.freePoolBusy).toBe(false)
+  })
+  it.each([{event:'focus',late:'success'},{event:'visible',late:'reject'}] as const)('Safari ready 按下与点击之间的 $event 重查不吞首次同步授权，旧读取 $late 不回写新上下文',async({event,late})=>{
+    await safariFree();const refresh=deferred<any>(),grant=deferred<boolean>()
+    readAccess.mockReturnValueOnce(refresh.promise);requestAccess.mockReturnValue(grant.promise)
+    const queries=getTab.mock.calls.length,reads=readAccess.mock.calls.length
+    const trigger=button('page-translation');expect(trigger.hasAttribute('disabled')).toBe(false)
+    trigger.dispatchEvent(new win.Event('pointerdown',{bubbles:true}))
+    if(event==='focus')win.dispatchEvent(new win.Event('focus'))
+    else{Object.defineProperty(document,'visibilityState',{configurable:true,value:'visible'});document.dispatchEvent(new win.Event('visibilitychange'))}
+    await drain()
+    expect(readAccess).toHaveBeenCalledTimes(reads+1);expect(requestAccess).not.toHaveBeenCalled();expect(commands()).toHaveLength(0)
+    const enabledAtClick=!button('page-translation').hasAttribute('disabled'),pending=eventOf(button('page-translation'))()
+    // 同时验证真实模板的 disabled 和处理函数；Linkedom 不模拟原生 disabled 对 click 的抑制。
+    expect(requestAccess).toHaveBeenCalledTimes(1);expect(requestAccess).toHaveBeenCalledWith('microsoft');expect(enabledAtClick).toBe(true)
+    expect(readAccess).toHaveBeenCalledTimes(reads+1);expect(getTab).toHaveBeenCalledTimes(queries);expect(commands()).toHaveLength(0)
+    grant.resolve(false);await pending;await drain()
+    expect(commands()).toHaveLength(0);expect(state.freePoolError).toBe('safari.freePool.requestDenied')
+    state.config.service='google';await drain();expect(state.freePoolAccess).toBeNull();expect(state.freePoolError).toBe('')
+    if(late==='success')refresh.resolve({supported:true,grantedIds:['microsoft'],preferredGrant:null});else refresh.reject(Error('old focus read failed'))
+    await drain();expect(state.freePoolAccess).toBeNull();expect(state.freePoolLoading).toBe(false);expect(state.freePoolError).toBe('')
+    expect(requestAccess).toHaveBeenCalledTimes(1);expect(commands()).toHaveLength(0)
+  })
+  it.each(['revoked','rejects'] as const)('Safari 旧 grant 点击后必须 fresh read，%s 不发送翻译也不异步补申请',async result=>{
+    await safariFree(['microsoft']);const background=deferred<any>(),fresh=deferred<any>()
+    const reads=readAccess.mock.calls.length,queries=getTab.mock.calls.length
+    readAccess.mockReturnValueOnce(background.promise).mockReturnValueOnce(fresh.promise)
+    win.dispatchEvent(new win.Event('focus'));await drain()
+    expect(state.freePoolAccess.grantedIds).toEqual(['microsoft']);expect(button('page-translation').hasAttribute('disabled')).toBe(false)
+    const pending=eventOf(button('page-translation'))()
+    expect(readAccess).toHaveBeenCalledTimes(reads+2);expect(getTab).toHaveBeenCalledTimes(queries);expect(requestAccess).not.toHaveBeenCalled();expect(commands()).toHaveLength(0)
+    background.resolve({supported:true,grantedIds:['google'],preferredGrant:null});await drain()
+    expect(state.freePoolAccess).toBeNull();expect(state.freePoolBusy).toBe(true);expect(commands()).toHaveLength(0)
+    if(result==='revoked')fresh.resolve({supported:true,grantedIds:[],preferredGrant:{id:'microsoft',origins:[]}});else fresh.reject(Error('current access read failed'))
+    await pending;await drain()
+    expect(state.freePoolError).toBe(result==='revoked'?'safari.freePool.requestDenied':'safari.freePool.error')
+    expect(state.freePoolAccess?.grantedIds||[]).toEqual([]);expect(state.freePoolBusy).toBe(false);expect(state.freePoolLoading).toBe(false)
+    expect(requestAccess).not.toHaveBeenCalled();expect(commands()).toHaveLength(0)
+  })
+  it('Safari ready 焦点复查失败清空旧许可并明确反馈，不自动申请或翻译',async()=>{
+    await safariFree(['microsoft']);const refresh=deferred<any>();readAccess.mockReturnValueOnce(refresh.promise)
+    win.dispatchEvent(new win.Event('focus'));await drain();expect(state.freePoolAccess.grantedIds).toEqual(['microsoft'])
+    refresh.reject(Error('focus access read failed'));await drain()
+    expect(state.freePoolAccess).toBeNull();expect(state.freePoolLoading).toBe(false);expect(state.freePoolError).toBe('safari.freePool.error')
+    expect(requestAccess).not.toHaveBeenCalled();expect(commands()).toHaveLength(0)
   })
   it('P2 removal during grant discards late granted result and retains explicit retry',async()=>{
     await safariFree();const gate=deferred<boolean>();requestAccess.mockReturnValue(gate.promise)
