@@ -1,7 +1,7 @@
 /**
  * @file src/features/document-translation/ui/useDocumentTasks.ts
  * 文件职责：持有文档阅读页面的任务队列和当前任务选择，为阅读、校订、翻译与导出提供同一份响应式任务状态。
- * 主要内容：定义每份文件的译文、人工确认、修订、导出和失败状态，以可写 computed 将当前任务字段交给页面；没有打开文件时使用独立空状态，切换不复制译文或修订，清空后不保留旧任务引用。
+ * 主要内容：定义每份文件的译文、人工确认、重译缓存策略、修订、导出和失败状态，以可写 computed 将当前任务字段交给页面；没有打开文件时使用独立空状态，切换不复制译文或修订，清空后不保留旧任务引用。
  * 模块边界：只管理文档 feature 的页面模型，不发起网络、OCR、解析、历史保存或下载；异步提交资格和资源释放由任务运行时与页面生命周期负责，配置草稿独立管理。
  */
 import {computed, reactive, ref, type WritableComputedRef} from 'vue';
@@ -18,6 +18,8 @@ export interface DocumentTaskState {
     downloaded: number;
     error: string;
     batchTranslation: boolean;
+    /** 用户确认的重译持续跳过旧缓存，暂停、失败和切换文件时保留当前任务的选择。 */
+    bypassCache: boolean;
 }
 
 export interface DocumentQueueItem extends DocumentTaskState {
@@ -35,7 +37,7 @@ export interface DocumentQueueItem extends DocumentTaskState {
 export function createDocumentTaskState(): DocumentTaskState {
     return {
         document: null, translations: [], confirmedTranslationIds: [], fingerprint: '',
-        state: 'ready', revision: 0, downloaded: 0, error: '', batchTranslation: true,
+        state: 'ready', revision: 0, downloaded: 0, error: '', batchTranslation: true, bypassCache: false,
     };
 }
 
@@ -69,5 +71,6 @@ export function useDocumentTasks() {
         confirmedTranslationIds: field('confirmedTranslationIds'), taskFingerprint: field('fingerprint'),
         runState: field('state'), editRevision: field('revision'), downloadedRevision: field('downloaded'),
         errorMessage: field('error'), documentBatchTranslation: field('batchTranslation'),
+        bypassCache: field('bypassCache'),
     };
 }

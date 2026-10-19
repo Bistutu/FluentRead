@@ -30,6 +30,29 @@ beforeEach(() => {
 });
 
 describe('document translation API', () => {
+    it.each(['microsoft', 'openai'])('为 %s 固定本次缓存策略，未指定时保留客户端默认值', async service => {
+        mocks.defaultService = service;
+        const segments = Array.from({length: 17}, (_, id) => ({id, source: `Source ${id}`}));
+        for (const useCache of [undefined, false, true]) {
+            mocks.translateText.mockClear();
+            mocks.translateTextBatch.mockClear();
+            const options = {fileName: 'cache-policy.pdf', useCache};
+            const translate = async (origins: string | string[]) => {
+                options.useCache = useCache === false;
+                return Array.isArray(origins) ? origins.map(origin => `T:${origin}`) : `T:${origins}`;
+            };
+            mocks.translateText.mockImplementation(translate);
+            mocks.translateTextBatch.mockImplementation(translate);
+            expect(await translateDocumentSegments(segments, options)).toEqual(segments.map(({source}) => `T:${source}`));
+            const calls = (service === 'microsoft' ? mocks.translateTextBatch : mocks.translateText).mock.calls;
+            expect(calls.length).toBeGreaterThan(1);
+            for (const call of calls) {
+                if (useCache === undefined) expect(call[2]).not.toHaveProperty('useCache');
+                else expect(call[2]).toMatchObject({useCache});
+            }
+        }
+    });
+
     it.each(['microsoft', 'openai'])('默认服务 %s 在整份文档期间保持不变', async (service) => {
         mocks.defaultService = service;
         const observed: string[] = [];
@@ -316,6 +339,20 @@ describe('document translation transient AI batching', () => {
     const segments = Array.from({length: 53}, (_, id) => ({id, source: `Paragraph ${id}`}));
     const translated = (sources: string[]) => sources.map(source => `译 ${source}`);
     const protocolError = () => Object.assign(new Error('unsupported slots'), {code: 'AI_MULTI_SEGMENT_RESPONSE_INVALID'});
+
+    it('显式重译在槽协议失败的逐段补译及后续逐段请求中继续跳过缓存', async () => {
+        mocks.defaultService = 'openai';
+        mocks.translateTextBatch.mockRejectedValueOnce(protocolError());
+        mocks.translateText.mockImplementation(async source => `译 ${source}`);
+        const short = segments.slice(0, 4);
+        const result = await createAITranslator()(short, {fileName: 'retry.pdf', useCache: false,
+            batchLimits: {items: 2}, batchConcurrency: 1});
+        expect(result).toEqual(translated(short.map(segment => segment.source)));
+        expect(mocks.translateTextBatch).toHaveBeenCalledOnce();
+        expect(mocks.translateTextBatch.mock.calls[0][2]).toMatchObject({useCache: false, aiMultiSegment: true});
+        expect(mocks.translateText).toHaveBeenCalledTimes(4);
+        for (const call of mocks.translateText.mock.calls) expect(call[2]).toMatchObject({useCache: false, enableNativeBatch: false});
+    });
 
     it('defaults to sixteen-item AI batches and snapshots the transient toggle and default model', async () => {
         mocks.defaultService = 'openai';
@@ -1275,6 +1312,19 @@ describe('document translation retry backoff', () => {
 describe('document translation keeps going when a service echoes names and short terms', () => {
     const echo = () => Object.assign(new Error('翻译服务连续返回未翻译的原文'), {code: 'UNTRANSLATED_RESPONSE'});
     const segments = [{id: 0, source: 'Latency'}, {id: 1, source: 'ARGUS'}, {id: 2, source: 'Seconds'}, {id: 3, source: 'A full sentence follows the table.'}];
+
+    it('显式重译在原文回显的逐段补译及后续批次中继续跳过缓存', async () => {
+        mocks.translateTextBatch.mockRejectedValueOnce(echo()).mockImplementation(async sources => sources.map((source: string) => `译 ${source}`));
+        mocks.translateText.mockImplementation(async source => `译 ${source}`);
+        const result = await translateDocumentSegments(segments, {fileName: 'retry.pdf', useCache: false,
+            batchLimits: {items: 2}, batchConcurrency: 1});
+        expect(result).toEqual(segments.map(({source}) => `译 ${source}`));
+        expect(mocks.translateTextBatch).toHaveBeenCalledTimes(2);
+        expect(mocks.translateText).toHaveBeenCalledTimes(2);
+        for (const call of [...mocks.translateTextBatch.mock.calls, ...mocks.translateText.mock.calls]) {
+            expect(call[2]).toMatchObject({useCache: false});
+        }
+    });
 
     it('keeps an empty echo fallback unfinished so a replacement service can translate it', async () => {
         mocks.translateTextBatch.mockRejectedValue(echo());

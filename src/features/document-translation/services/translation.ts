@@ -1,7 +1,7 @@
 /**
  * @file src/features/document-translation/services/translation.ts
  * 文件职责：编排文档片段的批量翻译流程，在固定语言和服务快照下按数量及字符预算拆批，并向调用方持续报告确定性进度。
- * 主要内容：定义进度与逐段提交契约，在本次文档调用中默认启用机器批量或 AI 多段槽请求而不改变全局设置，按阅读位置标识变化重排待译片段、其余批次复用游标并可收紧单批大小，同时保持数批请求在途、先返回的先提交，以章节内一次去重和游标领取避免重复原文挤占批量预算或反复扫描长文队列，按原生章节和位置构建有界篇章参考并区分人工确认译文，提交前移除服务凭空加入的表情符号；批量、逐段和协议回退共用文档退避，禁用客户端叠加重试，可用绝对时间预算中止请求与等待并拒收迟到结果。被服务原样返回的专名与短词保留原文而不中断全文，复用已有译文继续未完成片段，固定文件级上下文，服务失败后停止派发但收齐在途成功译文，显式取消后立即退出并禁止迟到提交。
+ * 主要内容：定义进度与逐段提交契约，在本次文档调用中默认启用机器批量或 AI 多段槽请求而不改变全局设置，固定缓存策略并透传至批量和降级请求，按阅读位置标识变化重排待译片段、其余批次复用游标并可收紧单批大小，同时保持数批请求在途、先返回的先提交，以章节内一次去重和游标领取避免重复原文挤占批量预算或反复扫描长文队列，按原生章节和位置构建有界篇章参考并区分人工确认译文，提交前移除服务凭空加入的表情符号；批量、逐段和协议回退共用文档退避，禁用客户端叠加重试，可用绝对时间预算中止请求与等待并拒收迟到结果。被服务原样返回的专名与短词保留原文而不中断全文，复用已有译文继续未完成片段，固定文件级上下文，服务失败后停止派发但收齐在途成功译文，显式取消后立即退出并禁止迟到提交。
  * 模块边界：该层不解析文件、不持久化配置，也不直接绑定具体 provider；上层负责冻结用户设置并注入 gateway，文档结构由 core 提供，网络和缓存语义由应用翻译客户端承担。
  */
 import {serializeTranslationError, TranslationRequestError} from '@/src/services/translation/errors';
@@ -26,6 +26,8 @@ export interface DocumentTranslationOptions {
     modelOverride?: string;
     sourceLanguage?: string;
     targetLanguage?: string;
+    /** 本次任务的缓存策略；不传时沿用翻译客户端偏好，显式重译可关闭且不改写全局配置。 */
+    useCache?: boolean;
     signal?: AbortSignal;
     /** 未启用文档退避时透传客户端；启用后由文档统一重试，客户端固定为 0。 */
     maxRetries?: number;
@@ -73,6 +75,8 @@ export interface DocumentTranslationRequestOptions {
     modelOverride?: string;
     sourceLanguage?: string;
     targetLanguage?: string;
+    /** 透传本次文档任务的缓存策略，包括批量协议降级后的逐段请求。 */
+    useCache?: boolean;
     maxRetries?: number;
     /** 当前批次绝对预算的剩余时间，交给客户端限制后台传输。 */
     timeout?: number;
@@ -355,6 +359,7 @@ export function createDocumentSegmentTranslator(
         // 步骤 1：一次文档任务固定语言对，不能被设置页同步更新或用户中途改选污染后续批次。
         const sourceLanguage = options.sourceLanguage;
         const targetLanguage = options.targetLanguage;
+        const cacheOptions = options.useCache === undefined ? {} : {useCache: options.useCache};
         const service = options.serviceOverride || gateway.getDefaultService();
         const model = options.modelOverride || gateway.getDefaultModel?.(service);
         const singleRequestTimeout = gateway.getRequestTimeout?.(service, false);
@@ -494,7 +499,7 @@ export function createDocumentSegmentTranslator(
             };
             const translateSegment = (segment: DocumentSegment, deadlineAt = retryDeadline(options, singleRequestTimeout)) => withRetryBackoff(async attempt => {
                 const received = await gateway.translateText(segment.source, context, {
-                    ...glossaryOptions, ...discourseOptions(segment, [segment.source]),
+                    ...glossaryOptions, ...cacheOptions, ...discourseOptions(segment, [segment.source]),
                     enableNativeBatch: false, ...attempt, pageContext,
                     serviceOverride: service, modelOverride: model, sourceLanguage, targetLanguage, maxRetries,
                 });
@@ -520,6 +525,7 @@ export function createDocumentSegmentTranslator(
                         const result = await withRetryBackoff(async attempt => {
                         const requestOptions: DocumentTranslationRequestOptions = {
                             ...glossaryOptions,
+                            ...cacheOptions,
                             ...discourseOptions(batch[0], batch.map(segment => segment.source)),
                             enableNativeBatch: !single,
                             ...attempt,

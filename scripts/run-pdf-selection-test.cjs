@@ -317,6 +317,7 @@ async function main() {
   const paperLayoutFollowup = process.argv.includes('--paper-layout-followup');
   const paperLayoutCancelOnly = process.argv.includes('--paper-layout-cancel-only');
   const taskInteraction = process.argv.includes('--interaction-recovery-only') || process.argv.includes('--selection-baseline-only');
+  const retranslationOnly = process.argv.includes('--retranslation-only');
   assert(packages, '需要 --playwright-root 或 PLAYWRIGHT_ROOT');
   assert(fs.existsSync(path.join(extensionDir, 'manifest.json')), '请先生成生产扩展产物');
   if (arxivPath) assert(fs.existsSync(arxivPath), '找不到 --arxiv-pdf 指定的论文');
@@ -337,7 +338,7 @@ async function main() {
   let fixture, launched, page, launchAttempted = false;
   const record = name => {report.cases.push(name); process.stdout.write(`PASS ${name}\n`);};
   try {
-    const smallPdf = await createPdf(3, 0, taskInteraction), longPdf = await createPdf(120);
+    const smallPdf = await createPdf(retranslationOnly ? 1 : 3, 0, taskInteraction || retranslationOnly), longPdf = await createPdf(120);
     fs.writeFileSync(path.join(artifactsDir, 'selection-fixture.pdf'), smallPdf);
     fs.writeFileSync(path.join(artifactsDir, 'long-120.pdf'), longPdf);
     fixture = await createFixture({'/selection-fixture.pdf': smallPdf}, {paperLayout: paperLayoutOnly || harnessLayoutOnly, includePaperTail: paperLayoutOnly && !paperLayoutBaseline, taskInteraction, preserveProtectedTokens: harnessLayoutOnly});
@@ -378,8 +379,8 @@ async function main() {
       customOpenAIProviders: [{id: service, name: 'PDF 本机确定性测试', endpoint: `${fixture.base}/v1/chat/completions`, models: taskInteraction ? ['pdf-fixture', 'pdf-failing', 'pdf-rescue'] : ['pdf-fixture']}, ...(taskInteraction ? [{id: 'custom:pdf-rescue', name: 'PDF 备用测试服务', endpoint: `${fixture.base}/v1/chat/completions`, models: ['pdf-rescue']}] : [])],
       requireApiKey: Object.fromEntries((taskInteraction ? [[service, 'pdf-fixture'], [service, 'pdf-failing'], [service, 'pdf-rescue'], ['custom:pdf-rescue', 'pdf-rescue']] : [[service, 'pdf-fixture']]).map(pair => [`v2:${JSON.stringify(pair)}`, false])), token: {...current.token, [service]: 'fixture-token', ...(taskInteraction ? {'custom:pdf-rescue': 'fixture-token'} : {})},
       selectionTranslatorMode: 'bilingual', selectionTranslatorTrigger: 'icon', selectionTranslatorDelay: 0, selectionTranslatorAutoDismiss: false,
-      useCache: false, hotkey: 'none', floatingBallHotkey: 'none', enableAIContext: false, enableAIMultiSegment: false});
-    if (paperLayoutOnly || taskInteraction || harnessLayoutOnly) {
+      useCache: retranslationOnly, hotkey: 'none', floatingBallHotkey: 'none', enableAIContext: false, enableAIMultiSegment: false});
+    if (paperLayoutOnly || taskInteraction || harnessLayoutOnly || retranslationOnly) {
       await support.patchStoredConfig(configPage, {translationRequestsPerSecond: 0, translationRequestsPerMinute: 0});
       report.fixtureRequestLimits = {perSecond: 0, perMinute: 0, scope: 'owned isolated profile and local fixture only; product default remains unchanged'};
     }
@@ -607,6 +608,15 @@ async function main() {
       assert((await uiText()).includes(`测试译文：${requestedSource}`)); report.crossPage = {nativeSelection: selected, requestedSource, input: 'mouse down; inner viewport scrollTop; mouse move and up'};
     };
 
+    if (retranslationOnly) {
+      const {runPdfRetranslation} = require('./testing/pdf-retranslation.cjs');
+      page = await openDocument(); await load('retranslation-fixture.pdf', smallPdf);
+      assert.equal((await support.readStoredConfig(configPage)).useCache, true, '重译专项必须启用真实翻译缓存');
+      await runPdfRetranslation({page, fixture, report, shot, record, until, wait, openDocument, rowReady, checkFocus, artifactsDir});
+      await checkFocus('PDF retranslation scope complete');
+      assert.equal(report.consoleErrors.length, 0, `浏览器错误：${JSON.stringify(report.consoleErrors)}`);
+      report.ok = true; return;
+    }
     if (harnessLayoutOnly) {
       const {runPdfHarnessLayout} = require('./testing/pdf-harness-layout.cjs');
       page = await openDocument(); await load('arxiv-2609.35738.pdf', fs.readFileSync(arxivPath));
