@@ -8,12 +8,15 @@ const mocks = vi.hoisted(() => ({
     translateTextBatch: vi.fn(),
 }));
 
+vi.mock('webextension-polyfill', () => ({default: {runtime: {sendMessage: vi.fn()}}}));
+
 vi.mock('@/src/services/config/store', () => ({
     config: mocks.config,
     configReady: Promise.resolve(),
 }));
 
-vi.mock('@/src/services/translation/client', () => ({
+vi.mock('@/src/services/translation/client', async original => ({
+    ...await original<typeof import('@/src/services/translation/client')>(),
     translateText: mocks.translateText,
     translateTextBatch: mocks.translateTextBatch,
 }));

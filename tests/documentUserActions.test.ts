@@ -34,7 +34,7 @@ vi.mock('@/src/services/config/store', async () => {
         requestConfigPatch: (patch: unknown, send: (message: unknown) => Promise<unknown>) => send({patch}),
     };
 });
-vi.mock('@/src/services/translation/client', () => ({translateText: ports.single, translateTextBatch: ports.batch}));
+vi.mock('@/src/services/translation/client', async original => ({...await original<typeof import('@/src/services/translation/client')>(), translateText: ports.single, translateTextBatch: ports.batch}));
 vi.mock('@/src/features/document-translation/services/binary', async () => {
     const actual = await vi.importActual<typeof import('@/src/features/document-translation/services/binary')>('@/src/features/document-translation/services/binary');
     ports.download.mockImplementation(actual.createDocumentDownload);

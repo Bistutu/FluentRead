@@ -65,7 +65,7 @@ vi.mock('@/src/core/config/catalog', async (importOriginal) => {
 vi.mock('@/src/services/translation/context', () => ({getPageTranslationContext: mocks.getPageTranslationContext}));
 vi.mock('@/src/core/config/validation', () => ({getMissingCredentialMessage: mocks.getMissingCredentialMessage}));
 
-import {cancelAllTranslations, translateText, translateTextBatch, translateVideoText} from '@/src/services/translation/client';
+import {cancelAllTranslations, getTranslationTimeout, translateText, translateTextBatch, translateVideoText} from '@/src/services/translation/client';
 import {
   createTranslationCancelHandler,
   createTranslationRequestFallback,
@@ -153,6 +153,29 @@ describe('translation API request lifecycle performance', () => {
     vi.useRealTimers();
     Object.defineProperty(globalThis, 'document', {value: originalDocument, configurable: true});
     Object.defineProperty(globalThis, 'location', {value: originalLocation, configurable: true});
+  });
+
+  it.each([false, true])('Chrome 批量标记 %s 的公开预算与真实客户端请求保持一致，显式覆盖优先', async batch => {
+    const expected = batch ? 45_000 : 300_000;
+    expect(getTranslationTimeout('chromeTranslator', undefined, batch)).toBe(expected);
+    expect(getTranslationTimeout('chromeTranslator', 2_000, batch)).toBe(2_000);
+    mocks.config.service = 'chromeTranslator';
+    mocks.sendMessage.mockResolvedValue(batch ? ['内置译文'] : '内置译文');
+    if (batch) await translateTextBatch(['Chrome budget source'], 'Page', {maxRetries: 0});
+    else await translateText('Chrome budget source', 'Page', {maxRetries: 0});
+    expect(mocks.sendMessage.mock.calls[0][0]).toMatchObject({requestTimeoutMs: expected - 1_000});
+  });
+
+  it.each([10_000, 600_000].flatMap(timeout => [false, true].map(batch => ({timeout, batch}))))
+  ('AI $timeout 毫秒配置在批量标记 $batch 的公开预算及真实请求中保留', async ({timeout, batch}) => {
+    mocks.config.service = 'mock-ai';
+    mocks.config.aiRequestTimeoutMs = timeout;
+    expect(getTranslationTimeout('mock-ai', undefined, batch)).toBe(timeout + 1_000);
+    expect(getTranslationTimeout('mock-ai', 2_000, batch)).toBe(2_000);
+    mocks.sendMessage.mockResolvedValue(batch ? ['配置预算译文'] : '配置预算译文');
+    if (batch) await translateTextBatch(['AI budget source'], 'Page', {maxRetries: 0});
+    else await translateText('AI budget source', 'Page', {maxRetries: 0});
+    expect(mocks.sendMessage.mock.calls[0][0]).toMatchObject({requestTimeoutMs: timeout});
   });
 
   it.each(['single', 'batch', 'video'] as const)('%s AI 默认允许超过 45 秒响应，并完整提供 120 秒后台预算', async kind => {

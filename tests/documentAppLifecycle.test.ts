@@ -37,7 +37,7 @@ vi.mock('@/src/services/config/store', async () => {
     const config = new Config(); ports.config = config;
     return {config, configReady: Promise.resolve(), subscribeConfig: (observer: any) => {ports.observer = observer; return ports.unsubscribe;}, requestConfigPatch: (patch: any, send: any) => send({patch})};
 });
-vi.mock('@/src/services/translation/client', () => ({translateText: ports.translate, translateTextBatch: ports.batch}));
+vi.mock('@/src/services/translation/client', async original => ({...await original<typeof import('@/src/services/translation/client')>(), translateText: ports.translate, translateTextBatch: ports.batch}));
 vi.mock('@/src/ui/i18n', () => ({createUiI18nPlugin: (options: unknown) => options, useUiI18n: () => ({language: ref('zh-CN'), t: (key: string, values?: unknown) => {ports.i18n(key, values); return key;}, translateLegacy: (text: string) => text})}));
 vi.mock('@/src/ui/components/UiSelect.vue', () => ({default: {props: ['modelValue'], setup: (_props: any, {slots}: any) => () => h('select', slots.default?.())}}));
 vi.mock('@/src/ui/components/GlossaryLibrarySelect.vue', () => ({default: {setup: () => () => h('div')}}));
