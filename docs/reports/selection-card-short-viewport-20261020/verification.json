@@ -176,5 +176,86 @@
     "physicalDevice": false,
     "liveTranslationProvider": false,
     "wholeGoalComplete": false
+  },
+  "integratedFollowup": {
+    "sourceCommit": "2990c32e3d134e0bddb1a32ff0042d48eb1bf330",
+    "mainParent": "2cff10745b42bc15d5329aeb2bf6d15e923c3a86",
+    "validation": {
+      "report": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/selection-card-short-viewport-followup-1/integration-1/validation-result.json",
+        "bytes": 17953,
+        "sha256": "d2b25289504579bb0b288acdc9b47302f372dd5b434929a81172bcf8d07d64ab"
+      },
+      "executedTests": 791,
+      "passed": 791,
+      "failed": 0,
+      "skipped": 0,
+      "typeAndThreeWebBuildsPassed": true
+    },
+    "browser": {
+      "rootReceipt": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/selection-card-short-viewport-followup-1/root-integration-browser-observation.json",
+        "bytes": 4669,
+        "sha256": "2514e25290d005dd933bfd4af15f06a43e6ec1e159ec77a9cd187fd45b597911"
+      },
+      "report": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/selection-card-short-viewport-followup-1/integration-browser-1/report.json",
+        "bytes": 80067,
+        "sha256": "b55c27582ceeb47c90cac8e6b41634e81bdbcc331f1a971f79fc9eced5b8de23"
+      },
+      "rows": 6,
+      "originalPNGs": 10,
+      "rootAndIndependentReviewerViewedAllOriginals": true,
+      "scope": "Controlled Edge VisualViewport and transport only; no native IME/Safari/nativePDF consumer/live provider claim"
+    },
+    "unsignedNativeBuild": {
+      "rootReceipt": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/selection-card-short-viewport-followup-1/root-native-integrated-execution.json",
+        "bytes": 877,
+        "sha256": "637678b89efa84b20ff0630294e381c810e4e4cc4d98cacfa37ce3c67ce439cc"
+      },
+      "report": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/selection-card-short-viewport-followup-1/native-integrated-1/native-build-result.json",
+        "bytes": 169095,
+        "sha256": "59c3b8d0b111f902004f1e241fb548b9ab297c030383a2011c3a6aedf035e6d1"
+      },
+      "targets": [
+        "macOS",
+        "iOS Simulator",
+        "iPhoneOS arm64"
+      ],
+      "allTenCommandsClosedZero": true,
+      "webFiles": 472,
+      "allFourCopiesMatch": true,
+      "bootInstallOrUI": false
+    },
+    "currentDedicatedSimulatorInstalledCommit": "2990c32e3d134e0bddb1a32ff0042d48eb1bf330",
+    "wholeGoalComplete": false,
+    "installedFollowup": {
+      "kind": "root-dedicated-integrated-update-execution",
+      "execution": {
+        "session": 2718,
+        "initialChunk": "879494",
+        "completionChunk": "9ff270",
+        "actualOuterExitCode": 0
+      },
+      "report": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/selection-card-short-viewport-followup-1/dedicated-integrated-update-1/update-only-runtime-1/update-only-report.json",
+        "bytes": 50520,
+        "sha256": "2e187967612828de89f12cd3992508b1e3945ed34322ed1c026fa63453cb2048"
+      },
+      "sourceCommit": "2990c32e3d134e0bddb1a32ff0042d48eb1bf330",
+      "oldInstalledCommit": "703f4767aed8ad038ee14b987d15c79827205773",
+      "allTwelveCommandsClosedZero": true,
+      "otherFourteenWholeRecordsUnchanged": true,
+      "allFifteenShutdown": true,
+      "appFileCount": 490,
+      "webFileCount": 472,
+      "installedWhileBootedAndAfterShutdownMatchSource": true,
+      "sameForegroundPointSample": true,
+      "continuousFocusMonitoring": false,
+      "configurationPreservation": "UNKNOWN",
+      "runtimeUIOrProviderAcceptance": false
+    }
   }
 }

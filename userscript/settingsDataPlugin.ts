@@ -5,7 +5,8 @@
  * 模块边界：不执行源模块、不压缩可执行逻辑，不改远程语言资源；标准版只压缩完整消费的样式与界面注册表，避免目录表示阻止原有裁剪；沿用 pako，消费函数保持原实现，Greasy Fork 保留可读数据。
  */
 import {resolve} from 'node:path';
-import {gzipSync, gunzipSync} from 'node:zlib';
+import {gunzipSync} from 'node:zlib';
+import {gzipUserscriptBuildData} from './buildGzip';
 import ts from 'typescript';
 import {normalizePath, type Plugin} from 'vite';
 
@@ -78,7 +79,7 @@ export function createUserscriptSettingsDataPlugin(root: string, enabled: boolea
                     const data = literal(initializer, !target.appearance);
                     if (target.appearance && (!Array.isArray(data) || !data.length)) throw unsupported();
                     const json = JSON.stringify(data);
-                    const compressed = gzipSync(Buffer.from(json), {level: 9});
+                    const compressed = gzipUserscriptBuildData(Buffer.from(json));
                     if (target.appearance && JSON.stringify(JSON.parse(gunzipSync(compressed).toString('utf8'))) !== json) throw unsupported();
                     // 和原字面量一样，未被消费的表不应触发还原；整个闭包只还原固定数据，无外部写入。
                     const value = `/* @__PURE__ */ (() => JSON.parse(__fluentreadInflateSettingsData(Uint8Array.from(atob(${JSON.stringify(compressed.toString('base64'))}), character => character.charCodeAt(0)))))()`;

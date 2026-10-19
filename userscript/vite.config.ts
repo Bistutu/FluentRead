@@ -2,7 +2,6 @@ import fs from 'node:fs';
 import {createHash} from 'node:crypto';
 import {createRequire} from 'node:module';
 import {basename, dirname, resolve} from 'node:path';
-import {gzipSync} from 'node:zlib';
 import {runInNewContext} from 'node:vm';
 import vue from '@vitejs/plugin-vue';
 import ts from 'typescript';
@@ -15,6 +14,7 @@ import {createUserscriptInlineCssCompressionPlugin} from './inlineCssPlugin';
 import {createUserscriptAboutImagesCompressionPlugin} from './aboutImagesPlugin';
 import {createUserscriptServiceBrandIconsCompressionPlugin} from './serviceBrandIconsPlugin';
 import {createUserscriptSettingsDataPlugin} from './settingsDataPlugin';
+import {gzipUserscriptBuildData} from './buildGzip';
 import {UI_LANGUAGE_BUNDLES, zhCNMessages} from './languageBundles';
 import {createDeepLXRuntimeBuildPlugin} from '../scripts/testing/deeplx-runtime-build';
 
@@ -81,16 +81,13 @@ function serializeUiMessages(value: unknown): string {
 function userscriptPageMessages<T extends Record<string, string>>(messages: T): T {
     return Object.fromEntries(Object.entries(messages).filter(([key]) => !key.startsWith('document.'))) as T;
 }
-// 构建期复用已有 pako 编码中英界面词典，减少标准 gzip 数据；解压格式与运行时端口不变。
-const gzipUiMessages = createRequire(import.meta.url)('pako').gzip as
-    (data: Uint8Array, options: {level: number}) => Uint8Array;
 // 与中文内嵌目录一致，仅投影扩展文档页专用 key；固定远程与外部资源继续使用原 bundle。
 const compressedUiLanguageBundles = greasyForkSource ? {} : Object.fromEntries(Object.entries(UI_LANGUAGE_BUNDLES)
     .filter(([language]) => language === 'en-US')
     .map(([language, bundle]) => [
     language,
-    Buffer.from(gzipUiMessages(Buffer.from(serializeUiMessages({...bundle,
-        messages: userscriptPageMessages(bundle.messages)})), {level: 9})).toString('base64'),
+    gzipUserscriptBuildData(Buffer.from(serializeUiMessages({...bundle,
+        messages: userscriptPageMessages(bundle.messages)}))).toString('base64'),
 ]));
 const remoteUiLanguageBundles = Object.fromEntries(Object.entries(UI_LANGUAGE_BUNDLES)
     .filter(([language]) => language !== 'en-US')
@@ -157,7 +154,7 @@ export function createUserscriptCatalogCompressionPlugin(): Plugin {
                     return `export const zhCNMessages = {...globalThis.__FLUENTREAD_USERSCRIPT_DATA__.zhCNMessages,...${JSON.stringify(deeplxCopy)}};`;
                 }
                 const contents = serializeUiMessages(userscriptPageMessages(zhCNMessages));
-                const compressed = Buffer.from(gzipUiMessages(Buffer.from(contents), {level: 9})).toString('base64');
+                const compressed = gzipUserscriptBuildData(Buffer.from(contents)).toString('base64');
                 return [
                     `/* Non-code Chinese UI messages; sha256 ${createHash('sha256').update(contents).digest('hex')}. */`,
                     "import {inflateWithPako} from '@/userscript/pakoRuntime';",
@@ -193,7 +190,7 @@ export function createUserscriptCatalogCompressionPlugin(): Plugin {
                 ].join('\n');
             }
             const contents = JSON.stringify(JSON.parse(fs.readFileSync(sourcePath, 'utf8')));
-            const compressed = gzipSync(Buffer.from(contents), {level: 9}).toString('base64');
+            const compressed = gzipUserscriptBuildData(Buffer.from(contents)).toString('base64');
             const digest = createHash('sha256').update(contents).digest('hex');
             return [
                 `/* Non-code site rules: ${normalizePath(sourcePath).slice(projectRoot.length)}; sha256 ${digest}. */`,
@@ -233,7 +230,7 @@ export function wrapUserscriptEntry(entryCode: string, bootstrapCode: string, th
     ].join('\n');
 }
 
-function bundledLibraryNotices(moduleIds: readonly string[]): string {
+export function bundledLibraryNotices(moduleIds: readonly string[]): string {
     const packageRoots = new Set<string>();
     for (const id of moduleIds) {
         if (id.startsWith('\0')) continue;
@@ -250,7 +247,9 @@ function bundledLibraryNotices(moduleIds: readonly string[]): string {
             packageRoots.add(dirname(dirname(aiRequire.resolve(name))));
         }
     }
-    return [...packageRoots].sort().map((packageRoot) => {
+    // 仅合并 trim 后逐字相同的完整许可（含版权）；每个包的原始标题都保留，组按首次出现排序。
+    const licenseGroups = new Map<string, string[]>();
+    for (const packageRoot of [...packageRoots].sort()) {
         const manifest = JSON.parse(fs.readFileSync(resolve(packageRoot, 'package.json'), 'utf8')) as {
             name: string;
             version: string;
@@ -266,8 +265,13 @@ function bundledLibraryNotices(moduleIds: readonly string[]): string {
             ? fs.readFileSync(resolve(packageRoot, licenseFile), 'utf8').trim()
             : `License source: ${repository || `https://www.npmjs.com/package/${manifest.name}/v/${manifest.version}`}`;
         if (licenseText.includes('*/')) throw new Error(`Unsafe bundled library license comment: ${manifest.name}`);
-        return `/*\n${manifest.name} ${manifest.version} — ${manifest.license}\n${licenseText}\n*/`;
-    }).join('\n');
+        const heading = `${manifest.name} ${manifest.version} — ${manifest.license}`;
+        const headings = licenseGroups.get(licenseText);
+        if (headings) headings.push(heading);
+        else licenseGroups.set(licenseText, [heading]);
+    }
+    return [...licenseGroups].map(([licenseText, headings]) =>
+        `/*\n${headings.join('\n')}\n${licenseText}\n*/`).join('\n');
 }
 
 // Via 等旧内核可能缺少共享核心使用的基础方法；在单文件入口最前方注入小型兼容层。
@@ -443,7 +447,7 @@ function bundleUserscriptCss(): Plugin {
 
             const cssEntries = Object.entries(bundle).filter(([, item]) => item.type === 'asset' && item.fileName.endsWith('.css'));
             const css = cssEntries.map(([, item]) => String(item.type === 'asset' ? item.source : '')).join('\n');
-            const compressedCss = greasyForkSource ? '' : gzipSync(Buffer.from(css, 'utf8'), {level: 9}).toString('base64');
+            const compressedCss = greasyForkSource ? '' : gzipUserscriptBuildData(Buffer.from(css, 'utf8')).toString('base64');
             cssEntries.forEach(([fileName]) => delete bundle[fileName]);
 
             if (greasyForkSource) {
