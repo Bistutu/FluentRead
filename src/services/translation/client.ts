@@ -74,10 +74,10 @@ function createTranslationClientRequestId(): string {
   return `translation-${translationRequestNonce}-${translationRequestSequence}`;
 }
 
-/** 设置秒数属于后台 AI 预算；页面额外等待一秒收取后台超时结果。显式 timeout 保留既有总等待语义。 */
-function getTranslationTimeout(service: string, explicitTimeout?: number): number {
+/** 设置秒数属于后台 AI 预算；页面额外等待一秒收取后台超时结果。批量 Chrome 沿用 45 秒，单条允许模型准备；显式 timeout 保留既有总等待语义。 */
+export function getTranslationTimeout(service: string, explicitTimeout?: number, batch = false): number {
   if (explicitTimeout !== undefined) return explicitTimeout;
-  if (service === services.chromeTranslator) return DEFAULT_CHROME_TRANSLATION_TIMEOUT_MS;
+  if (service === services.chromeTranslator) return batch ? DEFAULT_TRANSLATION_TIMEOUT_MS : DEFAULT_CHROME_TRANSLATION_TIMEOUT_MS;
   return servicesType.isAI(service)
     ? normalizeAiRequestTimeoutMs(config.aiRequestTimeoutMs) + TRANSLATION_RESPONSE_GRACE_MS
     : DEFAULT_TRANSLATION_TIMEOUT_MS;
@@ -446,10 +446,7 @@ export async function translateTextBatch(
   const excludedLanguages = Object.freeze([...(options.excludedLanguages ?? [])]);
   const selectedThinking = options.thinkingOverride
     ?? isModelThinkingEnabled(config.modelThinking, selectedService, selectedModel);
-  // 批量 Chrome 请求沿用原有 45 秒默认；仅单条内置翻译包含模型准备等待。
-  const timeout = selectedService === services.chromeTranslator
-    ? options.timeout ?? DEFAULT_TRANSLATION_TIMEOUT_MS
-    : getTranslationTimeout(selectedService, options.timeout);
+  const timeout = getTranslationTimeout(selectedService, options.timeout, true);
   const {
     useCache = config.useCache,
     skipLanguageDetection = false,

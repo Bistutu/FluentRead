@@ -1,10 +1,10 @@
 /**
  * @file src/app/document-translation/runtime.ts
  * 文件职责：把通用翻译客户端、配置 store 与文档 feature 的纯服务连接起来，为页面提供可直接调用的分段翻译和文件下载适配器。
- * 主要内容：按固定服务和模型提供文档默认批量、可关闭的翻译流程，不改写全局 AI 多段开关；为扫描版 PDF 组装“渲染页面 → 文字识别 → 换算坐标”的页面识别器；为默认原版导出注入 JPEG 绘制器，为显式重排导出注入可复制文字与图表端口，并持有、释放本次导出的 PDF.js 租约。
+ * 主要内容：按固定服务和模型提供文档默认批量、可关闭的翻译流程，注入客户端原有单次超时和文档总预算，不改写全局 AI 多段开关；为扫描版 PDF 组装“渲染页面 → 文字识别 → 换算坐标”的页面识别器；为默认原版导出注入 JPEG 绘制器，为显式重排导出注入可复制文字与图表端口，并持有、释放本次导出的 PDF.js 租约。
  * 模块边界：本文件是 app adapter，不解析源文件、不维护页面进度，也不实现 PDF/EPUB/DOCX 编码；业务算法归 document-translation feature，网络请求归 translation client。
  */
-import {translateText, translateTextBatch} from '@/src/services/translation/client';
+import {getTranslationTimeout, translateText, translateTextBatch} from '@/src/services/translation/client';
 import {resolveConfiguredModel, services, servicesType} from '@/src/core/config/catalog';
 import {buildGlossaryRevision} from '@/src/core/glossary';
 import {hasDistinctTranslation} from '@/src/core/translation/result';
@@ -31,6 +31,7 @@ export const translateDocumentSegments = createDocumentSegmentTranslator({
     waitUntilReady: () => configReady,
     getDefaultService: () => config.service,
     getDefaultModel: (service) => resolveConfiguredModel(config.model?.[service], config.customModel?.[service]),
+    getRequestTimeout: (service, batch) => getTranslationTimeout(service, undefined, batch),
     supportsBatch: (service) => service === services.freeTranslation || supportsNativeTranslationBatch(service),
     supportsAIMultiSegment: (service, model) => servicesType.isUseAIContext(service, model),
     translateText,
@@ -38,10 +39,10 @@ export const translateDocumentSegments = createDocumentSegmentTranslator({
 });
 
 /**
- * 文档页的失败重试预算：限流或暂时不可用时自动退避，累计最多等两分钟。
+ * 文档页的失败重试预算：限流或暂时不可用时自动退避，单批请求与退避合计默认最多两分钟；服务的单次预算更长时保留该预算。
  * 作为可替换的组合根设置导出，测试可以把等待换成即时完成而不改变页面逻辑。
  */
-export const documentRetryBackoff: {maxWaitMs: number; sleep?: (milliseconds: number, signal?: AbortSignal) => Promise<void>} = {maxWaitMs: 120_000};
+export const documentRetryBackoff: {maxWaitMs: number; maxDurationMs: number; sleep?: (milliseconds: number, signal?: AbortSignal) => Promise<void>} = {maxWaitMs: 120_000, maxDurationMs: 120_000};
 
 /** 默认原版导出使用 Canvas；显式重排导出保留可复制文字，其他格式仍走纯二进制服务。 */
 export async function createDocumentDownload(
