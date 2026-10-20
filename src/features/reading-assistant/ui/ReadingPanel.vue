@@ -3,7 +3,7 @@
  * 文件职责：在划词卡内以内容为主呈现学习回答，复用父卡片导航、把次级操作送入顶栏固定槽、按需展开的原文译文对照与连续追问。
  * 主要内容：相同译文保留原文且不重复展示；按原文与配置复用各学习动作的已完成回答，显式重新生成；历史问答按轮次与问题摘要逐条展开，区分当前问答与旧回答，切换回答时收起历史；统一导航的学习卡默认收起原文与匹配译文，查看原文后可返回当前阅读，短回答不再保留一屏空白；独立面板仍在滚动区顶部展示对照内容，进入回答时滚过原文，译文晚到时保持回答位置，关闭局部浏览器滚动锚定以避免流式格式变化移动阅读位置；流式正文只更新内部滚动内容，回答出现或消失及状态变化才通知父卡片检查布局；重复点击当前动作保留位置和待发送追问；把原文朗读和 30 天问答记录收进次级操作，在回答下方区分原文收藏与学习笔记；原文收藏仅保存对应译文，笔记保存不依赖 AI 参考开关，让多语言动作标签按空间换行，统一呈现 Markdown，以局部主题变量保持正文、状态和操作文字的对比度，并以代次隔离过期请求；冻结每轮许可原文身份，显示就近引用和来源状态，历史恢复保留引文而不授予当前网页定位权限，回写前核查页面归属。
  * 材料关联：只将会话或笔记标识与选中原句关联到本机材料，不复制回答正文；源快照不会发送给模型，取消与清空代次淘汰迟到写入。
- * 模块边界：不持有模型密钥、不扫描页面、不直接请求供应商；双布局复用追问节点而不加容器，保留父 scoped 样式、Vue 输入法指令及键盘边界；按有效服务限制B站为基础读懂/用法，隐藏且拒绝未验证的追问，临时默认动作不改保存偏好；历史回答保留原动作与追问，按当前服务限制重试/再生成，父导航回写不重新请求；记录由后台会话仓库保存，日期格式器只在本组件同步模板每轮渲染内复用并在下轮重解系统默认值，父划词组件负责选区、位置和 Shadow UI 生命周期。
+ * 模块边界：不持有模型密钥、不扫描页面、不直接请求供应商；双布局在正文滚动区外复用同一追问节点，保留父 scoped 样式、Vue 输入法指令及键盘边界；按有效服务限制B站为基础读懂/用法，隐藏且拒绝未验证的追问，临时默认动作不改保存偏好；历史回答保留原动作与追问，按当前服务限制重试/再生成，父导航回写不重新请求；记录由后台会话仓库保存，日期格式器只在本组件同步模板每轮渲染内复用并在下轮重解系统默认值，父划词组件负责选区、位置和 Shadow UI 生命周期。
  -->
 <template>
   <Teleport v-if="externalNavigation && toolsTarget && active && !showRecords" :to="toolsTarget">
@@ -94,10 +94,9 @@
       <button v-if="!privateContext && !stopped && !error" type="button" data-i18n-ignore :disabled="remembering || remembered" :title="t('reading.saveNoteTitle')" @click="rememberLearning">{{ t(remembered ? 'reading.noteSavedButton' : 'reading.saveNote') }}</button>
       <button v-if="remembered" type="button" data-i18n-ignore @click="openLearningMemory">{{ t('reading.viewNotes') }}</button>
     </footer>
-      <ReadingFollowUp v-if="externalNavigation" />
       </div>
     </div>
-    <ReadingFollowUp v-if="!externalNavigation" />
+    <ReadingFollowUp />
     <p v-if="!followUpSupported || !actionSupported" class="fr-reading-feedback">{{ generationHint }}<button type="button" @click="openSettings()">{{ followUpSupported ? '设置' : '切换服务' }}</button></p>
     </template>
   </div>
@@ -351,7 +350,7 @@ const ReadingTools = () => {
     ]),
   ]);
 };
-// 两种布局只挂载一组追问节点；沿用父渲染上下文，保留 Fragment 子节点的 scoped 样式与 v-model 输入法行为。
+// 两种布局始终在正文滚动区外挂载同一组追问节点；缩小视口或切换导航不替换输入及其输入法状态。
 const ReadingFollowUp = withCtx(() => {
   const stopKey = (event: Event) => event.stopPropagation();
   const feedbackLine = (text: string) => text ? h('p', {class: 'fr-reading-feedback', role: 'status'}, text) : null;
@@ -793,7 +792,6 @@ onBeforeUnmount(() => { closeTools(); recordsGeneration += 1; restoreEpoch += 1;
 .fr-reading-answer { user-select: text; overflow-wrap: anywhere; }
 .fr-reading-footer { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin: 8px 0 0; font-size: 11px; }
 .fr-reading-followup { flex-shrink: 0; display: flex; gap: 6px; margin-top: 6px; padding: 3px 3px 3px 10px; border: 1px solid #eae2e7; border-radius: 11px; }
-.fr-reading-body > .fr-reading-followup { clear: both; }
 .fr-reading-followup input { min-width: 0; flex: 1; width: 100%; border: 0; outline: none; color: inherit; background: transparent; font-size: 12px; user-select: text; }
 .fr-reading-followup input::placeholder { color: var(--fr-reading-muted); font-size: 11px; }
 .fr-reading-followup button { background: #b85579; color: white; width: 28px; height: 28px; line-height: 20px; }

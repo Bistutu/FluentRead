@@ -1,7 +1,7 @@
 /**
  * @file tests/readingPanelStreamingResize.test.ts
  * 文件职责：执行阅读面板真实 Vue setup 与客户端模板，验证流式正文不重复要求父卡片测量。
- * 主要内容：逐次刷新回答与结构变化、同帧首次回答/完成/错误、用户阅读位置、晚到译文、隐藏/替换/卸载的迟到响应；统一导航顶栏的唯一传送工具、正文追问与回答优先顺序、菜单边界和监听清理，以及真实表单/按钮事件。
+ * 主要内容：逐次刷新回答与结构变化、同帧首次回答/完成/错误、用户阅读位置、晚到译文、隐藏/替换/卸载的迟到响应；统一导航顶栏的唯一传送工具、正文外追问的焦点与输入法连续性、菜单边界和监听清理，以及真实表单/按钮事件。
  * 模块边界：仅控制后台流端口、展示子组件与 DOM 几何；不复制阅读业务，不请求模型，不声称真实浏览器性能。
  */
 import {createRequire} from 'node:module';
@@ -181,7 +181,7 @@ describe('reading panel streaming resize boundaries through actual setup and tem
     const form=host.querySelector('.fr-reading-followup')!;
     const input=form.querySelector('input') as unknown as HTMLInputElement;
     const button=form.querySelector('button')!;
-    expect(form.parentNode).toBe(host.querySelector(externalNavigation?'.fr-reading-body':'[data-reading-panel]'));
+    expect(form.parentNode).toBe(host.querySelector('[data-reading-panel]'));
     expect(host.querySelectorAll('.fr-reading-followup')).toHaveLength(1);
     for(const element of [form,input,button,...host.querySelectorAll('.fr-reading-feedback')]) expect(element.hasAttribute('data-v-reading-stream-resize')).toBe(true);
     for(const fragment of ['.fr-reading-followup input','.fr-reading-followup button','.fr-reading-feedback']){
@@ -202,7 +202,7 @@ describe('reading panel streaming resize boundaries through actual setup and tem
     props.preferences.service='deepseek';await tick();expect(host.querySelectorAll('.fr-reading-followup')).toHaveLength(1);
   });
 
-  it('keeps standalone controls while external navigation teleports unique tools to the fixed slot and leaves followup in the answer',async()=>{
+  it('keeps standalone controls while external navigation teleports unique tools and reserves followup outside the answer scroller',async()=>{
     const {host,toolsTarget,props,calls,viewport,finish,styles}=await mountPanel({externalNavigation:false});
     const root=host.querySelector('[data-reading-panel]')!;
     expect(host.querySelector('.fr-reading-toolbar')?.parentNode).toBe(root);
@@ -218,14 +218,14 @@ describe('reading panel streaming resize boundaries through actual setup and tem
     expect(toolsTarget.contains(host.querySelector('.fr-reading-tools'))).toBe(true);
     expect(viewport.querySelector('.fr-reading-tools')).toBeNull();
     expect(host.querySelector('.fr-reading-inline-controls')).toBeNull();
-    expect(viewport.contains(host.querySelector('.fr-reading-followup'))).toBe(true);
+    expect(viewport.contains(host.querySelector('.fr-reading-followup'))).toBe(false);
+    expect(host.querySelector('.fr-reading-followup')?.parentNode).toBe(root);
     expect(host.querySelector('.fr-reading-status')).not.toBeNull();
     calls[0].callbacks.progress({kind:'text',text:'Heading\nFirst answer paragraph'});await tick();
     expect(host.querySelector('.fr-reading-body > .fr-reading-status')).toBeNull();
     expect(host.querySelector('.fr-reading-controls button[aria-label="停止"]')).not.toBeNull();
     expect(host.querySelector('.fr-reading-controls [role="status"]')).not.toBeNull();
-    const body=host.querySelector('.fr-reading-body')!;
-    expect([...body.children].indexOf(host.querySelector('.fr-reading-followup')!)).toBeGreaterThan([...body.children].indexOf(host.querySelector('.fr-reading-answer')!));
+    expect([...root.children].indexOf(host.querySelector('.fr-reading-followup')!)).toBeGreaterThan([...root.children].indexOf(viewport));
     finish('Complete answer');await tick();
     expect(host.querySelector('.fr-reading-controls button[aria-label="停止"]')).toBeNull();
     expect(host.querySelectorAll('.fr-reading-footer')).toHaveLength(1);
@@ -236,6 +236,38 @@ describe('reading panel streaming resize boundaries through actual setup and tem
     expect(host.querySelectorAll('.fr-reading-tools')).toHaveLength(1);
     expect(host.querySelectorAll('.fr-reading-followup')).toHaveLength(1);
     expect(calls).toHaveLength(1);
+  });
+
+  it.each([false,true])('retains the focused composing input outside a constrained answer scroller across navigation changes (external=%s)',async externalNavigation=>{
+    const {host,panel,props,calls,viewport,window,finish}=await mountPanel({externalNavigation});
+    vi.stubGlobal('Event',window.Event);
+    finish('Completed explanation');await tick();
+    panel.question='Draft';await tick();
+    const root=host.querySelector('[data-reading-panel]')!;
+    const form=host.querySelector('.fr-reading-followup')!;
+    const input=form.querySelector('input') as unknown as HTMLInputElement;
+    // Linkedom has no focus manager: a detached input loses this scoped DOM focus port.
+    Object.defineProperty(host.ownerDocument,'activeElement',{configurable:true,get:()=>input.isConnected ? input : null});
+    input.dispatchEvent(new window.Event('focusin',{bubbles:true}));
+    input.dispatchEvent(new window.Event('compositionstart'));input.value='尚未提交的追问';
+    input.dispatchEvent(new window.Event('input',{bubbles:true}));await tick();
+    expect(panel.question).toBe('Draft');
+    Object.defineProperty(viewport,'clientHeight',{configurable:true,value:80});
+    Object.defineProperty(viewport,'scrollHeight',{configurable:true,value:600});
+    viewport.scrollTop=180;viewport.dispatchEvent(new window.Event('scroll'));
+    for(const navigation of [!externalNavigation,externalNavigation]) {
+      props.externalNavigation=navigation;
+      props.sourceTranslation={source:'Practice helps.',text:'晚到的译文'};
+      await tick();
+      expect(host.querySelector('.fr-reading-followup')).toBe(form);
+      expect(host.querySelector('input[aria-label="继续追问"]')).toBe(input);
+      expect(form.parentNode).toBe(root);expect(viewport.contains(input)).toBe(false);
+      expect(host.ownerDocument.activeElement).toBe(input);expect(input.value).toBe('尚未提交的追问');
+      expect(host.querySelectorAll('.fr-reading-followup')).toHaveLength(1);
+      expect(input.hasAttribute('disabled')).toBe(false);expect(panel.question).toBe('Draft');
+    }
+    input.dispatchEvent(new window.Event('compositionend'));await tick();
+    expect(panel.question).toBe('尚未提交的追问');expect(calls).toHaveLength(1);
   });
 
   it('bounds the teleported menu above or below its trigger and releases sizing listeners on close, view switches and unmount',async()=>{

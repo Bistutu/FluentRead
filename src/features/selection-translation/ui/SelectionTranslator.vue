@@ -1,11 +1,11 @@
 <!--
  * @file src/features/selection-translation/ui/SelectionTranslator.vue
  * 通知布局：收藏与语音设置通知沿用安全可见视口订阅，触摸动作保留完整命中区；通知不增加独立监听或请求。
- * 极矮视口：同一卡片改为整卡滚动并收紧顶栏间距，保留输入与请求、手动几何和语音锁；恢复尺寸后沿用原定位，不增加监听或计时器。
+ * 极矮视口：同一卡片改为整卡滚动并收紧顶栏间距，保留输入与请求、手动几何和语音锁；Safari 键盘视口变化后仅在当前有限窗口内滚动卡片自身显露原聚焦输入，主动操作取消待处理显露；恢复尺寸后沿用原定位，不增加监听或计时器。
  * 文件职责：实现划词翻译的主要页面组件，覆盖选区捕获、触摸原生句柄稳定等待、避开原生菜单上下区域的行侧入口、可见视口与安全区定位、后台及宿主恢复来源校验、图标/小点/悬停/快捷键/仅右键菜单/直接弹出、原生菜单可信选区恢复与重复请求复用、翻译与词卡展示、免费 AI 讲解的显式启用、朗读、收藏选中的单词/表达/句子、双语分享卡片、鉴权服务配置入口、重试和关闭。
  * 主要内容：相同译文保留原文且不重复展示；Firefox 触摸入口为原生手柄保留独立侧距，以绑定来源快照的可信触摸处理缺少 click 的情况并取消拖动；Safari/Firefox 触摸入口成功开卡后保留当前快照并清空同一原生选区，异步空选区不误关卡片；组件管理可信手势、已关闭选区与选择丢失宽限、继续阅读或复制原文时自动收起、请求 token、按既有错误种类显示有限提示并仅为当前鉴权失败提供通用设置入口、行内代码保护与纯文本安全渲染、按标签页页面缩放补偿的弹窗定位、空白拖动、边角缩放、主题及可换行的多语言标题；普通译文先于完整原文，单行可横向滚动的导航与右侧固定分享、收藏、关闭及更多操作把高度留给正文，次级菜单按可见窗口覆盖显示；指针移动按帧合并并在结束时提交最后位置，已定位卡片不重复读取选区几何；富文本 UTF-16 跟读偏移一次计算并复用；默认过滤同语言选区，按配置开放中英反向入口，翻译方向始终按现有语言配置判断；统一卡片默认显示翻译并以同一导航进入学习；首次定位后保持弹窗锚点，手动尺寸下内容与播放状态变化只影响内部布局；闲置语音栏不占空间，自动卡生成与播放期间用独立临时高度保持外框，停止恢复自然尺寸；学习短回答自然收拢、长回答受高度上限约束，完整原文和译文按需对照并允许翻译继续完成；单词先展示原文与可用词卡，再补充辅助释义，以紧凑状态提示等待、未命中与网络失败；关闭或更换选区取消等待并阻止旧响应覆盖新结果；区分语音生成和播放，按实际音频时钟或浏览器词边界显示完整词高亮，并提供真实音频时间与前后 5 秒跳转。
  * 材料关联：主动收藏与阅读时捕获当前选区的稳定来源和文本位置，词书真实保存后才关联材料引用，隐私窗口不采集。
- * 模块边界：组件只通过公共客户端和 runtime 消息触达后台及现有设置入口，不直接持有 provider、IndexedDB 或 Offscreen 资源；纯选区算法在 core，活动 Range 通过回调交给 content/runtime 管理 modal 挂载所有权；扩展 PDF 文档页通过可选来源适配器复用同一卡片、标题和阅读上下文，来源失效时取消当前请求，词书协议独立维护；Safari 仅在可信自有追问框聚焦后的短窗口内保留键盘缩高引起的宿主页滚动，主动手势、缩放、失焦与关闭立即撤销；阅读依据的 DOM 锚点只属于当前选区，关闭、换区或卸载释放临时绘制和监听。
+ * 模块边界：组件只通过公共客户端和 runtime 消息触达后台及现有设置入口，不直接持有 provider、IndexedDB 或 Offscreen 资源；纯选区算法在 core，活动 Range 通过回调交给 content/runtime 管理 modal 挂载所有权；扩展 PDF 文档页通过可选来源适配器复用同一卡片、标题和阅读上下文，来源失效时取消当前请求，词书协议独立维护；Safari 仅为可信聚焦的同一追问框、卡片和原文保留初次键盘缩高或明确旋转后的有限宿主页平移窗口，明确方向先于可见视口宽度更新时也保留该固定窗口，宽度追上不续期；极矮可滚动卡片内的可信纵向触摸另有不续期的400ms尾窗，只容许累计2px宿主页偏移，不拦截原生滚动；输入与框内编辑键结束当前窗口，外部手势、缩放、失焦与关闭撤销身份，普通滚动仍收卡；阅读依据的 DOM 锚点只属于当前选区，关闭、换区或卸载释放临时绘制和监听。
  -->
 <template>
   <div v-ui-i18n v-show="showIndicator || showTooltip || noticeMessage || copySuccess" class="fr-selection-translator-root" :class="{'fr-touch-selection': touchInteraction}" :data-display-delay="selectionSettings.delay" @pointerdown.capture="dismissReadingToolsOutside" @pointerdown.stop @focusin="handleReadingInputFocus" @focusout="dismissReadingToolsOnFocusOut" @input="clearReadingKeyboardFocus" @wheel.stop="handleUiWheel">
@@ -322,6 +322,7 @@ const tooltipScaleStyle = computed(() => {
 const snapshot = ref<SelectionSnapshot | null>(null);
 watch(snapshot, current => {
   if (readingKeyboardFocus && current !== readingKeyboardFocus.selection) clearReadingKeyboardFocus();
+  if (import.meta.env.BROWSER === 'safari' && readingCardPan && current !== readingCardPan.focus.selection) clearReadingKeyboardFocus();
   if (freeReadingEnable && current !== freeReadingEnable.selection) invalidateFreeReadingEnable();
 }, {flush: 'sync'});
 const isPlaying = ref(false);
@@ -391,7 +392,10 @@ let unsubscribeVisualViewport: (() => void) | null = null;
 let readingFocusGestureAt: number | undefined;
 let readingKeyboardTimer: number | undefined;
 let readingKeyboardFocus: {input: HTMLElement; card: HTMLElement; selection: SelectionSnapshot;
-  expiresAt: number; width: number; height: number; scale: number} | undefined;
+  expiresAt: number; width: number; height: number; scale: number; landscape: boolean; rotating: boolean;
+  revealViewport: typeof viewportSize.value; reveal?: boolean} | undefined;
+let readingCardPan: {focus: NonNullable<typeof readingKeyboardFocus>; pointerId: number | undefined;
+  x: number; y: number; local: boolean; expiresAt: number; width: number; scale: number; scrollY: number; travel: number} | undefined;
 
 let audio: HTMLAudioElement | null = null;
 let audioUrl = '';
@@ -893,6 +897,12 @@ watch([readingMode, showTooltip], () => {
 function beginPopupGesture(event: PointerEvent): void {
   const element = tooltipRef.value;
   const target = event.target;
+  // document capture 先保存原焦点身份；只有实际卡片本地收到同一次按下才确认，不凭 Shadow host 猜目标。
+  if (import.meta.env.BROWSER === 'safari' && readingCardPan) {
+    if (event.isTrusted && event.pointerId === readingCardPan.pointerId && event.currentTarget === readingCardPan.focus.card
+      && target instanceof Node && readingCardPan.focus.card.contains(target)) readingCardPan.local = true;
+    else clearReadingKeyboardFocus();
+  }
   if (isShortViewport() || !event.isTrusted || !event.isPrimary || event.button !== 0 || !element || !(target instanceof HTMLElement)) return;
   if (target.closest('button, summary, a, input, textarea, select, [contenteditable]')) return;
   const edge = target.dataset.resizeEdge ?? '';
@@ -1013,6 +1023,10 @@ function schedulePositionUpdate(): void {
     if (revision !== positionRevision) return;
     positionFrame = null;
     updatePosition();
+    if (import.meta.env.BROWSER === 'safari' && readingKeyboardFocus?.reveal) {
+      const focus = readingKeyboardFocus;
+      void nextTick(() => revealReadingInput(focus, revision));
+    }
   });
 }
 
@@ -1026,6 +1040,7 @@ function applyPageZoom(value: unknown): void {
   const nextZoom = normalizeSelectionPageZoom(value);
   const previousZoom = pageZoom.value;
   if (nextZoom === previousZoom) return;
+  if (import.meta.env.BROWSER === 'safari' && readingKeyboardFocus) readingKeyboardFocus.reveal = false;
   stopPopupGesture();
   // 手动位置和尺寸以视口 CSS 像素保存；缩放后换算，才能保持屏幕上的实际位置和大小。
   const ratio = previousZoom / nextZoom;
@@ -1061,11 +1076,18 @@ function handlePageZoomChanged(message: unknown): undefined {
 }
 
 function handleViewportResize(): void {
+  if (import.meta.env.BROWSER === 'safari') readingKeyboardViewport();
   // 父卡下一帧会夹边移动；先收起菜单，避免沿用移动前的展开方向。
   readingPanelRef.value?.closeTools();
   // 视口宽度会改变自动卡片的真实宽度，不能继续用按下时的旧矩形夹边。
   stopPopupGesture();
   viewportSize.value = getSafeVisualViewportRect();
+  if (import.meta.env.BROWSER === 'safari' && readingKeyboardFocus) {
+    const focus = readingKeyboardFocus, previous = focus.revealViewport;
+    focus.revealViewport = viewportSize.value;
+    if (isShortViewport() && Date.now() < focus.expiresAt
+      && (['width', 'height', 'top', 'left'] as const).some(key => previous[key] !== viewportSize.value[key])) focus.reveal = true;
+  }
   schedulePositionUpdate();
   void requestPageZoom();
 }
@@ -2096,7 +2118,8 @@ function matchesSelectionModifierOnPointer(event: PointerEvent): boolean {
 }
 function handlePointerDown(event: PointerEvent): void {
   if (!event.isTrusted) return;
-  clearReadingKeyboardFocus();
+  if (import.meta.env.BROWSER === 'safari') prepareReadingCardPan(event);
+  else clearReadingKeyboardFocus();
   // 第二根手指可以落在入口外；document capture 先撤销尚未完成的入口触摸。
   if (event.pointerType === 'touch') cancelIndicatorTouch();
   lastTrustedSelectionInteractionAt = Date.now();
@@ -2131,6 +2154,7 @@ function handlePointerDown(event: PointerEvent): void {
 }
 function handlePointerUp(event: PointerEvent): void {
   if (!event.isTrusted) return;
+  if (import.meta.env.BROWSER === 'safari') finishReadingCardPan(event);
   lastTrustedSelectionInteractionAt = Date.now();
   if (uiPointerInteraction || isInsideUi(event.target)) {
     if (import.meta.env.BROWSER === 'safari') readingFocusGestureAt = Date.now();
@@ -2148,6 +2172,7 @@ function handlePointerUp(event: PointerEvent): void {
 }
 function handlePointerCancel(event: PointerEvent): void {
   if (!event.isTrusted) return;
+  if (import.meta.env.BROWSER === 'safari') finishReadingCardPan(event);
   cancelIndicatorTouch();
   if (uiPointerInteraction || isInsideUi(event.target)) {
     uiPointerInteraction = false;
@@ -2168,7 +2193,8 @@ function cancelEntryDismiss(): void {
   entryDismissTimer = null;
 }
 function handlePointerMove(event: PointerEvent): void {
-  if (event.isTrusted && event.pointerType === 'touch') clearReadingKeyboardFocus();
+  if (event.isTrusted && event.pointerType === 'touch'
+    && (import.meta.env.BROWSER !== 'safari' || !moveReadingCardPan(event))) clearReadingKeyboardFocus();
   trackIndicatorTouch(event);
   if (!event.isTrusted || event.pointerType !== 'mouse' || isSelecting || showTooltip.value
     || import.meta.env.BROWSER !== 'userscript' && (contextMenuSelection || contextMenuSourceRejected)
@@ -2213,16 +2239,115 @@ function handleSelectionChange(event: Event): void {
   if (Date.now() - lastTrustedSelectionInteractionAt > TRUSTED_SELECTION_INTERACTION_GRACE_MS) return;
   if (!isSelectionReadSuppressed()) scheduleSelectionRead(selectionShortcutHeld);
 }
-// Safari 的键盘会滚动 document；短票据只属于实际聚焦的自有输入与当前原文。
-function clearReadingKeyboardFocus(): void {
+// 焦点身份本身不豁免滚动；初次缩高与明确旋转各有固定800ms，普通 resize/scroll 不续期。
+function clearReadingKeyboardFocus(event?: Event): void {
   if (readingKeyboardTimer !== undefined) window.clearTimeout(readingKeyboardTimer);
   readingKeyboardTimer = undefined;
+  readingFocusGestureAt = undefined;
+  if (import.meta.env.BROWSER === 'safari' && readingKeyboardFocus) readingKeyboardFocus.reveal = false;
+  if (import.meta.env.BROWSER === 'safari') readingCardPan = undefined;
+  if (import.meta.env.BROWSER === 'safari' && event && readingKeyboardFocus && readingKeyboardInputActive()
+    && (event.type === 'input' || event.type === 'keydown' && [' ', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes((event as KeyboardEvent).key))) {
+    const focus = readingKeyboardFocus, root = focus.card.getRootNode(), path = event.composedPath?.() ?? [];
+    // document capture 早于输入框 stopPropagation；关闭 ShadowRoot 在 document 只暴露当前 host。
+    if (event.target === focus.input || path.includes(focus.input)
+      || 'host' in root && event.target === root.host && document.activeElement === root.host && path.includes(root.host as EventTarget)) {
+      focus.expiresAt = 0;
+      return;
+    }
+  }
   if (readingKeyboardFocus) window.removeEventListener('wheel', cancelReadingKeyboardWheel, true);
   readingKeyboardFocus = undefined;
-  readingFocusGestureAt = undefined;
 }
 function cancelReadingKeyboardWheel(event: WheelEvent): void {
   if (event.isTrusted) clearReadingKeyboardFocus();
+}
+function readingViewportLandscape(): boolean | undefined {
+  const type = window.screen?.orientation?.type;
+  if (type === 'landscape-primary' || type === 'landscape-secondary') return true;
+  if (type === 'portrait-primary' || type === 'portrait-secondary') return false;
+  const angle = window.orientation;
+  if ([0, 90, -90, 180].includes(angle)) return Math.abs(angle) === 90;
+}
+function startReadingKeyboardPan(rotating: boolean): void {
+  const focus = readingKeyboardFocus;
+  if (!focus) return;
+  if (readingKeyboardTimer !== undefined) window.clearTimeout(readingKeyboardTimer);
+  focus.rotating = rotating;
+  focus.expiresAt = Date.now() + 800;
+  readingKeyboardTimer = window.setTimeout(() => {
+    readingKeyboardTimer = undefined;
+    if (readingKeyboardFocus === focus) focus.expiresAt = 0;
+  }, 800);
+}
+function readingKeyboardInputActive(focus = readingKeyboardFocus): boolean {
+  const root = focus?.card.getRootNode();
+  return !!focus && selectionSettings.value.autoDismiss && readingMode.value && showTooltip.value
+    && snapshot.value === focus.selection && tooltipRef.value === focus.card && focus.input.isConnected
+    && focus.card.contains(focus.input) && !!root && 'activeElement' in root && root.activeElement === focus.input
+    && focus.input.matches('input:not([disabled]):not([readonly]), textarea:not([disabled]):not([readonly])');
+}
+function revealReadingInput(focus: NonNullable<typeof readingKeyboardFocus>, revision: number): void {
+  if (readingKeyboardFocus !== focus || revision !== positionRevision || !focus.reveal) return;
+  focus.reveal = false;
+  if (Date.now() >= focus.expiresAt || !readingKeyboardInputActive(focus) || !isShortViewport()) return;
+  restoreSelectionSource();
+  if (!readingKeyboardInputActive(focus)) return;
+  const card = focus.card, scale = popupScale.value, frame = card.getBoundingClientRect();
+  const top = frame.top + card.clientTop * scale, bottom = top + card.clientHeight * scale;
+  if (![top, bottom, scale, card.scrollTop, card.scrollHeight].every(Number.isFinite)
+    || scale <= 0 || bottom <= top || card.scrollHeight <= card.clientHeight) return;
+  // Safari 的 BCR 与 raw VV.offsetTop 不同原点；现有定位已把卡片限制在安全视口，只用自己的 client port。
+  const input = focus.input.getBoundingClientRect();
+  if (![input.top, input.bottom, input.height].every(Number.isFinite) || input.height <= 0 || input.height > bottom - top) return;
+  const gap = Math.min(4, (bottom - top - input.height) / 2);
+  const delta = input.bottom > bottom - gap ? input.bottom - bottom + gap : input.top < top + gap ? input.top - top - gap : 0;
+  if (delta) card.scrollTop = Math.max(0, Math.min(card.scrollHeight - card.clientHeight, card.scrollTop + delta / scale));
+}
+function prepareReadingCardPan(event: PointerEvent): void {
+  const focus = readingKeyboardFocus;
+  clearReadingKeyboardFocus();
+  if (!focus || !event.isPrimary || event.pointerType !== 'touch' || event.button !== 0 || !isInsideUi(event.target)
+    || !readingKeyboardInputActive(focus) || !isShortViewport() || focus.card.clientHeight <= 0
+    || focus.card.scrollHeight <= focus.card.clientHeight) return;
+  const root = focus.card.getRootNode(), target = event.target;
+  if (!(target instanceof Node && focus.card.contains(target)) && !('host' in root && target === root.host)) return;
+  const viewport = window.visualViewport;
+  if (!viewport || ![event.pointerId, event.clientX, event.clientY, window.scrollY, viewport.width, viewport.scale].every(Number.isFinite)
+    || viewport.width <= 0 || viewport.scale <= 0 || Math.abs(viewport.scale - focus.scale) > 0.01) return;
+  restoreSelectionSource();
+  if (!readingKeyboardInputActive(focus)) return;
+  focus.expiresAt = 0;
+  readingKeyboardFocus = focus;
+  readingCardPan = {focus, pointerId: event.pointerId, x: event.clientX, y: event.clientY, local: false,
+    expiresAt: 0, width: viewport.width, scale: viewport.scale, scrollY: window.scrollY, travel: 0};
+  window.addEventListener('wheel', cancelReadingKeyboardWheel, {capture: true, passive: true});
+}
+function moveReadingCardPan(event: PointerEvent): boolean {
+  const pan = readingCardPan;
+  const viewport = window.visualViewport;
+  if (!pan || !pan.local || pan.pointerId !== event.pointerId || !event.isPrimary || !isInsideUi(event.target)
+    || !readingKeyboardInputActive(pan.focus) || !isShortViewport() || !viewport
+    || ![viewport.width, viewport.scale].every(Number.isFinite) || Math.abs(viewport.width - pan.width) > 1
+    || Math.abs(viewport.scale - pan.scale) > 0.01) return false;
+  const rect = pan.focus.card.getBoundingClientRect();
+  if (![event.clientX, event.clientY].every(Number.isFinite) || event.clientX < rect.left || event.clientX > rect.right
+    || event.clientY < rect.top || event.clientY > rect.bottom) return false;
+  const dy = Math.abs(event.clientY - pan.y), dx = Math.abs(event.clientX - pan.x);
+  if (!pan.expiresAt && dy >= 4 && dy > dx) {
+    pan.expiresAt = Date.now() + 400;
+    readingKeyboardTimer = window.setTimeout(() => {
+      readingKeyboardTimer = undefined;
+      if (readingCardPan === pan) readingCardPan = undefined;
+    }, 400);
+  }
+  return true;
+}
+function finishReadingCardPan(event: PointerEvent): void {
+  const pan = readingCardPan;
+  if (!pan) return;
+  if (pan.local && pan.expiresAt > Date.now() && pan.pointerId === event.pointerId && isInsideUi(event.target)) pan.pointerId = undefined;
+  else clearReadingKeyboardFocus();
 }
 function handleReadingInputFocus(event: FocusEvent): void {
   dismissReadingToolsOutside(event);
@@ -2236,28 +2361,65 @@ function handleReadingInputFocus(event: FocusEvent): void {
     || !snapshot.value || !card || !(input instanceof HTMLElement) || !card.contains(input)
     || !input.matches('.fr-reading-followup input:not([disabled]):not([readonly]), .fr-reading-followup textarea:not([disabled]):not([readonly])')
     || !root || !('activeElement' in root) || root.activeElement !== input || !viewport
-    || ![viewport.width, viewport.height, viewport.scale].every(value => Number.isFinite(value) && value > 0)) return;
-  readingKeyboardFocus = {input, card, selection: snapshot.value, expiresAt: Date.now() + 800,
-    width: viewport.width, height: viewport.height, scale: viewport.scale};
-  // 仅 Safari 的这800ms注册被动意图观察；Chromium 不增加 wheel 监听，保留 legacy mousewheel。
+    || ![viewport.width, viewport.height, viewport.scale, window.innerWidth, window.innerHeight].every(value => Number.isFinite(value) && value > 0)) return;
+  readingKeyboardFocus = {input, card, selection: snapshot.value, expiresAt: 0,
+    width: viewport.width, height: viewport.height, scale: viewport.scale,
+    landscape: readingViewportLandscape() ?? (window.innerWidth > window.innerHeight), rotating: false,
+    revealViewport: viewportSize.value};
+  // 仅此 Safari 自有焦点存续时观察主动 wheel；失焦/手势/关闭即释放，不拦截 legacy mousewheel。
   window.addEventListener('wheel', cancelReadingKeyboardWheel, {capture: true, passive: true});
-  readingKeyboardTimer = window.setTimeout(clearReadingKeyboardFocus, 800);
+  startReadingKeyboardPan(false);
+}
+function readingKeyboardViewport() {
+  const focus = readingKeyboardFocus;
+  if (!focus) return;
+  const viewport = window.visualViewport;
+  if (!readingKeyboardInputActive() || !viewport
+    || ![viewport.width, viewport.height, viewport.scale, window.innerWidth, window.innerHeight].every(value => Number.isFinite(value) && value > 0)
+    || Math.abs(viewport.scale - focus.scale) > 0.01) {
+    clearReadingKeyboardFocus();
+    return;
+  }
+  const explicitLandscape = readingViewportLandscape();
+  const landscape = explicitLandscape ?? (window.innerWidth > window.innerHeight);
+  if (landscape !== focus.landscape && (explicitLandscape !== undefined || Math.abs(viewport.width - focus.width) > 1)) {
+    focus.landscape = landscape;
+    startReadingKeyboardPan(true);
+  }
+  // Safari 可先报告方向和宿主页平移，再更新 VV 宽度；追上只刷新几何，不重开窗口。
+  if (focus.rotating && Date.now() < focus.expiresAt) {
+    focus.width = viewport.width;
+    focus.height = viewport.height;
+  }
+  return {focus, viewport};
 }
 function handleReadingKeyboardScroll(event: Event): boolean {
-  const focus = readingKeyboardFocus;
-  if (!focus) return false;
+  if (import.meta.env.BROWSER !== 'safari') return false;
   const target = event.target;
   if (target !== document && target !== window && !(target instanceof Element
     && (target === document.scrollingElement || target === document.documentElement || target === document.body))) return false;
-  const viewport = window.visualViewport, root = focus.card.getRootNode();
-  if (Date.now() >= focus.expiresAt || !readingMode.value || !showTooltip.value
-    || snapshot.value !== focus.selection || tooltipRef.value !== focus.card || !focus.input.isConnected
-    || !focus.card.contains(focus.input) || !('activeElement' in root) || root.activeElement !== focus.input
-    || !viewport || ![viewport.width, viewport.height, viewport.scale].every(value => Number.isFinite(value) && value > 0)
-    || Math.abs(viewport.width - focus.width) > 1 || Math.abs(viewport.scale - focus.scale) > 0.01
-    || focus.height - viewport.height < 80) {
-    clearReadingKeyboardFocus();
-    return false;
+  const pan = readingCardPan;
+  if (pan) {
+    const viewport = window.visualViewport;
+    const travel = pan.travel + Math.abs(window.scrollY - pan.scrollY);
+    if (!pan.local || Date.now() >= pan.expiresAt || !readingKeyboardInputActive(pan.focus) || !isShortViewport()
+      || pan.focus.card.scrollHeight <= pan.focus.card.clientHeight || !viewport || Math.abs(viewport.width - pan.width) > 1
+      || ![viewport.width, viewport.scale, travel].every(Number.isFinite) || Math.abs(viewport.scale - pan.scale) > 0.01 || travel > 2) {
+      clearReadingKeyboardFocus();
+      return false;
+    }
+    pan.travel = travel;
+    pan.scrollY = window.scrollY;
+  } else {
+    // scroll 可能早于合帧的 viewport callback；同步读取同一实际几何，不增加监听或重试。
+    const current = readingKeyboardViewport();
+    if (!current) return false;
+    const {focus, viewport} = current;
+    if (Date.now() >= focus.expiresAt || Math.abs(viewport.width - focus.width) > 1
+      || !focus.rotating && focus.height - viewport.height < 80) {
+      clearReadingKeyboardFocus();
+      return false;
+    }
   }
   restoreSelectionSource();
   if (showTooltip.value) {
@@ -2268,6 +2430,8 @@ function handleReadingKeyboardScroll(event: Event): boolean {
 }
 // 仅在扩展 UI 内拦住滚轮冒泡；document 级 wheel 会抑制 Chromium 对同节点派发 legacy mousewheel，导致旧播放器收不到音量手势。
 function dismissReadingToolsOutside(event: Event): void {
+  if (import.meta.env.BROWSER === 'safari' && readingCardPan
+    && !(event.target instanceof Node && readingCardPan.focus.card.contains(event.target))) clearReadingKeyboardFocus();
   readingPanelRef.value?.dismissToolsOutside(event);
 }
 function dismissReadingToolsOnFocusOut(event: FocusEvent): void {
@@ -2335,8 +2499,9 @@ function handleScroll(event: Event): void {
 }
 function handleKeydown(event: KeyboardEvent): void {
   if (!event.isTrusted || (event.target instanceof Element && event.target.id === 'fluent-read-share-card-container')) return;
+  if (import.meta.env.BROWSER === 'safari' && readingCardPan) clearReadingKeyboardFocus();
   if (import.meta.env.BROWSER !== 'userscript') clearContextMenuSelection();
-  if (['Escape', 'PageUp', 'PageDown', 'Home', 'End', 'ArrowUp', 'ArrowDown', ' '].includes(event.key)) clearReadingKeyboardFocus();
+  if (['Escape', 'PageUp', 'PageDown', 'Home', 'End', 'ArrowUp', 'ArrowDown', ' '].includes(event.key)) clearReadingKeyboardFocus(event);
   lastTrustedSelectionInteractionAt = Date.now();
   if (isInsideUi(event.target)) {
     if (import.meta.env.BROWSER === 'safari') readingFocusGestureAt = Date.now();
