@@ -1,7 +1,7 @@
 /**
  * @file src/app/popup/mount.ts
  * 文件职责：在轻量启动入口唤醒后台后，读取配置并创建 Popup Vue 应用。
- * 主要内容：配置 Promise 结束后确认水合未被阻止，再选择首启轻量根组件或完整主菜单；异步资源完成后复验安全水合状态和最新引导、语言及字体，只准备变化的资源，页面退出后停止挂载；Firefox Android 通过公开平台 API 限制容器宽度，Safari 触摸宿主由当前输入能力启用填宽；两种模式共用首启与主菜单，探测不阻塞挂载，退出、失败和卸载只清理自身标记。
+ * 主要内容：配置 Promise 结束后确认水合未被阻止，再选择首启轻量根组件或完整主菜单；异步资源完成后复验安全水合状态和最新引导、语言及字体，只准备变化的资源，页面退出后停止挂载；Firefox Android 通过一次公开平台判别限制容器宽度，Safari 触摸宿主由当前输入能力启用填宽；已挂载页面进入往返缓存时暂时释放自有布局标记，恢复时复用平台结果并重验触摸能力，不重读配置或重建应用；挂载前退出、普通退出、失败和卸载保持终止，只清理未被其它宿主接管的自有标记。
  * 模块边界：这里不读取当前标签页、不保存配置，也不处理 Popup 业务事件；所有响应式交互在 PopupApp 中，feature 与 runtime 行为通过公开模块完成。
  */
 import {createApp, type Component} from 'vue';
@@ -20,39 +20,64 @@ export async function mountPreparedPopupApp(selector: string): Promise<void> {
   let exited = false;
   let mounted = false;
   let disposed = false;
+  let persistedHidden = false;
+  let androidPlatform = false;
   let ownsAndroidWidth = false;
   let ownsSafariTouchWidth = false;
-  const releaseContainer = () => {
-    disposed = true;
-    target?.removeEventListener('pagehide', onPageHide);
-    if (ownsAndroidWidth) root.removeAttribute('data-fluentread-android-popup');
+  const releaseLayoutMarkers = () => {
+    if (ownsAndroidWidth && root.getAttribute('data-fluentread-android-popup') === '') root.removeAttribute('data-fluentread-android-popup');
     ownsAndroidWidth = false;
-    if (ownsSafariTouchWidth) root.removeAttribute('data-fluentread-safari-touch-popup');
+    if (ownsSafariTouchWidth && root.getAttribute('data-fluentread-safari-touch-popup') === '') root.removeAttribute('data-fluentread-safari-touch-popup');
     ownsSafariTouchWidth = false;
   };
-  const onPageHide = () => {exited = true; releaseContainer();};
+  const releaseContainer = () => {
+    exited = true;
+    disposed = true;
+    target?.removeEventListener('pagehide', onPageHide);
+    target?.removeEventListener('pageshow', onPageShow);
+    releaseLayoutMarkers();
+  };
+  const onPageHide = (event: PageTransitionEvent) => {
+    if (event.persisted && mounted && !disposed) {
+      persistedHidden = true;
+      releaseLayoutMarkers();
+    } else releaseContainer();
+  };
+  const onPageShow = (event: PageTransitionEvent) => {
+    if (!event.persisted || !persistedHidden || disposed || !mounted) return;
+    persistedHidden = false;
+    applyLayoutMarkers();
+  };
   target?.addEventListener('pagehide', onPageHide);
-  // Safari 触摸 popup 已有宿主视口；桌面和页内 iframe 的尺寸契约由各自 CSS 保留。
-  if (browserCapabilities.browser === 'safari') {
-    try {
-      if (target?.matchMedia('(any-pointer: coarse)').matches && !disposed
-        && !root.hasAttribute('data-fluentread-safari-touch-popup')) {
-        root.setAttribute('data-fluentread-safari-touch-popup', '');
-        ownsSafariTouchWidth = true;
+  target?.addEventListener('pageshow', onPageShow);
+  function applyLayoutMarkers() {
+    if (disposed || persistedHidden) return;
+    // Safari 恢复时重验当前输入能力；仍由其它宿主持有的标记不覆盖。
+    if (browserCapabilities.browser === 'safari') {
+      try {
+        if (target?.matchMedia('(any-pointer: coarse)').matches && !disposed && !persistedHidden
+          && !root.hasAttribute('data-fluentread-safari-touch-popup')) {
+          root.setAttribute('data-fluentread-safari-touch-popup', '');
+          ownsSafariTouchWidth = true;
+        }
+      } catch {
+        // 输入能力不可用时保留固有宽度，不阻断配置或界面组装。
       }
-    } catch {
-      // 输入能力不可用时保留固有宽度，不阻断配置或界面组装。
+    }
+    if (androidPlatform && !disposed && !persistedHidden && !root.hasAttribute('data-fluentread-android-popup')) {
+      root.setAttribute('data-fluentread-android-popup', '');
+      ownsAndroidWidth = true;
     }
   }
+  applyLayoutMarkers();
   // Android 容器已有固定视口；桌面固有尺寸不能依赖 viewport 的首次协商结果。
   if (browserCapabilities.browser === 'firefox') {
     void (async () => {
       try {
         const platform = await browser.runtime.getPlatformInfo();
-        if (!disposed && platform.os === 'android' && !root.hasAttribute('data-fluentread-android-popup')) {
-          ownsAndroidWidth = true;
-          root.setAttribute('data-fluentread-android-popup', '');
-        }
+        if (disposed) return;
+        androidPlatform = platform.os === 'android';
+        applyLayoutMarkers();
       } catch {
         // 平台 API 不可用时保留固有尺寸，不阻断配置、语言引导或翻译菜单。
       }

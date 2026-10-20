@@ -1,7 +1,7 @@
 /**
  * @file tests/popupChildOwnership.test.ts
  * 文件职责：执行 Popup 语言选择和首启根组件的实际客户端模板，验证旧事件与迟到加载的归属。
- * 主要内容：真实 Vue/KeepAlive 覆盖开关、源目标切换、外部值同步、关闭、失活、卸载、预加载和外观监听清理；触屏语言列表执行真实视口订阅器，验证平移及键盘高度变化不替换选择器、关闭与失活取消队列，旧浮层回调不能写入新会话。
+ * 主要内容：真实 Vue/KeepAlive 覆盖开关、源目标切换、外部值同步、关闭、失活、卸载、预加载和外观监听清理；首启根验证配对往返缓存恢复、已保存交接续接及普通退出不可复活；触屏语言列表执行真实视口订阅器，验证平移及键盘高度变化不替换选择器、关闭与失活取消队列，旧浮层回调不能写入新会话。
  * 模块边界：Element Plus、引导展示、浏览器 locale、模块加载和外观应用为受控端口；不声称真实浏览器焦点或语言持久化证据。
  */
 import {createRequire} from 'node:module'
@@ -36,6 +36,9 @@ function invalidate(reason: string) {
   if (reason === 'cached') shown.value = false
   if (reason === 'pagehide') win.dispatchEvent(new win.Event('pagehide'))
   if (reason === 'unmount') app?.unmount()
+}
+function pageTransition(type: 'pagehide' | 'pageshow', persisted: boolean) {
+  const event = new win.Event(type);Object.defineProperty(event, 'persisted', {value: persisted});win.dispatchEvent(event)
 }
 beforeEach(async () => {
   vi.clearAllMocks();app = undefined;events = new Map();mediaListeners = new Set();subscribers = new Set()
@@ -228,6 +231,62 @@ describe('PopupOnboarding 实际预加载和生命周期', () => {
     expect(document.querySelector('[data-main-app]')).not.toBeNull();expect(fixture.loadMain).toHaveBeenCalledOnce()
     expect(fixture.config.uiLanguage).toBe('ja-JP');expect(fixture.config.uiLanguageSetupCompleted).toBe(true)
     expect(document.querySelector('[data-onboarding-port]')).toBeNull()
+  })
+  it('persisted hide/show 配对恢复同一根的当前引导，重复恢复不复活旧回调或重复订阅', async () => {
+    await mount(onboardingPath);const root=state,first=onboarding(),old=handles(first)
+    pageTransition('pageshow',true);await drain();expect(onboarding()).toBe(first)
+    for(let cycle=0;cycle<2;cycle++){
+      const inactive=handles(onboarding())
+      pageTransition('pagehide',true);await drain();expect(state.pageExited).toBe(true)
+      expect(subscribers.size).toBe(0);expect(mediaListeners.size).toBe(0)
+      inactive.onSaved('en-US');await inactive.onConfirmed('en-US');expect(fixture.loadMain).not.toHaveBeenCalled()
+      pageTransition('pageshow',false);await drain();expect(state.pageExited).toBe(true);expect(subscribers.size).toBe(0)
+      pageTransition('pageshow',true);await drain();expect(state).toBe(root);expect(state.pageExited).toBe(false)
+      expect(onboarding()).not.toBe(first);expect(subscribers.size).toBe(1);expect(mediaListeners.size).toBe(1)
+      const current=onboarding();pageTransition('pageshow',true);await drain();expect(onboarding()).toBe(current)
+      old.onSaved('en-US');await old.onConfirmed('en-US');expect(fixture.loadMain).not.toHaveBeenCalled()
+    }
+    handles(onboarding()).onSaved('en-US');await drain();expect(fixture.loadMain).toHaveBeenCalledOnce();expect(state.mainApp).toBeNull()
+  })
+  it.each(['pending','loaded'])('已保存已确认的主菜单在 persisted 隐藏期间 %s，恢复新上下文才交接且只加载一次', async phase => {
+    const loaded=deferred<any>();fixture.loadMain.mockReturnValue(loaded.promise);await mount(onboardingPath)
+    fixture.config.uiLanguage='ja-JP';fixture.config.uiLanguageSetupCompleted=true
+    const old=handles(onboarding());old.onSaved('ja-JP');const pending=old.onConfirmed('ja-JP');await drain()
+    pageTransition('pagehide',true);await drain();expect(state.mainApp).toBeNull();expect(subscribers.size).toBe(0)
+    if(phase==='loaded'){loaded.resolve({render:()=>runtime.h('div',{'data-main-app':'true'})});await pending;await drain();expect(state.mainApp).toBeNull()}
+    old.onSaved('ja-JP');await old.onConfirmed('ja-JP');expect(fixture.loadMain).toHaveBeenCalledOnce()
+    pageTransition('pageshow',true);await drain()
+    if(phase==='pending'){loaded.resolve({render:()=>runtime.h('div',{'data-main-app':'true'})});await pending;await drain()}
+    expect(document.querySelector('[data-main-app]')).not.toBeNull();expect(fixture.loadMain).toHaveBeenCalledOnce()
+    expect(fixture.config.uiLanguage).toBe('ja-JP');expect(fixture.config.uiLanguageSetupCompleted).toBe(true)
+    expect(subscribers.size).toBe(0);expect(mediaListeners.size).toBe(0)
+  })
+  it('普通 pagehide 后的 persisted hide/show 不复活引导或已确认的迟到加载', async () => {
+    const loaded=deferred<any>();fixture.loadMain.mockReturnValue(loaded.promise);await mount(onboardingPath)
+    fixture.config.uiLanguageSetupCompleted=true;const old=handles(onboarding()),pending=old.onConfirmed('en-US');await drain()
+    pageTransition('pagehide',false);await drain();pageTransition('pagehide',true);pageTransition('pageshow',true)
+    loaded.resolve({render:()=>runtime.h('div',{'data-main-app':'true'})});await pending;await drain()
+    old.onSaved('en-US');await old.onConfirmed('en-US');expect(state.pageExited).toBe(true);expect(state.mainApp).toBeNull()
+    expect(fixture.loadMain).toHaveBeenCalledOnce();expect(subscribers.size).toBe(0);expect(mediaListeners.size).toBe(0)
+  })
+  it('persisted 隐藏后卸载清理 paired 监听，随后恢复不挂载已完成的交接', async () => {
+    // Linkedom 的 window 代理没有方法描述符，包装真实事件端口以保留派发和清理断言。
+    const add=vi.fn(win.addEventListener.bind(win)),remove=vi.fn(win.removeEventListener.bind(win)),loaded=deferred<any>()
+    win.addEventListener=add;win.removeEventListener=remove
+    fixture.loadMain.mockReturnValue(loaded.promise);await mount(onboardingPath);fixture.config.uiLanguageSetupCompleted=true
+    const old=handles(onboarding()),pending=old.onConfirmed('en-US');await drain();pageTransition('pagehide',true);await drain()
+    app?.unmount();app=undefined;pageTransition('pageshow',true)
+    loaded.resolve({render:()=>runtime.h('div',{'data-main-app':'true'})});await pending;await drain()
+    expect(state.mainApp).toBeNull();expect(subscribers.size).toBe(0);expect(mediaListeners.size).toBe(0)
+    for(const type of ['pagehide','pageshow']){
+      const listener=add.mock.calls.find(call=>call[0]===type)?.[1];expect(listener).toBeTypeOf('function');expect(remove).toHaveBeenCalledWith(type,listener)
+    }
+  })
+  it('加载失败的明确重载保持终止，不接受随后 persisted 恢复或旧重试', async () => {
+    fixture.loadMain.mockRejectedValue(new Error('import failed'));await mount(onboardingPath);await handles(onboarding()).onConfirmed('en-US');await drain()
+    const retry=eventOf(document.querySelector('.onboarding-load-error button')!);retry();expect(reload).toHaveBeenCalledOnce()
+    pageTransition('pagehide',true);pageTransition('pageshow',true);await drain();retry()
+    expect(reload).toHaveBeenCalledOnce();expect(state.pageExited).toBe(true);expect(subscribers.size).toBe(0);expect(mediaListeners.size).toBe(0)
   })
   it('当前导入失败显示双语错误，重试只重载一次；失活后的旧重试无效', async () => {
     fixture.loadMain.mockRejectedValue(new Error('import failed'));await mount(onboardingPath);await handles(onboarding()).onConfirmed('en-US');await drain()

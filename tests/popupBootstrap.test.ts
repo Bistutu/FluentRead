@@ -20,6 +20,9 @@ vi.mock('../src/ui/i18n', () => ({createUiI18nPlugin: ports.plugin}));
 vi.mock('../src/platform/i18n/uiLanguageBundles', () => ({ensureUiLanguageBundle: ports.ensureBundle}));
 vi.mock('../src/ui/interfaceAppearance', () => ({prepareInterfaceFont: ports.font}));
 function deferred() {let resolve!: () => void; const promise = new Promise<void>(yes => {resolve = yes;}); return {promise, resolve};}
+function pageTransition(type: 'pagehide' | 'pageshow', persisted: boolean) {
+    const event = new Event(type); Object.defineProperty(event, 'persisted', {value: persisted}); window.dispatchEvent(event);
+}
 type Bootstrap = typeof import('../src/app/popup/mount');
 let bootstrap: Bootstrap;
 beforeEach(async () => {
@@ -144,6 +147,85 @@ describe('Popup fresh configuration bootstrap', () => {
     it('卸载不移除其它宿主已经持有的容器标记',async()=>{
         ports.browser='firefox';ports.platform.mockResolvedValue({os:'android'});document.documentElement.setAttribute('data-fluentread-android-popup','');
         await bootstrap.mountPreparedPopupApp('#owned');ports.unmountCallbacks.forEach(fn=>fn());expect(document.documentElement.hasAttribute('data-fluentread-android-popup')).toBe(true);
+    });
+
+    it.each(['safari','firefox'])('%s 已挂载页面反复进入往返缓存只恢复布局，不重建应用或重读配置资源',async browser=>{
+        ports.browser=browser;ports.config.uiLanguageSetupCompleted=true;ports.platform.mockResolvedValue({os:'android'});
+        const matchMedia=vi.fn(()=>({matches:true})),target=Object.assign(new EventTarget(),{matchMedia});vi.stubGlobal('window',target);
+        const add=vi.spyOn(target,'addEventListener'),remove=vi.spyOn(target,'removeEventListener');
+        const attribute=browser==='safari'?'data-fluentread-safari-touch-popup':'data-fluentread-android-popup';
+        await bootstrap.mountPreparedPopupApp('#owned');
+        pageTransition('pageshow',true);pageTransition('pageshow',false);
+        for(let cycle=0;cycle<2;cycle++){
+            expect(document.documentElement.getAttribute(attribute)).toBe('');
+            pageTransition('pagehide',true);expect(document.documentElement.hasAttribute(attribute)).toBe(false);
+            expect(remove).not.toHaveBeenCalled();
+            pageTransition('pageshow',true);expect(document.documentElement.getAttribute(attribute)).toBe('');
+        }
+        expect(ports.createApp).toHaveBeenCalledOnce();expect(ports.mount).toHaveBeenCalledOnce();expect(ports.mainLoaded).toHaveBeenCalledOnce();
+        expect(ports.font).toHaveBeenCalledOnce();expect(ports.ensureBundle).toHaveBeenCalledOnce();
+        expect(ports.platform).toHaveBeenCalledTimes(browser==='firefox'?1:0);expect(matchMedia).toHaveBeenCalledTimes(browser==='safari'?3:0);
+        expect(add.mock.calls.map(([type])=>type)).toEqual(['pagehide','pageshow']);
+        ports.unmountCallbacks.forEach(fn=>fn());expect(document.documentElement.hasAttribute(attribute)).toBe(false);
+        expect(remove.mock.calls.map(([type])=>type)).toEqual(['pagehide','pageshow']);
+    });
+    it('Safari 每次 persisted 恢复按当前 coarse 能力取得标记，fine 恢复不沿用旧布局',async()=>{
+        ports.browser='safari';let coarse=true;const matchMedia=vi.fn(()=>({matches:coarse}));
+        vi.stubGlobal('window',Object.assign(new EventTarget(),{matchMedia}));await bootstrap.mountPreparedPopupApp('#owned');
+        pageTransition('pagehide',true);coarse=false;pageTransition('pageshow',true);
+        expect(document.documentElement.hasAttribute('data-fluentread-safari-touch-popup')).toBe(false);
+        pageTransition('pagehide',true);coarse=true;pageTransition('pageshow',true);
+        expect(document.documentElement.getAttribute('data-fluentread-safari-touch-popup')).toBe('');
+        expect(matchMedia).toHaveBeenCalledTimes(3);expect(ports.mount).toHaveBeenCalledOnce();
+    });
+    it('Android 已挂载 persisted 隐藏期间的平台回复只缓存，匹配恢复事件才写标记且不重查平台',async()=>{
+        ports.browser='firefox';let resolve!:(value:{os:string})=>void;ports.platform.mockReturnValue(new Promise(yes=>{resolve=yes;}));
+        await bootstrap.mountPreparedPopupApp('#owned');pageTransition('pagehide',true);
+        resolve({os:'android'});await Promise.resolve();expect(document.documentElement.hasAttribute('data-fluentread-android-popup')).toBe(false);
+        pageTransition('pageshow',false);expect(document.documentElement.hasAttribute('data-fluentread-android-popup')).toBe(false);
+        pageTransition('pageshow',true);expect(document.documentElement.getAttribute('data-fluentread-android-popup')).toBe('');
+        expect(ports.platform).toHaveBeenCalledOnce();expect(ports.mount).toHaveBeenCalledOnce();
+    });
+    it.each(['safari','firefox'])('%s persisted 隐藏中卸载后，旧 pageshow 和迟到平台回复不能恢复标记',async browser=>{
+        ports.browser=browser;let resolve!:(value:{os:string})=>void;ports.platform.mockReturnValue(new Promise(yes=>{resolve=yes;}));
+        const target=Object.assign(new EventTarget(),{matchMedia:vi.fn(()=>({matches:true}))});vi.stubGlobal('window',target);
+        const remove=vi.spyOn(target,'removeEventListener');await bootstrap.mountPreparedPopupApp('#owned');pageTransition('pagehide',true);
+        ports.unmountCallbacks.forEach(fn=>fn());resolve?.({os:'android'});await Promise.resolve();pageTransition('pageshow',true);
+        expect(document.documentElement.hasAttribute('data-fluentread-safari-touch-popup')).toBe(false);
+        expect(document.documentElement.hasAttribute('data-fluentread-android-popup')).toBe(false);expect(ports.mount).toHaveBeenCalledOnce();
+        expect(remove.mock.calls.map(([type])=>type)).toEqual(['pagehide','pageshow']);
+    });
+    it.each(['safari','firefox'])('%s persisted 隐藏后再普通退出保持终止，不能被 pageshow 重新激活',async browser=>{
+        ports.browser=browser;ports.platform.mockResolvedValue({os:'android'});
+        const target=Object.assign(new EventTarget(),{matchMedia:vi.fn(()=>({matches:true}))});vi.stubGlobal('window',target);
+        const remove=vi.spyOn(target,'removeEventListener');await bootstrap.mountPreparedPopupApp('#owned');
+        pageTransition('pagehide',true);pageTransition('pagehide',false);pageTransition('pageshow',true);
+        expect(document.documentElement.hasAttribute('data-fluentread-safari-touch-popup')).toBe(false);
+        expect(document.documentElement.hasAttribute('data-fluentread-android-popup')).toBe(false);expect(ports.mount).toHaveBeenCalledOnce();
+        expect(remove.mock.calls.map(([type])=>type)).toEqual(['pagehide','pageshow']);
+    });
+    it.each(['configuration','font'] as const)('挂载前 pending %s 的 persisted hide 仍终止，恢复和异步结果不能补挂载',async pendingResource=>{
+        ports.browser='safari';const gate=deferred();
+        vi.stubGlobal('window',Object.assign(new EventTarget(),{matchMedia:vi.fn(()=>({matches:true}))}));
+        if(pendingResource==='configuration'){ports.ready=gate.promise;vi.resetModules();bootstrap=await import('../src/app/popup/mount');}
+        else ports.font.mockReturnValueOnce(gate.promise);
+        const pending=bootstrap.mountPreparedPopupApp('#owned');
+        if(pendingResource==='font')await vi.waitFor(()=>expect(ports.font).toHaveBeenCalledOnce());
+        pageTransition('pagehide',true);pageTransition('pageshow',true);gate.resolve();await pending;pageTransition('pageshow',true);
+        expect(ports.createApp).not.toHaveBeenCalled();expect(document.documentElement.hasAttribute('data-fluentread-safari-touch-popup')).toBe(false);
+    });
+    it.each(['safari','firefox'])('%s 自有标记在可见或隐藏期间被其它宿主接管后，恢复与卸载不覆盖或删除它',async browser=>{
+        ports.browser=browser;ports.platform.mockResolvedValue({os:'android'});
+        vi.stubGlobal('window',Object.assign(new EventTarget(),{matchMedia:vi.fn(()=>({matches:true}))}));
+        const attribute=browser==='safari'?'data-fluentread-safari-touch-popup':'data-fluentread-android-popup';
+        await bootstrap.mountPreparedPopupApp('#owned');document.documentElement.setAttribute(attribute,'external-visible-owner');
+        pageTransition('pagehide',true);expect(document.documentElement.getAttribute(attribute)).toBe('external-visible-owner');
+        pageTransition('pageshow',true);expect(document.documentElement.getAttribute(attribute)).toBe('external-visible-owner');
+        document.documentElement.removeAttribute(attribute);pageTransition('pagehide',true);pageTransition('pageshow',true);
+        expect(document.documentElement.getAttribute(attribute)).toBe('');
+        pageTransition('pagehide',true);document.documentElement.setAttribute(attribute,'external-hidden-owner');pageTransition('pageshow',true);
+        expect(document.documentElement.getAttribute(attribute)).toBe('external-hidden-owner');
+        ports.unmountCallbacks.forEach(fn=>fn());expect(document.documentElement.getAttribute(attribute)).toBe('external-hidden-owner');
     });
 
     it('无 Window 宿主时仍可按配置组装并由 app 卸载释放',async()=>{
