@@ -1,6 +1,6 @@
 /**
  * @file src/features/document-translation/services/binary.ts
- * 文件职责：处理 PDF、EPUB 与 DOCX 二进制文档的受限解析和导出，把压缩包或页面文本转换为统一 ParsedDocument，并生成可下载的双语产物；扫描页以图像并集和原生正文证据判定，兼容独立页码及拼接扫描图。
+ * 文件职责：处理 PDF、EPUB 与 DOCX 二进制文档的受限解析和导出，把压缩包或页面文本转换为统一 ParsedDocument，并生成可下载的双语产物；扫描页以图像并集和原生正文证据判定，兼容独立页码、图像外的少量原生页眉页脚及拼接扫描图。
  * 主要内容：相同译文回退原文；Word 段落记下表格单元格供阅读视图排版；按实际字节限制导入、按需加载二进制依赖，包含归档安全上限、可取消 PDF 提取与译文回填；原生旋转内容必要时沿用 sourceRotation 展示坐标，PDF 字形边界回退无效的零/负 ascent 并包含有限负 descent，字号与基线保持不变；零宽文字项使用受限同行位置估算，不把组合标记当作额外字形；默认逐页原版左右对照，保留旋转裁剪并直接嵌入 JPEG，支持文字几何的光栅端口添加可搜索复制的 Unicode 层和溢出段落的可见全文续页，批注仍保留完整译文；ePub/DOCX 导出让出主线程并使用可取消归档流，ePub 保持首项 mimetype 无压缩及 XHTML 章节格式；未改资源保留原压缩方式，文本导出直接使用 core 的回退规则避免重复规范化。
  * 模块边界：此服务可以依赖 JSZip、pdf-lib 和二进制 I/O，但不负责调用翻译服务或渲染设置页；文本格式规则归 core/document，浏览器 Canvas 光栅实现由 ui/pdfPreview 通过接口注入。
  */
@@ -665,17 +665,34 @@ export function pdfTextBlocks(lines: PdfTextLine[], pageWidth: number): Array<Om
         .sort((left, right) => left.y - right.y || left.x - right.x);
 }
 
-/** 没有原生正文、只有独立页码的图片页也需要 OCR；重叠图像只能计一次覆盖面积。 */
+/** 少量原生页眉页脚不代表扫描图内已有文字层；原生正文与图表题注仍优先保留，重叠图像只计一次面积。 */
 function isScannedPdfPage(atoms: readonly PdfLayoutAtom[], blocks: readonly PdfLayoutBlock[], graphics: readonly PdfGraphicsShape[], width: number, height: number): boolean {
     const pageNumber = /^(?:\d{1,4}|(?:page\s+)?\d{1,4}\s*(?:\/|of)\s*\d{1,4})$/iu;
-    if (atoms.length && (!blocks.length || blocks.some(block => block.kind !== 'footer'
-        || block.y <= height * .92 || !pageNumber.test(block.source.trim())))) return false;
-
-    const target = width * height * .5;
     const images = graphics.filter(shape => shape.kind === 'image').map(shape => ({
         left: Math.max(0, shape.x), right: Math.min(width, shape.x + shape.width),
         top: Math.max(0, shape.y), bottom: Math.min(height, shape.y + shape.height),
     })).filter(image => image.right > image.left && image.bottom > image.top);
+    const onlyPageNumbers = blocks.length > 0 && blocks.every(block => block.kind === 'footer'
+        && block.y > height * .92 && pageNumber.test(block.source.trim()));
+    if (atoms.length && !onlyPageNumbers) {
+        // 公报、合同等会在扫描附件外再排一个原生标题或发布页脚。只有边缘少量文字、且与图像完全分离时才放行；
+        // 不因一张大照片、图表的标题/题注，或被版面保护器归为 figure-label 的原生正文而覆盖现有文字层。
+        if (!blocks.length || blocks.reduce((length, block) => length + block.source.length, 0) > 160
+            || blocks.some(block => ['caption', 'metadata', 'formula', 'table'].includes(block.kind || '')
+                || /^(?:(?:fig(?:ure)?\.?|table|chart|plate|diagram|photo(?:graph)?|image)\s*(?:\d|[ivx]+\b|[:.])|[图表圖図]\s*[\d一二三四五六七八九十])/iu.test(block.source.trim()))) return false;
+        let headerLines = 0, footerLines = 0;
+        for (const block of blocks) {
+            if (block.y + block.height <= height * .15) headerLines += block.lineCount;
+            else if (block.y >= height * .85) footerLines += block.lineCount;
+            else return false;
+        }
+        if (headerLines > 2 || footerLines > 2 || atoms.some(atom =>
+            !(atom.y + atom.height <= height * .15 || atom.y >= height * .85)
+            || images.some(image => atom.x < image.right && atom.x + atom.width > image.left
+                && atom.y < image.bottom && atom.y + atom.height > image.top))) return false;
+    }
+
+    const target = width * height * .5;
     if (images.some(image => (image.right - image.left) * (image.bottom - image.top) >= target)) return true;
     if (images.length < 2) return false;
 
@@ -768,7 +785,7 @@ async function parsePdf(fileName: string, bytes: Uint8Array, signal?: AbortSigna
                     preservedRegions,
                     layoutBoundaries: graphics.filter(shape => shape.kind === 'path' &&
                         (shape.width >= 12 && shape.height <= 5 || shape.height >= 12 && shape.width <= 5)),
-                    // 至少半页的图像并集，且没有原生正文（容许独立页码）；空白页、页脚小图和正文配图不算扫描页。
+                    // 至少半页的图像并集，且没有原生正文（容许独立页码及图像外少量边缘文字）；空白页与正文配图不算扫描页。
                     ...(isScannedPdfPage(atoms, layoutBlocks, graphics, viewport.width, viewport.height) ? {scanned: true} : {}),
                 });
                 onProgress?.({completed: pageNumber, total: pdf.numPages});
