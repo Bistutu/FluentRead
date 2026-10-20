@@ -601,6 +601,84 @@
         "sha256": "6b07d441aa2b65d4d9f825a7695f17e659ace05b6d3aaf78eb62d73899baecb2",
         "unmodifiedOriginal": true
       }
-    ]
+    ],
+    "unsignedNativeBuild": {
+      "sourceCommit": "84a214351f00440617048b157b0a2d2ed53e6eb4",
+      "scope": "LOCAL_UNSIGNED_BUILD_ONLY_NO_BOOT_INSTALL_TEST_OR_RELEASE",
+      "report": {
+        "path": "reading-rotation-fix-native-build-2/native-build-result.json",
+        "bytes": 169881,
+        "sha256": "470becda468e64827c95857bbdac0f4032b4127727315b222e2920cde06ee8fe"
+      },
+      "outer": {
+        "path": "reading-rotation-fix-native-build-2/root-execution-receipt.json",
+        "bytes": 780,
+        "sha256": "287ca9687f69d95c62c309e7bcf4e36ffdf7ab5a7124891fa24005e66dbf3177"
+      },
+      "actualOuterExitCode": 0,
+      "commands": 10,
+      "streamsRehashed": 20,
+      "allCommandsZeroClosedReapedOwnGroupAbsent": true,
+      "stages": [
+        "package",
+        "macOS Release",
+        "iOS Simulator Release",
+        "iPhoneOS Release"
+      ],
+      "webFiles": 472,
+      "webCopies": 4,
+      "allFourCopiesMatch": true,
+      "fourSourceInputsBeforeAfterExact": true,
+      "nativeUIAcceptance": false
+    },
+    "installedFollowup": {
+      "report": {
+        "path": "reading-rotation-dedicated-update-2/update-only-runtime-1/update-only-report.json",
+        "bytes": 49524,
+        "sha256": "24f4bcdf16b83fdd74f75590c1eca84a288c51b6f3a521f63dfc3441e7dc47a4"
+      },
+      "outer": {
+        "path": "reading-rotation-dedicated-update-2/update-only-runtime-1/root-execution-receipt.json",
+        "bytes": 985,
+        "sha256": "ea5108e45f1abaafe6ef20ae1854ec5368e99f34530080fd8143f3a6330ae0d0"
+      },
+      "independentResultReview": {
+        "path": "reading-rotation-dedicated-update-2/independent-update-runtime-result-review.json",
+        "bytes": 5577,
+        "sha256": "368f1b045d20a7302f5c034f58fa27da32b45a3459512d323693b3ca27d37b67"
+      },
+      "oldInstalledCommit": "2990c32e3d134e0bddb1a32ff0042d48eb1bf330",
+      "oldSourceEquivalenceCommit": "22c58493952036b290c29c336275e839b0c32aed",
+      "newInstalledCommit": "84a214351f00440617048b157b0a2d2ed53e6eb4",
+      "deviceUDID": "FD81DB27-E632-4181-89AE-06382C1D0508",
+      "actualOuterExitCode": 0,
+      "helperExitIntended": 0,
+      "elapsedMs": 31287.801916,
+      "commands": 12,
+      "streamsRehashed": 24,
+      "allCommandsZeroClosedReapedOwnGroupAbsent": true,
+      "bootAttempts": 1,
+      "installAttempts": 1,
+      "shutdownAttempts": 1,
+      "savedFullMapsVerified": 12,
+      "currentAppFiles": 490,
+      "currentWebFiles": 472,
+      "fullSourceAndInstalledByteIdentityVerified": true,
+      "other14WholeDeviceRecordsUnchanged": true,
+      "all15Shutdown": true,
+      "officialAppContainerUUID": "90B74BF1-AE38-49F0-A9B8-A4C9A7DE0916",
+      "officialDataContainerUUID": "6F5F72A3-843C-473C-A0F6-3689AF5467CD",
+      "appPathChanged": true,
+      "dataPathChanged": true,
+      "configurationPreservation": "UNKNOWN",
+      "UIAcceptance": "NOT_TESTED",
+      "providerAcceptance": "NOT_TESTED",
+      "sameForegroundPointSamples": true,
+      "continuousFocusMonitoring": false,
+      "errors": [],
+      "cleanupErrors": [],
+      "resourceErrors": [],
+      "GO": false
+    }
   }
 }
