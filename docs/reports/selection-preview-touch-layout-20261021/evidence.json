@@ -395,5 +395,22 @@
       "bytes": 17909,
       "sha256": "0814d4510971d7b3a4b2f9764638c7fb7cf8b1965e084665657800e3c7a2a9c1"
     }
-  ]
+  ],
+  "componentBehaviorRegression": {
+    "test": "tests/selectionSettingsConsumer.test.ts",
+    "actualSFCMounted": true,
+    "actualFeatureEnableCardMounted": true,
+    "DOMEventEnvironment": "linkedom; no trusted browser event claim",
+    "componentCasesPassed": 4,
+    "verificationOwnershipCasesPassed": 21,
+    "previewRoundTripARIAAndConfigUnchanged": true,
+    "enableDisableRestoresDisplayModeAndCompatibilityFlag": true,
+    "isolatedPublicPropBoundaries": [
+      "ReadingAnswer",
+      "HarnessSettings"
+    ],
+    "frozenDebtOwnerRemoved": true,
+    "productSourceChangedByOwnershipFollowup": false,
+    "storageOrProviderAcceptance": false
+  }
 }

@@ -642,6 +642,7 @@
       "tests/configStoreAuditBoundaries.test.ts",
       "tests/documentBinaryLifecycle.test.ts",
       "tests/documentAppLifecycle.test.ts",
+      "tests/selectionSettingsConsumer.test.ts",
       "tests/sharedUiComponentsLifecycle.test.ts",
       "tests/shadowSelectOutside.test.ts",
       "tests/shadowColorPicker.test.ts",
