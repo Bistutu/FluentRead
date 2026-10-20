@@ -1,0 +1,611 @@
+{
+  "schema": 1,
+  "kind": "native-installed-followthrough-final-candidate-20261021",
+  "status": "ROOT_FINITE_ACCEPTANCE_DELIVERY",
+  "finalized": true,
+  "candidateFrozenByAuthor": true,
+  "finalizationOwner": "Root",
+  "resourceExecutor": "Root_only",
+  "draftAuthorActions": "FS_READ_WRITE_CANDIDATE_ONLY_NO_RESOURCES",
+  "originalDraft": {
+    "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/native-installed-followthrough-20261021-draft/verification.json",
+    "bytes": 14129,
+    "sha256": "6992b887592b336d941c8ba47cd1af5ddad310b69b831ab94de6dd3b4af73bb3"
+  },
+  "productCommit": "84a214351f00440617048b157b0a2d2ed53e6eb4",
+  "repositoryHeadRecordedDuringIOSRuns": "5d8ac19bf6f1fa148ccc6a070c7aeaf8e2f2ca83",
+  "simulatorUDID": "FD81DB27-E632-4181-89AE-06382C1D0508",
+  "physicalDeviceAcceptance": false,
+  "identitySummary": {
+    "app": {
+      "files": 490,
+      "bytes": 64462356,
+      "rawByteHash": "0ec55ed4a77a14fae0217b72d4955272d4fb96d4dad9d72493af0c469f3dda1f"
+    },
+    "web": {
+      "files": 472,
+      "bytes": 62467542,
+      "rawByteHash": "33e5ec769eb1202dd4fd84e906420eef6e4a9bfe35a4a6a5005cc6a7211c1bd4"
+    }
+  },
+  "nativeTouch17": {
+    "report": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-installed84a-native-touch-selection-17/native-touch-selection-execution-report.json",
+      "bytes": 55517,
+      "sha256": "e5e6d25556afc2ad37760fade6a816194f234f8690edf9f7743d9299bbdd6981"
+    },
+    "rootReceipt": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-installed84a-native-touch-selection-17/root-execution-receipt.json",
+      "bytes": 7907,
+      "sha256": "33b880ec6d9e9ce45bd9483a5f74c20c13185b71efa9358a29bf098340b105cf"
+    },
+    "officialSummary": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-installed84a-native-touch-selection-17/official-summary.stdout.log",
+      "bytes": 1005,
+      "sha256": "2dc5708f95f7c27a6941b4802718fb96bd69bb50be83a1371b7afd84a29db6cb"
+    },
+    "officialDetails": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-installed84a-native-touch-selection-17/official-details.stdout.log",
+      "bytes": 1696,
+      "sha256": "0b703f217509a2d93cfe20575adf9af1e44f59b71caff6bc69f1d86f867a8088"
+    },
+    "formal": {
+      "PASS": 1,
+      "SKIP": 0,
+      "FAIL": 0
+    },
+    "nativeMethodSeconds": 21.44010305404663,
+    "outerExitCode": 0,
+    "snapshots": 10,
+    "PNG": 3,
+    "acceptedScope": "Installed84a iOS Simulator native longpress -> existing ICON -> installed card -> product44 Close -> two fresh closed/no-reopen readbacks",
+    "actions": {
+      "cardClose": 1,
+      "Done": 1,
+      "extensionPopup": 1,
+      "indicatorTap": 1,
+      "nativeLongPress": 1,
+      "pageMenu": 1,
+      "SafariActivate": 1
+    },
+    "actualUI": 7,
+    "savedClosure": {
+      "commands": 21,
+      "commandStreamsRehashed": 42,
+      "allZeroReapedGroupsAbsent": true,
+      "fixtureClosed": true,
+      "savedSourceInstalledFullMapsEqual": true,
+      "old14WholeRecordsEqual": true,
+      "savedAll15Shutdown": true,
+      "focusEvidence": "point samples only; no continuous monitoring"
+    },
+    "nativeSelectionWordEnum": "offers",
+    "driverProgrammaticSelectionMutation": false,
+    "productMayReadDOMRangeNormally": true,
+    "modeObserved": "ICON",
+    "productCloseWidthHeight": [
+      44,
+      44
+    ],
+    "closedReadback": {
+      "freshObservations": 2,
+      "sameRunOwner": true,
+      "sourceTextUnchanged": true,
+      "hostCount": 1,
+      "ownedCount": 0,
+      "indicatorCount": 0,
+      "closeCount": 0,
+      "px": 0,
+      "py": 0
+    },
+    "coreAttachments": [
+      {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-installed84a-native-touch-selection-17/runtime-attachments/256192F7-5AD2-457F-8BA3-DF7816DAC132.json",
+        "bytes": 719,
+        "sha256": "7beb3af72d298c99d0a6f2d5eee9dffd4918994db725fda8690435ecad07d122"
+      },
+      {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-installed84a-native-touch-selection-17/runtime-attachments/7D5A9019-058E-45E2-8AD3-244C8B7105A7.json",
+        "bytes": 709,
+        "sha256": "22ca4264aaa8660d8b9836192910a7ef9a5f9bdc4a6b036d4d33a8a8a850d505"
+      },
+      {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-installed84a-native-touch-selection-17/runtime-attachments/02F2C16C-B2C5-4C48-A63F-46947E39A95B.json",
+        "bytes": 529,
+        "sha256": "326aa663dbbfa5350e5e2139d5ac2ee84f6514ac3157cc54982dd6581c4abf07"
+      },
+      {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-installed84a-native-touch-selection-17/runtime-attachments/F6AA5E79-01FD-4414-AA3A-71AFC3E0BE74.json",
+        "bytes": 542,
+        "sha256": "4c594ab8450bf1b2edf174fe3897182b133a87ddc7efed8dfa5aef91b80457e7"
+      }
+    ],
+    "translationProviderQualityCacheAcceptance": false,
+    "installedReadingKeyboardAcceptance": false
+  },
+  "realBFCache9": {
+    "report": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-local-safari-bfcache-9/native-touch-selection-execution-report.json",
+      "bytes": 54557,
+      "sha256": "3c10af175bb8417192a3eb0b2c668e04babc08f6b3295fb01ef8ac51ed47b074"
+    },
+    "rootReceipt": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-local-safari-bfcache-9/root-execution-receipt.json",
+      "bytes": 7513,
+      "sha256": "6a40d24d4a693a3ccf9f7d27ed5ba960c3994eb5a88b49dcc338e9504390b0ae"
+    },
+    "officialSummary": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-local-safari-bfcache-9/official-summary.stdout.log",
+      "bytes": 1006,
+      "sha256": "57a683bf53b1361dbd28e6c959c069786c4a0cdf7e0b599313f3c2f692b09663"
+    },
+    "officialDetails": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-local-safari-bfcache-9/official-details.stdout.log",
+      "bytes": 1656,
+      "sha256": "03768b148fbddc96aed0a5bc0d2af1f4eb631c12e11ce4bd3a776ebd9b32f2a8"
+    },
+    "formal": {
+      "PASS": 1,
+      "SKIP": 0,
+      "FAIL": 0
+    },
+    "nativeMethodSeconds": 7.542168021202087,
+    "outerExitCode": 0,
+    "snapshots": 5,
+    "PNG": 3,
+    "acceptedScope": "Installed84a fixed local A -> real page Link -> Safari native Back -> same A actual BFCache and single host",
+    "actions": {
+      "fixtureLink": 1,
+      "nativeBack": 1,
+      "SafariActivate": 1
+    },
+    "actualUI": 3,
+    "savedClosure": {
+      "commands": 21,
+      "commandStreamsRehashed": 42,
+      "allZeroReapedGroupsAbsent": true,
+      "fixtureClosed": true,
+      "savedSourceInstalledFullMapsEqual": true,
+      "old14WholeRecordsEqual": true,
+      "savedAll15Shutdown": true,
+      "focusEvidence": "point samples only; no continuous monitoring"
+    },
+    "proof": {
+      "sameDocumentNonce": true,
+      "actualTrustedLastPageshowPersisted": true,
+      "pageshowBefore": 1,
+      "pageshowAfter": 2,
+      "pagehideAfter": 1,
+      "sameRunOwner": true,
+      "sourceTextUnchanged": true,
+      "hostCount": 1,
+      "ownedCount": 0,
+      "px": 0,
+      "py": 0,
+      "visibility": "visible"
+    },
+    "coreProofAttachment": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-local-safari-bfcache-9/runtime-attachments/319C2755-FE28-4F95-B843-2DBCFF3D0902.json",
+      "bytes": 1576,
+      "sha256": "6a99fe6455cc77c205d3038930a0f805419a90d6fcacf0b5e2c153c503392160"
+    },
+    "longBackgroundOrEvictionAcceptance": false
+  },
+  "safariPassiveHome11": {
+    "report": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-local-safari-bfcache-11/native-touch-selection-execution-report.json",
+      "bytes": 54792,
+      "sha256": "76a5448c2d05bbdcd238a1d86b8e9d6bfe7fae7d33c9b2793f848fce241e0a24"
+    },
+    "officialSummary": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-local-safari-bfcache-11/official-summary.stdout.log",
+      "bytes": 1006,
+      "sha256": "4794f692bd8534f69d6a0734e04498d43b8c87716fa8ea5c81f89f2bbd84fe41"
+    },
+    "officialDetails": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-local-safari-bfcache-11/official-details.stdout.log",
+      "bytes": 1694,
+      "sha256": "92439c8f473f990c4dd9323013a8b563a03c8136f52a7f73848a181d1c3a5074"
+    },
+    "rootReceipt": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-local-safari-bfcache-11/root-execution-receipt.json",
+      "bytes": 7517,
+      "sha256": "639f641032914178ca042d5527315b6b7819267b28f88c08ed7ab1f15b0cf8b1"
+    },
+    "rootReceiptStatus": "SAVED_COMPLETE",
+    "outerToolObservation": {
+      "session": 32007,
+      "exitCode": 0,
+      "basis": "Root task message; not a drafter-created tool receipt"
+    },
+    "independentReview": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-local-safari-bfcache-11/independent-passive-background-result-review.json",
+      "bytes": 3342,
+      "sha256": "1e05a29bcfe4c5bf4c381a5a96f775dc8fcf0358e6f8065ebd9fc7539362f0fa"
+    },
+    "formal": {
+      "PASS": 1,
+      "SKIP": 0,
+      "FAIL": 0
+    },
+    "nativeMethodSeconds": 34.95805203914642,
+    "passiveSeconds": 30.010018916800618,
+    "actions": {
+      "Home": 1,
+      "SafariActivate": 1,
+      "SafariReturn": 1
+    },
+    "snapshots": 3,
+    "UI": 3,
+    "PNG": 2,
+    "coreProofAttachment": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-local-safari-bfcache-11/runtime-attachments/B18A569D-EC84-4781-BA65-7160187A0D91.json",
+      "bytes": 2271,
+      "sha256": "9f6335aec195608dbee7cd8e3bd793c4ad6f19cc492518b75b196e9f2e209ed6"
+    },
+    "stateWaitAttachment": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-local-safari-bfcache-11/runtime-attachments/C50B0EEB-2F5B-44F9-B5B9-5EEDEC00B317.json",
+      "bytes": 356,
+      "sha256": "32fd987c727cd1250bb87fe4db3e2db5602c279222537214e052e005acd8bae4"
+    },
+    "proof": {
+      "sameDocumentNonce": true,
+      "sameRunOwner": true,
+      "hostCount": 1,
+      "ownedCount": 0,
+      "sourceTextUnchanged": true,
+      "px": 0,
+      "py": 0,
+      "visibility": "visible",
+      "observedVisibilityChanges": 2,
+      "evictionOrLongBackgroundAcceptance": false,
+      "BFCacheAcceptanceFromThisHomeCase": false
+    },
+    "savedClosure": {
+      "commands": 21,
+      "streamsRehashed": 42,
+      "allZeroClosedReapedGroupsAbsent": true,
+      "savedFiveAppWebMapsEqual": true,
+      "targetShutdownOld14WholeEqual": true
+    },
+    "originalPNGsViewedByRoot": 2,
+    "priorHome10": "SKIP/Home1/wait0/return0; generic old UNKNOWN actual enum/cause remains UNKNOWN"
+  },
+  "androidFirefoxActual2": {
+    "rootOutcome": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/android-runtime/firefox-current84a-background30-preparation-2/root-runtime-2/root-runtime-outcome.json",
+      "bytes": 5819,
+      "sha256": "6b7eb8901f3e54b4a8fb5a8d56bc5257af3d08b45f807f3efd61824c95df8742"
+    },
+    "scenarioResult": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/android-runtime/firefox-current84a-background30-preparation-2/root-runtime-2/short-background-result.json",
+      "bytes": 15440,
+      "sha256": "12abcd9181279463ba22e636b8b775fa06755972d6720608c44feb6ea26039b7"
+    },
+    "loaderReport": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/android-runtime/firefox-current84a-background30-preparation-2/root-runtime-2/firefox-production-attempt37-short-background-run.json",
+      "bytes": 4671,
+      "sha256": "f5fbcdbadeabf991bfdf3aac24cc1333899e73d21fd713bda146430d0851c42b"
+    },
+    "independentReview": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/android-runtime/firefox-current84a-background30-preparation-2/independent-root-runtime-2-fs-review.json",
+      "bytes": 10651,
+      "sha256": "8a0f15292c1e1dec06b43cf4fc208ee6dd4ff53fb6c25803ad43a56a0bec801a"
+    },
+    "conclusion": "PASS_BOUNDED_ANDROID_FIREFOX_PASSIVE30_SAVED_EVIDENCE",
+    "scenarioPassed": true,
+    "sceneAndCleanupAndParentPassed": true,
+    "formalXCTestCounts": null,
+    "passiveSeconds": 30.010037750000002,
+    "actions": {
+      "postInstallAcknowledgement": 1,
+      "initial-more": 1,
+      "initial-extensions": 1,
+      "initial-addon": 1,
+      "home": 1,
+      "returnFirefox": 1,
+      "openServices": 1,
+      "closeServices": 1,
+      "back": 1
+    },
+    "nativeLedger": {
+      "tap": 6,
+      "home": 1,
+      "returnFirefox": 1,
+      "back": 1
+    },
+    "PNG": 4,
+    "temporaryAddonActuallyLoaded": true,
+    "freshPerRunProfileProved": false,
+    "profile": "existing usual Fenix profile in dedicated AVD; not physical Android",
+    "currentFrozenArtifact": {
+      "files": 483,
+      "bytes": 62584706,
+      "recordHash": "e8a8218d173445dc4b9ee993c261f2591a41455843ed1814700e5cbb015fe626",
+      "rawByteHash": "80a43bd1ae5a3ef4d9a9fc4e8d2f21bf6fade1dd2b20ba6c2210611a0adedcad",
+      "fullMapFileCount": 483,
+      "eachFileSHAAndBytesMatched": true,
+      "rawOrder": "recursive UTF8 directory DFS",
+      "recordOrder": "global UTF8 relativePath sort",
+      "symlinkAndSpecialRejected": true,
+      "matchesSavedBeforeAfterAndLoader": true
+    },
+    "newFirefoxBuildProved": false,
+    "samePopupDocumentAndLimitedReaderProjectionPreserved": true,
+    "readerProjectionFields": [
+      "url",
+      "timeOrigin",
+      "innerWindowId",
+      "visibility",
+      "scrollX",
+      "scrollY",
+      "selectionEmpty",
+      "translationCount"
+    ],
+    "fullReaderTextDOMSelectionPreservationProved": false,
+    "popupClosed": true,
+    "drawerOpenClose": true,
+    "serviceAndCloseCurrent44FiveHits": true,
+    "configurationActions": 0,
+    "translationActions": 0,
+    "permissionChoices": 0,
+    "configurationStorageWritesAndRetention": "UNKNOWN",
+    "BFCacheEvictionLongBackgroundProviderSuccess": "NOT_ACCEPTED",
+    "savedCleanup": {
+      "fourChildrenZeroReaped": true,
+      "knownPIDPGIDAbsent": true,
+      "fourPortsEmpty": true,
+      "ownedForwardRemoved": true,
+      "focusAndKeyMetadataUnchanged": true
+    },
+    "earlierActual1TimeoutHome0Retained": true,
+    "rootReceipt": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/android-runtime/firefox-current84a-background30-preparation-2/root-runtime-2/root-execution-receipt.json",
+      "bytes": 4531,
+      "sha256": "4559affaddcb6a6d459232913a0cdf45702830620dbabf2641e0b93cee7b2f68"
+    }
+  },
+  "pending": {
+    "wholeGoal": "ACTIVE_NOT_COMPLETE",
+    "PR1009Merge": "NOT_PERFORMED",
+    "installedReadingKeyboard": "NOT_ACCEPTED",
+    "physicalDeviceAndRestrictedLiveVideo": "NOT_ACCEPTED"
+  },
+  "remainingBoundaries": {
+    "sharedKeyboardCase20": {
+      "report": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-local-selection-card-keyboard-20/selection-keyboard-execution-report.json",
+        "bytes": 57349,
+        "sha256": "b6193a69ee7720a13e7f0672b48a29eadf16e5276ec7f4a8dbaeb94b865eda49"
+      },
+      "scope": "shared-source fixture/programmatic selection + real native keyboard/rotation/scroll/Close only, not installed reading-keyboard acceptance",
+      "originalOuterFocusFailureRetained": true
+    },
+    "providerQualityCache": "NOT_ACCEPTED",
+    "configurationRetention": "UNKNOWN",
+    "permissionPersistence": "UNKNOWN",
+    "productCodeChangedThisBatch": false,
+    "referenceRepositoryDesignBorrowedThisBatch": false,
+    "PR1009Merged": false,
+    "wholeGoalComplete": false
+  },
+  "recommendedOriginalImages": {
+    "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/native-installed-followthrough-20261021-draft/final-candidate/recommended-original-images.json",
+    "bytes": 7127,
+    "sha256": "68990105ff25634e8f825ee5d3e67589be822f8b85770877a7e5b9b4c7c98901"
+  },
+  "selectionModeRestore14": {
+    "report": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-installed84a-native-touch-selection-14/native-touch-selection-execution-report.json",
+      "bytes": 55692,
+      "sha256": "0cb9897b3f2284e13c9a4282a562930eaa3a86173203865116267271d8db7c9a"
+    },
+    "rootReceipt": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-installed84a-native-touch-selection-14/root-execution-receipt.json",
+      "bytes": 3633,
+      "sha256": "d45e05012be25e296d3664e80fd9641b47341ea9a1b53cd5e311800a92fc8227"
+    },
+    "officialSummary": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-installed84a-native-touch-selection-14/official-summary.stdout.log",
+      "bytes": 1006,
+      "sha256": "e3a67dfd38cebfdc963337f2f95f3567ce14a19cd77d6fb219c82646e082f5d9"
+    },
+    "officialDetails": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-installed84a-native-touch-selection-14/official-details.stdout.log",
+      "bytes": 1698,
+      "sha256": "afab3e583ffb5b6bb2dfcf107d179768a7f7d6e64dce0baabdb140d2d6093e58"
+    },
+    "coreResultAttachment": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-installed84a-native-touch-selection-14/runtime-attachments/B1AAF11E-1F97-4E7A-A0B4-968869978F74.json",
+      "bytes": 696,
+      "sha256": "78ddfce4a4c544064e76e9e1846509ae2787ebe379b28b78461e6efd35edaf03"
+    },
+    "finallyAttachment": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-installed84a-native-touch-selection-14/runtime-attachments/4654F91C-F0A0-4F50-9563-C3082B73A6CF.json",
+      "bytes": 1164,
+      "sha256": "cd156d418fa3ff4cb3fa735ce2a79eac1c416284a45362710a3e2c925fbaaeb3"
+    },
+    "completionJournal": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/dedicated-selection-setting-restore-pending-20261020.json",
+      "bytes": 1703,
+      "sha256": "91edc0b9cc21496a5530df69b10c3759910ec82e3a09dd5e0f9c97b7d0193615"
+    },
+    "preservedPendingJournal": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/dedicated-selection-setting-restore-pending-before-completion-20261020.json",
+      "bytes": 815,
+      "sha256": "8e202798a1c3757613e56d361b671b65516f186276395376598adb8a2f654cd2"
+    },
+    "outerExitCode": 0,
+    "formal": {
+      "PASS": 1,
+      "SKIP": 0,
+      "FAIL": 0
+    },
+    "nativeMethodSeconds": 23.90219509601593,
+    "actions": {
+      "disableSelection": 1,
+      "Done": 1,
+      "drawerClose": 1,
+      "extensionPopup": 1,
+      "pageMenu": 1,
+      "popupSwipe": 1,
+      "SafariActivate": 1,
+      "selectionTile": 1
+    },
+    "AX": 9,
+    "UI": 8,
+    "PNG": 1,
+    "initialOriginalObservedMode": "DISABLED",
+    "temporaryModeObserved": "ICON",
+    "restoredObservedMode": "DISABLED",
+    "restorePending": false,
+    "restoreCompleted": true,
+    "configurationUIToggleAttempts": 1,
+    "configurationWritesMeaning": "UI_TOGGLE_ATTEMPTS_NOT_STORAGE_KEY_COUNT",
+    "normalDoneAndOriginalFixtureReproved": true,
+    "sameRunOwnerExact": true,
+    "permissionChoices": 0,
+    "translationAttempts": 0,
+    "providerSelections": 0,
+    "nativeLongPressAttempts": 0,
+    "savedClosure": {
+      "commands": 21,
+      "streamsRehashed": 42,
+      "allZeroClosedReapedGroupsAbsent": true,
+      "savedFiveAppWebMapsEqual": true,
+      "targetShutdownOld14WholeEqual": true
+    },
+    "originalPNGsViewedByRoot": 1,
+    "scope": "Original observed DISABLED UI mode restored by one disable toggle, current strict UI readback and normal Done/fixture closure only",
+    "hiddenModeStorageByteIdentityAndPersistence": "UNKNOWN",
+    "independentReview": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-installed84a-native-touch-selection-14/independent-restore-result-review.json",
+      "bytes": 3280,
+      "sha256": "312ec140394dac49fc323326c9acf126c1bd6e9a467c94323ee435a74041e50e"
+    }
+  },
+  "copiedOriginalImages": [
+    {
+      "case": "touch17",
+      "original": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-installed84a-native-touch-selection-17/runtime-attachments/E1724B75-537A-4177-99DD-EF3879DAFD3E.png",
+        "bytes": 368793,
+        "sha256": "14177d6dc191caa6c8ba902c1b936042eed126d9ee845ba05c8ba9bc486f945a"
+      },
+      "copied": {
+        "relativePath": "ios-card-closed.png",
+        "bytes": 368793,
+        "sha256": "14177d6dc191caa6c8ba902c1b936042eed126d9ee845ba05c8ba9bc486f945a"
+      }
+    },
+    {
+      "case": "touch17",
+      "original": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-installed84a-native-touch-selection-17/runtime-attachments/8592639A-9AAD-4DF9-8327-CD54C5909F83.png",
+        "bytes": 347817,
+        "sha256": "0fd83fc41346e8931e4170421b2aef6e381d447cf844a8602cab325b9d960adf"
+      },
+      "copied": {
+        "relativePath": "ios-card-open.png",
+        "bytes": 347817,
+        "sha256": "0fd83fc41346e8931e4170421b2aef6e381d447cf844a8602cab325b9d960adf"
+      }
+    },
+    {
+      "case": "touch17",
+      "original": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-installed84a-native-touch-selection-17/runtime-attachments/E6BB6978-0314-4441-B73D-35549514AC68.png",
+        "bytes": 437011,
+        "sha256": "0245e980a096a4a3acb15f0decd30ed938198595e4fbdfd9463cdb2038b1d7a4"
+      },
+      "copied": {
+        "relativePath": "ios-native-selection.png",
+        "bytes": 437011,
+        "sha256": "0245e980a096a4a3acb15f0decd30ed938198595e4fbdfd9463cdb2038b1d7a4"
+      }
+    },
+    {
+      "case": "bfcache9",
+      "original": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-local-safari-bfcache-9/runtime-attachments/DC6C5437-5103-4A5B-A619-7969D289C255.png",
+        "bytes": 202902,
+        "sha256": "3b5b8d6032e5b2dd0a7f3fdd8fd117a777853c477d5a20e0b147308582648d6e"
+      },
+      "copied": {
+        "relativePath": "ios-bfcache-return.png",
+        "bytes": 202902,
+        "sha256": "3b5b8d6032e5b2dd0a7f3fdd8fd117a777853c477d5a20e0b147308582648d6e"
+      }
+    },
+    {
+      "case": "safariHome11",
+      "original": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-local-safari-bfcache-11/runtime-attachments/C2A913E7-FB0C-4A65-9A1E-B1647C284A53.png",
+        "bytes": 204621,
+        "sha256": "877f48e50e5aa51b86244190e2fecb9468fda658169a98aed3a9ab6dd26c9280"
+      },
+      "copied": {
+        "relativePath": "ios-background-return.png",
+        "bytes": 204621,
+        "sha256": "877f48e50e5aa51b86244190e2fecb9468fda658169a98aed3a9ab6dd26c9280"
+      }
+    },
+    {
+      "case": "androidFirefoxActual2",
+      "original": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/android-runtime/firefox-current84a-background30-preparation-2/root-runtime-2/attempt37-ui/before-home-popup-readiness.png",
+        "bytes": 263288,
+        "sha256": "324d94a1d6649b1e5e4f19315cf39cf5df1de98afb721afbb75669a38f91fa04"
+      },
+      "copied": {
+        "relativePath": "android-popup-before-home.png",
+        "bytes": 263288,
+        "sha256": "324d94a1d6649b1e5e4f19315cf39cf5df1de98afb721afbb75669a38f91fa04"
+      }
+    },
+    {
+      "case": "androidFirefoxActual2",
+      "original": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/android-runtime/firefox-current84a-background30-preparation-2/root-runtime-2/attempt37-ui/after-return.png",
+        "bytes": 263484,
+        "sha256": "0d06d26d028e014976378a7a7bc585263c61bf467236d5fab3ad2bd262cae546"
+      },
+      "copied": {
+        "relativePath": "android-popup-after-return.png",
+        "bytes": 263484,
+        "sha256": "0d06d26d028e014976378a7a7bc585263c61bf467236d5fab3ad2bd262cae546"
+      }
+    },
+    {
+      "case": "selectionModeRestore14",
+      "original": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-installed84a-native-touch-selection-14/runtime-attachments/4C893A4C-0C5C-4CB4-82C9-1696B8F56930.png",
+        "bytes": 369501,
+        "sha256": "e57cc412705dfc154469cf7cdc5c0006cfe0da5f8fa11cc9a95ff2b2a916a397"
+      },
+      "copied": {
+        "relativePath": "ios-setting-restored.png",
+        "bytes": 369501,
+        "sha256": "e57cc412705dfc154469cf7cdc5c0006cfe0da5f8fa11cc9a95ff2b2a916a397"
+      }
+    }
+  ],
+  "draftAcceptanceDocument": {
+    "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/native-installed-followthrough-20261021-draft/final-candidate/acceptance.md",
+    "bytes": 3548,
+    "sha256": "089d8ba916011b4e85eddb42792d120662530d285aaeebc15456da21620e2e9f"
+  },
+  "draftVerification": {
+    "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/native-installed-followthrough-20261021-draft/final-candidate/verification.json",
+    "bytes": 22530,
+    "sha256": "bccb4a285724c1071a9b3a1e16db498c3ba6ea7aac3cb1f9baf80cd95139c486"
+  },
+  "deliveryScope": "Documentation and 8 unmodified original screenshots only; no product/test/build changes",
+  "allThirteenOriginalPNGsActuallyViewedByRoot": true,
+  "acceptanceDocument": {
+    "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/docs/reports/mobile-native-followthrough-20261021/acceptance.md",
+    "bytes": 4479,
+    "sha256": "57abbae8d26c52ea67fd9cf35164d8545a7e5d7d02b763e31882456c77c89b09"
+  },
+  "localDocsBuildEvidence": "Recorded separately in the task evidence directory after this source snapshot; not included recursively"
+}
