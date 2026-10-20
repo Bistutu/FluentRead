@@ -44,10 +44,10 @@ function restrictLegacyStorageToTrustedContexts(): void {
         setAccessLevel?: (options: {accessLevel: 'TRUSTED_CONTEXTS'}) => Promise<void>;
     };
     const areas = [browser.storage?.local, browser.storage?.session]
-        .filter((area): area is RestrictedStorageArea => Boolean(area));
+        .filter((area): area is NonNullable<typeof area> & RestrictedStorageArea => Boolean(area));
     for (const area of areas) {
         if (typeof area.setAccessLevel !== 'function') continue;
-        void area.setAccessLevel({accessLevel: 'TRUSTED_CONTEXTS'}).catch(error => {
+        void area.setAccessLevel({accessLevel: 'TRUSTED_CONTEXTS'}).catch((error: unknown) => {
             console.warn('[FluentRead] 配置旧存储访问级别收紧失败', error);
         });
     }

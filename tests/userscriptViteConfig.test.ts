@@ -273,7 +273,9 @@ describe('userscript browser shim injection', () => {
         for (const [language, bundle] of Object.entries(UI_LANGUAGE_BUNDLES)) {
             const original = extensionBundles[language as keyof typeof extensionBundles];
             const materialSources = Object.keys(learningMaterialLegacyText[language as keyof typeof learningMaterialLegacyText]);
-            expect(Object.keys(original.legacyText).filter(source => !(source in bundle.legacyText)).sort()).toEqual([...materialSources, mimoRetirementSource].sort());
+            expect(Object.keys(original.legacyText).filter(source => !(source in bundle.legacyText)).sort()).toEqual([...materialSources, mimoRetirementSource, '网站阅读字体'].sort());
+            expect(original.legacyText['网站阅读字体']).toBeTruthy();
+            expect(bundle.legacyText).not.toHaveProperty('网站阅读字体');
             const materialPatterns = learningMaterialPatterns.map(({pattern}) => pattern);
             for (const phase of ['early', 'late'] as const) {
                 expect(bundle.legacyPatterns[phase]).toEqual(original.legacyPatterns[phase].filter(([source]) => !materialPatterns.includes(source)));
@@ -286,7 +288,7 @@ describe('userscript browser shim injection', () => {
                 expect(JSON.stringify(bundle) + '\n').toBe(readFileSync(resolve(process.cwd(), 'userscript/languages', file), 'utf8'));
             }
             const kept = Object.fromEntries(Object.entries(original.messages).filter(([key]) =>
-                !key.startsWith('informationHighlight.') && !key.startsWith('contextMenu.notice.') && !key.startsWith('video.learning.') && key !== 'video.nativeFullscreenHint' && !key.startsWith('popup.compact.') && !key.startsWith('popup.displayMode.')
+                !key.startsWith('informationHighlight.') && !key.startsWith('contextMenu.notice.') && !key.startsWith('video.learning.') && key !== 'video.nativeFullscreenHint' && !key.startsWith('popup.compact.') && !key.startsWith('popup.displayMode.') && !key.startsWith('popup.readingAppearance.')
                 && !key.startsWith('diagnostics.')
                 && !['waitingTranslation', 'crossPageContext', 'fullPassage', 'closePassage'].some(name => key === `document.pdfReading.${name}`)
                 && !key.startsWith('document.config.') && !key.startsWith('document.translationRecovery.') && !key.startsWith('document.retainedRevisions.')
@@ -316,7 +318,7 @@ describe('userscript browser shim injection', () => {
             ? publishedMessages[language]![key] : original.messages[key]);
         // 原文案继续使用root已发布投影，材料扩展界面文本不重新进入脚本固定资源。
         const materialSources = new Set(Object.keys(learningMaterialLegacyText[language as keyof typeof learningMaterialLegacyText]));
-        expect(projected.legacyText).toEqual(Object.fromEntries(Object.entries(original.legacyText).filter(([source]) => !materialSources.has(source) && source !== mimoRetirementSource)));
+        expect(projected.legacyText).toEqual(Object.fromEntries(Object.entries(original.legacyText).filter(([source]) => !materialSources.has(source) && source !== mimoRetirementSource && source !== '网站阅读字体')));
         const materialPatterns = learningMaterialPatterns.map(({pattern}) => pattern);
         for (const phase of ['early', 'late'] as const) expect(projected.legacyPatterns[phase]).toEqual(original.legacyPatterns[phase].filter(([source]) => !materialPatterns.includes(source)));
         expect(JSON.stringify(original)).toBe(originalBefore);
@@ -357,6 +359,12 @@ describe('userscript browser shim injection', () => {
             expect(extension[key]).toBeTruthy();
             expect(Object.hasOwn(projected, key)).toBe(false);
         }
+        const readingAppearanceKeys = Object.keys(extension).filter(key => key.startsWith('popup.readingAppearance.'));
+        expect(readingAppearanceKeys).toHaveLength(20);
+        for (const key of readingAppearanceKeys) {
+            expect(extension[key]).toBeTruthy();
+            expect(Object.hasOwn(projected, key)).toBe(false);
+        }
         const learningKeys = Object.keys(extension).filter(key => key.startsWith('video.learning.'));
         expect(learningKeys).not.toHaveLength(0);
         for (const key of learningKeys) {
@@ -387,7 +395,7 @@ describe('userscript browser shim injection', () => {
             expect(Object.hasOwn(projected, key)).toBe(false);
         }
         const retainedKeys = Object.keys(extension).filter(key => !key.startsWith('informationHighlight.')
-            && !noticeKeys.includes(key) && !learningKeys.includes(key) && !readerRecoveryKeys.includes(key)
+            && !noticeKeys.includes(key) && !readingAppearanceKeys.includes(key) && !learningKeys.includes(key) && !readerRecoveryKeys.includes(key)
             && !diagnosticKeys.includes(key) && !readerDialogKeys.includes(key)
             && key !== 'video.nativeFullscreenHint'
             && !safariPermissionKeys.includes(key)

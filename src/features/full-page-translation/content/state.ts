@@ -1079,6 +1079,26 @@ function releaseReboundBilingualRendering(content: HTMLElement, state: Translati
     state.bilingualContentTemplate = template;
 }
 
+export function writeReadingAppearanceFontFamily(
+    element: HTMLElement, value: string, priority: string, removeEmptyStyle: boolean,
+): void {
+    const artifact = element.closest(BILINGUAL_ARTIFACT_SELECTOR) as HTMLElement | null;
+    const observed = artifact ? getTranslationOwnersForIndexedNode(artifact)
+        .map(owner => ({owner, state: states.get(owner)}))
+        .find(({owner, state}) => state?.phase === 'translated' && state.mode === 'bilingual'
+            && state.bilingualContent === artifact && isOwnedBilingualArtifactAttached(owner, state)
+            && isTrustedBilingualArtifactWithHostClass(artifact, state)) : undefined;
+    if (value) element.style.setProperty('font-family', value, priority);
+    else element.style.removeProperty('font-family');
+    if (removeEmptyStyle && !element.getAttribute('style')) element.removeAttribute('style');
+    if (artifact && observed?.state && states.get(observed.owner) === observed.state
+        && observed.state.bilingualContent === artifact) {
+        observed.state.bilingualHTML = artifact.innerHTML;
+        observed.state.bilingualOuterHTML = artifact.outerHTML;
+        observed.state.bilingualContentTemplate = artifact.cloneNode(true) as HTMLElement;
+    }
+}
+
 /** 外观规则即将改变时撤下本页的旧尺寸记忆；保留工件信任、译文及请求代次。 */
 export function releaseDocumentBilingualRenderingContainment(document: Document): void {
     forEachActiveNode((owner, state) => {

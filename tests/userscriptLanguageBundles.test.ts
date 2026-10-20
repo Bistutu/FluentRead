@@ -3,12 +3,15 @@ import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {resolve} from 'node:path';
 import {runInNewContext} from 'node:vm';
-import {afterEach, describe, expect, it, vi} from 'vitest';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 // 脚本发布的语言资源不含智能高亮文案；摘要必须按脚本实际使用的投影计算。
 import {UI_LANGUAGE_BUNDLES} from '../userscript/languageBundles';
 import {UI_LANGUAGE_BUNDLES as extensionBundles} from '@/src/core/i18n/bundles';
 import {aiRequestTimeoutMessages} from '@/src/core/i18n/messages/aiRequestTimeout';
 import {ungzip} from 'pako';
+import {gunzipSync} from 'node:zlib';
+import type {RegisteredUiLanguage, UiLanguageBundle} from '@/src/core/i18n/types';
+import {frozen39Registration} from './fixtures/userscriptLanguageSupplements39Oracle';
 import userscriptConfig from '../userscript/vite.config';
 
 const languageDir = resolve(process.cwd(), 'userscript/languages');
@@ -63,6 +66,7 @@ describe('userscript remote UI language data', () => {
         expect(hasUiLanguageBundle('en-US')).toBe(true);
         expect(translateLegacyText(mimoRetirementSource, 'en-US')).toBe(extensionBundles['en-US'].legacyText[mimoRetirementSource]);
         for (const key of deeplxKeys) expect(translate(key, 'en-US')).toBe(extensionBundles['en-US'].messages[key]);
+        expect((await import('@/src/core/i18n')).translateLegacyText('网站阅读字体', 'en-US')).toBe(extensionBundles['en-US'].legacyText['网站阅读字体']);
         expect(JSON.stringify(pinned.english)).toBe(original);
         expect(requests).toEqual([]);
     });
@@ -82,7 +86,7 @@ describe('userscript remote UI language data', () => {
         vi.stubGlobal('pako', {ungzip});
         const original = UI_LANGUAGE_BUNDLES['en-US'];
         const messages = Object.fromEntries(Object.entries(original.messages).filter(([key]) => !key.startsWith('document.')));
-        const expected = {...original, messages, legacyText: {...original.legacyText, ...mimoRetirementLegacyText['en-US']}};
+        const expected = {...original, messages, legacyText: {...original.legacyText, ...mimoRetirementLegacyText['en-US'], '网站阅读字体': extensionBundles['en-US'].legacyText['网站阅读字体']}};
         const core = await import('@/src/core/i18n');
         expect(core.hasUiLanguageBundle('en-US')).toBe(false);
         const register = vi.spyOn(core, 'registerUiLanguageBundle');
@@ -97,6 +101,7 @@ describe('userscript remote UI language data', () => {
             for (const [key, value] of Object.entries(messages)) expect(core.translate(key, 'en-US')).toBe(value);
             expect(original.legacyText['配置服务']).toBeTruthy();
             expect(core.translateLegacyText('配置服务', 'en-US')).toBe(original.legacyText['配置服务']);
+            expect(core.translateLegacyText('网站阅读字体', 'en-US')).toBe(extensionBundles['en-US'].legacyText['网站阅读字体']);
             expect(core.translateLegacyText('翻译连接：Google；自定义服务：2；凭据和地址已隐藏', 'en-US'))
                 .toBe('Connection: Google; custom services: 2; credentials and addresses hidden');
             await expect(loader.ensureUiLanguageBundle('en-US')).resolves.toBe(true);
@@ -206,9 +211,11 @@ describe('userscript remote UI language data', () => {
                 await expect(loader.ensureUiLanguageBundle(language)).resolves.toBe(true);
                 await assertSweepCopy();
                 expect(core.translateLegacyText(mimoRetirementSource, language)).toBe(extensionBundles[language].legacyText[mimoRetirementSource]);
+                expect(core.translateLegacyText('网站阅读字体', language)).toBe(extensionBundles[language].legacyText['网站阅读字体']);
+                expect(JSON.stringify(original)).toBe(remoteSource.trimEnd());
                 expect(register).toHaveBeenCalledTimes(1);
                 expect(register).toHaveBeenCalledWith(language, {
-                    ...original, legacyText: {...original.legacyText, ...mimoRetirementLegacyText[language]}, messages: {...recovery, ...original.messages, ...aiRequestTimeoutMessages[language], ...sweepCopy(language), ...deeplxCopy(language)},
+                    ...original, legacyText: {...original.legacyText, ...mimoRetirementLegacyText[language], '网站阅读字体': extensionBundles[language].legacyText['网站阅读字体']}, messages: {...recovery, ...original.messages, ...aiRequestTimeoutMessages[language], ...sweepCopy(language), ...deeplxCopy(language)},
                 });
                 for (const [key, text] of Object.entries(recovery)) {
                     expect(core.translate(key, language)).toBe(text);
@@ -254,7 +261,7 @@ describe('userscript remote UI language data', () => {
             await expect(loader.ensureUiLanguageBundle('fr-FR')).resolves.toBe(true);
             expect(register).toHaveBeenCalledTimes(1);
             expect(register).toHaveBeenCalledWith('fr-FR', {
-                ...supplied, legacyText: {...supplied.legacyText, ...mimoRetirementLegacyText['fr-FR']}, messages: {...supplied.messages, ...aiRequestTimeoutMessages['fr-FR'], ...sweepCopy('fr-FR'), ...deeplxCopy('fr-FR')},
+                ...supplied, legacyText: {...supplied.legacyText, ...mimoRetirementLegacyText['fr-FR'], '网站阅读字体': extensionBundles['fr-FR'].legacyText['网站阅读字体']}, messages: {...supplied.messages, ...aiRequestTimeoutMessages['fr-FR'], ...sweepCopy('fr-FR'), ...deeplxCopy('fr-FR')},
             });
             expect(core.translate('learning.panelLoadError', 'fr-FR')).toBe('Remote section recovery');
             expect(core.translate('learning.reloadPage', 'fr-FR')).toBe('Remote reload');
@@ -262,4 +269,159 @@ describe('userscript remote UI language data', () => {
         } finally { register.mockRestore(); }
     });
 
+});
+
+
+describe('userscript gzipped supplement parity', () => {
+    const languages = ['en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES'] as const;
+    const defineMacros = () => {
+        const defines = (userscriptConfig as {define: Record<string, string>}).define;
+        const supplement = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_LANGUAGE_SUPPLEMENTS__) as string;
+        const compressed = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__) as Record<string, string>;
+        const remote = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_REMOTE_LANGUAGES__) as Record<string, string>;
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_DATA__', undefined);
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__', compressed);
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_LANGUAGE_SUPPLEMENTS__', supplement);
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_REMOTE_LANGUAGES__', remote);
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_RESOURCE_COMMIT__', JSON.parse(defines.__FLUENTREAD_USERSCRIPT_RESOURCE_COMMIT__));
+        return {supplement, compressed, remote};
+    };
+    const assertOriginalBytes = (language: RegisteredUiLanguage, actual: UiLanguageBundle, incoming: UiLanguageBundle) => {
+        const expected = frozen39Registration(language, incoming);
+        // 比较最终注册对象全部UTF8 JSON字节，同时避免失败日志倾倒整份大型词典。
+        expect(Buffer.compare(Buffer.from(JSON.stringify(actual), 'utf8'), Buffer.from(JSON.stringify(expected), 'utf8')),
+            `frozen39 registration bytes for ${language}`).toBe(0);
+    };
+    const minimalEnglish = (): UiLanguageBundle => ({
+        messages: {'audit.retained': 'Keep this message', 'settings.services.deeplx.endpointHelp': 'Stale embedded English'},
+        legacyText: {'audit source': 'Keep this legacy value', '网站阅读字体': 'Stale embedded font'},
+        legacyPatterns: {early: [], late: []},
+    });
+    beforeEach(() => vi.resetModules());
+    afterEach(() => {
+        vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.resetModules(); globalThis.GM = undefined;
+    });
+
+    it('matches frozen39 bytes for all six macro registrations, inflates once and preserves remote cache reuse', async () => {
+        const {supplement, remote} = defineMacros();
+        const pinned = runInNewContext(readFileSync(resolve(process.cwd(), 'userscript/resources/fluentread-data.v1.js'), 'utf8'), {}, {timeout: 5000}) as {english: UiLanguageBundle};
+        const incoming = new Map<RegisteredUiLanguage, UiLanguageBundle>([['en-US', pinned.english]]);
+        const originalInputs = new Map<RegisteredUiLanguage, string>([['en-US', JSON.stringify(pinned.english)]]);
+        const remoteSources = new Map<string, string>();
+        for (const language of languages) {
+            if (language === 'en-US') continue;
+            const text = readFileSync(resolve(languageDir, remote[language]), 'utf8');
+            remoteSources.set(remote[language], text);
+            incoming.set(language, JSON.parse(text)); originalInputs.set(language, JSON.stringify(incoming.get(language)));
+        }
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_DATA__', pinned);
+        // 确认旧embedded English优先；不得误走另一份压缩English。
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__', {'en-US': 'invalid-if-selected'});
+        const values = new Map<string, unknown>(), requests: string[] = [];
+        globalThis.GM = {
+            async getValue(key, fallback) {return values.get(key) ?? fallback;},
+            async setValue(key, value) {values.set(key, value);},
+            xmlHttpRequest(details) {
+                requests.push(details.url);
+                const file = new URL(details.url).pathname.split('/').pop()!;
+                const text = remoteSources.get(file);
+                if (text === undefined) throw new Error('Unexpected language resource request');
+                return Promise.resolve({status: 200, statusText: 'OK', responseText: text});
+            },
+        };
+        const core = await import('@/src/core/i18n');
+        const compression = await import('@/userscript/compression');
+        const inflate = vi.spyOn(compression, 'inflateGzipBase64'); // 保留真实解压实现。
+        const register = vi.spyOn(core, 'registerUiLanguageBundle');
+        const loader = await import('@/userscript/uiLanguageBundles');
+        const pending = languages.map(language => loader.ensureUiLanguageBundle(language));
+        expect(loader.ensureUiLanguageBundle('fr-FR')).toBe(pending[languages.indexOf('fr-FR')]);
+        expect(await Promise.all(pending)).toEqual(languages.map(() => true));
+        expect(register).toHaveBeenCalledTimes(languages.length);
+        for (const language of languages) {
+            const call = register.mock.calls.find(([registered]) => registered === language);
+            expect(call, language).toBeDefined();
+            if (!call) throw new Error(`Missing language registration: ${language}`);
+            assertOriginalBytes(language, call[1], incoming.get(language)!);
+            expect(JSON.stringify(incoming.get(language)), language).toBe(originalInputs.get(language));
+            expect(core.hasUiLanguageBundle(language)).toBe(true);
+        }
+        expect(inflate.mock.calls.filter(([value]) => value === supplement)).toHaveLength(1);
+        expect(inflate).toHaveBeenCalledTimes(1);
+        expect(requests).toHaveLength(5);
+        for (const language of languages) {
+            if (language === 'en-US') continue;
+            expect(values.get(`fluentread:ui-language:${remote[language]}`)).toBe(originalInputs.get(language));
+            expect(readFileSync(resolve(languageDir, remote[language]), 'utf8')).toBe(remoteSources.get(remote[language]));
+        }
+        // 新模块/新注册表重新读取同一旧GM缓存，补充仍不得写回缓存或触网。
+        register.mockRestore(); inflate.mockRestore(); vi.resetModules();
+        globalThis.GM.xmlHttpRequest = () => {throw new Error('offline cache must be sufficient');};
+        const cachedCore = await import('@/src/core/i18n');
+        const cachedCompression = await import('@/userscript/compression');
+        const cachedInflate = vi.spyOn(cachedCompression, 'inflateGzipBase64');
+        const cachedRegister = vi.spyOn(cachedCore, 'registerUiLanguageBundle');
+        const cachedLoader = await import('@/userscript/uiLanguageBundles');
+        await expect(cachedLoader.ensureUiLanguageBundle('fr-FR')).resolves.toBe(true);
+        expect(cachedRegister).toHaveBeenCalledTimes(1);
+        assertOriginalBytes('fr-FR', cachedRegister.mock.calls[0][1], incoming.get('fr-FR')!);
+        expect(cachedInflate.mock.calls.filter(([value]) => value === supplement)).toHaveLength(1);
+        expect(requests).toHaveLength(5);
+        expect(values.get(`fluentread:ui-language:${remote['fr-FR']}`)).toBe(originalInputs.get('fr-FR'));
+    });
+
+    it('matches frozen39 bytes through real compressed English and real supplement inflation', async () => {
+        const {supplement, compressed} = defineMacros();
+        const incoming = JSON.parse(gunzipSync(Buffer.from(compressed['en-US'], 'base64')).toString('utf8')) as UiLanguageBundle;
+        const requests: string[] = [];
+        globalThis.GM = {xmlHttpRequest(details) {requests.push(details.url); throw new Error('unexpected request');}};
+        const core = await import('@/src/core/i18n');
+        const compression = await import('@/userscript/compression');
+        const inflate = vi.spyOn(compression, 'inflateGzipBase64');
+        const register = vi.spyOn(core, 'registerUiLanguageBundle');
+        const loader = await import('@/userscript/uiLanguageBundles');
+        await expect(loader.ensureUiLanguageBundle('en-US')).resolves.toBe(true);
+        expect(register).toHaveBeenCalledTimes(1);
+        assertOriginalBytes('en-US', register.mock.calls[0][1], incoming);
+        expect(inflate.mock.calls.filter(([value]) => value === compressed['en-US'])).toHaveLength(1);
+        expect(inflate.mock.calls.filter(([value]) => value === supplement)).toHaveLength(1);
+        expect(inflate).toHaveBeenCalledTimes(2);
+        await expect(loader.ensureUiLanguageBundle('en-US')).resolves.toBe(true);
+        expect(register).toHaveBeenCalledTimes(1); expect(inflate).toHaveBeenCalledTimes(2);
+        expect(requests).toEqual([]);
+    });
+
+    it('rejects real corrupt gzip without registration, retries inflation and recovers after valid macro repair', async () => {
+        const {supplement} = defineMacros();
+        const incoming = minimalEnglish();
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_DATA__', {english: incoming});
+        const damaged = Buffer.from(supplement, 'base64');
+        // 破坏实际gzip的CRC32 trailer，base64仍合法，必须由真实gzip读取拒绝。
+        damaged[damaged.length - 8] = damaged[damaged.length - 8]! ^ 0xff;
+        const corrupt = damaged.toString('base64');
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_LANGUAGE_SUPPLEMENTS__', corrupt);
+        globalThis.GM = {xmlHttpRequest() {throw new Error('unexpected request');}};
+        vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const core = await import('@/src/core/i18n');
+        const compression = await import('@/userscript/compression');
+        const inflate = vi.spyOn(compression, 'inflateGzipBase64');
+        const register = vi.spyOn(core, 'registerUiLanguageBundle');
+        const loader = await import('@/userscript/uiLanguageBundles');
+        const first = loader.ensureUiLanguageBundle('en-US');
+        expect(loader.ensureUiLanguageBundle('en-US')).toBe(first);
+        await expect(first).resolves.toBe(false);
+        expect(register).not.toHaveBeenCalled(); expect(core.hasUiLanguageBundle('en-US')).toBe(false);
+        expect(inflate.mock.calls.filter(([value]) => value === corrupt)).toHaveLength(1);
+        // 同一模块再次读坏输入也必须重新尝试，而非永久缓存被拒绝promise。
+        await expect(loader.ensureUiLanguageBundle('en-US')).resolves.toBe(false);
+        expect(register).not.toHaveBeenCalled(); expect(core.hasUiLanguageBundle('en-US')).toBe(false);
+        expect(inflate.mock.calls.filter(([value]) => value === corrupt)).toHaveLength(2);
+        // 仅测试夹具修复宏输入；产品宏没有运行时修复机制，此处不声称坏内容自行恢复。
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_LANGUAGE_SUPPLEMENTS__', supplement);
+        await expect(loader.ensureUiLanguageBundle('en-US')).resolves.toBe(true);
+        expect(register).toHaveBeenCalledTimes(1);
+        assertOriginalBytes('en-US', register.mock.calls[0][1], incoming);
+        expect(inflate.mock.calls.filter(([value]) => value === supplement)).toHaveLength(1);
+        expect(inflate).toHaveBeenCalledTimes(3);
+    });
 });

@@ -18,11 +18,15 @@ function fixture(overrides: Partial<NativePdfSelectionDependencies> = {}) {
     const dependencies = {extensionId: 'test', resultUrl: PAGE, now: () => time,
         randomToken: vi.fn(() => (++sequence).toString(16).padStart(32, '0')),
         openWindow: vi.fn<NativePdfSelectionDependencies['openWindow']>().mockResolvedValue({id: 12, tabs: [{id: 21, windowId: 12}]}),
-        closeWindow: vi.fn<NativePdfSelectionDependencies['closeWindow']>().mockResolvedValue(undefined), ...overrides};
+        closeWindow: vi.fn<NativePdfSelectionDependencies['closeWindow']>().mockResolvedValue(undefined),
+        scheduleExpiry: (callback: () => void, delayMs: number) => {
+            const timer = setTimeout(callback, delayMs);
+            return () => clearTimeout(timer);
+        }, ...overrides};
     return {...dependencies, bridge: createNativePdfSelectionBridge(dependencies), advance: (ms: number) => {time += ms;}};
 }
-beforeEach(() => vi.clearAllMocks());
-afterEach(() => vi.unstubAllGlobals());
+beforeEach(() => {vi.useFakeTimers(); vi.clearAllMocks();});
+afterEach(() => {vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllGlobals();});
 
 describe('原生 PDF 菜单选区的一次性窗口交付', () => {
     it('仅在独立小窗口地址放随机票据，原文内部空白准确保留，来源剔除 fragment', async () => {
@@ -136,7 +140,7 @@ describe('后台原生 PDF bridge 的懒加载装配', () => {
         expect(api.runtime.getURL).toHaveBeenCalledTimes(1);
     });
     it('非字符串选区继续由原有输入边界拒绝，不新开错误窗口', async () => {
-        vi.resetModules(); const api = {runtime: {id: 'test', getURL: () => PAGE}, windows: {create: vi.fn()}}; vi.stubGlobal('browser', api);
+        vi.resetModules(); const api = {runtime: {id: 'test', getURL: () => PAGE}, windows: {create: vi.fn(), onRemoved: {addListener: vi.fn()}}}; vi.stubGlobal('browser', api);
         const module = await import('@/src/app/background/nativePdfSelection');
         expect(await module.openNativePdfSelection({...INPUT, text: undefined} as unknown as NativePdfSelectionInput)).toBe(false);
         expect(api.windows.create).not.toHaveBeenCalled();
@@ -145,14 +149,14 @@ describe('后台原生 PDF bridge 的懒加载装配', () => {
         vi.resetModules(); vi.stubGlobal('browser', undefined);
         const module = await import('@/src/app/background/nativePdfSelection'); const handler = module.createNativePdfSelectionHandler<{sender: NativePdfSelectionSender}>();
         expect(handler.type).toBe('claimNativePdfSelection');
-        const api = {runtime: {id: 'test', getURL: vi.fn(() => PAGE)}, windows: {create: vi.fn().mockResolvedValue({id: 12, tabs: [{id: 21}]}), remove: vi.fn().mockResolvedValue(undefined)}};
+        const api = {runtime: {id: 'test', getURL: vi.fn(() => PAGE)}, windows: {create: vi.fn().mockResolvedValue({id: 12, tabs: [{id: 21}]}), remove: vi.fn().mockResolvedValue(undefined), onRemoved: {addListener: vi.fn()}}};
         vi.stubGlobal('browser', api); vi.stubGlobal('crypto', {getRandomValues: (bytes: Uint8Array) => {bytes.fill(0); bytes[15] = 1; return bytes;}});
         expect(await module.openNativePdfSelection(INPUT)).toBe(true); expect(api.runtime.getURL).toHaveBeenCalledTimes(1);
         expect(await handler.handle({type: 'claimNativePdfSelection', token: TOKEN} as any, {sender: SENDER})).toEqual({...INPUT, sourceUrl: 'https://www.usenix.org/paper.pdf?download=1'});
         expect(await handler.handle({type: 'claimNativePdfSelection', token: TOKEN} as any, {sender: SENDER})).toBeNull();
     });
     it('后台重启或调用上下文缺失时返回 null，过期票据通过浏览器 remove 回收', async () => {
-        vi.resetModules(); const api = {runtime: {id: 'test', getURL: () => PAGE}, windows: {create: vi.fn().mockResolvedValue({id: 12}), remove: vi.fn().mockResolvedValue(undefined)}};
+        vi.resetModules(); const api = {runtime: {id: 'test', getURL: () => PAGE}, windows: {create: vi.fn().mockResolvedValue({id: 12}), remove: vi.fn().mockResolvedValue(undefined), onRemoved: {addListener: vi.fn()}}};
         vi.stubGlobal('browser', api); vi.stubGlobal('crypto', {getRandomValues: (bytes: Uint8Array) => {bytes.fill(0); bytes[15] = 1; return bytes;}});
         const time = vi.spyOn(Date, 'now').mockReturnValue(0), module = await import('@/src/app/background/nativePdfSelection'), handler = module.createNativePdfSelectionHandler();
         expect(await handler.handle({type: 'claimNativePdfSelection'}, undefined)).toBeNull(); await module.openNativePdfSelection(INPUT);
