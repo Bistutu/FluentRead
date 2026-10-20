@@ -1,7 +1,7 @@
 /**
  * @file src/providers/translation/bilibili-free.ts
  * 文件职责：适配 B站 Index-Translate 官方匿名文本翻译 API。
- * 主要内容：按码点预算且不切术语标记，固定模型与端点、关闭思考输出，按 Unicode 码点有界分块，保护全文文本槽、换行和边缘空白，拒绝截断、空值及损坏响应并透传取消和 HTTP 状态，取消或错误响应也等待未读正文结算后归还容量。
+ * 主要内容：按码点预算且不切术语标记，固定模型与端点、关闭思考输出，按 Unicode 码点有界分块，保护全文文本槽、换行和边缘空白，拒绝截断、空值及损坏响应并透传取消和 HTTP 状态；取消或错误响应主动终止未读正文，不让错误页或清理 Promise 长期占用共享容量。
  * 模块边界：仅通过 runtimeFetch 请求官方服务，不读取用户密钥、Cookie、代理或可编辑请求体；Origin 兼容由扩展后台网络层处理，独立入口与免费池共用协议，调度与换线由上层编排负责。
  */
 import {translateFreeTextChunks} from './freeTextChunks';
@@ -55,9 +55,10 @@ async function translateChunk(text: string, source: string, target: string, sign
         if (!result || result.includes('<think>') || result.includes('</think>')) throw new Error('B站翻译没有返回有效译文');
         return result;
     } finally {
-        // 取消或错误 headers 不能让候选 Promise 先于未读正文结束；读取失败保留原错误。
+        // 错误页和取消后的正文已无消费价值：直接终止原始流，不复制排空。
+        // cancel 会立即请求停止传输，但其确认 Promise 也可能不结算，不能阻塞原始 HTTP/取消错误。
         if (!response.bodyUsed) {
-            try { await response.clone().arrayBuffer(); } catch {}
+            try { void response.body?.cancel().catch(() => undefined); } catch {}
         }
     }
 }

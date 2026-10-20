@@ -2,7 +2,7 @@ import {withProviderSnapshot} from './helpers/providerSnapshot';
 /**
  * @file tests/bilibiliFreeTranslation.test.ts
  * 文件职责：验证 B站匿名 API 协议、字幕以外的纯文本边界和免费池所需错误契约。
- * 主要内容：覆盖语言、分块、槽与空白保留、取消、思考输出、截断、HTTP 限流和损坏响应。
+ * 主要内容：覆盖语言、分块、槽与空白保留、取消、思考输出、截断、HTTP 限流和损坏响应；验证错误正文主动取消且取消确认不阻塞跨服务共享调度，成功正文仍持有并发许可直到读取完成。
  * 模块边界：使用共享 HTTP 端口注入响应，不连接真实服务，不读取用户配置。
  */
 import {protectedDocumentLongMathParagraph} from './fixtures/documentLongMathParagraph';
@@ -14,6 +14,8 @@ import {services, servicesType, options} from '@/src/core/config/catalog';
 import {getMissingCredentialMessage} from '@/src/core/config/validation';
 import {attachTranslationProviderConfig, createTranslationProviderConfigSnapshot} from '@/src/services/translation/requestSnapshot';
 import {parseTranslationSlots, serializeTranslationSlots} from '@/src/core/translation/slotProtocol';
+import {createTranslationRequestScheduler} from '@/src/services/translation/requestScheduler';
+import {translateMicrosoftTextsWithTransport} from '@/src/providers/translation/microsoftTransport';
 
 vi.mock('@/src/services/config/store', () => ({config: {from: 'auto', to: 'zh-Hans'}}));
 
@@ -136,34 +138,72 @@ describe('B站官方免费翻译', () => {
         setRuntimeFetch(async () => ({ok: true, json: async () => {parsing.abort(); return {};}} as Response));
         await expect(translateBilibiliFree(withProviderSnapshot(request('Hello', {abortSignal: parsing.signal}), {from: 'auto', to: 'zh-Hans'}))).rejects.toMatchObject({name: 'AbortError'});
     });
-    it.each(['http', 'abort'] as const)('B站 %s headers 后仍等待真实流式正文结算且保留错误分类', async mode => {
-        let body!: ReadableStreamDefaultController<Uint8Array>;
-        const response = new Response(new ReadableStream<Uint8Array>({start(controller) {body = controller;}}),
-            {status: mode === 'http' ? 429 : 200, headers: {'Retry-After': '12'}});
+    it.each(['http', 'abort'] as const)('B站 %s headers 后取消未读正文，不等待取消确认且保留错误分类', async mode => {
+        const cancel = vi.fn(() => new Promise<void>(() => undefined));
+        const response = new Response(new ReadableStream<Uint8Array>({cancel}),
+            {status: mode === 'http' ? 504 : 200, headers: {'Retry-After': '12'}});
         const signal = new AbortController();
         const reason = new Error('cancelled after headers');
         setRuntimeFetch(async () => {if (mode === 'abort') signal.abort(reason); return response;});
-        let settled = false;
-        const result = translateBilibiliFree(withProviderSnapshot(request('Hello', {abortSignal: signal.signal}), {from: 'auto', to: 'zh-Hans'})).then(
-            () => {settled = true; throw new Error('unexpected success');},
-            error => {settled = true; return error;},
-        );
-        await new Promise(resolve => setTimeout(resolve, 0));
-        expect(settled).toBe(false);
-        body.close();
-        const error = await result;
+        const error = await translateBilibiliFree(withProviderSnapshot(request('Hello', {abortSignal: signal.signal}), {from: 'auto', to: 'zh-Hans'})).catch(error => error);
+        expect(cancel).toHaveBeenCalledOnce();
         if (mode === 'abort') expect(error).toBe(reason);
-        else expect(error).toMatchObject({statusCode: 429, retryAfterMs: 12000});
+        else expect(error).toMatchObject({statusCode: 504, retryAfterMs: 12000});
     });
 
-    it('B站 错误正文读取失败不覆盖原 HTTP 状态', async () => {
-        let body!: ReadableStreamDefaultController<Uint8Array>;
-        const response = new Response(new ReadableStream<Uint8Array>({start(controller) {body = controller;}}), {status: 503});
+    it.each(['throw', 'reject'] as const)('B站 错误正文取消%s不覆盖原 HTTP 状态', async mode => {
+        const response = new Response(new ReadableStream<Uint8Array>({}), {status: 503});
+        vi.spyOn(response.body!, 'cancel').mockImplementation(() => {
+            if (mode === 'throw') throw new Error('cancel failed');
+            return Promise.reject(new Error('cancel failed'));
+        });
         setRuntimeFetch(async () => response);
-        const result = translateBilibiliFree(withProviderSnapshot(request(), {from: 'auto', to: 'zh-Hans'})).catch(error => error);
+        await expect(translateBilibiliFree(withProviderSnapshot(request(), {from: 'auto', to: 'zh-Hans'})))
+            .rejects.toMatchObject({statusCode: 503});
+    });
+
+    it('B站504的未结束正文和取消确认不挡住同一global调度器里的微软翻译', async () => {
+        const scheduler = createTranslationRequestScheduler(() => ({
+            maxConcurrentTranslations: 1, translationRequestsPerSecond: 0, translationRequestsPerMinute: 0,
+        }));
+        const cancel = vi.fn(() => new Promise<void>(() => undefined));
+        setRuntimeFetch(async () => new Response(new ReadableStream<Uint8Array>({cancel}), {status: 504, headers: {'Retry-After': '12'}}));
+        const first = scheduler.schedule(lease => {
+            const operation = translateBilibiliFree(withProviderSnapshot(request(), {from: 'auto', to: 'zh-Hans'}));
+            lease.holdUntil(operation);
+            return operation;
+        }, {identity: {service: services.bilibili}}).catch(error => error);
+        const microsoft = vi.fn(async () => Response.json([{translations: [{text: '微软译文'}]}]));
+        const next = scheduler.schedule(lease => translateMicrosoftTextsWithTransport(
+            microsoft, ['Next paragraph'], 'en', 'zh-Hans', undefined, true, lease,
+        ), {identity: {service: services.microsoft}});
+        await expect(first).resolves.toMatchObject({statusCode: 504, retryAfterMs: 12000});
+        await expect(next).resolves.toEqual(['微软译文']);
+        expect(cancel).toHaveBeenCalledOnce();
+        expect(microsoft).toHaveBeenCalledOnce();
+    });
+
+    it('B站成功正文读取完成前仍持有global并发槽', async () => {
+        const scheduler = createTranslationRequestScheduler(() => ({
+            maxConcurrentTranslations: 1, translationRequestsPerSecond: 0, translationRequestsPerMinute: 0,
+        }));
+        let body!: ReadableStreamDefaultController<Uint8Array>;
+        const cancel = vi.fn();
+        setRuntimeFetch(async () => new Response(new ReadableStream<Uint8Array>({start(controller) {body = controller;}, cancel})));
+        const first = scheduler.schedule(lease => {
+            const operation = translateBilibiliFree(withProviderSnapshot(request(), {from: 'auto', to: 'zh-Hans'}));
+            lease.holdUntil(operation);
+            return operation;
+        }, {identity: {service: services.bilibili}});
+        const nextTask = vi.fn(async () => 'next');
+        const next = scheduler.schedule(nextTask, {identity: {service: services.microsoft}});
         await new Promise(resolve => setTimeout(resolve, 0));
-        body.error(new Error('body failed'));
-        expect(await result).toMatchObject({statusCode: 503});
+        expect(nextTask).not.toHaveBeenCalled();
+        body.enqueue(new TextEncoder().encode(JSON.stringify({choices: [{message: {content: '你好'}, finish_reason: 'stop'}]})));
+        body.close();
+        await expect(first).resolves.toBe('你好');
+        await expect(next).resolves.toBe('next');
+        expect(cancel).not.toHaveBeenCalled();
     });
 
 });
