@@ -677,8 +677,9 @@ function isScannedPdfPage(atoms: readonly PdfLayoutAtom[], blocks: readonly PdfL
     if (atoms.length && !onlyPageNumbers) {
         // 公报、合同等会在扫描附件外再排一个原生标题或发布页脚。只有边缘少量文字、且与图像完全分离时才放行；
         // 不因一张大照片、图表的标题/题注，或被版面保护器归为 figure-label 的原生正文而覆盖现有文字层。
+        const nativeBodyKinds: readonly PdfLayoutBlock['kind'][] = ['caption', 'metadata', 'formula', 'table'];
         if (!blocks.length || blocks.reduce((length, block) => length + block.source.length, 0) > 160
-            || blocks.some(block => ['caption', 'metadata', 'formula', 'table'].includes(block.kind || '')
+            || blocks.some(block => nativeBodyKinds.includes(block.kind)
                 || /^(?:(?:fig(?:ure)?\.?|table|chart|plate|diagram|photo(?:graph)?|image)\s*(?:\d|[ivx]+\b|[:.])|[图表圖図]\s*[\d一二三四五六七八九十])/iu.test(block.source.trim()))) return false;
         let headerLines = 0, footerLines = 0;
         for (const block of blocks) {
