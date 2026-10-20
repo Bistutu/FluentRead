@@ -669,4 +669,17 @@ h1 { margin-bottom: 6px; font-size: 26px; line-height: 1.25; letter-spacing: -.0
   .settings-app .sidebar .search-box input {
     font-size: 16px;
   }
+  /* 搜索 label 的 1px 边框包住 44px 输入，分类使用同一 46px 触摸预算。 */
+  .settings-app .sidebar .search-box,
+  .settings-app .sidebar .mobile-settings-navigation {
+    box-sizing: border-box;
+    min-height: 46px;
+  }
+  .settings-app .sidebar .search-box { height: auto; }
+  .settings-app .sidebar .search-box input {
+    box-sizing: border-box;
+    min-height: 44px;
+    padding-block: 0;
+  }
+  .settings-app .sidebar .mobile-settings-navigation { font-size: 16px; }
 }
