@@ -6,10 +6,13 @@ const ports = vi.hoisted(() => ({
     ready: Promise.resolve() as Promise<void>, hydration: 'ready' as 'loading' | 'ready' | 'blocked',
     mainGate: undefined as Promise<void> | undefined, onboardingGate: undefined as Promise<void> | undefined,
     mainLoaded: vi.fn(), onboardingLoaded: vi.fn(), ensureBundle: vi.fn(async (_language: unknown) => {}), font: vi.fn(async (_font: unknown) => {}),
-    browser: 'chrome', platform: vi.fn(), unmountCallbacks: [] as Array<()=>void>,
+    browser: 'chrome', platform: vi.fn(), currentTab: vi.fn(), tabApi: 'present' as 'present' | 'missing-tabs' | 'missing-method', unmountCallbacks: [] as Array<()=>void>,
     createApp: vi.fn(), plugin: vi.fn(() => ({kind: 'i18n'})), use: vi.fn(), component: vi.fn(), mount: vi.fn(),
 }));
-vi.mock('webextension-polyfill', () => ({default: {runtime: {getPlatformInfo: ports.platform}}}));
+vi.mock('webextension-polyfill', () => ({default: {
+    runtime: {getPlatformInfo: ports.platform},
+    get tabs() {return ports.tabApi==='missing-tabs' ? undefined : {getCurrent: ports.tabApi==='missing-method' ? undefined : ports.currentTab};},
+}}));
 vi.mock('../src/platform/browser/capabilities', () => ({browserCapabilities: {get browser() {return ports.browser;}}}));
 vi.mock('vue', () => ({createApp: ports.createApp}));
 vi.mock('element-plus/es/components/base/style/css', () => ({}));
@@ -30,6 +33,7 @@ beforeEach(async () => {
     Object.assign(ports.config, {uiLanguageSetupCompleted: false, uiLanguage: 'en-US', interfaceFont: 'system'});
     ports.font.mockReset().mockResolvedValue(undefined); ports.ensureBundle.mockReset().mockResolvedValue(undefined);
     ports.browser='chrome';ports.platform.mockReset().mockResolvedValue({os:'mac'});ports.unmountCallbacks=[];
+    ports.tabApi='present';ports.currentTab.mockReset().mockResolvedValue(undefined);
     ports.mount.mockReset();ports.createApp.mockReturnValue({use: ports.use, component: ports.component, mount: ports.mount,onUnmount: (fn:()=>void)=>ports.unmountCallbacks.push(fn)});
     vi.stubGlobal('document', parseHTML('<html><body></body></html>').document);
     vi.stubGlobal('window', new EventTarget());
@@ -375,5 +379,108 @@ describe('Popup fresh configuration bootstrap', () => {
         const {mountPopupApp} = await import('../src/app/popup/index'); await mountPopupApp('#owned'); await vi.dynamicImportSettled();
         expect(sendMessage).toHaveBeenCalledOnce(); expect(ports.mainLoaded).toHaveBeenCalledOnce();
         expect(ports.createApp).toHaveBeenCalledWith({kind: 'onboarding'});
+    });
+});
+
+
+describe('Popup fixed tab host lifecycle', () => {
+    const attribute='data-fluentread-tab-popup';
+    function tabReply() {
+        let resolve!:(value:{id:number})=>void;
+        const promise=new Promise<{id:number}>(yes=>{resolve=yes;});
+        return {promise,resolve};
+    }
+    it.each([
+        ['chrome',0,false],['edge',42,true],['firefox',Number.MAX_SAFE_INTEGER,false],['safari',17,true],['thunderbird',1,false],
+    ] as const)('%s 真实标签页 id=%s 对完成状态=%s 启用自有固定视口且卸载释放',async(browser,id,completed)=>{
+        ports.browser=browser;ports.config.uiLanguageSetupCompleted=completed;ports.currentTab.mockResolvedValue({id});
+        await bootstrap.mountPreparedPopupApp('#owned');
+        expect(ports.currentTab).toHaveBeenCalledOnce();expect(ports.currentTab).toHaveBeenCalledWith();
+        expect(document.documentElement.getAttribute(attribute)).toBe('');
+        expect(ports.createApp).toHaveBeenCalledWith({kind:completed?'main':'onboarding'});
+        ports.unmountCallbacks.forEach(fn=>fn());expect(document.documentElement.hasAttribute(attribute)).toBe(false);
+    });
+    it.each([
+        ['toolbar',undefined],['null-tab',null],['missing-id',{}],['string-id',{id:'7'}],['negative-id',{id:-1}],
+        ['fraction-id',{id:.5}],['NaN-id',{id:NaN}],['infinite-id',{id:Infinity}],['unsafe-integer-id',{id:Number.MAX_SAFE_INTEGER+1}],
+    ])('%s 的公开查询结果不把工具栏或非法身份转成标签页布局',async(_reason,tab)=>{
+        ports.currentTab.mockResolvedValue(tab);await bootstrap.mountPreparedPopupApp('#owned');
+        expect(ports.mount).toHaveBeenCalledOnce();expect(ports.currentTab).toHaveBeenCalledOnce();
+        expect(document.documentElement.hasAttribute(attribute)).toBe(false);
+        pageTransition('pagehide',true);pageTransition('pageshow',true);
+        expect(document.documentElement.hasAttribute(attribute)).toBe(false);expect(ports.currentTab).toHaveBeenCalledOnce();
+    });
+    it.each(['missing-tabs','missing-method','throws','rejects'] as const)('%s 的标签页 API 保留固有布局且不阻塞挂载或重试',async reason=>{
+        if(reason==='missing-tabs'||reason==='missing-method')ports.tabApi=reason;
+        if(reason==='throws')ports.currentTab.mockImplementation(()=>{throw Error('tab query unavailable');});
+        if(reason==='rejects')ports.currentTab.mockRejectedValue(Error('tab query unavailable'));
+        await bootstrap.mountPreparedPopupApp('#owned');
+        expect(ports.mount).toHaveBeenCalledOnce();expect(document.documentElement.hasAttribute(attribute)).toBe(false);
+        pageTransition('pagehide',true);pageTransition('pageshow',true);
+        expect(document.documentElement.hasAttribute(attribute)).toBe(false);
+        expect(ports.currentTab).toHaveBeenCalledTimes(reason.startsWith('missing')?0:1);
+    });
+    it('pending 标签页查询不阻挂载；隐藏时晚回仅缓存，两次恢复不重查或重建应用',async()=>{
+        ports.config.uiLanguageSetupCompleted=true;const reply=tabReply();ports.currentTab.mockReturnValue(reply.promise);
+        const add=vi.spyOn(window,'addEventListener'),remove=vi.spyOn(window,'removeEventListener');
+        await bootstrap.mountPreparedPopupApp('#owned');
+        expect(ports.mount).toHaveBeenCalledOnce();expect(document.documentElement.hasAttribute(attribute)).toBe(false);
+        pageTransition('pagehide',true);reply.resolve({id:0});await reply.promise;
+        expect(document.documentElement.hasAttribute(attribute)).toBe(false);expect(remove).not.toHaveBeenCalled();
+        pageTransition('pageshow',false);expect(document.documentElement.hasAttribute(attribute)).toBe(false);
+        pageTransition('pageshow',true);expect(document.documentElement.getAttribute(attribute)).toBe('');
+        pageTransition('pagehide',true);expect(document.documentElement.hasAttribute(attribute)).toBe(false);
+        pageTransition('pageshow',true);expect(document.documentElement.getAttribute(attribute)).toBe('');
+        expect(ports.currentTab).toHaveBeenCalledOnce();expect(ports.createApp).toHaveBeenCalledOnce();expect(ports.mount).toHaveBeenCalledOnce();
+        expect(ports.mainLoaded).toHaveBeenCalledOnce();expect(ports.ensureBundle).toHaveBeenCalledOnce();expect(ports.font).toHaveBeenCalledOnce();
+        expect(add.mock.calls.map(([type])=>type)).toEqual(['pagehide','pageshow']);
+        ports.unmountCallbacks.forEach(fn=>fn());expect(document.documentElement.hasAttribute(attribute)).toBe(false);
+        expect(remove.mock.calls.map(([type])=>type)).toEqual(['pagehide','pageshow']);
+    });
+    it.each(['pagehide','unmount','hidden-unmount','mount-failure','config-failure','hydration-blocked'] as const)('%s 后迟到标签页回复和旧 pageshow 不能写回标记',async reason=>{
+        const reply=tabReply();ports.currentTab.mockReturnValue(reply.promise);
+        if(reason==='mount-failure')ports.mount.mockImplementation(()=>{throw Error('mount failed');});
+        if(reason==='config-failure'){ports.ready=Promise.reject(Error('config failed'));ports.ready.catch(()=>{});vi.resetModules();bootstrap=await import('../src/app/popup/mount');}
+        if(reason==='hydration-blocked')ports.hydration='blocked';
+        const pending=bootstrap.mountPreparedPopupApp('#owned');
+        if(reason.endsWith('failure')||reason==='hydration-blocked')await expect(pending).rejects.toThrow();else await pending;
+        if(reason==='pagehide')pageTransition('pagehide',false);
+        if(reason==='hidden-unmount')pageTransition('pagehide',true);
+        if(reason==='unmount'||reason==='hidden-unmount')ports.unmountCallbacks.forEach(fn=>fn());
+        reply.resolve({id:9});await reply.promise;pageTransition('pageshow',true);
+        expect(ports.currentTab).toHaveBeenCalledOnce();expect(document.documentElement.hasAttribute(attribute)).toBe(false);
+    });
+    it('挂载前 persisted hide 终止入口，随后配置与标签页回复不能补挂载或恢复标记',async()=>{
+        const configGate=deferred(),reply=tabReply();ports.ready=configGate.promise;ports.currentTab.mockReturnValue(reply.promise);
+        vi.resetModules();bootstrap=await import('../src/app/popup/mount');
+        const pending=bootstrap.mountPreparedPopupApp('#owned');pageTransition('pagehide',true);
+        reply.resolve({id:0});await reply.promise;pageTransition('pageshow',true);configGate.resolve();await pending;
+        expect(ports.createApp).not.toHaveBeenCalled();expect(document.documentElement.hasAttribute(attribute)).toBe(false);
+        expect(ports.currentTab).toHaveBeenCalledOnce();
+    });
+    it.each(['','external-owner'])('预存标签页标记 %s 的所有权在恢复与卸载后仍属于原宿主',async value=>{
+        document.documentElement.setAttribute(attribute,value);ports.currentTab.mockResolvedValue({id:7});
+        await bootstrap.mountPreparedPopupApp('#owned');pageTransition('pagehide',true);pageTransition('pageshow',true);
+        ports.unmountCallbacks.forEach(fn=>fn());expect(document.documentElement.getAttribute(attribute)).toBe(value);
+        expect(ports.currentTab).toHaveBeenCalledOnce();
+    });
+    it('其它宿主可接管自有标签页标记；移除后下一恢复重新取得且不碰其它布局标记',async()=>{
+        const root=document.documentElement;ports.currentTab.mockResolvedValue({id:12});
+        root.setAttribute('data-fluentread-android-popup','android-owner');root.setAttribute('data-fluentread-safari-touch-popup','safari-owner');
+        await bootstrap.mountPreparedPopupApp('#owned');expect(root.getAttribute(attribute)).toBe('');
+        root.setAttribute(attribute,'external-visible-owner');pageTransition('pagehide',true);pageTransition('pageshow',true);
+        expect(root.getAttribute(attribute)).toBe('external-visible-owner');
+        root.removeAttribute(attribute);pageTransition('pagehide',true);pageTransition('pageshow',true);
+        expect(root.getAttribute(attribute)).toBe('');
+        pageTransition('pagehide',true);root.setAttribute(attribute,'external-hidden-owner');pageTransition('pageshow',true);
+        ports.unmountCallbacks.forEach(fn=>fn());expect(root.getAttribute(attribute)).toBe('external-hidden-owner');
+        expect(root.getAttribute('data-fluentread-android-popup')).toBe('android-owner');expect(root.getAttribute('data-fluentread-safari-touch-popup')).toBe('safari-owner');
+        expect(ports.currentTab).toHaveBeenCalledOnce();expect(ports.mount).toHaveBeenCalledOnce();
+    });
+    it('无 Window 的未知工具栏宿主仍可挂载并通过 app 生命周期端口释放',async()=>{
+        vi.stubGlobal('window',undefined);await bootstrap.mountPreparedPopupApp('#owned');
+        expect(ports.currentTab).toHaveBeenCalledOnce();expect(ports.mount).toHaveBeenCalledWith('#owned');
+        expect(document.documentElement.hasAttribute(attribute)).toBe(false);
+        ports.unmountCallbacks.forEach(fn=>fn());expect(document.documentElement.hasAttribute(attribute)).toBe(false);
     });
 });

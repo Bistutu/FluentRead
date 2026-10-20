@@ -1,7 +1,7 @@
 /**
  * @file src/app/popup/popup.css
- * 文件职责：定义桌面宽度随皮肤和界面语言、Firefox Android 固定容器限制画布不超过视口，高度由内容撑开且最高 560px 的浏览器 Popup 视觉系统与交互状态，包括亮暗主题、服务选择、功能卡、设置抽屉、通知和响应式细节；Safari 触摸独立 Popup 的快捷入口以两列换行布局适配宿主。
- * 主要内容：翻译卡片右下角紧凑显示模式工具与网站规则同行；品牌官网入口保留稳定点击区域，内部图标在悬停和键盘聚焦时缓慢单次摇摆并遵循动画偏好，停留后显示可用 Escape 关闭的官网提示；Safari 触摸独立 Popup 的快捷入口使用 flex 换行，卡片宽度与皮肤局部间距共享变量，奇数末项保留半宽；整页遮罩持续拦截背景，内部抽屉跟随可见视口并保留内部滚动，服务搜索在触屏使用 16px 字号避免自动缩放，名称使用 14px、辅助文字使用 12px，正常高度说明自然换行，窄列表按自身宽度改为单列以避免名称孤字折行，极矮视口保留省略并收紧项内留白；触摸设备的主画布、快捷和服务抽屉采用 46px 命中预算，为原生 sheet 缩放留余量，开关保留紧凑胶囊视觉，桌面沿用原有布局；以白色窄版画布、浅灰控件和品牌色强调翻译、局部及站点控制；两个操作以 42px 高度紧凑同排，主按钮弹性伸展并用短标题合并快捷键，辅助按钮以上方图标和下方文字收拢；网站规则不再绘制外层框，独立按钮沿用指示点展示保存状态并尊重减少动画偏好；保留版本与赞赏码的原位放大、服务及模型摘要、两列入口、完整开源胶囊与开关优先的快捷抽屉和必要的内部滚动。
+ * 文件职责：定义桌面宽度随皮肤和界面语言、独立扩展标签页与 Firefox Android 固定容器限制画布不超过视口，高度由内容撑开且最高 560px 的浏览器 Popup 视觉系统与交互状态，包括亮暗主题、服务选择、功能卡、设置抽屉、通知和响应式细节；Safari 触摸独立 Popup 的快捷入口以两列换行布局适配宿主。
+ * 主要内容：翻译卡片右下角紧凑显示模式工具与网站规则同行；品牌官网入口保留稳定点击区域，内部图标在悬停和键盘聚焦时缓慢单次摇摆并遵循动画偏好，停留后显示可用 Escape 关闭的官网提示；Safari 触摸独立 Popup 的快捷入口使用 flex 换行，卡片宽度与皮肤局部间距共享变量，奇数末项保留半宽；整页遮罩持续拦截背景，内部抽屉跟随可见视口并保留内部滚动，服务搜索在触屏使用 16px 字号避免自动缩放，名称使用 14px、辅助文字使用 12px，正常高度说明自然换行，窄列表按自身宽度改为单列以避免名称孤字折行，极矮视口保留省略并收紧项内留白；触摸设备的主画布、快捷和服务抽屉采用 46px 命中预算，为原生 sheet 缩放留余量，网站规则文字使用 12px 并自然换行，开关保留紧凑胶囊视觉，桌面沿用原有布局；以白色窄版画布、浅灰控件和品牌色强调翻译、局部及站点控制；两个操作以 42px 高度紧凑同排，主按钮弹性伸展并用短标题合并快捷键，辅助按钮以上方图标和下方文字收拢；网站规则不再绘制外层框，独立按钮沿用指示点展示保存状态并尊重减少动画偏好；保留版本与赞赏码的原位放大、服务及模型摘要、两列入口、完整开源胶囊与开关优先的快捷抽屉和必要的内部滚动。
  * 模块边界：样式只对应 PopupApp 的 DOM 和受控第三方组件，不决定配置值、能力可用性或消息行为；跨页面 token 在 src/ui/styles，Options/文档页各自维护页面样式。
  * 极矮视口：服务选择的返回、搜索、清除与关闭复用原节点并排，隐藏装饰留白而不缩小操作区，输入状态与整页遮罩保持；触屏语言选择使用独立 portal 标记，46px 控件与 16px 输入避免继续沿用桌面紧凑尺寸，列表随可见高度收缩并给关闭入口让位。
  * 品牌触屏：coarse 指针或已确认的 Firefox Android Popup 为官网链接提供居中的 46px 命中区，内部图标保持 32px，桌面链接仍随 32px 图标紧凑排布，不使用外扩重叠区域。
@@ -753,7 +753,14 @@ footer button { font-weight: 500; color: var(--muted); }
 :root:not(:lang(zh)) .popup-shell .opensource-link > span:not(.external-mark) { min-width: 0; overflow-wrap: anywhere; }
 .opensource-link svg, .opensource-link .external-mark { flex: none; }
 
-/* 页内 iframe 已有视口尺寸，只在这个模式使用视口约束；工具栏仍保留固有宽度契约。 */
+/* 公开 API 确认的独立标签页已有视口；原生、Android 与嵌入宿主继续使用各自的宽高契约。 */
+:root[data-fluentread-tab-popup]:not([data-fluentread-embedded-popup], [data-fluentread-android-popup], [data-fluentread-safari-touch-popup]),
+:root[data-fluentread-tab-popup]:not([data-fluentread-embedded-popup], [data-fluentread-android-popup], [data-fluentread-safari-touch-popup]) :is(body, #app) {
+  width: min(100vw, var(--fluentread-localized-popup-width, var(--interface-popup-width, 320px)));
+}
+:root[data-fluentread-tab-popup]:not([data-fluentread-embedded-popup], [data-fluentread-android-popup], [data-fluentread-safari-touch-popup]) .popup-shell { max-height: min(560px, 100dvh); }
+
+/* 页内 iframe 已有视口尺寸，工具栏仍保留固有宽度契约。 */
 :root[data-fluentread-embedded-popup] { width: min(100vw, var(--fluentread-localized-popup-width, var(--interface-popup-width, 320px))); min-height: 0 !important; }
 :root[data-fluentread-embedded-popup] body,
 :root[data-fluentread-embedded-popup] #app { width: min(100vw, var(--fluentread-localized-popup-width, var(--interface-popup-width, 320px))); }
@@ -857,6 +864,8 @@ footer button { font-weight: 500; color: var(--muted); }
     min-height: 46px;
     height: auto;
   }
+  :root .popup-shell[data-interface-skin] .site-rule-button { font-size: 12px; line-height: 1.4; white-space: normal; text-align: start; }
+  :root .popup-shell[data-interface-skin] .site-rule-button > span { min-width: 0; overflow-wrap: anywhere; }
   :root .popup-services-drawer .service-picker-search input { min-height: 46px; font-size: 16px; }
   :root .popup-drawer.popup-services-drawer .popup-service-picker { container: fluentread-popup-services / inline-size; }
   /* 触屏阅读字号独立于紧凑双列；正常高度的说明自然换行，极矮视口保留原省略与可滚动项高。 */
@@ -917,6 +926,8 @@ footer button { font-weight: 500; color: var(--muted); }
   min-height: 46px;
   height: auto;
 }
+:root[data-fluentread-android-popup] .popup-shell[data-interface-skin] .site-rule-button { font-size: 12px; line-height: 1.4; white-space: normal; text-align: start; }
+:root[data-fluentread-android-popup] .popup-shell[data-interface-skin] .site-rule-button > span { min-width: 0; overflow-wrap: anywhere; }
 :root[data-fluentread-android-popup] .popup-services-drawer .service-picker-search input { min-height: 46px; font-size: 16px; }
 :root[data-fluentread-android-popup] .popup-drawer.popup-services-drawer .popup-service-picker { container: fluentread-popup-services / inline-size; }
 /* 已确认的 Android 容器沿用触屏阅读字号；极矮视口继续使用原有省略规则。 */
