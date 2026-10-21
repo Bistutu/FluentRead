@@ -34,38 +34,21 @@ describe('static model worker uses prepared files and serial cooperative cancell
         send({type: 'score', requestId: 2, text: 'a'}); await flush(); expect(mocks.model).toHaveBeenCalledOnce(); expect(model).toHaveBeenCalledOnce();
         startInformationHighlightWorker(); send({type: 'score', requestId: 3, text: 'a'}); await flush(); expect(mocks.model).toHaveBeenCalledTimes(2); expect(model).toHaveBeenCalledTimes(2);
     });
-    it('loads Qwen3 with its own verified files and float16 KV cache and keeps model identity in results', async () => {
-        startInformationHighlightWorker(); send({type: 'score', requestId: 1, text: 'a', modelId: 'qwen3-0.6b'}); await flush();
-        expect(mocks.store).toHaveBeenCalledWith('qwen3-0.6b');
-        expect(mocks.config).toHaveBeenCalledWith('onnx-community/Qwen3-0.6B-ONNX', expect.objectContaining({revision: expect.stringMatching(/^[a-f0-9]{40}$/u), local_files_only: true}));
-        expect(mocks.model).toHaveBeenCalledWith('onnx-community/Qwen3-0.6B-ONNX', expect.objectContaining({local_files_only: true, device: 'webgpu', dtype: 'q4f16', config: {'transformers.js_config': {kv_cache_dtype: 'float16'}, bos_token_id: 0}}));
-        expect(post).toHaveBeenLastCalledWith(expect.objectContaining({success: true, initialized: true, result: expect.objectContaining({engine: expect.stringContaining('Qwen3 0.6B')})}));
-        send({type: 'score', requestId: 2, text: 'a', modelId: 'qwen3-0.6b'}); await flush();
-        expect(model).toHaveBeenCalledOnce(); expect(mocks.model).toHaveBeenCalledOnce();
-        expect(mocks.env.allowRemoteModels).toBe(false);
-    });
-    it('rejects a different model in an already-bound worker instead of returning the other model cached result', async () => {
-        startInformationHighlightWorker(); send({type: 'score', requestId: 1, text: 'a'}); await flush();
-        send({type: 'score', requestId: 2, text: 'a', modelId: 'qwen3-0.6b'}); await flush();
-        expect(post).toHaveBeenLastCalledWith(expect.objectContaining({requestId: 2, success: false, error: 'INFORMATION_HIGHLIGHT_INVALID_MODEL'}));
-        expect(mocks.model).toHaveBeenCalledOnce(); expect(model).toHaveBeenCalledOnce();
-        send({type: 'score', requestId: 3, text: 'a'}); await flush();
-        expect(post).toHaveBeenLastCalledWith(expect.objectContaining({success: true, result: expect.objectContaining({engine: expect.stringContaining('Qwen2.5 0.5B')})}));
-        startInformationHighlightWorker(); send({type: 'score', requestId: 4, text: 'a', modelId: 'qwen3-0.6b'}); await flush();
-        expect(post).toHaveBeenLastCalledWith(expect.objectContaining({success: true, result: expect.objectContaining({engine: expect.stringContaining('Qwen3 0.6B')})}));
-        expect(model).toHaveBeenCalledTimes(2); expect(mocks.model).toHaveBeenCalledTimes(2);
-    });
-    it('rejects an unknown model before loading any files and retries Qwen3 initialization without default-model fallback', async () => {
-        startInformationHighlightWorker(); send({type: 'score', requestId: 1, text: 'a', modelId: 'remote-model' as never}); await flush();
+    it.each(['qwen3-0.6b', 'remote-model'])('rejects retired or unknown model %s before loading files', async modelId => {
+        startInformationHighlightWorker(); send({type: 'score', requestId: 1, text: 'a', modelId: modelId as never}); await flush();
         expect(post).toHaveBeenLastCalledWith(expect.objectContaining({requestId: 1, success: false, initialized: false, error: 'INFORMATION_HIGHLIGHT_INVALID_MODEL'}));
-        expect(mocks.config).not.toHaveBeenCalled(); expect(mocks.model).not.toHaveBeenCalled();
-        mocks.model.mockRejectedValueOnce(new Error('Qwen3 GPU initialization failed'));
-        send({type: 'score', requestId: 2, text: 'a', modelId: 'qwen3-0.6b'}); await flush();
-        expect(post).toHaveBeenLastCalledWith(expect.objectContaining({success: false, initialized: false, error: 'Qwen3 GPU initialization failed'}));
-        send({type: 'score', requestId: 3, text: 'a', modelId: 'qwen3-0.6b'}); await flush();
-        expect(post).toHaveBeenLastCalledWith(expect.objectContaining({success: true, result: expect.objectContaining({engine: expect.stringContaining('Qwen3 0.6B')})}));
-        expect(mocks.model).toHaveBeenCalledTimes(2);
-        expect(mocks.model.mock.calls.every(([repository]) => repository === 'onnx-community/Qwen3-0.6B-ONNX')).toBe(true);
+        expect(mocks.config).not.toHaveBeenCalled(); expect(mocks.tokenizer).not.toHaveBeenCalled(); expect(mocks.model).not.toHaveBeenCalled();
+        send({type: 'score', requestId: 2, text: 'a', modelId: 'qwen2.5-0.5b'}); await flush();
+        expect(post).toHaveBeenLastCalledWith(expect.objectContaining({success: true, initialized: true, result: expect.objectContaining({engine: expect.stringContaining('Qwen2.5 0.5B Base')})}));
+        expect(mocks.model).toHaveBeenCalledOnce();
+    });
+    it('rejects retired Qwen3 requests in a warm Base worker without reusing scores for that id', async () => {
+        startInformationHighlightWorker(); send({type: 'score', requestId: 1, text: 'a'}); await flush();
+        send({type: 'score', requestId: 2, text: 'a', modelId: 'qwen3-0.6b' as never}); await flush();
+        expect(post).toHaveBeenLastCalledWith(expect.objectContaining({requestId: 2, success: false, error: 'INFORMATION_HIGHLIGHT_INVALID_MODEL'}));
+        send({type: 'score', requestId: 3, text: 'a'}); await flush();
+        expect(post).toHaveBeenLastCalledWith(expect.objectContaining({success: true, result: expect.objectContaining({engine: expect.stringContaining('Qwen2.5 0.5B Base')})}));
+        expect(mocks.model).toHaveBeenCalledOnce(); expect(model).toHaveBeenCalledOnce();
     });
     it('rejects cancelled queued requests before initialization, ignores malformed messages and never starts duplicate ids', async () => {
         mocks.env.backends.onnx.wasm = undefined; startInformationHighlightWorker();

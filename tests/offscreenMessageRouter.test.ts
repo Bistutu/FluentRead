@@ -844,7 +844,7 @@ describe('Offscreen 信息高亮模型的可信路由与请求所有权', () => 
 
     it.each([
         ['INFORMATION_HIGHLIGHT_STATUS_OFFSCREEN', 'status', undefined, 'qwen2.5-0.5b', 'idle'],
-        ['INFORMATION_HIGHLIGHT_PREPARE_OFFSCREEN', 'prepare', 'qwen3-0.6b', 'qwen3-0.6b', 'ready'],
+        ['INFORMATION_HIGHLIGHT_PREPARE_OFFSCREEN', 'prepare', 'qwen2.5-0.5b', 'qwen2.5-0.5b', 'ready'],
         ['INFORMATION_HIGHLIGHT_PAUSE_OFFSCREEN', 'pause', 'qwen2.5-0.5b', 'qwen2.5-0.5b', 'paused'],
         ['INFORMATION_HIGHLIGHT_REMOVE_OFFSCREEN', 'remove', undefined, 'qwen2.5-0.5b', 'missing'],
     ] as const)('将 %s 分派到所选本地模型并保留状态', async (type, method, modelId, expectedModel, phase) => {
@@ -865,9 +865,16 @@ describe('Offscreen 信息高亮模型的可信路由与请求所有权', () => 
         expect(request.response).toHaveBeenCalledOnce();
     });
 
-    it.each(['remote-model', '', null, {}])('拒绝非法模型 %j，不启动模型管理或推理', async modelId => {
+    it.each(['qwen3-0.6b', 'remote-model', '', null, {}])('拒绝非法模型 %j，不启动模型管理或推理', async modelId => {
         const {feature, post} = fixture();
         expect(await post({type: 'INFORMATION_HIGHLIGHT_SCORE_OFFSCREEN', requestId: 'invalid-model', text: 'reading', modelId}).done)
+            .toEqual({success: false, error: 'INFORMATION_HIGHLIGHT_INVALID_MODEL'});
+        for (const method of Object.values(feature)) expect(method).not.toHaveBeenCalled();
+    });
+
+    it.each(['STATUS', 'PREPARE', 'PAUSE', 'REMOVE'])('rejects retired model management %s before touching Base resources', async action => {
+        const {feature, post} = fixture();
+        expect(await post({type: `INFORMATION_HIGHLIGHT_${action}_OFFSCREEN`, modelId: 'qwen3-0.6b'}).done)
             .toEqual({success: false, error: 'INFORMATION_HIGHLIGHT_INVALID_MODEL'});
         for (const method of Object.values(feature)) expect(method).not.toHaveBeenCalled();
     });
@@ -896,10 +903,10 @@ describe('Offscreen 信息高亮模型的可信路由与请求所有权', () => 
 
     it('保留正文上限和推理结果，失败结束后相同身份可再次请求', async () => {
         const {feature, result, post} = fixture();
-        const message = {type: 'INFORMATION_HIGHLIGHT_SCORE_OFFSCREEN', requestId: 'score-boundary', text: 'a'.repeat(12_000), modelId: 'qwen3-0.6b'};
+        const message = {type: 'INFORMATION_HIGHLIGHT_SCORE_OFFSCREEN', requestId: 'score-boundary', text: 'a'.repeat(12_000), modelId: 'qwen2.5-0.5b'};
         const first = post(message);
         expect(await first.done).toEqual({success: true, result});
-        expect(feature.score).toHaveBeenCalledWith(message.text, expect.any(AbortSignal), 'qwen3-0.6b');
+        expect(feature.score).toHaveBeenCalledWith(message.text, expect.any(AbortSignal), 'qwen2.5-0.5b');
         expect(feature.score.mock.calls[0][1].aborted).toBe(false);
         expect(first.response).toHaveBeenCalledOnce();
         feature.score.mockRejectedValueOnce(new Error('controlled inference failure'));

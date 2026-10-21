@@ -2,7 +2,7 @@
 /**
  * @file scripts/testing/run-information-highlight-test.cjs
  * 文件职责：在独立真实 Edge 中验证生产信息高亮的页面保护、启停、动态正文、可选模型与设置持久化。
- * 主要内容：通过现有后台无焦点浏览器 helper 加载本地扩展和只读正文 fixture，真实点击设置、说明、渐变与模型选项，以真实按键验证快捷键作用范围；按 --model-id 选择固定 Qwen2.5 或 Qwen3，校验两张卡的独立缓存、简洁描述与右下单按钮、原生单选、下载/续传确认、离线推理标签和单按钮删除流程；--model-only 只复验模型管理、推理与 PDF，显式选择真实下载或校验后的本地导入，--verify-download-confirmation 先验证部分真实下载再导入完整模型。
+ * 主要内容：通过现有后台无焦点浏览器 helper 加载本地扩展和只读正文 fixture，真实点击设置、说明、渐变与 Base 模型卡片，以真实按键验证快捷键作用范围；固定 Qwen2.5 Base，校验单卡布局、简洁描述与右下单按钮、原生单选、下载/续传确认、离线推理标签和单按钮删除流程；--base-model-only 只验证旧 Qwen3 配置迁移与缓存精确清理、单 Base 卡与取消下载零请求，--model-only 复验模型管理、推理与 PDF，--verify-download-confirmation 先验证部分真实下载再导入完整模型。
  * 模块边界：只清理本次 profile；本地导入与产品下载证据分开记录，藕荷深色下载确认验证皮肤文字色与可读对比度，下载后的推理和 PDF 复用已有页签；不修改共享焦点策略，超时和断开均失败，网络观察不冒充全机流量或阅读效果证明。
  */
 'use strict';
@@ -19,24 +19,23 @@ const args={};
 for(let i=2;i<process.argv.length;i++){
   const argument=process.argv[i];assert(argument.startsWith('--'),`Unexpected argument: ${argument}`);
   const field=argument.slice(2),next=process.argv[i+1];
-  if(['download-model','paint-diagnose','model-only','verify-download-confirmation'].includes(field)){
+  if(['download-model','paint-diagnose','model-only','base-model-only','verify-download-confirmation'].includes(field)){
     if(next&&!next.startsWith('--')){assert(['true','false','1','0'].includes(next),`Invalid --${field} value`);args[field]=next==='true'||next==='1';i++;}
     else args[field]=true;
   }else{assert(next&&!next.startsWith('--'),`Missing --${field} value`);args[field]=next;i++;}
 }
 assert(!(args['download-model']&&args['model-dir']),'--download-model and --model-dir are mutually exclusive');
 assert(!args['verify-download-confirmation']||args['model-dir'],'--verify-download-confirmation requires --model-dir for subsequent verified full-model import');
+assert(!args['base-model-only']||!args['download-model']&&!args['model-dir']&&!args['verify-download-confirmation'],'--base-model-only forbids downloading or importing real model artifacts');
 const models={
-  'qwen2.5-0.5b':{id:'qwen2.5-0.5b',name:'Qwen2.5 0.5B',repository:'onnx-community/Qwen2.5-0.5B',revision:'bae5ceaee026f0d0592858b2bd27645a06f19c42',bytes:490043908,cacheName:'fluent-read-information-highlight-model-v1'},
-  'qwen3-0.6b':{id:'qwen3-0.6b',name:'Qwen3 0.6B',repository:'onnx-community/Qwen3-0.6B-ONNX',revision:'1e0a4a196ecabdf9a879664110574563d3f372d3',bytes:578918894,cacheName:'fluent-read-information-highlight-model-qwen3-0.6b-v1'},
+  'qwen2.5-0.5b':{id:'qwen2.5-0.5b',name:'Qwen2.5 0.5B Base',repository:'onnx-community/Qwen2.5-0.5B',revision:'bae5ceaee026f0d0592858b2bd27645a06f19c42',bytes:490043908,cacheName:'fluent-read-information-highlight-model-v1'},
 };
 const modelId=args['model-id']||'qwen2.5-0.5b';assert(Object.hasOwn(models,modelId),`Unsupported --model-id: ${modelId}`);
-const model=models[modelId],otherModel=Object.values(models).find(value=>value.id!==modelId);
+const model=models[modelId];
 const modelUrlPrefix=`https://huggingface.co/${model.repository}/resolve/${model.revision}/`;
 const downloadLabel=`下载模型（${(model.bytes/1_000_000).toFixed(0)} MB）`;
 const modelDescriptions={
   'qwen2.5-0.5b':'基础模型，需 WebGPU（shader-f16）。',
-  'qwen3-0.6b':'进阶模型，需 WebGPU（shader-f16）。',
 };
 const modelDescription=selectedId=>modelDescriptions[selectedId];
 for(const field of ['extension-dir','playwright-root','artifacts-dir']) assert(args[field],`Missing --${field}`);
@@ -53,7 +52,7 @@ fs.mkdirSync(artifacts,{recursive:true});
 const profileDir=fs.mkdtempSync(path.join(os.tmpdir(),'fluentread-information-highlight-'));
 const report={ok:false,extensionDir,profileDir,stages:[],surface:'options-continuous-smart-highlight-group',build:extensionDir.endsWith('-dev')?'development':'production',
   selectedModel:model,
-  suite:args['model-only']?'model-management-inference-pdf':'information-highlight-settings-pages-and-model',
+  suite:args['base-model-only']?'base-model-migration-single-card-and-cancelled-download':args['model-only']?'model-management-inference-pdf':'information-highlight-settings-pages-and-model',
   evidence:'real-extension-controlled-pages',cases:[],screenshots:[],consoleErrors:[],persistenceCases:[],consoleWarnings:[],
   quickClose:false,crossPageSync:false,latestWriteWins:false,
   modelAcquisition:args['download-model']?'production-settings-download':args['verify-download-confirmation']?'production-partial-download-then-verified-local-artifact-import':args['model-dir']?'verified-local-artifact-import':'not-requested',
@@ -312,7 +311,7 @@ function popupSourceContract(){
       if(click)await control.mouse.click(metrics.rect.x+metrics.rect.width/2,metrics.rect.y+metrics.rect.height/2);return metrics;
     });
     let popup;
-    if(!args['model-only']){
+    if(!args['model-only']&&!args['base-model-only']){
     await openHighlightSettings(control,{verifyReading:true});report.cases.push({id:'smart-highlight-exact-title-zh',...await highlightTitle(control,'zh-CN')});
     await helpTags(control,'zh-CN',{screenshot:'smart-highlight-help-zh'});
     await patchConfig({uiLanguage:'en-US'});report.cases.push({id:'smart-highlight-exact-title-en',...await highlightTitle(control,'en-US')});
@@ -484,7 +483,20 @@ function popupSourceContract(){
       report.skippedMatrices=['help tags and language/layout matrix','page hotkey and keyword painting','ordinary popup matrix','palette/heatmap/style preferences','dynamic article and rapid toggles'];
       await openHighlightSettings(control);
       // 真下载验证关闭/重开设置时保留同一浏览器的一个已有页签；不执行旧页面或 Popup 测试矩阵。
-      popup=await open(fixtureUrl,'model-resume-spare-tab');
+      if(!args['base-model-only'])popup=await open(fixtureUrl,'model-resume-spare-tab');
+    }
+    let baseCacheSentinels;
+    if(args['base-model-only']){
+      // 在选择本地模式挂载模型卡、首次触发生产 status 之前播种；只放少量标记，不冒充真实模型文件。
+      const markerUrl=`${fixtureUrl}/__retired-model-cache-${randomUUID()}`;
+      baseCacheSentinels=[
+        {cacheName:'fluent-read-information-highlight-model-qwen3-0.6b-v1',url:markerUrl,text:'retired-qwen3-cache-sentinel'},
+        {cacheName:model.cacheName,url:markerUrl,text:'base-cache-must-survive'},
+        {cacheName:`fluent-read-test-unrelated-${randomUUID()}`,url:markerUrl,text:'unrelated-cache-must-survive'},
+      ];
+      await step('seed-retired-base-and-unrelated-cache-before-model-status',()=>control.evaluate(async entries=>{
+        for(const entry of entries)await(await caches.open(entry.cacheName)).put(entry.url,new Response(entry.text));
+      },baseCacheSentinels));
     }
     await activate(control,'settings-mode');
     const chooseMode=mode=>step(`settings-mode:${mode}`,async()=>{
@@ -498,6 +510,16 @@ function popupSourceContract(){
       const envelope=await control.evaluate(modelId=>chrome.runtime.sendMessage({type:'GET_INFORMATION_HIGHLIGHT_MODEL_STATUS',modelId}),selectedId);
       assert(envelope?.success&&envelope.status,JSON.stringify(envelope));assert.equal(envelope.status.modelId,selectedId);assert.equal(envelope.status.modelName,models[selectedId].name);assert.equal(envelope.status.totalBytes,models[selectedId].bytes);return envelope;
     });
+    if(args['base-model-only']){
+      const status=(await readModelStatus()).status;
+      const cacheSnapshot=await step('retired-cache-cleanup-preserves-base-and-unrelated-cache',()=>control.evaluate(async entries=>{
+        const names=await caches.keys();return{names,entries:await Promise.all(entries.map(async entry=>({cacheName:entry.cacheName,exists:names.includes(entry.cacheName),text:names.includes(entry.cacheName)?await(await(await caches.open(entry.cacheName)).match(entry.url))?.text():null})))};
+      },baseCacheSentinels));
+      assert.equal(cacheSnapshot.entries[0].exists,false,'Production status must remove only the retired Qwen3 cache');
+      for(const [index,entry]of cacheSnapshot.entries.entries())if(index>0){assert.equal(entry.exists,true);assert.equal(entry.text,baseCacheSentinels[index].text);}
+      assert.equal(status.downloadedBytes,0);assert.equal(status.downloaded,false);
+      report.cases.push({id:'production-status-removes-retired-qwen3-cache-preserving-base-and-unrelated-cache',seeded:baseCacheSentinels,after:cacheSnapshot,status,evidence:'synthetic-small-cache-sentinels-through-production-model-status; no real weights'});
+    }
     const cardFor=selectedId=>control.locator(`section[data-information-highlight-model-id="${selectedId}"]`);
     const modelCards=()=>control.locator('[data-information-highlight-models]');
     const chooseModel=selectedId=>step(`native-settings-model:${selectedId}`,async()=>{
@@ -565,7 +587,7 @@ function popupSourceContract(){
             paddingRight:parseFloat(style.paddingRight)||0,borderRightWidth:parseFloat(style.borderRightWidth)||0,description:card.querySelector('.highlight-model-heading small')?.textContent.trim(),text:card.textContent.trim(),selected:card.querySelector('input[type="radio"]')?.checked};
         }),
         background:getComputedStyle(element.querySelector('section')).backgroundColor,theme:document.documentElement.dataset.theme||document.documentElement.className})));
-      assert.equal(layout.cards.length,2);assert(layout.scrollWidth<=width+1);assert(layout.scrollHeight<=layout.height+1);
+      assert.equal(layout.cards.length,1);assert.equal(layout.cards[0].modelId,modelId);assert(layout.cards[0].selected);assert(layout.scrollWidth<=width+1);assert(layout.scrollHeight<=layout.height+1);
       assert(layout.cards.every(card=>card.rect.width>0&&card.rect.x>=0&&card.rect.right<=width+1));
       for(const card of layout.cards){
         assert.equal(card.description,modelDescription(card.modelId));assert.equal(card.resourceButtonCount,1,'Every model card must have one resource action button');
@@ -573,23 +595,10 @@ function popupSourceContract(){
         assert(Math.abs(card.buttonRect.right-contentRight)<=1,'Resource action must align with the card’s inner right edge');
         assert(Math.abs(card.buttonRect.bottom-card.actionsRect.bottom)<=1,'Resource action must align with the bottom of the action row');
       }
-      const [firstCard,secondCard]=layout.cards.map(card=>card.rect);
-      if(width===1440){
-        assert(Math.abs(firstCard.top-secondCard.top)<=1,'Wide model cards must share the same row');
-        assert(Math.abs(firstCard.width-secondCard.width)<=1,'Wide model cards must have equal widths');
-        assert(Math.abs(firstCard.height-secondCard.height)<=1,'Wide model cards must have equal heights');
-        assert(secondCard.left>=firstCard.right-1,'Wide model cards must sit side by side without overlap');
-        assert(Math.abs(layout.cards[0].actionsRect.bottom-layout.cards[1].actionsRect.bottom)<=1,'Wide model cards must align their actions along the bottom');
-        layout.arrangement='two-equal-cards-in-one-row';
-      }else if(width===390){
-        assert(secondCard.top>=firstCard.bottom-1,'Narrow model cards must stack vertically without overlap');
-        assert(Math.abs(firstCard.left-secondCard.left)<=1,'Narrow model cards must align at the left edge');
-        assert(Math.abs(firstCard.width-secondCard.width)<=1,'Narrow model cards must have equal widths');
-        layout.arrangement='two-cards-stacked-vertically';
-      }
-      report.cases.push({id:`two-model-cards-layout:${name}`,layout});await shot(modelCards(),`model-cards-${name}`);await shot(control,`settings-model-cards-${name}`);
+      layout.arrangement='single-base-model-card';
+      report.cases.push({id:`single-base-model-card-layout:${name}`,layout});await shot(modelCards(),`model-cards-${name}`);await shot(control,`settings-model-cards-${name}`);
     };
-    const verifyPrepareConfirmation=async(stage,{dismissals=true,screenshot=true}={})=>{
+    const verifyPrepareConfirmation=async(stage,{dismissals=true,screenshot=true,confirm=true}={})=>{
       const baseline=(await readModelStatus()).status,selectionBefore=(await support.readStoredConfig(control)).informationHighlight.model;
       const startRequests=report.networkObservation.requests.filter(request=>request.url.startsWith(modelUrlPrefix)).length;
       const dialog=confirmationFor('prepare'),expectedAction=baseline.downloadedBytes>0?'继续下载':'下载模型';
@@ -614,12 +623,28 @@ function popupSourceContract(){
         report.cases.push({id:`model-${stage}-confirmation-${dismissal}-preserves-download-state`,modelId,baseline,opened,after,networkEvidenceScope:report.networkObservation.scope});
       }
       await step(`confirmation-layout:${stage}:restore`,()=>control.setViewportSize({width:1440,height:1000}));await patchConfig({theme:'light'});
+      if(!confirm)return;
       const opened=await openDialog('confirm');assert.equal((await dialog.locator('[data-information-highlight-confirm]').innerText()).trim(),expectedAction);
       await step(`model-${stage}-confirm`,()=>dialog.locator('[data-information-highlight-confirm]').click());await dialog.waitFor({state:'hidden'});
       assert.equal((await support.readStoredConfig(control)).informationHighlight.model,selectionBefore);
       report.cases.push({id:`model-${stage}-confirmation-confirm-starts-operation`,modelId,baseline,opened});
     };
-    for(const selectedId of [otherModel.id,modelId]){
+    if(args['base-model-only']){
+      const before=await support.readStoredConfig(control),legacy={...before.informationHighlight,model:'qwen3-0.6b',mode:'surprisal-local',density:'low',color:'violet',style:'underline',intensity:'soft',hotkey:'Alt+J'};
+      const response=await step('legacy-qwen3-config-through-production-persist',()=>control.evaluate(({current,legacy})=>chrome.runtime.sendMessage({type:'persistConfig',config:{...current,informationHighlight:legacy},clientId:'information-highlight-base-migration',sequence:1,baseRevision:current.__fluentConfigRevision}),{current:before,legacy}));
+      assert.equal(response?.success,true,JSON.stringify(response));
+      const expected={...legacy,model:modelId};
+      await step('legacy-qwen3-config-normalized',async()=>{
+        for(const deadline=Date.now()+10000;;){const current=await support.readStoredConfig(control);if(JSON.stringify(current.informationHighlight)===JSON.stringify(expected))break;assert(Date.now()<deadline,JSON.stringify(current.informationHighlight));await delay(100);}
+      });
+      await step('legacy-qwen3-settings-reload',()=>control.reload({timeout:30000}),35000);await openHighlightSettings(control);
+      const migrated=(await support.readStoredConfig(control)).informationHighlight;assert.deepEqual(migrated,expected);
+      assert.equal(await control.locator('[data-information-highlight-model-choice="qwen3-0.6b"]').count(),0);
+      assert.equal(await control.locator('[data-information-highlight-model-id="qwen3-0.6b"]').count(),0);
+      report.persistenceCases.push({id:'legacy-qwen3-preferences-normalized-and-reloaded',input:legacy,expected,actual:migrated,revision:response.revision});
+      report.cases.push({id:'legacy-qwen3-preferences-migrate-to-base-preserving-reading-preferences',input:legacy,actual:migrated,evidence:'production-persistConfig-normalization-and-settings-reload'});
+    }
+    for(const selectedId of [modelId]){
       const selection=await chooseModel(selectedId),status=(await readModelStatus(selectedId)).status;
       assert.equal(status.downloaded,false);assert.equal(status.downloadedBytes,0,'Selecting a model must not download or reuse another model artifacts');
       const descriptor=models[selectedId],card=await inspectModelCard(descriptor,`下载模型（${(descriptor.bytes/1_000_000).toFixed(0)} MB）`);
@@ -635,6 +660,15 @@ function popupSourceContract(){
     await layoutModelCards('absent');await layoutModelCards('absent-390',{width:390});await layoutModelCards('absent-dark',{theme:'dark'});
     await step('restore-model-layout',()=>control.setViewportSize({width:1440,height:1000}));await patchConfig({theme:'light'});
     await shot(cardFor(modelId),'model-card-download');
+    if(args['base-model-only']){
+      assert(absent.status.supported,`Download confirmation validation requires WebGPU shader-f16: ${absent.status.reason||'unavailable'}`);
+      await verifyPrepareConfirmation('base-no-download',{confirm:false});
+      const after=(await readModelStatus()).status;assert.equal(after.downloadedBytes,0);assert.equal(after.downloaded,false);
+      const observed=report.networkObservation.requests.filter(request=>/^https:\/\/(?:huggingface\.co|hf-mirror\.com)\//u.test(request.url));assert.equal(observed.length,0,JSON.stringify(observed));
+      report.model={...report.model,noRealWeightsRequested:true,downloadedBytes:after.downloadedBytes,observedModelRequests:observed,networkObservationScope:report.networkObservation.scope};
+      report.cases.push({id:'base-card-download-confirmation-cancel-close-escape-request-zero-model-files',status:after,observedModelRequests:observed});
+      report.skippedMatrices.push('local model import and inference','PDF reading','model download/pause/resume/delete');
+    }else{
     if(modelManifest.length&&!args['download-model']&&!args['verify-download-confirmation']){
       // 本地导入分支只检查下载确认的取消及皮肤颜色；不发起产品下载命令。
       const exerciseCancelledDownload=async(name)=>{
@@ -684,9 +718,8 @@ function popupSourceContract(){
         }throw new Error(`Timed out waiting for genuine model download: ${name}`);
       },timeout+1000);
       const before=recordStatus(await readModelStatus(),'before-prepare');assert.equal(before.downloadedBytes,0);assert.equal(before.downloaded,false);
-      // 在未选用的卡片启动下载，证明资源操作不会悄悄改变分析模型。
-      await chooseModel(otherModel.id);await verifyPrepareConfirmation('download');
-      report.model.actions.push({at:Date.now(),action:'prepare',via:'native-settings-confirmation',selectionAtPrepare:otherModel.id});
+      await chooseModel(modelId);await verifyPrepareConfirmation('download');
+      report.model.actions.push({at:Date.now(),action:'prepare',via:'native-settings-confirmation',selectionAtPrepare:modelId});
       const partial=await waitModel(status=>status.downloadedBytes>=report.model.pauseAfterBytes&&!status.downloaded,'partial-download',Math.min(downloadTimeout,180000));
       assert(partial.downloadedBytes<partial.totalBytes);
       await step('settings-progress-positive',()=>control.waitForFunction(id=>document.querySelector(`section[data-information-highlight-model-id="${id}"] [data-testid="information-highlight-model-progress"] progress`)?.value>0,modelId));
@@ -695,7 +728,7 @@ function popupSourceContract(){
       report.model.actions.push({at:Date.now(),action:'pause',via:'native-settings-button',metrics:await settingButton('[data-information-highlight-pause]','model-pause'),downloadedBytesBefore:partial.downloadedBytes});
       const paused=await waitModel(status=>status.phase==='paused'&&status.downloadedBytes>0&&!status.downloaded,'paused',30000);await delay(1500);
       const settled=recordStatus(await readModelStatus(),'paused-settled');assert.equal(settled.phase,'paused');assert(settled.downloadedBytes>=paused.downloadedBytes);
-      report.cases.push({id:'product-model-settings-download-and-pause',before,partial,paused:settled,card:await inspectModelCard(model,'继续下载'),otherCard:await inspectModelCard(otherModel,`下载模型（${(otherModel.bytes/1_000_000).toFixed(0)} MB）`)});await shot(modelCards(),'model-cards-download-paused');await shot(control,'settings-model-download-paused');
+      report.cases.push({id:'product-model-settings-download-and-pause',before,partial,paused:settled,card:await inspectModelCard(model,'继续下载')});await shot(modelCards(),'model-cards-download-paused');await shot(control,'settings-model-download-paused');
       await step('settings-close-after-pause',()=>control.close());
       // 重用先前检查过的普通 Popup 页签作为真正重开的设置页，不为续传新增窗口或 Target。
       control=popup;await step('reopened-settings-size',()=>control.setViewportSize({width:1440,height:1000}));await navigate(control,optionsUrl,'reopen-settings-after-pause');await activate(control,'resume-settings');await openHighlightSettings(control);
@@ -707,10 +740,10 @@ function popupSourceContract(){
         const resumed=await waitModel(status=>status.downloadedBytes>=reopened.downloadedBytes+4*1024*1024&&!status.downloaded,'resumed-partial-download',Math.min(downloadTimeout,180000));
         await settingButton('[data-information-highlight-pause]','resumed-model-pause');
         const pausedAgain=await waitModel(status=>status.phase==='paused'&&status.downloadedBytes>=resumed.downloadedBytes&&!status.downloaded,'resumed-paused',30000);
-        assert.equal((await readModelStatus(otherModel.id)).status.downloadedBytes,0);assert.equal((await support.readStoredConfig(control)).informationHighlight.model,otherModel.id);
+        assert.equal((await support.readStoredConfig(control)).informationHighlight.model,modelId);
         report.unverified=report.unverified.filter(item=>item!=='product model download/pause/resume');report.unverified.push('latest production UI full network download to completion (partial only; full files imported separately)');
         report.model.partialDownloadEvidence={evidence:'genuine-product-download-confirm-start-pause-reopen-confirm-resume-pause; complete model comes from separate SHA-verified local import',before,partial,paused:settled,reopened,resumed,pausedAgain};
-        report.cases.push({id:'product-model-confirmed-resume-and-second-pause',modelId,pausedAgain,card:await inspectModelCard(model,'继续下载'),otherCard:await inspectModelCard(otherModel,`下载模型（${(otherModel.bytes/1_000_000).toFixed(0)} MB）`)});
+        report.cases.push({id:'product-model-confirmed-resume-and-second-pause',modelId,pausedAgain,card:await inspectModelCard(model,'继续下载')});
         await shot(modelCards(),'model-cards-resume-paused');await chooseModel(modelId);
       }else{
       const ready=await waitModel(status=>status.downloaded&&status.phase==='ready','resumed-download');assert.equal(ready.downloadedBytes,ready.totalBytes);assert.equal(ready.totalBytes,before.downloadSizeBytes);
@@ -751,7 +784,6 @@ function popupSourceContract(){
       await shot(cardFor(modelId),'model-card-downloaded');await layoutModelCards('downloaded');await layoutModelCards('downloaded-390',{width:390});
       await step('restore-ready-model-layout',()=>control.setViewportSize({width:1440,height:1000}));
       if(modelManifest.length){await step('prepared-model-card-scroll',()=>cardFor(modelId).scrollIntoViewIfNeeded());await shot(control,'settings-model-downloaded');}
-      assert.equal((await readModelStatus(otherModel.id)).status.downloaded,false,'The other model must not report this model files as ready');
       if(status.status.supported){
         networkStage='local-model-inference';const forbidden=[];
         await step('local-inference-page-network-guard',()=>context.route(/^https:\/\/(?:huggingface\.co|hf-mirror\.com)\//u,route=>{forbidden.push(route.request().url());return route.abort('blockedbyclient');}));
@@ -808,21 +840,20 @@ function popupSourceContract(){
       networkStage='model-choice-and-delete-tests';
       await navigate(control,optionsUrl,'reuse-document-tab-for-model-delete');await activate(control,'model-delete-settings');await openHighlightSettings(control);
       await chooseMode('surprisal-local');
-      const preparedBeforeSwitch=(await readModelStatus()).status;assert.equal(preparedBeforeSwitch.downloaded,true);
-      await chooseModel(otherModel.id);const otherStatus=(await readModelStatus(otherModel.id)).status;
-      assert.equal(otherStatus.downloaded,false);assert.equal(otherStatus.downloadedBytes,0);
-      const otherCard=await inspectModelCard(otherModel,`下载模型（${(otherModel.bytes/1_000_000).toFixed(0)} MB）`);
-      await chooseModel(modelId);const preparedAfterSwitch=(await readModelStatus()).status;
-      assert.equal(preparedAfterSwitch.downloaded,true);assert.equal(preparedAfterSwitch.downloadedBytes,preparedBeforeSwitch.downloadedBytes);
+      const preparedBeforeReload=(await readModelStatus()).status;assert.equal(preparedBeforeReload.downloaded,true);
+      await step('ready-base-settings-reload',()=>control.reload({timeout:30000}),35000);await openHighlightSettings(control);
+      await chooseModel(modelId);const preparedAfterReload=(await readModelStatus()).status;
+      assert.equal(preparedAfterReload.downloaded,true);assert.equal(preparedAfterReload.downloadedBytes,preparedBeforeReload.downloadedBytes);
       const readyCard=await inspectModelCard(model,'删除模型');
-      report.cases.push({id:'native-model-switch-keeps-downloaded-artifacts-isolated',modelId,otherModelId:otherModel.id,preparedBeforeSwitch,otherStatus,otherCard,preparedAfterSwitch,readyCard});
+      report.cases.push({id:'base-model-reload-keeps-downloaded-artifacts',modelId,preparedBeforeReload,preparedAfterReload,readyCard});
       const cacheKeys=cacheName=>control.evaluate(async name=>(await (await caches.open(name)).keys()).map(request=>request.url).sort(),cacheName);
-      // 此标记只证明另一模型的命名缓存没有被清空；它不是第二份模型，也不用于推断其可用状态。
+      // 此标记只证明无关命名缓存没有被清空；它不是另一份模型，也不用于推断模型可用状态。
+      const otherCacheName=`fluent-read-information-highlight-test-unrelated-${randomUUID()}`;
       const retentionMarker=`${fixtureUrl}/__information-highlight-cache-retention-${randomUUID()}`,markerText='temporary-runner-cache-retention-marker';
-      await step('other-model-cache-retention-marker',()=>control.evaluate(async({cacheName,url,text})=>(await caches.open(cacheName)).put(url,new Response(text)),{cacheName:otherModel.cacheName,url:retentionMarker,text:markerText}));
-      const beforeDelete={selected:await cacheKeys(model.cacheName),other:await cacheKeys(otherModel.cacheName)};
+      await step('unrelated-cache-retention-marker',()=>control.evaluate(async({cacheName,url,text})=>(await caches.open(cacheName)).put(url,new Response(text)),{cacheName:otherCacheName,url:retentionMarker,text:markerText}));
+      const beforeDelete={selected:await cacheKeys(model.cacheName),other:await cacheKeys(otherCacheName)};
       assert(beforeDelete.selected.some(url=>url.startsWith(modelUrlPrefix)&&url.includes('fluent-read-verified=')));
-      await chooseModel(otherModel.id);const selectionAtDelete=otherModel.id;
+      const selectionAtDelete=modelId;
       const dialog=confirmationFor('remove');
       await settingButton('[data-information-highlight-remove]','model-delete-open-cancel');
       await step('model-delete-confirmation-visible',()=>dialog.waitFor());
@@ -834,15 +865,15 @@ function popupSourceContract(){
       await step('model-delete-cancel',()=>dialog.locator('[data-information-highlight-cancel]').click());
       await step('model-delete-cancel-closes-dialog',()=>dialog.waitFor({state:'hidden'}));
       assert.equal((await support.readStoredConfig(control)).informationHighlight.model,selectionAtDelete);
-      const canceledStatus=(await readModelStatus()).status;assert.equal(canceledStatus.downloaded,true);assert.equal(canceledStatus.downloadedBytes,preparedAfterSwitch.downloadedBytes);
-      assert.deepEqual(await cacheKeys(model.cacheName),beforeDelete.selected);assert.deepEqual(await cacheKeys(otherModel.cacheName),beforeDelete.other);
+      const canceledStatus=(await readModelStatus()).status;assert.equal(canceledStatus.downloaded,true);assert.equal(canceledStatus.downloadedBytes,preparedAfterReload.downloadedBytes);
+      assert.deepEqual(await cacheKeys(model.cacheName),beforeDelete.selected);assert.deepEqual(await cacheKeys(otherCacheName),beforeDelete.other);
       report.cases.push({id:'native-model-delete-cancel-retains-artifacts',modelId,confirmationText,status:canceledStatus,card:await inspectModelCard(model,'删除模型')});
       for(const [dismissal,width,theme]of [['close',390,'light'],['Escape',1440,'dark']]){
         await step(`delete-confirmation-layout:${dismissal}`,()=>control.setViewportSize({width,height:1000}));await patchConfig({theme});
         await settingButton('[data-information-highlight-remove]',`model-delete-open-${dismissal}`);await dialog.waitFor();
         await settleConfirmation('remove',`delete-${dismissal}`);await shot(control,`settings-model-delete-confirmation-${dismissal}`);await shot(control.locator('.fluentread-information-highlight-model-dialog.el-dialog'),`model-delete-confirmation-${dismissal}`);
         if(dismissal==='Escape')await control.keyboard.press('Escape');else await dialog.locator('[data-information-highlight-close]').click();await dialog.waitFor({state:'hidden'});
-        assert.equal((await readModelStatus()).status.downloaded,true);assert.deepEqual(await cacheKeys(model.cacheName),beforeDelete.selected);assert.deepEqual(await cacheKeys(otherModel.cacheName),beforeDelete.other);
+        assert.equal((await readModelStatus()).status.downloaded,true);assert.deepEqual(await cacheKeys(model.cacheName),beforeDelete.selected);assert.deepEqual(await cacheKeys(otherCacheName),beforeDelete.other);
         assert.equal((await support.readStoredConfig(control)).informationHighlight.model,selectionAtDelete);
         report.cases.push({id:`native-model-delete-${dismissal}-retains-artifacts`,modelId,selectedModelId:selectionAtDelete,width,theme});
       }
@@ -854,16 +885,16 @@ function popupSourceContract(){
       const deleted=await step('model-delete-removes-selected-artifacts',async()=>{
         for(const deadline=Date.now()+30000;;){const status=(await readModelStatus()).status;if(!status.downloaded&&status.downloadedBytes===0)return status;assert(Date.now()<deadline,'Confirmed model deletion did not remove selected artifacts');await delay(200);}
       },35000);
-      assert.equal((await support.readStoredConfig(control)).informationHighlight.model,selectionAtDelete,'Deletion of an unselected card must keep the selected analysis model');
-      const deletedCard=await inspectModelCard(model,downloadLabel),afterDelete={selected:await cacheKeys(model.cacheName),other:await cacheKeys(otherModel.cacheName)};
+      assert.equal((await support.readStoredConfig(control)).informationHighlight.model,selectionAtDelete,'Deleting model files must keep the configured Base model');
+      const deletedCard=await inspectModelCard(model,downloadLabel),afterDelete={selected:await cacheKeys(model.cacheName),other:await cacheKeys(otherCacheName)};
       assert(!afterDelete.selected.some(url=>url.startsWith(modelUrlPrefix)));assert.deepEqual(afterDelete.other,beforeDelete.other);
-      const retainedText=await control.evaluate(async({cacheName,url})=>(await (await caches.open(cacheName)).match(url))?.text(),{cacheName:otherModel.cacheName,url:retentionMarker});assert.equal(retainedText,markerText);
-      assert.equal((await readModelStatus(otherModel.id)).status.downloaded,false);
+      const retainedText=await control.evaluate(async({cacheName,url})=>(await (await caches.open(cacheName)).match(url))?.text(),{cacheName:otherCacheName,url:retentionMarker});assert.equal(retainedText,markerText);
       report.cases.push({id:'native-model-delete-confirm-restores-single-download-action',modelId,status:deleted,card:deletedCard,selectedCacheArtifactKeysBefore:beforeDelete.selected.length,selectedCacheArtifactKeysAfter:afterDelete.selected.length,
-        otherCacheRetention:{cacheName:otherModel.cacheName,markerRetained:true,keysBefore:beforeDelete.other.length,keysAfter:afterDelete.other.length,evidence:'synthetic-cache-retention-marker; second complete model was not imported'}});
+        unrelatedCacheRetention:{cacheName:otherCacheName,markerRetained:true,keysBefore:beforeDelete.other.length,keysAfter:afterDelete.other.length,evidence:'synthetic-unrelated-cache-retention-marker'}});
       await shot(control,'settings-model-deleted');await shot(modelCards(),'model-cards-deleted');
       await shot(cardFor(modelId),'model-card-download');
-      await step('cleanup-other-cache-retention-marker',()=>control.evaluate(async({cacheName,url})=>(await caches.open(cacheName)).delete(url),{cacheName:otherModel.cacheName,url:retentionMarker}));
+      await step('cleanup-unrelated-cache-retention-marker',()=>control.evaluate(cacheName=>caches.delete(cacheName),otherCacheName));
+    }
     }
     await step('final-focus-check',()=>checkFocus());assert(!fatalError);assert.equal(report.consoleErrors.length,0,JSON.stringify(report.consoleErrors));
     assert(!report.consoleWarnings.some(item=>item.message.includes('Failed to resolve component')),JSON.stringify(report.consoleWarnings));report.ok=true;checkpoint('validation-complete','after');

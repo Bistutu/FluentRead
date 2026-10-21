@@ -18,7 +18,7 @@ const key = '__informationHighlightUiFixture'
 let server: ViteDevServer, app: import('vue').App, state: Record<string, any>, props: Record<string, any>
 const send = vi.fn()
 const ready = vi.fn(), preparing = vi.fn()
-const model = (overrides: Partial<InformationHighlightModelStatus> = {}): InformationHighlightModelStatus => ({modelId: 'qwen2.5-0.5b', phase: 'absent', downloaded: false, initialized: false, downloadedBytes: 0, totalBytes: 490043908, supported: true, modelName: 'Qwen2.5 0.5B', downloadSizeBytes: 490043908, ...overrides})
+const model = (overrides: Partial<InformationHighlightModelStatus> = {}): InformationHighlightModelStatus => ({modelId: 'qwen2.5-0.5b', phase: 'absent', downloaded: false, initialized: false, downloadedBytes: 0, totalBytes: 490043908, supported: true, modelName: 'Qwen2.5 0.5B Base', downloadSizeBytes: 490043908, ...overrides})
 function deferred<T = unknown>() {let resolve!: (value: T) => void, reject!: (error: unknown) => void; const promise = new Promise<T>((yes, no) => {resolve = yes; reject = no}); return {promise, resolve, reject}}
 async function settle() {for (let i = 0; i < 8; i++) {await Promise.resolve(); await runtime.nextTick()}}
 function openConfirmation(action: 'prepare' | 'remove') {
@@ -175,7 +175,7 @@ describe('信息高亮真实本地模型组件', () => {
   })
   it.each([{phase: 'absent', downloadedBytes: 0, resuming: false}, {phase: 'paused', downloadedBytes: 20, resuming: true}] as const)('下载或续传 $phase 先确认，取消保留字节状态，旧确认不能复活', async snapshot => {
     send.mockResolvedValue({success: true, status: model(snapshot)}); await mount('InformationHighlightModelCard')
-    const dialog = openConfirmation('prepare'); expect(dialog).toMatchObject({name: 'Qwen2.5 0.5B', resuming: snapshot.resuming})
+    const dialog = openConfirmation('prepare'); expect(dialog).toMatchObject({name: 'Qwen2.5 0.5B Base', resuming: snapshot.resuming})
     state.actions.prepare(); expect(state.confirmation).toBe(dialog); expect(send).toHaveBeenCalledOnce(); expect(preparing).not.toHaveBeenCalled()
     dialog.cancel(); expect(state.confirmation).toBeNull(); await dialog.confirm(); expect(send).toHaveBeenCalledOnce()
     expect(state.status.downloadedBytes).toBe(snapshot.downloadedBytes)
@@ -193,33 +193,34 @@ describe('信息高亮真实本地模型组件', () => {
     expect(send.mock.calls.filter(call => call[0].type === 'REMOVE_INFORMATION_HIGHLIGHT_MODEL')).toHaveLength(1)
     command.resolve({success: true, status: model()}); await removing
   })
-  it.each((['prepare', 'remove'] as const).flatMap(action => (['hidden', 'unmounted', 'model', 'selected', 'identity'] as const).map(reason => ({action, reason}))))('$action 在 $reason 后撤销旧确认所有权，旧取消不会关闭新确认', async ({action, reason}) => {
+  it.each((['prepare', 'remove'] as const).flatMap(action => (['hidden', 'unmounted', 'selected', 'identity'] as const).map(reason => ({action, reason}))))('$action 在 $reason 后撤销旧确认所有权，旧取消不会关闭新确认', async ({action, reason}) => {
     send.mockResolvedValue({success: true, status: model(action === 'remove' ? {phase: 'ready', downloaded: true} : {})}); await mount('InformationHighlightModelCard')
     const oldAction = state.actions[action], old = openConfirmation(action)
     if (reason === 'hidden') props.active = false
     else if (reason === 'unmounted') app.unmount()
     else if (reason === 'selected') props.selected = false
-    else if (reason === 'identity') props.contextIdentity = {}
-    else {send.mockResolvedValue({success: true, status: model({modelId: 'qwen3-0.6b', modelName: 'Qwen3 0.6B'})}); props.modelId = 'qwen3-0.6b'}
+    else props.contextIdentity = {}
     await settle(); expect(state.confirmation).toBeNull(); await old.confirm(); await oldAction()
     expect(send.mock.calls.every(call => call[0].type === 'GET_INFORMATION_HIGHLIGHT_MODEL_STATUS')).toBe(true)
     if (reason === 'unmounted') return
     if (reason === 'hidden') {props.active = true; await settle()}
-    const next = openConfirmation(reason === 'model' ? 'prepare' : action); old.cancel(); expect(state.confirmation).toBe(next)
+    const next = openConfirmation(action); old.cancel(); expect(state.confirmation).toBe(next)
     next.cancel(); expect(state.confirmation).toBeNull()
   })
-  it('模型切换使旧查询与命令失效，所有消息带所选模型标识并拒绝不匹配的回复', async () => {
+  it('配置归属切换使旧查询与命令失效，Base 卡拒绝已退役模型的回复', async () => {
     const oldQuery = deferred(); send.mockReturnValueOnce(oldQuery.promise); await mount('InformationHighlightModelCard')
-    send.mockResolvedValue({success: true, status: model({modelId: 'qwen3-0.6b', modelName: 'Qwen3 0.6B', downloadSizeBytes: 580000000})})
-    props.modelId = 'qwen3-0.6b'; await settle()
-    expect(send).toHaveBeenLastCalledWith({type: 'GET_INFORMATION_HIGHLIGHT_MODEL_STATUS', modelId: 'qwen3-0.6b'})
-    oldQuery.resolve({success: true, status: model({downloaded: true, phase: 'ready'})}); await settle(); expect(state.status.modelId).toBe('qwen3-0.6b'); expect(state.status.downloaded).toBe(false)
+    send.mockResolvedValue({success: true, status: model()}); props.contextIdentity = {}; await settle()
+    expect(send).toHaveBeenLastCalledWith({type: 'GET_INFORMATION_HIGHLIGHT_MODEL_STATUS', modelId: 'qwen2.5-0.5b'})
+    oldQuery.resolve({success: true, status: {...model({downloaded: true, phase: 'ready'}), modelId: 'qwen3-0.6b'}}); await settle()
+    expect(state.status.modelId).toBe('qwen2.5-0.5b'); expect(state.status.downloaded).toBe(false)
     const command = deferred(); send.mockReturnValueOnce(command.promise); const prepare = confirmAction('prepare'); await settle()
-    expect(send).toHaveBeenLastCalledWith({type: 'PREPARE_INFORMATION_HIGHLIGHT_MODEL', modelId: 'qwen3-0.6b'})
-    send.mockResolvedValue({success: true, status: model()}); props.modelId = 'qwen2.5-0.5b'; await settle()
-    command.resolve({success: true, status: model({modelId: 'qwen3-0.6b', downloaded: true, phase: 'ready'})}); await prepare
-    expect(state.status.modelId).toBe('qwen2.5-0.5b'); expect(ready).not.toHaveBeenCalled()
-    send.mockResolvedValueOnce({success: true, status: model({modelId: 'qwen3-0.6b'})}); await state.actions.refresh(); expect(state.error).toBe(true); expect(state.status.modelId).toBe('qwen2.5-0.5b')
+    expect(send).toHaveBeenLastCalledWith({type: 'PREPARE_INFORMATION_HIGHLIGHT_MODEL', modelId: 'qwen2.5-0.5b'})
+    props.contextIdentity = {}; await settle()
+    command.resolve({success: true, status: model({downloaded: true, phase: 'ready'})}); await prepare
+    expect(state.status.downloaded).toBe(false); expect(ready).not.toHaveBeenCalled()
+    send.mockResolvedValueOnce({success: true, status: {...model(), modelId: 'qwen3-0.6b'}}); await state.actions.refresh()
+    expect(state.error).toBe(true); expect(state.status.modelId).toBe('qwen2.5-0.5b')
+    expect(send.mock.calls.every(([message]) => message.modelId === 'qwen2.5-0.5b')).toBe(true)
   })
   it('卸载后的查询异常和命令完成不再改变资源状态或启动轮询', async () => {
     await mount('InformationHighlightModelCard'); const query = deferred(); send.mockReturnValueOnce(query.promise); const pending = state.actions.refresh(); const old = state.actions.prepare
