@@ -470,11 +470,12 @@ export function calculateReadingPopupLayout(anchor: SelectionRect, viewport: Vie
 
 export function normalizeSpeechLanguage(language: string | undefined, fallback = 'en-US'): string {
     let normalized = String(language ?? '').trim().replace(/_/g, '-');
-    // 词书导入和语言检测可能保存 ISO 639-3（如 eng、jpn）；在线音色目录使用 BCP 47，
-    // 先复用项目统一别名表，并保留地区/脚本，避免 Edge TTS 找不到任何候选音色。
+    // 词书导入和语言检测可能保存 ISO 639-3（如 eng、jpn）；只归一化主语言子标签，
+    // 再拼回原来的脚本和地区，避免 zho-Hant 被扩展成 zh-Hant-Hant。
     if (/^[a-z]{3}(?:-|$)/iu.test(normalized)) {
-        const canonical = normalizeDetectedLanguageCode(normalized);
-        if (canonical) normalized = [canonical, ...normalized.split('-').slice(1)].join('-');
+        const [primary, ...subtags] = normalized.split('-');
+        const canonical = normalizeDetectedLanguageCode(primary);
+        if (canonical) normalized = [canonical, ...subtags].join('-');
     }
     const lower = normalized.toLowerCase();
     if (!normalized || ['auto', 'detect', 'unknown', 'und'].includes(lower)) return fallback;

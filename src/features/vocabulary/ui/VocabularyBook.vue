@@ -166,6 +166,7 @@ import browser from 'webextension-polyfill';
 import {normalizeUiLanguage, translate, translateLegacyText, type TranslationParams} from '@/src/core/i18n';
 import {browserCapabilities} from '@/src/platform/browser/capabilities';
 import {createSelectionTtsClientRequestId, createSelectionTtsContentController, normalizeSpeechLanguage} from '@/src/features/selection-translation/speech/public';
+import {normalizeLocalTtsMode} from '@/src/core/config/localTts';
 import {
   config as runtimeConfig,
   configReady,
@@ -400,7 +401,9 @@ function speakEntryWithBrowser(entry: VocabularyEntry, generation = speechReques
     utterance.onerror = event => {
       if (entryUtterance === utterance) {
         stopEntrySpeech(false);
-        showToast(`浏览器语音启动失败${event.error ? `：${event.error}` : ''}${failureContext ? `；${failureContext}` : ''}`, false, 10000);
+        showToast(t('learning.collection.speechBrowserStartFailed', {
+          error: event.error ? `：${event.error}` : '', details: failureContext ? `；${failureContext}` : '',
+        }), false, 10000);
       }
     };
     entryUtterance = utterance;
@@ -412,10 +415,12 @@ function speakEntryWithBrowser(entry: VocabularyEntry, generation = speechReques
       entryUtterance = null;
       playingEntryId.value = '';
       entrySpeechWatchdog = null;
-      showToast(`浏览器语音未启动${failureContext ? `；${failureContext}` : ''}`, false, 10000);
+      showToast(t('learning.collection.speechBrowserNotStarted', {details: failureContext ? `；${failureContext}` : ''}), false, 10000);
     }, 8000);
     return true;
-  } catch (cause) { if (generation === speechRequestGeneration) { entryUtterance = null; playingEntryId.value = ''; showToast(`浏览器语音调用失败：${speechErrorText(cause)}${failureContext ? `；${failureContext}` : ''}`, false, 10000); } return false; }
+  } catch (cause) { if (generation === speechRequestGeneration) { entryUtterance = null; playingEntryId.value = ''; showToast(t('learning.collection.speechBrowserCallFailed', {
+    error: speechErrorText(cause), details: failureContext ? `；${failureContext}` : '',
+  }), false, 10000); } return false; }
 }
 
 function speechErrorText(cause: unknown): string {
@@ -438,7 +443,7 @@ async function toggleEntrySpeech(entry: VocabularyEntry): Promise<void> {
     if (result === 'stale' || generation !== speechRequestGeneration) return;
     if (result === 'offscreen') return;
     if (result === 'failed' || !response.audioBase64) {
-      const primaryError = response.error && !/取消|已取消|aborted|cancelled/iu.test(response.error) ? response.error : '在线服务未返回音频';
+      const primaryError = response.error && !/取消|已取消|aborted|cancelled/iu.test(response.error) ? response.error : t('learning.collection.speechOnlineNoAudio');
       await fallbackEntrySpeech(entry, generation, primaryError);
       return;
     }
@@ -447,34 +452,46 @@ async function toggleEntrySpeech(entry: VocabularyEntry): Promise<void> {
     await playEntryAudioBytes(bytes, response.contentType || 'audio/mpeg', generation);
   } catch (cause) {
     const current = speechController.rejectRemoteRequest(remote);
-    if (current && generation === speechRequestGeneration) await fallbackEntrySpeech(entry, generation, `在线请求或音频播放失败：${speechErrorText(cause)}`);
+    if (current && generation === speechRequestGeneration) await fallbackEntrySpeech(entry, generation,
+      t('learning.collection.speechOnlineRequestFailed', {error: speechErrorText(cause)}));
   }
 }
 
 async function fallbackEntrySpeech(entry: VocabularyEntry, generation: number, primaryError = ''): Promise<void> {
+  if (normalizeLocalTtsMode(runtimeConfig.selectionTtsMode) === 'local-only') {
+    if (generation === speechRequestGeneration) {
+      stopEntrySpeech(false);
+      showToast(primaryError || t('learning.collection.speechFailed'), false, 10000);
+    }
+    return;
+  }
   const googleError = await speakEntryWithGoogle(entry, generation);
   if (googleError === null || generation !== speechRequestGeneration) return;
-  const failureContext = [primaryError ? `在线合成：${primaryError}` : '', `Google 回退：${googleError}`].filter(Boolean).join('；');
-  if (!speakEntryWithBrowser(entry, generation, failureContext)) showToast(`朗读失败：${failureContext}`, false, 10000);
+  const failureContext = [primaryError ? t('learning.collection.speechOnlineSynthesis', {error: primaryError}) : '',
+    t('learning.collection.speechGoogleFallback', {error: googleError})].filter(Boolean).join('；');
+  if (!speakEntryWithBrowser(entry, generation, failureContext)) {
+    showToast(t('learning.collection.speechFailedDetail', {details: failureContext}), false, 10000);
+  }
 }
 
 async function speakEntryWithGoogle(entry: VocabularyEntry, generation: number): Promise<string | null> {
-  if (generation !== speechRequestGeneration) return '朗读请求已取消';
+  if (generation !== speechRequestGeneration) return t('learning.collection.speechCancelled');
   releaseEntryAudio();
   const remote = speechController.beginRemoteRequest();
   try {
     const response = await browser.runtime.sendMessage({type: 'selectionTtsGoogle', text: entry.term,
       language: normalizeSpeechLanguage(entry.sourceLanguage), clientRequestId: remote.clientRequestId}) as {success?: boolean; transport?: 'offscreen' | 'page'; audioBase64?: string; contentType?: string; error?: string};
     const result = speechController.completeRemoteRequest(remote, response);
-    if (generation !== speechRequestGeneration) return '朗读请求已取消';
+    if (generation !== speechRequestGeneration) return t('learning.collection.speechCancelled');
     if (result === 'offscreen') { playingEntryId.value = entry.id; speechPhase.value = 'playing'; return null; }
-    if (result === 'stale') return '朗读请求已取消';
+    if (result === 'stale') return t('learning.collection.speechCancelled');
     if (result === 'page' && response.audioBase64) {
       const binary = atob(response.audioBase64);
       const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
-      return await playEntryAudioBytes(bytes, response.contentType || 'audio/mpeg', generation) ? null : '页面音频未启动';
+      return await playEntryAudioBytes(bytes, response.contentType || 'audio/mpeg', generation)
+        ? null : t('learning.collection.speechPageAudioNotStarted');
     }
-    return response.error || 'Google 服务未返回音频';
+    return response.error || t('learning.collection.speechGoogleNoAudio');
   } catch (cause) {
     speechController.rejectRemoteRequest(remote);
     return speechErrorText(cause);

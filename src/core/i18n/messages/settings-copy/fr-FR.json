@@ -118,7 +118,20 @@
     "video.downloadConnecting": "Connexion à {source} · {attempt}/{attempts}",
     "video.downloadSwitching": "Passage à {source} · {attempt}/{attempts}",
     "video.downloadReceiving": "Téléchargement depuis {source}",
-    "video.downloadRetry": "Réessayer"
+    "video.downloadRetry": "Réessayer",
+    "learning.collection.speechRequesting": "Synthèse en cours…",
+    "learning.collection.speechPlaying": "Lecture vocale en cours",
+    "learning.collection.speechOnlineNoAudio": "Le service en ligne n’a renvoyé aucun audio",
+    "learning.collection.speechCancelled": "La demande vocale a été annulée",
+    "learning.collection.speechPageAudioNotStarted": "La lecture audio de la page n’a pas démarré",
+    "learning.collection.speechGoogleNoAudio": "Google n’a renvoyé aucun audio",
+    "learning.collection.speechBrowserStartFailed": "La synthèse vocale du navigateur n’a pas démarré{error}{details}",
+    "learning.collection.speechBrowserNotStarted": "La voix du navigateur ne s’est pas lancée{details}",
+    "learning.collection.speechBrowserCallFailed": "Échec de l’appel vocal du navigateur : {error}{details}",
+    "learning.collection.speechOnlineSynthesis": "Synthèse en ligne : {error}",
+    "learning.collection.speechGoogleFallback": "Solution de secours Google : {error}",
+    "learning.collection.speechOnlineRequestFailed": "Échec de la requête en ligne ou de la lecture audio : {error}",
+    "learning.collection.speechFailedDetail": "Échec de la lecture vocale : {details}"
   },
   "legacy": {
     "同步连接已变化，请重新生成预览。": "La connexion a changé. Générez un nouvel aperçu.",

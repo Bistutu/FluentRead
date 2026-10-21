@@ -13,6 +13,7 @@ import {compileVueInlineFixture} from './helpers/compiledVueFixture';
 import * as Vue from 'vue';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {normalizeConfig} from '@/src/core/config/model';
+import {normalizeLocalTtsMode} from '@/src/core/config/localTts';
 import * as learning from '@/src/features/vocabulary/learningModel';
 import * as vocabularySource from '@/src/features/vocabulary/source';
 import * as i18n from '@/src/core/i18n';
@@ -108,6 +109,7 @@ async function mountBook(honorAbort = true) {
     const Inactive = Vue.defineComponent({setup() {throw new Error('Unrequested review/study/editor path mounted');}});
     const modules: Record<string, any> = {
         vue: Vue, 'webextension-polyfill': {default: browser}, 'element-plus': {ElOption: Slot, ElMessageBox: {confirm: vi.fn()}},
+        '@/src/core/config/localTts': {normalizeLocalTtsMode},
         '@/src/ui/components/UiIcon.vue': {default: Slot}, '@/src/ui/components/FeatureEnableCard.vue': {default: Slot},
         '@/src/ui/components/UiSelect.vue': {default: Slot}, '@/src/ui/interfaceAppearance': {applyInterfaceTheme: vi.fn()},
         './VocabularyStudy.vue': {default: Inactive}, './SavedExplanation.vue': {default: Inactive},
@@ -185,12 +187,12 @@ describe('vocabulary extension-page TTS cancellation through public runtime', ()
     });
     it('activates extension-page Web Audio in the click gesture and plays returned synthesis bytes', async () => {
         const ctx = await mountBook(); ctx.clickSpeech(); await settle();
-        expect(ctx.document.querySelector('.entry-speech-status')?.textContent).toBe('正在合成…');
+        expect(ctx.document.querySelector('.entry-speech-status')?.textContent).toBe('learning.collection.speechRequesting');
         expect(ctx.audioContexts).toHaveLength(1);
         expect(ctx.audioContexts[0].resume).toHaveBeenCalledOnce();
         expect(ctx.jobs).toHaveLength(1);
         ctx.jobs[0].task.resolve(audio()); await settle();
-        expect(ctx.document.querySelector('.entry-speech-status')?.textContent).toBe('正在朗读');
+        expect(ctx.document.querySelector('.entry-speech-status')?.textContent).toBe('learning.collection.speechPlaying');
         expect(ctx.audioContexts[0].decodeAudioData).toHaveBeenCalledOnce();
         expect(ctx.audioContexts[0].createBufferSource.mock.results[0].value.start).toHaveBeenCalledOnce();
         expect(ctx.audioPlay).not.toHaveBeenCalled();
@@ -198,18 +200,19 @@ describe('vocabulary extension-page TTS cancellation through public runtime', ()
     it('keeps the visible speech status while offscreen reports playback progress', async () => {
         const ctx = await mountBook(); ctx.clickSpeech(); await settle();
         ctx.jobs[0].task.resolve(audio()); await settle();
-        expect(ctx.document.querySelector('.entry-speech-status')?.textContent).toBe('正在朗读');
+        expect(ctx.document.querySelector('.entry-speech-status')?.textContent).toBe('learning.collection.speechPlaying');
         const id = ctx.traffic.find(row => row.message.type === 'selectionTts')?.message.clientRequestId;
         ctx.sendPlaybackState({type: 'selectionTtsState', clientRequestId: id, state: 'progress', progress: 0.25});
         await settle();
-        expect(ctx.document.querySelector('.entry-speech-status')?.textContent).toBe('正在朗读');
+        expect(ctx.document.querySelector('.entry-speech-status')?.textContent).toBe('learning.collection.speechPlaying');
     });
-    it('shows concrete provider errors when extension-page playback has no successful fallback', async () => {
+    it('does not send a local-only vocabulary word to any online provider after local synthesis fails', async () => {
         const ctx = await mountBook(); ctx.clickSpeech(); await settle();
         ctx.jobs[0].task.reject(new Error('Edge test failure')); await settle();
-        await vi.advanceTimersByTimeAsync(8000); await settle();
         expect(ctx.document.querySelector('.book-toast')?.textContent).toContain('Edge test failure');
-        expect(ctx.document.querySelector('.book-toast')?.textContent).toContain('扩展页面 Google TTS 不可用');
+        expect(ctx.traffic.map(row => row.message.type)).toEqual(['selectionTts']);
+        expect(ctx.online).not.toHaveBeenCalled();
+        expect(ctx.document.querySelector('.entry-speech-status')).toBeNull();
     });
     it('isolates URL and UUID owners from content, wrong-page STOP and no-tab Google fallback', async () => {
         const rt = runtime(false), first = optionsSender(), other = {url: 'chrome-extension://controlled-extension/options.html?view=another'};

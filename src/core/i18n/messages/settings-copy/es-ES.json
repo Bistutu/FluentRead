@@ -118,7 +118,20 @@
     "video.downloadConnecting": "Conectando a {source} · {attempt}/{attempts}",
     "video.downloadSwitching": "Cambiando a {source} · {attempt}/{attempts}",
     "video.downloadReceiving": "Descargando desde {source}",
-    "video.downloadRetry": "Reintentar descarga"
+    "video.downloadRetry": "Reintentar descarga",
+    "learning.collection.speechRequesting": "Generando voz…",
+    "learning.collection.speechPlaying": "Leyendo en voz alta",
+    "learning.collection.speechOnlineNoAudio": "El servicio en línea no devolvió audio",
+    "learning.collection.speechCancelled": "Se canceló la solicitud de voz",
+    "learning.collection.speechPageAudioNotStarted": "No se inició el audio de la página",
+    "learning.collection.speechGoogleNoAudio": "Google no devolvió audio",
+    "learning.collection.speechBrowserStartFailed": "No se pudo iniciar la voz del navegador{error}{details}",
+    "learning.collection.speechBrowserNotStarted": "La voz del navegador no se inició{details}",
+    "learning.collection.speechBrowserCallFailed": "Error al llamar a la voz del navegador: {error}{details}",
+    "learning.collection.speechOnlineSynthesis": "Síntesis en línea: {error}",
+    "learning.collection.speechGoogleFallback": "Alternativa de Google: {error}",
+    "learning.collection.speechOnlineRequestFailed": "Error en la solicitud en línea o al reproducir el audio: {error}",
+    "learning.collection.speechFailedDetail": "No se pudo leer en voz alta: {details}"
   },
   "legacy": {
     "同步连接已变化，请重新生成预览。": "La conexión ha cambiado. Genera una nueva vista previa.",

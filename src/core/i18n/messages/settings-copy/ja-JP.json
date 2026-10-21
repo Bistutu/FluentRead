@@ -118,7 +118,20 @@
     "video.downloadConnecting": "{source} に接続中 · {attempt}/{attempts}",
     "video.downloadSwitching": "{source} に切り替え中 · {attempt}/{attempts}",
     "video.downloadReceiving": "{source} からダウンロード中",
-    "video.downloadRetry": "再試行"
+    "video.downloadRetry": "再試行",
+    "learning.collection.speechRequesting": "音声を合成中…",
+    "learning.collection.speechPlaying": "読み上げ中",
+    "learning.collection.speechOnlineNoAudio": "オンラインサービスから音声が返されませんでした",
+    "learning.collection.speechCancelled": "読み上げリクエストはキャンセルされました",
+    "learning.collection.speechPageAudioNotStarted": "ページの音声を再生できませんでした",
+    "learning.collection.speechGoogleNoAudio": "Google から音声が返されませんでした",
+    "learning.collection.speechBrowserStartFailed": "ブラウザー音声を開始できませんでした{error}{details}",
+    "learning.collection.speechBrowserNotStarted": "ブラウザー音声が開始されませんでした{details}",
+    "learning.collection.speechBrowserCallFailed": "ブラウザー音声の呼び出しに失敗しました: {error}{details}",
+    "learning.collection.speechOnlineSynthesis": "オンライン合成: {error}",
+    "learning.collection.speechGoogleFallback": "Google フォールバック: {error}",
+    "learning.collection.speechOnlineRequestFailed": "オンラインリクエストまたは音声再生に失敗しました: {error}",
+    "learning.collection.speechFailedDetail": "読み上げに失敗しました: {details}"
   },
   "legacy": {
     "同步连接已变化，请重新生成预览。": "同期接続が変更されました。プレビューを再作成してください。",

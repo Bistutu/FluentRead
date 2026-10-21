@@ -807,6 +807,9 @@ describe('selection translator text and speech language normalization', () => {
         expect(normalizeSpeechLanguage('eng')).toBe('en-US');
         expect(normalizeSpeechLanguage('eng-GB')).toBe('en-GB');
         expect(normalizeSpeechLanguage('jpn')).toBe('ja-JP');
+        expect(normalizeSpeechLanguage('zho-Hant')).toBe('zh-TW');
+        expect(normalizeSpeechLanguage('zho-Hant-TW')).toBe('zh-TW');
+        expect(normalizeSpeechLanguage('zho-Hans-CN')).toBe('zh-CN');
         const spanish = detectlang('Este programa permite traducir documentos y páginas de internet del español a otros idiomas.');
         expect(normalizeSpeechLanguage(spanish)).toBe('es-ES');
         expect(edgeTtsVoiceCandidatesForLanguage(normalizeSpeechLanguage(spanish))).toContain('es-ES-TristanMultilingualNeural');

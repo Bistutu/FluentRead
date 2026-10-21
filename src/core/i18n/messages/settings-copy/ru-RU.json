@@ -118,7 +118,20 @@
     "video.downloadConnecting": "Подключение к {source} · {attempt}/{attempts}",
     "video.downloadSwitching": "Переключение на {source} · {attempt}/{attempts}",
     "video.downloadReceiving": "Загрузка из {source}",
-    "video.downloadRetry": "Повторить загрузку"
+    "video.downloadRetry": "Повторить загрузку",
+    "learning.collection.speechRequesting": "Синтез речи…",
+    "learning.collection.speechPlaying": "Идёт озвучивание",
+    "learning.collection.speechOnlineNoAudio": "Онлайн-сервис не вернул аудио",
+    "learning.collection.speechCancelled": "Запрос озвучивания отменён",
+    "learning.collection.speechPageAudioNotStarted": "Не удалось запустить аудио страницы",
+    "learning.collection.speechGoogleNoAudio": "Google не вернул аудио",
+    "learning.collection.speechBrowserStartFailed": "Не удалось запустить речь браузера{error}{details}",
+    "learning.collection.speechBrowserNotStarted": "Речь браузера не запустилась{details}",
+    "learning.collection.speechBrowserCallFailed": "Ошибка вызова речи браузера: {error}{details}",
+    "learning.collection.speechOnlineSynthesis": "Онлайн-синтез: {error}",
+    "learning.collection.speechGoogleFallback": "Резервный вариант Google: {error}",
+    "learning.collection.speechOnlineRequestFailed": "Ошибка онлайн-запроса или воспроизведения аудио: {error}",
+    "learning.collection.speechFailedDetail": "Не удалось озвучить: {details}"
   },
   "legacy": {
     "同步连接已变化，请重新生成预览。": "Подключение изменилось. Создайте новый предварительный просмотр.",
