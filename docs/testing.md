@@ -1408,3 +1408,9 @@ Popup 服务概览显示默认、继承和独立功能在配置中选择的模�
 生产 Chrome 构建后运行 `scripts/testing/run-deeplx-direct-test.cjs`，显式提供 `--extension-dir`、`--playwright-root`、`--artifacts-dir`，并使用仓库 `scripts/testing/focus-safe-browser.cjs` 作为 `--focus-safe-helper`。默认使用临时 Edge profile、第二屏后台可见窗口与焦点监控。
 
 确定性夹具经过真实 broker 和 core，覆盖默认直连且不请求公共端点、繁体目标、429 后公共回退、1500 UTF-16 分块、自定义地址边界、取消中止，以及真实 Control 悬浮翻译/恢复/再翻译的 `[1,0,1]` 和邻段 `[0,0,0]`。`--live` 额外只发送一句公开短文到 DeepL，公共备用端点仍用夹具；结果单独记录，不能推断长期可用性、全部语言质量或 Firefox 实机表现。实现及本次证据范围见 [DeepLX 直连验证](maintainers/deeplx-direct-968.md)。
+
+## Kagi News 内容型标题按钮（issue #1045）
+
+生产 Chrome 构建后，运行 `node scripts/testing/run-kagi-headline-translation-test.cjs --allow-network --extension-dir .output/chrome-mv3 --playwright-root <工作区 Node.js 包目录> --artifacts-dir /private/tmp/fluentread-kagi-headlines`。可用 `--focus-safe-helper` 指定等价的焦点安全 helper，默认使用仓库版本。
+
+专项创建临时 Edge profile 与第二屏后台可见窗口，先检查 Kagi 原生展开/收起以确认页面水合，再验证正文/全部节点范围的双语标题、普通按钮原位替换、上下排版、点击与 Enter/空格、动态插入、仅译文闭合 Shadow 文本、恢复重译、Control 悬浮切换和真实分类切换。DOM、截图和报告写入证据目录；结束后关闭本次浏览器并删除临时 profile。翻译使用确定性微软响应，仅证明真实站点 DOM 与生产扩展的兼容性，不代表在线供应商质量或 Firefox 实机验收。
