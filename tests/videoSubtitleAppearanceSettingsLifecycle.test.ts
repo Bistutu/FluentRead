@@ -1,7 +1,7 @@
 /**
  * @file tests/videoSubtitleAppearanceSettingsLifecycle.test.ts
  * 文件职责：执行字幕外观设置的真实客户端 SFC、共享布局与控件事件，验证设置草稿和实时预览的一致性。
- * 主要内容：覆盖移动端/X 自动贴底、手动偏移、位置显隐、七语可见标签与 ARIA、字号归一化、皮肤/重置、显示模式和父级草稿替换。
+ * 主要内容：覆盖移动端/X 自动贴底、手动偏移、位置显隐、七语可见标签与 ARIA、字号归一化、皮肤/重置、显示模式、读音示例显隐和父级草稿替换；读音示例使用固定演示数据，不加载转写引擎。
  * 模块边界：保留 Vue 模板、设置子组件、配置归一化及翻译字典；仅以 DOM 与 Element Plus UI ports 和受控语言上下文替代浏览器环境，不读取组件私有状态或复制产品事件。
  */
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
@@ -15,6 +15,10 @@ const dom = await vi.hoisted(async () => {
     const selectValues = new WeakMap<object, string>();
     Object.defineProperty(window.HTMLSelectElement.prototype, 'value', {configurable: true,
         get() {return selectValues.get(this) ?? '';}, set(value: string) {selectValues.set(this, String(value));}});
+    // linkedom 缺少 input.checked 的原生属性；补齐浏览器端口后由真实 Vue prop 更新维护状态。
+    const checkedValues = new WeakMap<object, boolean>();
+    Object.defineProperty(window.HTMLInputElement.prototype, 'checked', {configurable: true,
+        get() {return checkedValues.get(this) ?? this.hasAttribute('checked');}, set(value: boolean) {checkedValues.set(this, !!value);}});
     for (const key of ['window', 'document', 'Node', 'Element', 'HTMLElement', 'SVGElement', 'ShadowRoot', 'Event']) {
         Object.defineProperty(globalThis, key, {configurable: true, writable: true, value: (window as any)[key]});
     }
@@ -31,6 +35,7 @@ import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
 
 registerAllUiLanguageBundles();
 const locale = Vue.ref<UiLanguage>('zh-CN');
+const capabilities = {extensionDom: true};
 const i18nPort = {useUiI18n: () => ({
     t: (key: string) => translate(key, locale.value),
     translateLegacy: (value: string) => translateLegacyText(value, locale.value),
@@ -61,6 +66,7 @@ function loadClient(relative: string, components = new Map<string, Vue.Component
         vue: Vue,
         'element-plus': {ElSelect, ElOption, ElColorPicker, ElTooltip, ClickOutside: {}},
         '@/src/core/config/videoSubtitleAppearance': appearanceModule,
+        '@/src/platform/browser/capabilities': {browserCapabilities: capabilities},
         '@/src/ui/shadowSelectOutside': shadowSelectModule,
         '@/src/ui/i18n': i18nPort,
         'element-plus/es/components/select/style/css': {},
@@ -111,10 +117,12 @@ async function click(selector: string): Promise<void> {event(control(selector), 
 const autoSelector = '.subtitle-appearance-controls input[type="checkbox"]';
 const offsetSelector = 'input[aria-label="字幕底部偏移"]';
 const previewSelector = '[data-video-subtitle-preview]';
+const readingSelector = '[data-video-subtitle-reading-annotation]';
+const readingPreviewSelector = '[data-video-subtitle-reading-preview]';
 const sceneSelector = '[data-video-subtitle-preview-scene]';
 const offsetText = () => control(offsetSelector).closest('label')!.querySelector('b')!.textContent;
 
-beforeEach(() => {locale.value = 'zh-CN'; dom.document.body.replaceChildren();});
+beforeEach(() => {locale.value = 'zh-CN'; capabilities.extensionDom = true; dom.document.body.replaceChildren();});
 afterEach(() => {app?.unmount(); app = undefined; dom.document.body.replaceChildren();});
 
 describe('视频字幕外观设置实际客户端模板', () => {
@@ -200,13 +208,78 @@ describe('视频字幕外观设置实际客户端模板', () => {
         expect(control<HTMLElement>(previewSelector).style.getPropertyValue('--fluent-read-video-subtitle-font-scale')).toBe('230%');
     });
 
+    it('读音开关显示明确的演示数据，仅译文与隐藏字幕时收起读音且保留偏好', async () => {
+        await mount(normalizeConfig({videoTranslationEnabled: true}));
+        expect(control<HTMLInputElement>(readingSelector).checked).toBe(false);
+        expect(root.querySelector(readingPreviewSelector)).toBeNull();
+        expect(root.querySelector('[data-video-subtitle-reading-sample]')).toBeNull();
+        await check(readingSelector, true);
+        expect(props.config.videoSubtitleAppearance.readingAnnotation).toBe(true);
+        expect(control(readingPreviewSelector).textContent).toBe('kyō wa ii tenki desu ne.');
+        expect(control(readingPreviewSelector).getAttribute('lang')).toBe('ja-Latn');
+        expect(control('[data-video-subtitle-reading-sample]').textContent).toContain('演示数据');
+        expect(control(previewSelector).querySelector('span')?.textContent).toBe('今日はいい天気ですね。');
+        expect(control(previewSelector).querySelector('b')?.textContent).toBe('今天天气真好。');
+        await click('[aria-label="视频字幕显示模式"] [data-option-index="1"]');
+        expect(root.querySelector(readingPreviewSelector)).toBeNull();
+        expect(props.config.videoSubtitleAppearance.readingAnnotation).toBe(true);
+        expect(control<HTMLInputElement>(readingSelector).checked).toBe(true);
+        expect(control('.subtitle-reading-item').textContent).toContain('仅原文或双语时显示，当前偏好会保留');
+        await click('[aria-label="视频字幕显示模式"] [data-option-index="2"]');
+        expect(control(readingPreviewSelector).textContent).toBe('kyō wa ii tenki desu ne.');
+        expect(control(previewSelector).querySelector('b')).toBeNull();
+        await check('[role="switch"][aria-label="显示 流畅阅读 视频字幕"]', false);
+        expect(root.querySelector(readingPreviewSelector)).toBeNull();
+        expect(control<HTMLInputElement>(readingSelector).disabled).toBe(true);
+        await check(readingSelector, false);
+        expect(props.config.videoSubtitleAppearance.readingAnnotation).toBe(true);
+        await check('[role="switch"][aria-label="显示 流畅阅读 视频字幕"]', true);
+        expect(control(readingPreviewSelector).textContent).toBe('kyō wa ii tenki desu ne.');
+        props.config.videoTranslationEnabled = false; await settle();
+        expect(control<HTMLInputElement>(readingSelector).disabled).toBe(true);
+        await check(readingSelector, false);
+        expect(props.config.videoSubtitleAppearance.readingAnnotation).toBe(true);
+    });
+
+    it('读音开关的七语标签、模式提示和演示说明随界面语言更新且不改配置', async () => {
+        await mount(normalizeConfig({videoTranslationEnabled: true, videoSubtitleDisplayMode: 'translation-only',
+            videoSubtitleAppearance: {readingAnnotation: true}}));
+        const checkbox = control<HTMLInputElement>(readingSelector);
+        const saved = JSON.stringify(props.config.videoSubtitleAppearance);
+        const labels: Array<[UiLanguage, string]> = [
+            ['en-US', 'Reading annotations'], ['ja-JP', '読み方の表記'], ['ko-KR', '읽기 표기'],
+            ['fr-FR', 'Aides à la lecture'], ['ru-RU', 'Подсказки чтения'],
+            ['es-ES', 'Guías de lectura'], ['zh-CN', '读音标注'],
+        ];
+        for (const [language, label] of labels) {
+            locale.value = language; await settle();
+            expect(control(readingSelector)).toBe(checkbox);
+            expect(checkbox.getAttribute('aria-label')).toBe(label);
+            expect(control('.subtitle-reading-item .settings-item-label').textContent).toContain(label);
+            expect(control('.subtitle-reading-item').textContent).toContain(translate('video.readingAnnotation.originalRequired', language));
+            expect(control('[data-video-subtitle-reading-sample]').textContent).toBe(translate('video.readingAnnotation.previewSample', language));
+            expect(root.querySelector(readingPreviewSelector)).toBeNull();
+            expect(JSON.stringify(props.config.videoSubtitleAppearance)).toBe(saved);
+        }
+    });
+
+    it('无扩展 DOM 能力时解释读音不可用，开关禁用且不写入假偏好', async () => {
+        capabilities.extensionDom = false;
+        await mount(normalizeConfig({videoTranslationEnabled: true}));
+        expect(control<HTMLInputElement>(readingSelector).disabled).toBe(true);
+        expect(control('.subtitle-reading-item').textContent).toContain('读音标注目前需要浏览器扩展版');
+        await check(readingSelector, true);
+        expect(props.config.videoSubtitleAppearance.readingAnnotation).toBe(false);
+        expect(root.querySelector(readingPreviewSelector)).toBeNull();
+    });
+
     it('选择皮肤只改配色，恢复默认一次重置全部外观并保留显示及翻译偏好', async () => {
         const config = normalizeConfig({videoTranslationEnabled: true, videoSubtitleDisplayMode: 'original-only',
-            videoSubtitleAppearance: {fontScale: 230, bottomOffset: 18, autoBottom: false, karaoke: true}});
+            videoSubtitleAppearance: {fontScale: 230, bottomOffset: 18, autoBottom: false, karaoke: true, readingAnnotation: true}});
         await mount(config);
         await click('button[data-skin="clean"]');
         expect(props.config.videoSubtitleAppearance).toMatchObject({skin: 'clean', textColor: '#1f2937', translationColor: '#0f766e',
-            backgroundOpacity: 88, fontScale: 230, bottomOffset: 18, autoBottom: false, karaoke: true});
+            backgroundOpacity: 88, fontScale: 230, bottomOffset: 18, autoBottom: false, karaoke: true, readingAnnotation: true});
         expect(control('button[data-skin="clean"]').getAttribute('aria-checked')).toBe('true');
         expect(control<HTMLElement>(previewSelector).style.getPropertyValue('--fluent-read-video-subtitle-text-color')).toBe('#1f2937');
         await click('.appearance-reset-button');
@@ -217,6 +290,8 @@ describe('视频字幕外观设置实际客户端模板', () => {
         expect(control('button[data-skin="classic"]').getAttribute('aria-checked')).toBe('true');
         expect(control<HTMLInputElement>(autoSelector).checked).toBe(true);
         expect(control<HTMLElement>(previewSelector).querySelector('b')).toBeNull();
+        expect(control<HTMLInputElement>(readingSelector).checked).toBe(false);
+        expect(root.querySelector(readingPreviewSelector)).toBeNull();
     });
 
     it('显示模式、逐字高亮及显隐开关通过实际模板更新预览并遵守禁用状态', async () => {
@@ -241,14 +316,17 @@ describe('视频字幕外观设置实际客户端模板', () => {
     it('父级替换草稿后展示和事件都归属新配置，旧草稿保留原来的自动贴底和字号', async () => {
         await mount();
         const previous = props.config;
-        props.config = normalizeConfig({videoSubtitleAppearance: {autoBottom: false, bottomOffset: 22, fontScale: 250}});
+        props.config = normalizeConfig({videoSubtitleAppearance: {autoBottom: false, bottomOffset: 22, fontScale: 250, readingAnnotation: true}});
         await settle();
         expect(control<HTMLInputElement>(autoSelector).checked).toBe(false);
         expect(offsetText()).toBe('22%');
         expect(control<HTMLInputElement>('input[type="number"]').value).toBe('250');
+        expect(control<HTMLInputElement>(readingSelector).checked).toBe(true);
+        expect(control(readingPreviewSelector).textContent).toBe('kyō wa ii tenki desu ne.');
         await check(autoSelector, true);
+        await check(readingSelector, false);
         await change('input[type="number"]', '320');
-        expect(props.config.videoSubtitleAppearance).toMatchObject({autoBottom: true, bottomOffset: 22, fontScale: 320});
+        expect(props.config.videoSubtitleAppearance).toMatchObject({autoBottom: true, bottomOffset: 22, fontScale: 320, readingAnnotation: false});
         expect(previous.videoSubtitleAppearance).toEqual(appearanceModule.DEFAULT_VIDEO_SUBTITLE_APPEARANCE);
         expect(control<HTMLElement>(previewSelector).style.getPropertyValue('--fluent-read-video-subtitle-font-scale')).toBe('320%');
     });

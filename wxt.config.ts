@@ -14,6 +14,7 @@ import {tesseractSdkBuildPlugin} from './scripts/wasm/tesseract-sdk-build';
 import {GOOGLE_DRIVE_DEFAULT_CLIENT_ID, GOOGLE_DRIVE_EXTENSION_PUBLIC_KEY, GOOGLE_DRIVE_SCOPES} from './src/platform/google-drive/constants';
 import {createDeepLXRuntimeBuildPlugin} from './scripts/testing/deeplx-runtime-build';
 import {FREE_PROVIDER_ORIGINS} from './src/core/config/freeProviderOrigins';
+import {createReadingGoRuntimePlugin} from './scripts/testing/reading-annotation-build';
 
 
 const packageJson = JSON.parse(fs.readFileSync(resolve(__dirname, 'package.json'), 'utf-8'));
@@ -111,7 +112,7 @@ export function extendRemoteConfigBuildConfig(
 
 /** 这些入口都由 new Worker(..., {type: 'module'}) 启动，可共享一次 ESM 构建及依赖 chunk。 */
 export function groupModuleWorkers(groups: EntrypointGroup[]): void {
-    const moduleWorkers = new Set(['localTranslationWorker', 'localTtsWorker', 'videoTranscriptionWorker', 'mangaInferenceWorker', 'informationHighlightWorker']);
+    const moduleWorkers = new Set(['localTranslationWorker', 'localTtsWorker', 'videoTranscriptionWorker', 'mangaInferenceWorker', 'informationHighlightWorker', 'readingAnnotationWorker']);
     const workers = groups.filter((group): group is Entrypoint =>
         !Array.isArray(group) && group.type === 'unlisted-script' && moduleWorkers.has(group.name));
     if (workers.length < 2) return;
@@ -242,7 +243,9 @@ export default defineConfig({
     vite: (env) => {
         const isProductionBuild = env.command === 'build' && env.mode === 'production';
         return {
-            plugins: [createDeepLXRuntimeBuildPlugin(__dirname), vue(), sharedOnnxBuildPlugin(), wllamaExtensionWorker(), tesseractSdkBuildPlugin(), escapeExtensionNoncharacters()],
+            // 固定 fork 的 import 入口依赖 node:module；浏览器 Worker 采用同包受 browser field 约束的 CJS 入口。
+            resolve: {alias: [{find: /^@faanau\/kuromoji$/, replacement: resolve(__dirname, 'node_modules/@faanau/kuromoji/src/kuromoji.js')}]},
+            plugins: [createReadingGoRuntimePlugin(__dirname), createDeepLXRuntimeBuildPlugin(__dirname), vue(), sharedOnnxBuildPlugin(), wllamaExtensionWorker(), tesseractSdkBuildPlugin(), escapeExtensionNoncharacters()],
             // WXT 默认在每个开发脚本中内联源码与 sourcemap；需要源码调试时显式开启。
             build: env.command === 'serve' ? {sourcemap: process.env.FLUENTREAD_DEV_SOURCEMAPS === '1' ? 'inline' : false} : undefined,
             define: {
@@ -284,7 +287,9 @@ export default defineConfig({
             // PDF 字体首次导出时下载并缓存，不进入安装包；fontkit 仍使用包内静态代码。
             // 恢复字体加入前的生产体积预算，防止完整字体再次随 public/ 打包。
             const budget = dev ? (process.env.FLUENTREAD_DEV_SOURCEMAPS === '1' ? 170_000_000 : 70_000_000) : 65_000_000;
-            await checkExtensionSize(wxt.config.outDir, budget);
+            // 完整离线日语词典 17.79 MB + 印地语 WASM 3.42 MB 单独有界；其余代码继续受原体积门禁约束。
+            const readingAssets = await checkExtensionSize(resolve(wxt.config.outDir, 'reading-annotation'), 21_500_000);
+            await checkExtensionSize(wxt.config.outDir, budget + readingAssets);
         },
         'entrypoints:grouped': (_wxt, groups) => {
             groupModuleWorkers(groups);
@@ -298,6 +303,15 @@ export default defineConfig({
         },
         'build:publicAssets': (wxt, files) => {
             files.push(...createSafariBackgroundPage(wxt.config));
+            // 日语词典仅供扩展自有 Worker 读取，不暴露为网页可访问资源；不开读音时不读取或解压。
+            const readingDictionary = resolve(__dirname, 'node_modules/@faanau/kuromoji');
+            for (const name of fs.readdirSync(resolve(readingDictionary, 'dict')).filter(name => name.endsWith('.dat.gz'))) {
+                files.push({absoluteSrc: resolve(readingDictionary, 'dict', name), relativeDest: `reading-annotation/ja/${name}`});
+            }
+            files.push({absoluteSrc:resolve(__dirname,'node_modules/@budhash/gomanize/dist/gomanize.wasm'),relativeDest:'reading-annotation/hi/gomanize.wasm'});
+            for (const [source, destination] of [['@faanau/kuromoji/LICENSE-2.0.txt','kuromoji-Apache-2.0.txt'],['@faanau/kuromoji/NOTICE.md','kuromoji-NOTICE.md'],['kuroshiro/LICENSE','kuroshiro-MIT.txt'],['pinyin-pro/LICENSE','pinyin-pro-MIT.txt'],['thai-rtgs/LICENSE','thai-rtgs-MIT.txt']]) {
+                files.push({absoluteSrc: resolve(__dirname, 'node_modules', source), relativeDest: `third-party-notices/${destination}`});
+            }
             // 非中文界面文案只生成一份 JSON，由各运行上下文按当前语言加载，不再内联进每个 bundle。
             files.push(...createUiLanguageBundleFiles());
             // 安装名称由浏览器原生 locale 解析，复用七语品牌，不复制完整界面目录。

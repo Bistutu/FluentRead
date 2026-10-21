@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/runtime.ts
  * 文件职责：装配视频及会议字幕运行时，并协调 YouTube/X 原生字幕、目标语言人工轨、逐条翻译、校时、菜单、完整句学习与下载。
- * 主要内容：挂载可关闭的原句学习面板与带时间点来源恢复，媒体切换和配置变化清理控制；播放器入口以菜单按钮的展开状态表达打开与关闭，字幕启用状态保留在文案、样式和菜单选项中；相同译文保留原文且不重复展示；YouTube 同轮相同输入复用字幕选择并保留第二次时钟读取；协调字幕校时、预翻译与补译导出确认，并为可选的逐字高亮提供当前句时间；X 分片加载尊重原生轨道优先级，播放器内换模型必须确认且保留取消焦点，完整 AI 识别提前展示稳定句，完成后才缓存和导出。
+ * 主要内容：挂载原句学习与独立本地读音控制器，原文变化立即作废旧读音，字幕隐藏或关闭取消请求；读音开关复用既有配置与菜单并保持仅译文模式语义，显示模式变化重新授予同句翻译资格并复用已有缓存，不混入字幕原文及导出；媒体切换和配置变化清理控制，协调字幕校时、预翻译与补译导出确认，并为可选逐字高亮提供当前句时间；X 分片加载尊重原生轨道优先级和原译文成对显示，播放器内换模型保留取消焦点，完整 AI 识别提前展示稳定句，完成后才缓存和导出。
  * 模块边界：本文件只在 content 页面编排，同视频底控的局部显隐订阅与字幕布局共用帧调度，帧内先校准自有菜单宿主再测菜单，并随关闭、重绑和销毁清理；完整 AI 字幕缓存请求与提交身份由 subtitleSession 拥有，requestSession 将两类采集映射为后台单流的唯一请求代际；采集资源仍归 capture/fullCapture，不拦截 fetch/XHR 也不实现翻译 provider，翻译经统一 service client。
  */
 import {createApp, h, shallowReactive} from 'vue';
@@ -29,7 +29,6 @@ import {
   VIDEO_CAPTION_STABILITY_MS,
   VIDEO_CAPTION_MAX_WAIT_MS,
   normalizeVideoSubtitleDisplayMode,
-  renderHumanVideoCaption,
   getTimedTextCacheKey,
   isOriginalTimedTextUrl,
   downloadSubtitleSrt,
@@ -54,6 +53,7 @@ import {XCaptionSource} from './xCaptionSource';
 import {XHlsAudioReader} from './hlsAudioRuntime';
 import {XSubtitleLoader} from './xSubtitleLoader';
 import {VideoTranslationCache} from './translationCache';
+import {createVideoReadingPlayer} from './readingAnnotationPlayer';
 import {VideoPretranslationController} from './pretranslationController';
 import {getVideoTranslationConfigFingerprint, normalizeVideoCaptionText, revealVideoSubtitleTranslation, selectYoutubeCaptionCue, selectVideoSubtitleCueAtOffset, findProgressiveVideoCaptionCue, findActiveVideoCaptionCue, selectProgressiveVideoCaptionCue, type YoutubeCueSelection} from './subtitleLogic';
 export {translateVideoSubtitleCues, getVideoTranslationConfigFingerprint, normalizeVideoCaptionText, revealVideoSubtitleTranslation} from './subtitleLogic';
@@ -132,7 +132,7 @@ export {
     upsertVideoAiSubtitleCue,
 } from './video-ai/cueTimeline';
 
-type VideoConfigPatch = Partial<Pick<Config, 'videoTranslationEnabled' | 'videoSubtitleVisible' | 'videoSubtitleDisplayMode' | 'videoSubtitleFontSize' | 'videoSubtitleOffsetMs' | 'videoLocalModel'>>;
+type VideoConfigPatch = Partial<Pick<Config, 'videoTranslationEnabled' | 'videoSubtitleVisible' | 'videoSubtitleDisplayMode' | 'videoSubtitleFontSize' | 'videoSubtitleOffsetMs' | 'videoLocalModel' | 'videoSubtitleAppearance'>>;
 
 /**
  * 挂载 YouTube / X 播放器内的字幕翻译入口和字幕监听器。
@@ -186,24 +186,25 @@ export function mountVideoSubtitleTranslation(): () => void {
   const learningPlacement = createVideoLearningPlacementOwner(() => config.videoSentenceLearningAppearance, subscribeConfig);
   const restorePosition = createSavedVideoPositionRestorer();
   const restoreSavedVideoPosition = () => { if (isXVideoPage() && observedVideo) restorePosition.restore(observedVideo, window.location, document); };
-  const getLearningCues = () => {
-    const captured = capturedSubtitleTracks.get(pretranslationTrackKey);
-    return isYouTubeVideoPage() && captured && !isOriginalTimedTextUrl(captured.url) ? [] : pretranslationCues;
-  };
-  const getLearningLanguage = () => {
-    if (isYouTubeVideoPage()) return new URL(capturedSubtitleTracks.get(pretranslationTrackKey)?.url || window.location.href).searchParams.get('lang') || chooseYoutubeCaptionTrackForLocation(document, window.location, config.from)?.languageCode || config.from;
-    const nativeLanguage = pretranslationTrackKey.startsWith('x:native:') ? pretranslationTrackKey.slice('x:native:'.length) : '';
-    return nativeLanguage && nativeLanguage !== 'original' ? nativeLanguage : config.videoSourceLanguage;
-  };
+  const reading = createVideoReadingPlayer({
+    getPlayer: () => playerLocator.getTarget()?.player || (isYouTubeVideoPage() ? findVideoPlayer() : null),
+    canRead: () => canReadVideo(),
+    getSourceContext: () => ({key: pretranslationTrackKey, captured: capturedSubtitleTracks.get(pretranslationTrackKey), cues: pretranslationCues}),
+    nativeSync: () => nativeFullscreen.sync(),
+    scheduleLayout: () => scheduleSubtitleLayout(),
+    updateMenu: () => updatePlayerUiState(),
+    updateCaption: () => scheduleUpdate(),
+    resetCaption: () => resetTranslationState(),
+  });
   const learning = createVideoSentenceLearningSession({markUi: markVideoUi, place: learningPlacement.place,
     load: async () => (await import('../ui/VideoSentenceLearning.vue')).default,
     mount: (view, host, props) => {const app = createApp({render: () => h(view, props)}); app.mount(host); return () => app.unmount();},
     readTarget: () => {const target = playerLocator.getTarget(); return target?.video === observedVideo ? target : null;},
     canOpen: () => !destroyed && canReadVideo() && (!isAiCaptureActive() || aiFullPhase === 'ready'),
-    readProps: ({video}, onClose) => shallowReactive<MutableVideoSentenceLearningProps>({...getVideoLearningSource(video, window.location, document), video, cues: getLearningCues(),
-      sourceLanguage: getLearningLanguage() || config.from, targetLanguage: config.to, onClose,
+    readProps: ({video}, onClose) => shallowReactive<MutableVideoSentenceLearningProps>({...getVideoLearningSource(video, window.location, document), video, cues: reading.sourceContext.getCues(),
+      sourceLanguage: reading.sourceContext.getLanguage() || config.from, targetLanguage: config.to, onClose,
       translate: (text, signal) => isVideoSubtitleInTargetLanguage(text, config.to)
-        ? Promise.resolve(text) : translateVideoText(text, signal, getLearningLanguage() || undefined),
+        ? Promise.resolve(text) : translateVideoText(text, signal, reading.sourceContext.getLanguage() || undefined),
     }),
   });
   const closeSentenceLearning = learning.close;
@@ -311,6 +312,7 @@ export function mountVideoSubtitleTranslation(): () => void {
   const resetTranslationState = (preserveCaptionWait = false) => {
     if (!preserveCaptionWait) cancelStableCaption();
     generation += 1;
+    reading.clear();
     lastSource = '';
     lastTranslatedSource = '';
     lastTranslatedText = '';
@@ -335,7 +337,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     if (!player) return;
     const result = translation || (isVideoSubtitleInTargetLanguage(source, config.to) ? source : '');
     normalizedCaptionActive = true;
-    renderHumanVideoCaption(player, container, result || videoTranslator.hasFailure(source) ? source : '', visibleTranslation(result, source));
+    reading.renderCaption(player, container, result || videoTranslator.hasFailure(source) ? source : '', visibleTranslation(result, source));
   };
 
   const canReadVideo = () => config.on && config.videoTranslationEnabled && config.videoSubtitleVisible !== false;
@@ -349,12 +351,13 @@ export function mountVideoSubtitleTranslation(): () => void {
     else videoTranslator.clear();
     resetTranslationState();
     if (clearTrack) {
+      reading.reset();
       pretranslationTrackRequest = undefined;
       pretranslationTrackRequestKey = '';
       pretranslationTrackRetryAt = 0;
       pretranslationTrackKey = '';
       pretranslationCues = [];
-      learning.updateCues(getLearningCues(), getLearningLanguage());
+      learning.updateCues(reading.sourceContext.getCues(), reading.sourceContext.getLanguage());
     }
   };
 
@@ -376,6 +379,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     revision: `${videoTranslator.revision}:${humanCaptions.revision}:${config.to}:${config.videoPreferHumanSubtitles}`,
     translation: (source, cue) => (config.videoPreferHumanSubtitles ? humanCaptions.at(cue.startMs + cue.durationMs / 2) : '')
       || (isVideoSubtitleInTargetLanguage(source, config.to) ? source : videoTranslator.peek(source)),
+    reading: {enabled: reading.enabled(), source: reading.state.source, text: reading.state.result?.text || ''},
   }));
 
   const getCurrentVideoTimeMs = () => readVideoPlaybackTimeMs(
@@ -456,7 +460,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     normalizedCaptionActive ||= captionDiffersFromCue || syntheticCaptionActive || isYouTubeVideoPage();
     if (normalizedCaptionActive) {
       const player = playerLocator.getTarget()?.player || (isYouTubeVideoPage() ? findVideoPlayer() : null);
-      if (player) renderHumanVideoCaption(player, container, isXVideoPage() ? '' : cue.text, overlay.textContent || '');
+      if (player) reading.renderCaption(player, container, isXVideoPage() ? '' : cue.text, overlay.textContent || '');
     }
     lastSource = source;
     renderProgressiveCaption(source, overlay, container);
@@ -510,7 +514,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     }
     if (key === pretranslationTrackKey) {
       pretranslationCues = entry.cues;
-      learning.updateCues(getLearningCues(), getLearningLanguage());
+      learning.updateCues(reading.sourceContext.getCues(), reading.sourceContext.getLanguage());
       schedulePretranslation();
       return;
     }
@@ -518,7 +522,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     pretranslationTrackKey = key;
     pretranslationCues = entry.cues;
     if (replacingLoadedTrack) closeSentenceLearning();
-    else learning.updateCues(getLearningCues(), getLearningLanguage());
+    else learning.updateCues(reading.sourceContext.getCues(), reading.sourceContext.getLanguage());
     pretranslationCacheVersion += 1;
     videoTranslator.clear();
     resetTranslationState();
@@ -996,6 +1000,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     if (service) service.textContent = localizeVideoUiText(getVideoServiceLabel(config.videoService || config.service), language);
     refreshVideoUiText(menu, language);
     refreshVideoUiAccessibility(menu, button, document, language, status);
+    reading.syncMenu(menu, enabled, selectedMode);
     const learningButton = menu.querySelector<HTMLButtonElement>('[data-action="open-sentence-learning"]');
     if (learningButton) {
       learningButton.disabled = isAiCaptureActive() && aiFullPhase !== 'ready';
@@ -1148,6 +1153,8 @@ export function mountVideoSubtitleTranslation(): () => void {
 
     event.preventDefault();
     event.stopPropagation();
+
+    if (reading.handleAction(target.dataset.action)) return;
 
     if (target.dataset.action?.startsWith('download-') && isAiFullActive() && aiFullPhase !== 'ready') {
       setVideoMenuDownloadStatus(menu, videoUi('video.sourcePreparing'), 2400);
@@ -1392,7 +1399,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     if (container.id === VIDEO_AI_CAPTION_CONTAINER_ID || isYouTubeVideoPage()) {
       const player = playerLocator.getTarget()?.player || (isYouTubeVideoPage() ? findVideoPlayer() : null);
       if (player) {
-        renderHumanVideoCaption(player, container, isXVideoPage() ? '' : source, '');
+        reading.renderCaption(player, container, isXVideoPage() ? '' : source, '');
         normalizedCaptionActive = true;
       }
     }
@@ -1458,7 +1465,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     const player = playerLocator.getTarget()?.player || (isYouTubeVideoPage() ? findVideoPlayer() : null);
     if (!player) return;
     const source = readCurrentCaptionText(container);
-    const compactYoutube = isYouTubeVideoPage() && (player.getBoundingClientRect().width <= 600 || window.matchMedia?.('(pointer: coarse)').matches === true);
+    const compactYoutube = isYouTubeVideoPage() && (reading.enabled() || player.getBoundingClientRect().width <= 600 || window.matchMedia?.('(pointer: coarse)').matches === true);
     const canTranslate = config.on && config.videoTranslationEnabled && config.videoSubtitleVisible !== false && displayMode !== 'original-only';
     if (!canTranslate) {
       if (config.on && config.videoTranslationEnabled && config.videoSubtitleVisible !== false
@@ -1480,7 +1487,7 @@ export function mountVideoSubtitleTranslation(): () => void {
           progressiveCue = null;
           progressiveTranslation = '';
         }
-        renderHumanVideoCaption(player, container, source, '');
+        reading.renderCaption(player, container, source, '');
         normalizedCaptionActive = true;
         return;
       }
@@ -1513,7 +1520,7 @@ export function mountVideoSubtitleTranslation(): () => void {
         humanCaptionKey = key;
       }
       normalizedCaptionActive = true;
-      renderHumanVideoCaption(player, container, source, visibleTranslation(human, source));
+      reading.renderCaption(player, container, source, visibleTranslation(human, source));
       return;
     }
     if (humanCaptionKey) resetTranslationState();
@@ -1529,7 +1536,7 @@ export function mountVideoSubtitleTranslation(): () => void {
 
     if (compactYoutube) {
       normalizedCaptionActive = true;
-      renderHumanVideoCaption(player, container, source, lastTranslatedSource === source ? visibleTranslation(lastTranslatedText, source) : '');
+      reading.renderCaption(player, container, source, lastTranslatedSource === source ? visibleTranslation(lastTranslatedText, source) : '');
     }
     if (source === lastSource) {
       syncTranslationOverlayPosition(container);
@@ -1545,7 +1552,7 @@ export function mountVideoSubtitleTranslation(): () => void {
       // 新原文一出现就撤下上一句译文及其异步资格；请求仍可合并/预取，
       // 但不能在稳定等待期间让两种语言分别显示前后两句。
       resetTranslationState(true);
-      renderHumanVideoCaption(player, container, source, '');
+      reading.renderCaption(player, container, source, '');
       normalizedCaptionActive = true;
     }
 
@@ -1765,6 +1772,7 @@ export function mountVideoSubtitleTranslation(): () => void {
   uiSyncTimer = window.setInterval(syncPlayerUi, 1000);
 
   const unsubscribeConfig = subscribeConfig((nextConfig) => {
+    reading.syncConfig(nextConfig);
     const nextOffset = normalizeVideoSubtitleOffsetMs(nextConfig.videoSubtitleOffsetMs);
     if (nextOffset !== subtitleOffsetMs) {
       subtitleOffsetMs = nextOffset;
@@ -1828,6 +1836,7 @@ export function mountVideoSubtitleTranslation(): () => void {
   });
 
   return () => {
+    reading.destroy();
     learning.destroy();
     learningPlacement.dispose();
     destroyed = true; aiModelSetup.reset(); karaoke.destroy();

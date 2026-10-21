@@ -1,7 +1,7 @@
 <!--
  * @file src/features/video-subtitle/ui/VideoSentenceLearning.vue
  * 文件职责：在现有播放器上提供可关闭的完整句学习面板，连接原始字幕、主动播放控制和现有收藏。
- * 主要内容：以双语阅读卡呈现原句、译文和按需讲解；索引跟随播放、合并快速换句的翻译请求，短高换句只归顶自有整卡滚动区，收起后暂停新请求；按配置身份管理自动译文、人工草稿与准确的异步收藏状态。
+ * 主要内容：以双语阅读卡呈现原句、可选本地读音、译文和按需讲解；索引跟随播放、合并快速换句的翻译请求，读音独立跟随固定句或历史句、收起时取消且不新增请求；短高换句只归顶自有整卡滚动区，按配置身份管理自动译文、人工草稿与准确的异步收藏状态。
  * 材料关联：完整句收藏与问答引用归于可靠视频来源与原始时间，关闭、更换句子和隐私状态禁止迟到关联。
  * 模块边界：不创建或定位播放器，学习键只接受包含当前视频的显式逻辑播放器及面板自身，菜单让位限定已验证同视频范围；不采集音频或计算掌握状态，翻译沿用注入服务，卸载取消控制与迟到回写。
  -->
@@ -23,6 +23,7 @@
       <template v-if="sentence">
         <div class="fr-video-learning-position"><span>{{ index + 1 }} <span class="fr-video-learning-dim">/ {{ sentences.length }}</span> · {{ timeLabel }}</span><span v-if="!sentence.complete" class="fr-video-learning-badge">{{ t('video.learning.fragment') }}</span></div>
         <p class="fr-video-learning-original" data-learning-original>{{ sentence.text }}</p>
+        <p v-if="readingText" class="fr-video-learning-reading" :lang="`${readingLanguage}-Latn`" :aria-label="t(`video.readingAnnotation.${readingLanguage}`)" data-learning-reading>{{ readingText }}</p>
         <div class="fr-video-learning-follow"><span :class="{'is-pinned': pinned}"><i aria-hidden="true"></i>{{ t(pinned ? 'video.learning.pinned' : 'video.learning.follow') }}</span><button v-if="pinned" type="button" class="fr-video-learning-text-button" data-learning-action="follow" @click="returnToCurrent">{{ t('video.learning.returnCurrent') }}</button></div>
         <div class="fr-video-learning-card" :aria-busy="translating && !translationEdited">
           <div class="fr-video-learning-card-heading"><span>{{ t('video.learning.translationTitle') }}</span><button type="button" class="fr-video-learning-text-button" :data-learning-action="editingTranslation ? 'done-translation' : 'edit-translation'" @click="editTranslation">{{ t(editingTranslation ? 'video.learning.done' : 'video.learning.edit') }}</button></div>
@@ -69,6 +70,7 @@ import {useUiI18n} from '@/src/ui/i18n';
 import {config, subscribeConfig} from '@/src/services/config/store';
 import {getVideoSentenceLearningAppearanceCssVars, normalizeVideoSentenceLearningAppearance} from '@/src/core/config/videoSentenceLearningAppearance';
 import {sendRuntimeMessage} from '@/src/platform/browser/runtimeMessages';
+import {browserCapabilities} from '@/src/platform/browser/capabilities';
 import {ReadingAnswer} from '@/src/features/reading-assistant/ui/answer/public';
 import {streamReading} from '@/src/features/reading-assistant/public';
 import {beginMaterialCapture, completeMaterialCapture, type MaterialSelection} from '@/src/features/vocabulary/material/public';
@@ -78,6 +80,8 @@ import {buildVideoSentenceTimeline, createVideoSentenceTimeIndex} from '../conte
 import {getVideoTranslationConfigFingerprint} from '../content/subtitleLogic';
 import {SentencePlaybackController, type SentencePlaybackMode} from '../content/sentencePlayback';
 import {getYoutubeSubtitleControlsScope} from '../content/youtubeControlsScope';
+import {VideoReadingAnnotationSession} from '../content/readingAnnotationSession';
+import {annotateVideoReading} from '../content/readingAnnotationClient';
 
 const props = defineProps<{video: HTMLVideoElement; player?: HTMLElement; cues: VideoSubtitleCue[]; platform: 'youtube' | 'x'; sourceUrl?: string;
   title: string; sourceLanguage: string; targetLanguage: string; translate: (text: string, signal: AbortSignal) => Promise<string>}>();
@@ -103,6 +107,10 @@ const pinned = ref(false); const expanded = ref(true); const editingTranslation 
 const translationEditor = ref<HTMLTextAreaElement>(); const explanationEditor = ref<HTMLTextAreaElement>();
 const body = ref<HTMLElement>();
 const panel = ref<HTMLElement>();
+const readingText = ref(''); const readingLanguage = ref('');
+const readingEnabled = ref(browserCapabilities.extensionDom && config.videoSubtitleAppearance.readingAnnotation === true && config.on && config.videoTranslationEnabled && config.videoSubtitleVisible);
+const readingSession = new VideoReadingAnnotationSession(annotateVideoReading);
+let readingGeneration = 0;
 const savedSnapshot = ref('');
 const snapshot = () => JSON.stringify([sentence.value?.id, translation.value.trim(), explanation.value.trim()]);
 const saved = computed(() => !!savedSnapshot.value && savedSnapshot.value === snapshot());
@@ -139,6 +147,18 @@ function editExplanation(): void { editingExplanation.value = !editingExplanatio
 function onContextToggle(event: Event): void { if ((event.target as HTMLDetailsElement).open) pinCurrent(); }
 function returnToCurrent(): void { controller?.stop(); pinned.value = false; editingTranslation.value = false; editingExplanation.value = false; followPlayback(); }
 function stopExplanation(): void { cancelExplanation(); explanationStopped.value = true; notice.value = t('video.learning.stopped'); }
+watch([() => sentence.value?.id, () => props.sourceLanguage, expanded, readingEnabled, () => props.video, () => props.sourceUrl], (next, previous) => {
+  const current = ++readingGeneration;
+  if (previous && (next[4] !== previous[4] || next[5] !== previous[5])) readingSession.clear();
+  else readingSession.cancelPending();
+  readingText.value = ''; readingLanguage.value = '';
+  if (!active || !expanded.value || !readingEnabled.value || !sentence.value) return;
+  const source = sentence.value.text;
+  void readingSession.request(source, props.sourceLanguage || config.from || 'auto').then(result => {
+    if (!active || current !== readingGeneration || !expanded.value || !readingEnabled.value || !result?.text) return;
+    readingText.value = result.text; readingLanguage.value = result.language.split('-')[0];
+  }).catch(() => { /* 读音失败独立降级，不能清空人工译文、停止循环或修改收藏。 */ });
+}, {immediate: true});
 watch(() => props.video, (video, previous) => {
   previous?.removeEventListener('timeupdate', followPlayback); previous?.removeEventListener('seeking', onSeeking);
   (previous?.ownerDocument?.defaultView ?? previous?.ownerDocument)?.removeEventListener('keydown', onPlayerKeydown, true);
@@ -300,6 +320,7 @@ const learningConfigFingerprint = () => JSON.stringify([config.on, config.videoT
   getVideoTranslationConfigFingerprint(config), config.harness]);
 let configRevision = learningConfigFingerprint();
 const unsubscribe = subscribeConfig(() => {
+  readingEnabled.value = browserCapabilities.extensionDom && config.videoSubtitleAppearance.readingAnnotation === true && config.on && config.videoTranslationEnabled && config.videoSubtitleVisible;
   const nextAppearance = normalizeVideoSentenceLearningAppearance(config.videoSentenceLearningAppearance);
   if (JSON.stringify(nextAppearance) !== JSON.stringify(appearance.value)) appearance.value = nextAppearance;
   const next = learningConfigFingerprint(); if (next === configRevision) return;
@@ -310,7 +331,7 @@ const unsubscribe = subscribeConfig(() => {
   if (wasExplaining) explanationStopped.value = true;
   scheduleTranslation(); notice.value = t('video.learning.settingsChanged');
 });
-onBeforeUnmount(() => { active = false; cancelPending(); controller?.destroy(); unsubscribe();
+onBeforeUnmount(() => { active = false; readingGeneration++; readingSession.destroy(); cancelPending(); controller?.destroy(); unsubscribe();
   (props.video.ownerDocument?.defaultView ?? props.video.ownerDocument)?.removeEventListener('keydown', onPlayerKeydown, true);
   props.video.removeEventListener('timeupdate', followPlayback); props.video.removeEventListener('seeking', onSeeking); });
 </script>

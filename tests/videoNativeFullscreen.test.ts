@@ -60,6 +60,61 @@ function setup() {
 }
 
 describe('native fullscreen subtitles', () => {
+  it('原生轨道按原文、读音、译文排序并转义WebVTT，仅译文模式不泄漏读音', () => {
+    const {state} = setup();
+    state.cues = [{startMs: 0, durationMs: 2000, text: '<原文>'}];
+    state.reading = {enabled: true, source: ' <原文> ', text: 'gen & <bun>'};
+    expect(buildNativeFullscreenCues(state)[0].text).toBe('&lt;原文&gt;\ngen &amp; &lt;bun&gt;\n译文');
+    state.mode = 'original-only'; expect(buildNativeFullscreenCues(state)[0].text).toBe('&lt;原文&gt;\ngen &amp; &lt;bun&gt;');
+    state.mode = 'translation-only'; expect(buildNativeFullscreenCues(state)[0].text).toBe('译文');
+    state.mode = 'bilingual'; state.reading.text = ''; expect(buildNativeFullscreenCues(state)[0].text).toBe('&lt;原文&gt;\n译文');
+    state.reading.text = 'genbun'; state.reading.source = 'other'; expect(buildNativeFullscreenCues(state)[0].text).toBe('&lt;原文&gt;\n译文');
+  });
+
+  it('新读音只patch重复原文对应的cue，不重读或重建两千句时间轴，等待态保留已完成读音', () => {
+    const f = setup(); let reads = 0;
+    f.state.revision = 1;
+    f.state.cues = Array.from({length: 2000}, (_, index) => ({startMs: index * 2000, durationMs: 1800, text: index === 1000 ? 'Sentence 1' : `Sentence ${index}`}));
+    f.state.translation = () => {reads += 1; return 'translated';};
+    f.state.reading = {enabled: true, source: 'Sentence 1', text: ''}; f.bridge.sync();
+    const track = f.tracks[0], originalCues = [...track.cues!], add = vi.spyOn(track, 'addCue'), remove = vi.spyOn(track, 'removeCue');
+    f.state.reading.text = 'ichiban'; f.bridge.sync();
+    expect(reads).toBe(2000); expect(add).not.toHaveBeenCalled(); expect(remove).not.toHaveBeenCalled();
+    expect(track.cues![1]).toBe(originalCues[1]); expect(track.cues![1].text).toBe('Sentence 1\nichiban\ntranslated');
+    expect(track.cues![1000].text).toBe('Sentence 1\nichiban\ntranslated');
+    f.state.reading.text = ''; f.bridge.sync(); expect(track.cues![1].text).toContain('ichiban');
+    f.state.reading = {enabled: true, source: 'Sentence 2', text: 'niban'}; f.bridge.sync();
+    expect(track.cues![2].text).toBe('Sentence 2\nniban\ntranslated'); expect(reads).toBe(2000);
+    f.state.reading = {enabled: true, source: 'not in this track', text: 'unrelated'}; f.bridge.sync();
+    expect(track.cues![2].text).toBe('Sentence 2\nniban\ntranslated'); expect(reads).toBe(2000);
+    f.state.reading.enabled = false; f.bridge.sync(); expect(track.cues![1].text).toBe('Sentence 1\ntranslated');
+    f.bridge.destroy();
+  });
+
+  it('系统Off期间只准备读音，不改轨道选择；重新选择后补当前读音，换轨清除旧缓存', () => {
+    const f = setup(); f.state.revision = 1; f.state.reading = {enabled: true, source: 'Original', text: ''};
+    f.bridge.sync(); const track = f.tracks[0]; f.enter(); f.select(null);
+    const add = vi.spyOn(track, 'addCue'), remove = vi.spyOn(track, 'removeCue'), mode = vi.spyOn(track, 'mode', 'set');
+    f.state.reading.text = 'orijinaru'; f.bridge.sync();
+    expect(add).not.toHaveBeenCalled(); expect(remove).not.toHaveBeenCalled(); expect(mode).not.toHaveBeenCalled();
+    f.select(track); expect(track.cues![0].text).toBe('Original\norijinaru\n译文');
+    f.state.mode = 'translation-only'; f.bridge.sync(); expect(track.cues![0].text).toBe('译文');
+    f.state.mode = 'original-only'; f.bridge.sync(); expect(track.cues![0].text).toBe('Original\norijinaru');
+    f.state.cues = [...f.state.cues]; f.state.reading.text = ''; f.bridge.sync(); expect(track.cues![0].text).toBe('Original');
+    f.bridge.destroy();
+  });
+
+  it('原生读音缓存条数和字符量有界，淘汰时只撤下对应的旧读音', () => {
+    const f = setup(); f.state.revision = 1;
+    f.state.cues = Array.from({length: 161}, (_, index) => ({startMs: index * 2000, durationMs: 1800, text: `Sentence ${index}`}));
+    f.state.reading = {enabled: true, source: '', text: ''}; f.bridge.sync();
+    for (let index = 0; index < 161; index += 1) {f.state.reading.source = `Sentence ${index}`; f.state.reading.text = `reading-${index}`; f.bridge.sync();}
+    expect(f.tracks[0].cues![0].text).toBe('Sentence 0\n译文');
+    expect(f.tracks[0].cues![160].text).toBe('Sentence 160\nreading-160\n译文');
+    f.state.reading.text = 'x'.repeat(64_001); f.bridge.sync();
+    expect(f.tracks[0].cues![160].text).toBe('Sentence 160\n译文'); f.bridge.destroy();
+  });
+
   it('uses the chosen display mode without pretending missing translations exist', () => {
     const {state} = setup();
     expect(buildNativeFullscreenCues(state)[0].text).toBe('Original\n译文');

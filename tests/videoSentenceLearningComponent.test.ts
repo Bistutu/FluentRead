@@ -16,6 +16,7 @@ import * as learningAppearance from '@/src/core/config/videoSentenceLearningAppe
 import * as timeline from '@/src/features/video-subtitle/content/sentenceTimeline';
 import * as playback from '@/src/features/video-subtitle/content/sentencePlayback';
 import * as youtubeControlsScope from '@/src/features/video-subtitle/content/youtubeControlsScope';
+import * as readingSessionModule from '@/src/features/video-subtitle/content/readingAnnotationSession';
 import {getVideoTranslationConfigFingerprint} from '@/src/features/video-subtitle/content/subtitleLogic';
 import * as vocabulary from '@/src/features/vocabulary/public';
 import {beginMaterialCapture, completeMaterialCapture} from '@/src/features/vocabulary/material/public';
@@ -43,6 +44,7 @@ let video: HTMLVideoElement, props: Record<string, any>, unmounted: Array<() => 
 let subscription: () => void;
 let translate: ReturnType<typeof vi.fn>, sendRuntimeMessage: ReturnType<typeof vi.fn>, streamReading: ReturnType<typeof vi.fn>;
 let cancelReading: ReturnType<typeof vi.fn>, unsubscribe: ReturnType<typeof vi.fn>, emit: ReturnType<typeof vi.fn>;
+let annotateVideoReading: ReturnType<typeof vi.fn>;
 let readingCallbacks: {progress: (value: any) => void; result: (value: any) => void; error: (cause: Error) => void};
 
 async function flush(): Promise<void> {
@@ -59,6 +61,7 @@ async function mount(): Promise<void> {
     if (id === '@/src/services/config/store') return {config, subscribeConfig: (fn: () => void) => {subscription = fn; fn(); return unsubscribe;}};
     if (id === '@/src/core/config/videoSentenceLearningAppearance') return learningAppearance;
     if (id === '@/src/platform/browser/runtimeMessages') return {sendRuntimeMessage};
+    if (id === '@/src/platform/browser/capabilities') return {browserCapabilities: {extensionDom: true}};
     if (id === '@/src/features/reading-assistant/ui/answer/public') return {ReadingAnswer: {}};
     if (id === '@/src/features/reading-assistant/public') return {streamReading};
     if (id === '@/src/features/vocabulary/public') return vocabulary;
@@ -67,6 +70,8 @@ async function mount(): Promise<void> {
     if (id === '../content/sentenceTimeline') return timeline;
     if (id === '../content/sentencePlayback') return playback;
     if (id === '../content/youtubeControlsScope') return youtubeControlsScope;
+    if (id === '../content/readingAnnotationSession') return readingSessionModule;
+    if (id === '../content/readingAnnotationClient') return {annotateVideoReading};
     if (id === '../content/subtitleLogic') return {getVideoTranslationConfigFingerprint};
     return require(id);
   }, exports);
@@ -116,6 +121,7 @@ beforeEach(() => {
     domains: [], entries: [{id: 'term', source: 'sentence', target: '句子', caseSensitive: false}]}];
   unmounted = []; unsubscribe = vi.fn(); emit = vi.fn(); cancelReading = vi.fn();
   translate = vi.fn(async (text: string) => `Translated: ${text}`);
+  annotateVideoReading = vi.fn(async (text: string, language: string) => ({text: `Reading: ${text}`, language, scheme: 'fixture'}));
   sendRuntimeMessage = vi.fn().mockResolvedValue({success: true});
   streamReading = vi.fn((_request, callbacks) => {readingCallbacks = callbacks; return {cancel: cancelReading};});
   vi.stubGlobal('crypto', {randomUUID: () => 'video-learning-test-request'});
@@ -128,6 +134,56 @@ beforeEach(() => {
 afterEach(() => {close(); vi.unstubAllGlobals(); vi.useRealTimers();});
 
 describe('完整句学习组件的调度与异步归属回归', () => {
+  it('读音默认关闭，单独开关不打断人工草稿、固定句和循环，面板原句不跟播放器模式隐藏', async () => {
+    props.sourceLanguage = 'ja'; await mount();
+    expect(annotateVideoReading).not.toHaveBeenCalled();
+    state.translation = '人工译文'; state.onTranslationInput(); state.toggleMode('loop');
+    const requests = translate.mock.calls.length;
+    config.videoSubtitleDisplayMode = 'translation-only'; config.videoSubtitleAppearance.readingAnnotation = true; subscription();
+    await advance(0);
+    expect(state.readingText).toBe(`Reading: ${first}`);
+    expect(state.readingLanguage).toBe('ja');
+    expect(annotateVideoReading).toHaveBeenCalledWith(first, 'ja', expect.any(AbortSignal));
+    expect(state.translation).toBe('人工译文'); expect(state.pinned).toBe(true); expect(state.mode).toBe('loop');
+    expect(translate).toHaveBeenCalledTimes(requests);
+    config.videoSubtitleAppearance.readingAnnotation = false; subscription(); await flush();
+    expect(state.readingText).toBe(''); expect(state.translation).toBe('人工译文'); expect(state.mode).toBe('loop');
+  });
+
+  it('读音跟随当前固定或历史句，快速换句与关闭拒绝迟到响应', async () => {
+    const late = deferred<{text: string; language: string; scheme: string}>();
+    annotateVideoReading.mockReturnValueOnce(late.promise);
+    config.videoSubtitleAppearance.readingAnnotation = true; props.sourceLanguage = 'ja';
+    await mount(); const signal = annotateVideoReading.mock.calls[0][2] as AbortSignal;
+    await step(1); await advance(0);
+    expect(signal.aborted).toBe(true); expect(state.readingText).toBe(`Reading: ${second}`);
+    late.resolve({text: '古い読み', language: 'ja', scheme: 'fixture'}); await advance(0);
+    expect(state.readingText).toBe(`Reading: ${second}`);
+    await step(-1); await advance(0); expect(state.readingText).toBe(`Reading: ${first}`);
+    const afterClose = deferred<{text: string; language: string; scheme: string}>();
+    annotateVideoReading.mockReturnValueOnce(afterClose.promise);
+    await step(1); await step(1); await flush();
+    const closingSignal = annotateVideoReading.mock.calls.at(-1)![2] as AbortSignal;
+    close(); expect(closingSignal.aborted).toBe(true);
+    afterClose.resolve({text: '关闭后的读音', language: 'ja', scheme: 'fixture'}); await advance(0);
+    expect(state.readingText).not.toBe('关闭后的读音');
+  });
+
+  it('收起面板取消读音，隐藏换句不发请求，展开当前句再读取；换媒体不复用旧会话缓存', async () => {
+    const late = deferred<{text: string; language: string; scheme: string}>();
+    annotateVideoReading.mockReturnValueOnce(late.promise);
+    config.videoSubtitleAppearance.readingAnnotation = true; props.sourceLanguage = 'ja';
+    await mount(); const signal = annotateVideoReading.mock.calls[0][2] as AbortSignal;
+    state.expanded = false; await flush(); expect(signal.aborted).toBe(true);
+    await step(1); await advance(500); expect(annotateVideoReading).toHaveBeenCalledOnce();
+    late.resolve({text: '已收起的读音', language: 'ja', scheme: 'fixture'}); await advance(0);
+    expect(state.readingText).toBe('');
+    state.expanded = true; await advance(0); expect(state.readingText).toBe(`Reading: ${second}`);
+    const count = annotateVideoReading.mock.calls.length;
+    props.sourceUrl = 'https://www.youtube.com/watch?v=another-video'; await advance(0);
+    expect(annotateVideoReading).toHaveBeenCalledTimes(count + 1);
+  });
+
   it.each([false, true])('换句只归顶当前owned滚动区，短高整卡=%s，页面与外层portal滚动不变', async short => {
     const f = portalKeyboardFixture(), host = f.panel.parentElement!;
     host.id = 'fluent-read-video-learning-panel'; host.dataset.shortHeight = String(short);

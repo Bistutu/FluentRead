@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/ui/videoSentenceLearning.css
  * 文件职责：为完整句学习提供层次清楚、可折叠的播放器内双语阅读卡样式。
- * 主要内容：沿用既有视频菜单的局部深灰表面与品牌粉色，突出原句与重播；短高度下整卡单区滚动、顶栏固定可达，正文不再被底部操作挤空；粗指针下顶栏、导航与底部主操作保留至少44px目标，布局仍保留原播放器控制区。
+ * 主要内容：沿用既有视频菜单的局部深灰表面与品牌粉色，突出原句与重播；可选读音使用原句下方的独立可换行正文，不挤入工具栏；短高度下整卡单区滚动、顶栏固定可达，正文不再被底部操作挤空；粗指针下顶栏、导航与底部主操作保留至少44px目标，布局仍保留原播放器控制区。
  * 模块边界：仅匹配 FluentRead 自有面板后代，由字幕 runtime 显式注入和清理，不依赖宿主样式或 WXT Shadow UI 自动挂载。
  */
 #fluent-read-video-learning-panel .fr-video-learning {
@@ -41,6 +41,7 @@
 #fluent-read-video-learning-panel .fr-video-learning-dim { color: var(--fr-learning-muted); font-size: 11px; }
 #fluent-read-video-learning-panel .fr-video-learning-badge { border: 1px solid #ffffff20; border-radius: 5px; padding: 1px 5px; font-size: 10px; }
 #fluent-read-video-learning-panel .fr-video-learning-original { margin: 8px 0; font-size: var(--fluent-read-video-learning-original-font-size, 19px); font-weight: 500; line-height: var(--fluent-read-video-learning-line-height, 1.55); letter-spacing: -.15px; white-space: pre-wrap; }
+#fluent-read-video-learning-panel .fr-video-learning-reading { margin: 0 0 8px; color:var(--fr-learning-text); font-size:max(12px, var(--fluent-read-video-learning-font-size, 13px)); line-height:1.45; white-space:pre-wrap; overflow-wrap:anywhere; }
 #fluent-read-video-learning-panel .fr-video-learning-follow { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 23px; margin-bottom: 12px; font-size: 10px; color: var(--fr-learning-muted); }
 #fluent-read-video-learning-panel .fr-video-learning-follow > span { display: inline-flex; align-items: center; gap: 5px; }
 #fluent-read-video-learning-panel .fr-video-learning-follow i { width: 4px; height: 4px; background: #92baad; border-radius: 50%; }

@@ -22,6 +22,9 @@ importers:
       '@ai-sdk/openai-compatible':
         specifier: 2.0.70
         version: 2.0.70(zod@3.25.76)
+      '@budhash/gomanize':
+        specifier: 1.2.1
+        version: 1.2.1
       '@ctrl/tinycolor':
         specifier: 3.6.1
         version: 3.6.1
@@ -31,6 +34,9 @@ importers:
       '@element-plus/icons-vue':
         specifier: ^2.3.1
         version: 2.3.1(vue@3.5.13(typescript@5.7.3))
+      '@faanau/kuromoji':
+        specifier: 0.2.1
+        version: 0.2.1
       '@huggingface/transformers':
         specifier: 3.8.1
         version: 3.8.1
@@ -43,6 +49,9 @@ importers:
       '@pdf-lib/fontkit':
         specifier: 1.1.1
         version: 1.1.1
+      '@pinyin-pro/data':
+        specifier: 1.3.1
+        version: 1.3.1
       '@uzen/kokoro-js':
         specifier: 1.2.4
         version: 1.2.4
@@ -73,6 +82,12 @@ importers:
       jszip:
         specifier: 3.10.1
         version: 3.10.1
+      koroman:
+        specifier: 1.0.16
+        version: 1.0.16
+      kuroshiro:
+        specifier: 1.2.1
+        version: 1.2.1
       mathml-to-latex:
         specifier: 1.8.0
         version: 1.8.0
@@ -88,6 +103,9 @@ importers:
       pdfjs-dist:
         specifier: 4.10.38
         version: 4.10.38
+      pinyin-pro:
+        specifier: 3.29.4
+        version: 3.29.4
       ppu-paddle-ocr:
         specifier: 6.6.0
         version: 6.6.0(onnxruntime-node@1.24.3)(onnxruntime-web@1.23.2)
@@ -97,6 +115,9 @@ importers:
       tesseract.js:
         specifier: ^6.0.1
         version: 6.0.1
+      thai-rtgs:
+        specifier: 0.1.3
+        version: 0.1.3
       tldts:
         specifier: ^7.4.10
         version: 7.4.10
@@ -355,6 +376,10 @@ packages:
 
   '@bcoe/v8-coverage@0.2.3':
     resolution: {integrity: sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==}
+
+  '@budhash/gomanize@1.2.1':
+    resolution: {integrity: sha512-3q/Vou9nLZom7JToO/ntC4MJUtQlswckwdC3LX9ArhX2cHtxNa4+ivhxNY31amT11E12nbBuZatfGVm4Gcqqpw==}
+    engines: {node: '>=18'}
 
   '@codemirror/state@6.5.0':
     resolution: {integrity: sha512-MwBHVK60IiIHDcoMet78lxt6iw5gJOGSbNbOIVBHWVXIH4/Nq1+GQgLLGgI1KlnN86WDXsPudVaqYHKBIx7Eyw==}
@@ -713,6 +738,10 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
+
+  '@faanau/kuromoji@0.2.1':
+    resolution: {integrity: sha512-NZoOLpSuJfA8fXNMYBb+Mub8PcJ3f5uMWkCou3r1VQRn5rp2BYM8vyQ3VU11EeLcoaDyYBkv7Kv0BKxxDX3EvA==}
+    engines: {node: '>=18'}
 
   '@floating-ui/core@1.7.3':
     resolution: {integrity: sha512-sGnvb5dmrJaKEZ+LDIpguvdX3bDlEllmv4/ClQ9awcmCZrlx5jQyyMWFM5kBI+EyNOCDDiKk8il0zeuX3Zlg/w==}
@@ -1084,6 +1113,9 @@ packages:
 
   '@pdf-lib/upng@1.0.1':
     resolution: {integrity: sha512-dQK2FUMQtowVP00mtIksrlZhdFXQZPC+taih1q4CvPZ5vqdxR/LKBaFg0oAfzd1GlHZXXSPdQfzQnt+ViGvEIQ==}
+
+  '@pinyin-pro/data@1.3.1':
+    resolution: {integrity: sha512-7SLDd8Q31U8lvZ6BtRFaZrTfQ4p01g+q/VFqpMRG0dAAsuBKMl59pAOsbLsRL2m3+SgW0zzztrQyAtHSvijMIQ==}
 
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
@@ -2440,6 +2472,9 @@ packages:
     resolution: {integrity: sha512-IO8C/dzEb6O3F9/twg6ZLXz164a2fhTnEWb95H23Dm4OuN+92NmEAlTrupP9VW6Jm3sO26tQlqyvyi4CsnY9GA==}
     engines: {node: '>=12'}
 
+  doublearray@0.0.2:
+    resolution: {integrity: sha512-aw55FtZzT6AmiamEj2kvmR6BuFqvYgKZUkfQ7teqVRNqD5UE0rw8IeW/3gieHNKQ5sPuDKlljWEn4bzv5+1bHw==}
+
   download@6.2.5:
     resolution: {integrity: sha512-DpO9K1sXAST8Cpzb7kmEhogJxymyVUd5qz/vCOSyvwtp2Klj2XcDt5YUuasgxka44SxF0q5RriKIwJmQHG2AuA==}
     engines: {node: '>=4'}
@@ -3455,6 +3490,13 @@ packages:
   kleur@3.0.3:
     resolution: {integrity: sha512-eTIzlVOSUR+JxdDFepEYcBMtZ9Qqdef+rnzWdRZuMbOywu5tO2w2N7rqjoANZ5k9vywhL6Br1VRjUIgTQx4E8w==}
     engines: {node: '>=6'}
+
+  koroman@1.0.16:
+    resolution: {integrity: sha512-jW7SZ+BCOupGposHY1JXZ8bh6fFNkKYO/7w2aKx76Zav2jAopGtXQw99luIe94BvRViU9DxIPGY1Efwt0N0p8g==}
+
+  kuroshiro@1.2.1:
+    resolution: {integrity: sha512-2DgCSINzhAhPrWQ3QpgkQPic5PZ003rI1ksLMqG2O6CSPpQJrXmUin9sZpgJb3a+C7alMr8G9wZmZjzMQ2MmRg==}
+    engines: {node: '>=6.5.0'}
 
   ky@1.8.2:
     resolution: {integrity: sha512-XybQJ3d4Ea1kI27DoelE5ZCT3bSJlibYTtQuMsyzKox3TMyayw1asgQdl54WroAm+fIA3ZCr8zXW2RpR7qWVpA==}
@@ -4782,6 +4824,10 @@ packages:
     resolution: {integrity: sha512-u9E6A+ZDYdp7a4WnarkXPZOx8Ilz46+kby6p1yZ8zsGTz9gYa6FIS7lj2oezzNKmtdyyJNNmmXDppga5GB7kSw==}
     engines: {node: '>=18'}
 
+  thai-rtgs@0.1.3:
+    resolution: {integrity: sha512-89QE9Qqoi1j7sIKcDqRmqaAa42YZAD6jROPFQOadkQ1bBg6hqthlaHNlIDmfqXYYhI0gtu90y4hecrMfuMwqdA==}
+    engines: {node: '>=18'}
+
   thenify-all@1.6.0:
     resolution: {integrity: sha512-RNxQH/qI8/t3thXJDwcstUO4zeqo64+Uy/+sNVRBx4Xn2OX+OZ9oP+iJnNFqplFra2ZUVeKCSa2oVWi3T4uVmA==}
     engines: {node: '>=0.8'}
@@ -5529,6 +5575,8 @@ snapshots:
 
   '@bcoe/v8-coverage@0.2.3': {}
 
+  '@budhash/gomanize@1.2.1': {}
+
   '@codemirror/state@6.5.0':
     dependencies:
       '@marijn/find-cluster-break': 1.0.4
@@ -5748,6 +5796,10 @@ snapshots:
 
   '@esbuild/win32-x64@0.27.3':
     optional: true
+
+  '@faanau/kuromoji@0.2.1':
+    dependencies:
+      doublearray: 0.0.2
 
   '@floating-ui/core@1.7.3':
     dependencies:
@@ -6042,6 +6094,8 @@ snapshots:
   '@pdf-lib/upng@1.0.1':
     dependencies:
       pako: 1.0.11
+
+  '@pinyin-pro/data@1.3.1': {}
 
   '@pkgjs/parseargs@0.11.0':
     optional: true
@@ -7498,6 +7552,8 @@ snapshots:
 
   dotenv@17.3.1: {}
 
+  doublearray@0.0.2: {}
+
   download@6.2.5:
     dependencies:
       caw: 2.0.1
@@ -8564,6 +8620,12 @@ snapshots:
       json-buffer: 3.0.0
 
   kleur@3.0.3: {}
+
+  koroman@1.0.16: {}
+
+  kuroshiro@1.2.1:
+    dependencies:
+      '@babel/runtime': 7.28.2
 
   ky@1.8.2: {}
 
@@ -10007,6 +10069,8 @@ snapshots:
       '@istanbuljs/schema': 0.1.6
       glob: 10.5.0
       minimatch: 10.2.4
+
+  thai-rtgs@0.1.3: {}
 
   thenify-all@1.6.0:
     dependencies:

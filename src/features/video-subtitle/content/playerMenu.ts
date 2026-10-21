@@ -206,6 +206,22 @@ function createAiModelSelection(): HTMLButtonElement {
     return button;
 }
 
+/** 读音开关是原文辅助，不增加新的显示模式；状态与重试保留稳定节点。 */
+function createReadingAnnotationRow(language: UiLanguage): HTMLElement {
+    const row = createTextElement('div','fluent-read-video-menu-reading','');
+    const toggle = createButton('fluent-read-video-menu-item', {'data-action':'toggle-reading-annotation',role:'menuitemcheckbox','aria-checked':'false'});
+    const label = keyedText('span','fluent-read-video-menu-label','video.readingAnnotation.label',language);
+    delete label.dataset.i18nKey;
+    label.dataset.readingLabel = 'true';
+    toggle.appendChild(label);
+    const status = createTextElement('span','fluent-read-video-menu-source-hint','');
+    status.dataset.readingStatus='true'; status.setAttribute('role','status'); status.hidden=true;
+    const retry = keyedText('button','fluent-read-video-menu-secondary','video.readingAnnotation.retry',language);
+    retry.type='button'; retry.dataset.action='retry-reading-annotation'; retry.setAttribute('role','menuitem'); retry.hidden=true;
+    row.append(toggle,status,retry);
+    return row;
+}
+
 /** 菜单始终由同一组节点更新，避免进度变化时丢失焦点与键盘状态。 */
 export function createVideoPlayerMenu(language: UiLanguage, withLocalGeneration: boolean): HTMLElement {
     const menu = document.createElement('div');
@@ -255,14 +271,14 @@ export function createVideoPlayerMenu(language: UiLanguage, withLocalGeneration:
         regenerate.dataset.action = 'regenerate-ai-subtitle';
         regenerate.setAttribute('role', 'menuitem');
         regenerate.hidden = true;
-        tools.append(createAiModelSelection(), createTimingRow(language), downloads, secondary, regenerate);
+        tools.append(createReadingAnnotationRow(language), createAiModelSelection(), createTimingRow(language), downloads, secondary, regenerate);
         body.append(watch, tools, learning);
         menu.append(main, createModelPrompt(language));
         return menu;
     }
 
     const display = createTextElement('div', 'fluent-read-video-menu-section fluent-read-video-menu-display', '');
-    display.append(createModeGroup(language), createTimingRow(language));
+    display.append(createModeGroup(language), createReadingAnnotationRow(language), createTimingRow(language));
     const actions = createTextElement('div', 'fluent-read-video-menu-section fluent-read-video-menu-actions', '');
     actions.append(createDownloadActions(language), createDownloadStatus());
     const nativeHint = keyedText('p', 'fluent-read-video-menu-source-hint fluent-read-video-native-fullscreen-hint', 'video.nativeFullscreenHint', language);

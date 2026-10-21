@@ -86,6 +86,7 @@ describe('video subtitle appearance contract', () => {
       maxWidth: 67,
       fontScale: 123,
       karaoke: true,
+      readingAnnotation: false,
     });
     expect(normalizeVideoSubtitleAppearance({
       skin: 'removed',
@@ -191,6 +192,19 @@ describe('video subtitle appearance contract', () => {
     expect(applied).toBe(100);
     expect(fitVideoSubtitleFontSize(100, 120, apply, () => applied === 100 ? 1000 : applied === 8 ? 24 : NaN)).toBe(8);
     expect(applied).toBe(8);
+  });
+
+  it('三行读音允许指定可读下限，溢出也不缩至下限以下，低于下限的原字号不被放大', () => {
+    let applied = 0;
+    const apply = (value: number) => {applied = value;};
+    expect(fitVideoSubtitleFontSize(32, 30, apply, () => applied * 3, 14)).toBe(14);
+    expect(applied).toBe(14);
+    expect(fitVideoSubtitleFontSize(10, 1, apply, () => applied * 3, 14)).toBe(10);
+    expect(applied).toBe(10);
+    expect(fitVideoSubtitleFontSize(32, 1, apply, () => applied * 3, NaN)).toBe(8);
+    expect(fitVideoSubtitleFontSize(32, 1, apply, () => applied * 3, 0)).toBe(8);
+    expect(fitVideoSubtitleFontSize(13, 12.345, apply, () => applied, 12.345)).toBeGreaterThanOrEqual(12.345);
+    expect(applied).toBeGreaterThanOrEqual(12.345);
   });
 
 });

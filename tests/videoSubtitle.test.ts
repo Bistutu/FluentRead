@@ -32,7 +32,7 @@ import {
     translateVideoSubtitleCues,
     VIDEO_CAPTION_SEGMENT_SELECTOR,
 } from '@/src/features/video-subtitle/content/runtime';
-import {applyVideoDisplayState, findVideoPlayer, findCaptionContainer, getVisibleCaptionSegments} from '@/src/features/video-subtitle/content/ui';
+import {applyVideoDisplayState, findVideoPlayer, findCaptionContainer, getVisibleCaptionSegments, renderVideoReadingAnnotation, clearRenderedVideoTranslation} from '@/src/features/video-subtitle/content/ui';
 import {validateYoutubeTimedTextMessage} from '@/src/features/video-subtitle/content/youtubeTimedTextMessage';
 import {config} from '@/src/services/config/store';
 import { normalizeVideoSubtitleFontSize } from '@/src/core/config/model';
@@ -46,6 +46,27 @@ afterEach(() => {
 });
 
 describe('YouTube 视频字幕识别', () => {
+    it('读音使用独立纯文本节点，不把标注混入原文、译文或原生字幕读取', () => {
+        const {document, window} = parseHTML('<html><body><div id="movie_player"><div id="captions"><span class="ytp-caption-segment">今日はいい天気です。</span></div></div></body></html>');
+        vi.stubGlobal('document', document); vi.stubGlobal('window', window); vi.stubGlobal('HTMLElement', window.HTMLElement);
+        const player = document.getElementById('movie_player')!, native = document.getElementById('captions')!;
+        expect(renderVideoReadingAnnotation(player, '')).toBe(false);
+        expect(document.getElementById('fluent-read-video-subtitle-reading')).toBeNull();
+        // 无布局端口下直接创建已有渲染层，避免把注音文本用 innerHTML 解释。
+        const panel = document.createElement('div'); panel.id = 'fluent-read-video-subtitle-panel';
+        const source = document.createElement('div'); source.id = 'fluent-read-video-subtitle-original'; source.textContent = '今日はいい天気です。';
+        const translation = document.createElement('div'); translation.id = 'fluent-read-video-subtitle'; translation.textContent = '今天天气真好。';
+        const layer = document.createElement('div'); layer.id = 'fluent-read-video-subtitle-layer'; layer.appendChild(panel); panel.append(source, translation); player.appendChild(layer);
+        expect(renderVideoReadingAnnotation(player, '<b>kyō</b> wa ii tenki desu.', 'ja')).toBe(true);
+        const reading = document.getElementById('fluent-read-video-subtitle-reading')!;
+        expect(reading.textContent).toBe('<b>kyō</b> wa ii tenki desu.'); expect(reading.querySelector('b')).toBeNull();
+        expect(reading.getAttribute('lang')).toBe('ja-Latn'); expect(reading.getAttribute('aria-label')).toBe('日语罗马音');
+        expect(source.textContent).toBe('今日はいい天気です。'); expect(translation.textContent).toBe('今天天气真好。');
+        expect(readVisibleCaptionText(native)).toBe('今日はいい天気です。');
+        expect(renderVideoReadingAnnotation(player, '<b>kyō</b> wa ii tenki desu.', 'ja')).toBe(false);
+        clearRenderedVideoTranslation(document); expect(reading.textContent).toBe(''); expect(source.textContent).toBe('今日はいい天気です。');
+    });
+
     it('滚动窗口中只读取未被裁掉的字幕行，隐藏原生字形时仍能读取当前行', () => {
         const {document} = parseHTML('<div id="captions"><div class="ytp-caption-window-rollup"><span class="ytp-caption-segment">Old clipped line.</span><span class="ytp-caption-segment" style="visibility:hidden">Current line.</span><span class="ytp-caption-segment">New words.</span><span class="ytp-caption-segment">Outside below.</span></div></div>');
         const rollup = document.querySelector('.ytp-caption-window-rollup')!;
