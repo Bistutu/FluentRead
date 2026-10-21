@@ -134,9 +134,9 @@ const artifactBytes = Buffer.byteLength(source);
 // man7 手册的可恢复正文分段：同依赖独立 main 5a362c671 为 2,101,032 字节，
 // 候选为 2,106,163，增加 5,131（0.2442%）；按既有 1 KB 步长最小增加 6 KB，余 937。
 // 保留全部协议、资源和 VM 校验；构建对照与散列见 docs/reports/man7-pre-translation-20261021/userscript-size.json。
-// 保存局部翻译区域：同依赖独立基线 e15c6df2d 为 2,103,154 字节，候选为 2,122,537，
-// 增加 19,383（0.9216%），未新增依赖；范围校验、唯一定位、调度和保存交互沿用共享实现。
-// 利用原余量后按既有 1 KB 步长最小增加 16 KB，余 563；全部协议、资源及 VM 校验保留。
+// 保存局部翻译区域：同依赖独立基线 e15c6df2d 为 2,103,154 字节，候选为 2,122,599，
+// 增加 19,445（0.9246%），未新增依赖；范围校验、唯一定位、调度和保存交互沿用共享实现。
+// 利用原余量后按既有 1 KB 步长最小增加 16 KB，余 501；全部协议、资源及 VM 校验保留。
 // 构建对照与散列见 docs/reports/section-rules-1044-20261022/userscript-size.json。
 const MAX_USERSCRIPT_BYTES = 2_123_100;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';

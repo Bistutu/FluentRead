@@ -70,10 +70,13 @@ async function save() {fire(get('form'), 'submit'); await settle();}
 async function draft(site = 'example.net/docs/', selectors = 'article .content') {await click('.rules-heading button'); await input('.rule-editor input', site); await input('.rule-editor textarea', selectors);}
 
 describe('记住局部区域规则的实际 Vue 界面', () => {
-    it('紧凑显示网站/路径与元素，切换开关和下次行为并删除指定规则', async () => {
+    it('列表只显示网站/路径与动作，不展示路径计数、CSS或常驻教程，切换开关和行为可直接保存', async () => {
         await mount([rule(), rule('second', {site: 'other.example.com', mode: 'auto', selectors: [['#host', '#content']]})]);
         expect(get('.rule-main strong').textContent).toBe('example.com/articles/');
-        expect(get('[data-rule-id="second"] code').textContent).toBe('#host >>> #content');
+        expect(root.querySelector('.rule-row details, .rule-row code, .rules-heading p')).toBeNull();
+        expect(root.textContent).not.toContain('/100');
+        expect(root.textContent).not.toContain('元素路径');
+        expect(root.textContent).not.toContain('#comments');
         await change('[data-rule-id="first"] input', false);
         expect(props.config.sectionTranslationRules[0].enabled).toBe(false);
         expect(get('[data-rule-id="first"]').classList.contains('is-disabled')).toBe(true);
@@ -87,6 +90,8 @@ describe('记住局部区域规则的实际 Vue 界面', () => {
     it('默认草稿为提醒，显式确认后才创建规则并规范化网站与多层路径', async () => {
         await mount([]); expect(get('.rules-empty').textContent).toContain('区域');
         await draft('EXAMPLE.NET/docs///', ' #host >>> #content \n article .content ');
+        expect(get('.rule-advanced').hasAttribute('open')).toBe(true);
+        expect(root.querySelector('[data-testid="section-rule-profile"]')).toBeNull();
         expect(props.config.sectionTranslationRules).toEqual([]);
         expect(get<HTMLSelectElement>('.rule-editor select').value).toBe('remind');
         await change('.rule-editor select', 'auto'); await save();
@@ -94,9 +99,32 @@ describe('记住局部区域规则的实际 Vue 界面', () => {
         expect(saved).toMatchObject({site: 'example.net/docs/', enabled: true, mode: 'auto', selectors: [['#host', '#content'], ['article .content']]});
         expect(saved.id).toMatch(/^section-/u);
         expect(root.querySelector('form')).toBeNull();
-        await click('.rule-actions button:first-child'); await input('.rule-editor input', 'example.org/articles/'); await save();
+        await click('.rule-actions button:first-child');
+        expect(root.querySelector('.rules-list')).toBeNull();
+        expect(get('.rule-advanced').hasAttribute('open')).toBe(false);
+        expect(get<HTMLTextAreaElement>('.rule-editor textarea').value).toBe('#host >>> #content\narticle .content');
+        await input('.rule-editor input', 'example.org/articles/'); await save();
         expect(props.config.sectionTranslationRules).toHaveLength(1);
         expect(props.config.sectionTranslationRules[0]).toMatchObject({...saved, site: 'example.org/articles/'});
+    });
+
+    it('编辑时高级设置默认关闭，可展开编辑；无效选择器会展开错误所在字段', async () => {
+        await mount(); await click('.rule-actions button:first-child');
+        const advanced = get<HTMLDetailsElement>('.rule-advanced');
+        advanced.open = true; fire(advanced, 'toggle'); await settle();
+        expect(advanced.hasAttribute('open')).toBe(true);
+        await input('.rule-editor textarea', 'body');
+        advanced.open = false; fire(advanced, 'toggle'); await settle();
+        expect(advanced.hasAttribute('open')).toBe(false);
+        await save();
+        expect(advanced.hasAttribute('open')).toBe(true);
+        expect(get('[role="alert"]').textContent).toContain('选择器');
+        expect(props.config.sectionTranslationRules[0].selectors).toEqual([['#comments']]);
+        await input('.rule-editor textarea', '#');
+        advanced.open = false; fire(advanced, 'toggle'); await settle(); await save();
+        expect(advanced.hasAttribute('open')).toBe(true);
+        await input('.rule-editor textarea', '#reading'); await save();
+        expect(props.config.sectionTranslationRules[0].selectors).toEqual([['#reading']]);
     });
 
     it('非法作用域、宽泛选择器和语法错误保留草稿并给出错误，不写入配置', async () => {
@@ -134,7 +162,8 @@ describe('记住局部区域规则的实际 Vue 界面', () => {
         props.config.sectionTranslationRules = [rule('external', {site: 'new.example.com'})]; await settle();
         expect(root.querySelector('form')).toBeNull(); fire(oldForm, 'submit'); await settle();
         expect(props.config.sectionTranslationRules[0].id).toBe('external');
-        await draft(); const form = get('form'), add = get('.rules-heading button'), edit = get('.rule-actions button:first-child'), remove = get('.rule-actions button:last-child'), toggle = get<HTMLInputElement>('.rule-row input');
+        const add = get('.rules-heading button'), edit = get('.rule-actions button:first-child'), remove = get('.rule-actions button:last-child'), toggle = get<HTMLInputElement>('.rule-row input');
+        await draft(); const form = get('form');
         props.active = false; await settle();
         expect(root.querySelector('form')).toBeNull();
         for (const [node, event] of [[form, 'submit'], [add, 'click'], [edit, 'click'], [remove, 'click'], [toggle, 'change']] as const) fire(node, event);
@@ -161,14 +190,14 @@ describe('记住局部区域规则的实际 Vue 界面', () => {
         props.config = normalizeConfig(JSON.parse(JSON.stringify(props.config))); await settle();
         expect(root.querySelector('form')).toBeNull(); fire(oldForm, 'submit'); await settle();
         expect(props.config.sectionTranslationRules).toHaveLength(1); expect(old.sectionTranslationRules).toHaveLength(1);
-        await draft(); const lateForm = get('form'), oldAdd = get('.rules-heading button');
+        const oldAdd = get('.rules-heading button'); await draft(); const lateForm = get('form');
         app!.unmount(); app = undefined; fire(lateForm, 'submit'); fire(oldAdd, 'click'); await settle();
         expect(props.config.sectionTranslationRules).toHaveLength(1);
     });
 
     it('缓存停用关闭草稿并拒绝旧事件，重新激活可以创建新规则', async () => {
-        await mount([rule()], true, true); await draft();
-        const staleForm = get('form'), staleAdd = get('.rules-heading button');
+        await mount([rule()], true, true); const staleAdd = get('.rules-heading button'); await draft();
+        const staleForm = get('form');
         visible.value = false; await settle(); fire(staleForm, 'submit'); fire(staleAdd, 'click'); await settle();
         expect(props.config.sectionTranslationRules).toHaveLength(1);
         visible.value = true; await settle(); expect(root.querySelector('form')).toBeNull();
@@ -195,8 +224,9 @@ describe('记住局部区域规则的实际 Vue 界面', () => {
 
     it('缺失方案保持原关联并提示，用户可明确清除或重新选择局部方案', async () => {
         await mount([rule('first', {profileId: 'removed-profile'})]);
-        expect(get('.rule-profile-missing').textContent).toContain('重新选择');
+        expect(root.querySelector('.rule-profile-missing')?.textContent).toBe('方案不可用');
         await click('.rule-actions button:first-child');
+        expect(get('.rule-profile-missing').textContent).toContain('重新选择');
         const select = get<HTMLSelectElement>('[data-testid="section-rule-profile"]');
         expect(select.value).toBe('removed-profile');
         expect(get('option[value="removed-profile"]').hasAttribute('disabled')).toBe(true);
@@ -220,6 +250,7 @@ describe('记住局部区域规则的实际 Vue 界面', () => {
         expect(props.config.sectionTranslationRules[0].profileId).toBe('section-alt');
         expect(root.querySelector('.rule-profile-missing')).toBeNull();
         props.config.quickTranslationProfiles = []; await settle();
+        await click('.rule-actions button:first-child');
         expect(get('.rule-profile-missing').textContent).toContain('重新选择');
         expect(props.config.sectionTranslationRules[0].profileId).toBe('section-alt');
     });

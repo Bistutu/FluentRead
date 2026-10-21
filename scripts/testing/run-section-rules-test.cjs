@@ -27,11 +27,11 @@ fs.writeFileSync(path.join(profileDir, '.owner'), owner, {flag: 'wx'});
 const report = {scope: 'production extension, trusted CDP pointer/keyboard gestures, deterministic Google transport; not live provider latency or quality', sourceProjectRoot: projectRoot, cases: [], screenshots: [], errors: [], consoleErrors: [], errorCoverage: 'errors contains uncaught page exceptions; console.error messages are recorded separately, including intentionally failed fixture requests', profileMode: 'automatically-created-temporary-profile'};
 
 const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Remembered area fixture</title><style>
-body{font:16px/1.6 system-ui;margin:0;background:#fff;color:#172033}.layout{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:24px;max-width:1100px;margin:auto;padding:32px}article,aside{border:1px solid #d0d7de;border-radius:10px;padding:24px}h1{font-size:24px}p{margin:16px 0}aside{align-self:start}button{font:inherit}
+body{font:16px/1.6 system-ui;margin:0;background:#fff;color:#172033}.layout{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:24px;max-width:1100px;margin:auto;padding:32px}article,aside{border:1px solid #d0d7de;border-radius:10px;padding:24px}h1{font-size:24px}p{margin:16px 0}aside{align-self:start}button{font:inherit}@media(max-width:600px){.layout{grid-template-columns:minmax(0,1fr);padding:16px}article,aside{min-width:0}}
 </style></head><body><div class="layout"><article id="target"><h1 id="title">Read only the content you care about</h1><p id="p1">FluentRead remembers the selected article across pages in the same directory.</p><p id="p2">Saved areas must preserve original text and retain every completed translation.</p></article><aside id="outside"><h2>Outside the chosen area</h2><p id="outside-text">This sidebar must remain original and send no translation request.</p></aside></div></body></html>`;
 
 const server = http.createServer((request, response) => {response.setHeader('content-type', 'text/html; charset=utf-8'); response.end(html);});
-let launched, page, popup, worker, cdp, tabId, focusMonitor, browserPid, focusError, currentCase = 'launch', currentAction = 'launch', traceCount = 0, launchAttempted = false, sequence = 0;
+let launched, page, popup, worker, cdp, tabId, focusMonitor, browserPid, focusError, failureSurface, currentCase = 'launch', currentAction = 'launch', traceCount = 0, launchAttempted = false, sequence = 0;
 const focusDiagnostic = path.join(artifacts, 'focus-diagnostic.private.jsonl');
 report.focusDiagnostic = focusDiagnostic;
 function privateFocusRecord(record) {
@@ -112,8 +112,8 @@ async function hover(selector) {
   return point;
 }
 async function clickPickerButton(selector) {
-  const point = await picker(`const b=this.querySelector(${JSON.stringify(selector)});const r=b.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2,disabled:b.disabled}`);
-  assert(point && !point.disabled, `enabled picker button: ${selector}`);
+  const point = await picker(`const b=this.querySelector(${JSON.stringify(selector)});const r=b.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2,disabled:b.disabled,visible:r.width>0&&r.height>0}`);
+  assert(point && point.visible && !point.disabled, `visible enabled picker button: ${selector}`);
   await page.mouse.click(point.x, point.y);
 }
 async function waitLabel(pattern, meta) {
@@ -125,7 +125,68 @@ const hasTranslation = selector => page.evaluate(s => Boolean(document.querySele
 // 页面框架内的文字按界面控件处理，译文原位替换文本节点而不是追加双语块，因此按可见文字判断。
 const showsTranslation = selector => page.evaluate(s => document.querySelector(s)?.textContent.includes('【译】') === true, selector);
 async function shot(name) {const target = path.join(artifacts, `${name}.png`); await page.screenshot({path: target}); report.screenshots.push(target);}
+async function saveDom(name,content) {const file=path.join(artifacts,`${name}.html`);fs.writeFileSync(file,content);(report.domEvidence??=[]).push(file);}
+async function clipShot(target,name,rect) {
+  const viewport=await target.evaluate(()=>({width:innerWidth,height:innerHeight})),x=Math.max(0,rect.left-12),y=Math.max(0,rect.top-12);
+  const clip={x,y,width:Math.min(viewport.width,rect.right+12)-x,height:Math.min(viewport.height,rect.bottom+12)-y};
+  assert.ok(clip.width>0&&clip.height>0,JSON.stringify({name,rect,clip}));
+  const file=path.join(artifacts,`${name}.png`);await target.screenshot({path:file,clip});
+  report.screenshots.push(file);(report.nativeClips??=[]).push({file,clip});
+}
 async function noticeText() {return page.evaluate(() => document.querySelector('#fluent-read-page-notice-host')?.shadowRoot?.textContent || '');}
+const layoutRead = `const box=node=>{const r=node.getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height}};
+const visible=node=>node.getBoundingClientRect().width>0&&getComputedStyle(node).visibility!=='hidden';`;
+async function pickerLayout() {
+  return picker(`${layoutRead}
+    const bar=this.querySelector('.fr-section-bar'),confirm=this.querySelector('.fr-section-confirm');
+    const remember=this.querySelector('.fr-section-remember'),actions=this.querySelector('.fr-section-bar-actions');
+    return{viewport:innerWidth,bar:box(bar),remember:this.querySelector('.fr-section-remember-checkbox').checked,
+      rememberRow:box(remember),actionsRow:box(actions),rememberBeforeActions:Boolean(remember.compareDocumentPosition(actions)&Node.DOCUMENT_POSITION_FOLLOWING),
+      redundantContent:this.querySelectorAll('.fr-section-bar-preview,.fr-section-bar-keys').length,
+      visibleTitle:visible(this.querySelector('.fr-section-bar-title')),visibleAddress:box(this.querySelector('.fr-section-remember-address')),
+      visibleFieldHeadings:this.querySelectorAll('.fr-section-remember-field>span').length,
+      controls:[...bar.querySelectorAll('button,input,select')].filter(visible).map(node=>({...box(node),tag:node.tagName,text:node.tagName==='SELECT'?node.selectedOptions[0]?.textContent:node.textContent,aria:node.getAttribute('aria-label'),clipped:node.tagName==='BUTTON'&&node.scrollWidth>node.clientWidth+1})),
+      confirmation:{...box(confirm),text:confirm.textContent,fontWeight:getComputedStyle(confirm).fontWeight}}`);
+}
+function assertCompactPicker(layout) {
+  assert.ok(layout && layout.bar.left >= 0 && layout.bar.right <= layout.viewport, JSON.stringify(layout));
+  assert.ok(layout.bar.height <= 220, `picker remains a compact control surface: ${JSON.stringify(layout)}`);
+  assert.equal(layout.redundantContent, 0, 'picker omits body preview and permanent shortcut tutorial');
+  assert.equal(layout.visibleTitle, false, 'locked selection summary replaces the repeated title');
+  assert.equal(layout.visibleFieldHeadings, 0, 'selects keep accessible labels without repeated visible headings');
+  assert.ok(layout.rememberBeforeActions&&layout.rememberRow.bottom<=layout.actionsRow.top+1,'remember choices precede the main confirmation in DOM and visual order');
+  assert.ok(layout.controls.every(control => control.left >= layout.bar.left && control.right <= layout.bar.right && !control.clipped), JSON.stringify(layout));
+  for (let a = 0; a < layout.controls.length; a++) for (let b = a + 1; b < layout.controls.length; b++) {
+    const x = layout.controls[a], y = layout.controls[b];
+    assert.ok(Math.min(x.right, y.right) - Math.max(x.left, y.left) <= 1 || Math.min(x.bottom, y.bottom) - Math.max(x.top, y.top) <= 1, `picker controls do not overlap: ${JSON.stringify({x,y})}`);
+  }
+  assert.ok(Number(layout.confirmation.fontWeight) >= 600 && layout.confirmation.height >= 32, 'confirmation retains the strongest action treatment');
+}
+async function rulesLayout(target) {
+  return target.evaluate(() => {
+    const box = node => {const r=node.getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};};
+    const row=document.querySelector('.rule-row'),mode=row.querySelector('.rule-mode'),modeLabel=mode.querySelector('.el-select__selected-item span'),textRange=document.createRange();
+    textRange.selectNodeContents(modeLabel);
+    return {viewport:innerWidth,scrollWidth:document.documentElement.scrollWidth,row:box(row),main:box(row.querySelector('.rule-main')),toggle:box(row.querySelector('.el-switch')),
+      mode:{...box(mode),label:modeLabel.textContent,labelLines:[...textRange.getClientRects()].filter(rect=>rect.width>0).length},
+      redundantContent:row.querySelectorAll('details,code,.rule-profile-missing').length,headingCount:document.querySelectorAll('.rules-heading h3 span,.rules-heading p').length,
+      controls:[...row.querySelectorAll('button,.el-switch,.rule-mode')].map(node=>({...box(node),text:node.textContent,clipped:node.tagName==='BUTTON'&&[...node.querySelectorAll('span')].some(span=>span.scrollWidth>span.clientWidth+1)}))};
+  });
+}
+function assertCompactRules(layout) {
+  assert.ok(layout.scrollWidth <= layout.viewport, JSON.stringify(layout));
+  assert.ok(layout.row.left >= 0 && layout.row.right <= layout.viewport, JSON.stringify(layout));
+  assert.equal(layout.mode.labelLines,1,`next-visit action remains a readable single line: ${JSON.stringify(layout.mode)}`);
+  assert.ok(layout.row.height <= 120, `list keeps only the site and direct actions: ${JSON.stringify(layout)}`);
+  assert.equal(layout.redundantContent, 0, 'CSS paths and missing-profile details stay out of the list');
+  assert.equal(layout.headingCount, 0, 'no capacity counter or permanent tutorial');
+  assert.ok(layout.main.left >= layout.toggle.right + 4, `website and switch must not overlap: ${JSON.stringify(layout)}`);
+  assert.ok(layout.controls.every(control=>control.left>=0&&control.right<=layout.viewport&&!control.clipped), JSON.stringify(layout));
+  for(let a=0;a<layout.controls.length;a++) for(let b=a+1;b<layout.controls.length;b++) {
+    const x=layout.controls[a],y=layout.controls[b];
+    assert.ok(Math.min(x.right,y.right)-Math.max(x.left,y.left)<=1||Math.min(x.bottom,y.bottom)-Math.max(x.top,y.top)<=1,`settings controls do not overlap: ${JSON.stringify({x,y})}`);
+  }
+}
 
 (async () => {
   report.buildFreshness = assertFreshProductionExtension(extensionDir, projectRoot);
@@ -212,6 +273,7 @@ async function noticeText() {return page.evaluate(() => document.querySelector('
   currentCase = 'trusted picker saves the article with its default reminder; settings enables automatic mode';
   await popup.reload(); await popup.waitForSelector('[data-config-ready="true"]');
   page = await newPageWithoutForeground(context, 30000);
+  failureSurface = page;
   page.on('pageerror', e => report.errors.push(e.message));
   page.on('console', message => {if (message.type() === 'error') report.consoleErrors.push({case: currentCase, message: message.text(), location: message.location()});});
   tracePageActions(page, 'fixturePage');
@@ -252,8 +314,17 @@ async function noticeText() {return page.evaluate(() => document.querySelector('
   await hover('#p1'); await page.keyboard.press('Alt+R'); await wait(pickerActive);
   await clickPickerButton('.fr-section-expand'); await waitLabel(/翻译此区域 · 3 段/, '文章');
   await wait(async () => (await pickerState())?.selection === 'locked');
+  report.pickerHierarchy = {desktop: await pickerLayout()};
+  assertCompactPicker(report.pickerHierarchy.desktop);
+  await page.setViewportSize({width:390,height:780}); await page.waitForTimeout(150);
+  report.pickerHierarchy.narrowUnchecked = await pickerLayout(); assertCompactPicker(report.pickerHierarchy.narrowUnchecked);
+  await shot('01a-picker-unchecked-390');
   await clickPickerButton('.fr-section-remember-checkbox');
   await wait(async () => (await picker('return this.querySelector(".fr-section-remember-checkbox").checked')) === true);
+  report.pickerHierarchy.narrowRemembered = await pickerLayout(); assertCompactPicker(report.pickerHierarchy.narrowRemembered);
+  assert.ok(report.pickerHierarchy.narrowRemembered.visibleAddress.width <= 1, 'the full matching address remains screen-reader context');
+  await shot('01b-picker-remember-390');
+  await page.setViewportSize({width:1280,height:900}); await page.waitForTimeout(150);
   report.nativeSelectCoverage = {
     defaultValueVerified: true, switchingByTrustedGesture: false,
     limitation: 'macOS background Edge/CDP delivers trusted uncancelled keys to both ordinary page and picker native selects without committing a value change. Native-select-probe evidence records the comparison; automatic mode is selected through actual Element Plus settings controls below.',
@@ -262,6 +333,8 @@ async function noticeText() {return page.evaluate(() => document.querySelector('
   report.pickerSelection = await picker('return{scope:this.querySelector(".fr-section-remember-scope").value, mode:this.querySelector(".fr-section-remember-mode").value, address:this.querySelector(".fr-section-remember-address").textContent, confirmation:this.querySelector(".fr-section-confirm").textContent}');
   assert.equal(report.pickerSelection.scope, 'path');
   await shot('01-remember-article-default-reminder');
+  await clipShot(page,'01c-picker-bar-desktop-zh-clip',(await pickerLayout()).bar);
+  await saveDom('picker-desktop-zh',await picker('return this.querySelector(".fr-section-bar").outerHTML'));
   await clickPickerButton('.fr-section-confirm');
   await wait(async () => (await readRules()).length === 1);
   let rules = await readRules(); const ruleId = rules[0].id;
@@ -272,6 +345,7 @@ async function noticeText() {return page.evaluate(() => document.querySelector('
   await assertOutsideOriginal();
   report.savedRule = rules[0];
   const initialSettings = await newPageWithoutForeground(context, 30000);
+  failureSurface = initialSettings;
   await initialSettings.goto(`chrome-extension://${new URL(worker.url()).host}/options.html#settings-translation`);
   await initialSettings.locator('[data-settings-category="section-translation"], [data-settings-anchor-link="section-translation"]').first().click();
   const initialRow = initialSettings.locator(`[data-rule-id="${ruleId}"]`);
@@ -281,6 +355,7 @@ async function noticeText() {return page.evaluate(() => document.querySelector('
   await wait(async () => (await readRules())[0]?.mode === 'auto');
   report.automaticRule = (await readRules())[0];
   await initialSettings.close();
+  failureSurface = page;
   await activateExtensionTabWithoutForeground(context, page, 30000);
   report.cases.push(currentCase);
 
@@ -341,7 +416,14 @@ async function noticeText() {return page.evaluate(() => document.querySelector('
   await wait(async () => Boolean(await reminder('return this.querySelector(".fr-section-reminder-action")')));
   await page.waitForTimeout(600);
   assert.equal(await requestCount(), beforeReminder); assert.equal(await countAll(), 0);
+  report.reminderHierarchy = await reminder(`${layoutRead}const row=this.querySelector('.fr-section-reminder');return{row:box(row),labelHidden:this.querySelector('.fr-section-reminder-text').hidden,buttons:row.querySelectorAll('button').length,action:this.querySelector('.fr-section-reminder-action').textContent}`);
+  assert.equal(report.reminderHierarchy.labelHidden,true); assert.equal(report.reminderHierarchy.buttons,2);
   await shot('03-reminder-before-request');
+  await page.setViewportSize({width:390,height:780});
+  report.reminderHierarchy.narrow = await reminder(`${layoutRead}return{viewport:innerWidth,...box(this.querySelector('.fr-section-reminder'))}`);
+  assert.ok(report.reminderHierarchy.narrow.left>=0&&report.reminderHierarchy.narrow.right<=390&&report.reminderHierarchy.narrow.height<=60,JSON.stringify(report.reminderHierarchy));
+  await shot('03b-reminder-390');
+  await page.setViewportSize({width:1280,height:900});
   await clickShadow(reminder, '.fr-section-reminder-close');
   await wait(async () => (await page.locator('[data-fluent-read-ui="section-reminder"]').count()) === 0);
   await page.evaluate(() => {const p = document.createElement('p');p.id = 'dismissed';p.textContent = 'Dismissed reminders must not reappear after unrelated changes.';document.querySelector('#target').append(p);});
@@ -356,6 +438,7 @@ async function noticeText() {return page.evaluate(() => document.querySelector('
 
   currentCase = 'settings mode, enablement, site editing and deletion survive storage and page reload';
   const optionsPage = await newPageWithoutForeground(context, 30000);
+  failureSurface = optionsPage;
   optionsPage.on('pageerror', error => report.errors.push(error.message));
   const openRulesSettings = async () => {
     await optionsPage.goto(`chrome-extension://${new URL(worker.url()).host}/options.html#settings-translation`);
@@ -379,6 +462,7 @@ async function noticeText() {return page.evaluate(() => document.querySelector('
   const disabledRequests = await requestCount(); await page.waitForTimeout(850);
   assert.equal(await countAll(), 0); assert.equal(await requestCount(), disabledRequests);
   const settingsReopened = await newPageWithoutForeground(context, 30000);
+  failureSurface = settingsReopened;
   // Keep the original constant binding usable after reopening by performing the remaining operations here.
   await settingsReopened.goto(`chrome-extension://${new URL(worker.url()).host}/options.html#settings-translation`);
   await settingsReopened.waitForSelector('[data-settings-anchor-link="section-translation"], [data-settings-category="section-translation"]');
@@ -386,36 +470,92 @@ async function noticeText() {return page.evaluate(() => document.querySelector('
   const reopenedRow = settingsReopened.locator(`[data-rule-id="${ruleId}"]`); await reopenedRow.waitFor({state: 'visible'});
   assert.equal(await reopenedRow.getByRole('switch').getAttribute('aria-checked'), 'false');
   await reopenedRow.getByRole('button', {name: '编辑', exact: true}).click();
+  const editor = settingsReopened.locator('.rule-editor');
+  const advanced = editor.locator('.rule-advanced');
+  assert.equal(await advanced.getAttribute('open'),null,'editing opens with advanced CSS hidden');
+  assert.equal(await settingsReopened.locator('.rules-list').count(),0,'the editor gets a focused surface');
+  assert.equal(await editor.locator('[data-testid="section-rule-profile"]').count(),0,'no empty optional profile field');
+  await advanced.locator('summary').click();
+  assert.notEqual(await advanced.getAttribute('open'),null);
+  assert.equal(await editor.getByRole('textbox',{name:'元素路径（CSS）',exact:true}).inputValue(),report.savedRule.selectors.map(path=>path.join(' >>> ')).join('\n'));
+  const editorShot = path.join(artifacts,'05a-settings-advanced-editor.png');
+  await settingsReopened.screenshot({path:editorShot});report.screenshots.push(editorShot);
+  await advanced.locator('summary').click();
   const newSite = `127.0.0.1:${server.address().port}/changed/`;
   await settingsReopened.getByRole('textbox', {name: '网站或路径', exact: true}).fill(newSite);
   await settingsReopened.getByRole('button', {name: '保存规则', exact: true}).click();
   await wait(async () => (await readRules())[0]?.site === newSite);
-  await reopenedRow.locator('summary').click();
+  assert.deepEqual((await readRules())[0].selectors,report.savedRule.selectors,'editing a site leaves its saved element paths intact');
+  report.settingsHierarchy = await rulesLayout(settingsReopened); assertCompactRules(report.settingsHierarchy);
   const settingsShot = path.join(artifacts, '05-settings-remembered-rules.png');
   await settingsReopened.screenshot({path: settingsShot}); report.screenshots.push(settingsShot);
+  await settingsReopened.locator('.section-rules').scrollIntoViewIfNeeded();
+  await clipShot(settingsReopened,'05b-settings-section-desktop-zh-clip',await settingsReopened.locator('.section-rules').evaluate(node=>{const r=node.getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom};}));
   await settingsReopened.setViewportSize({width: 390, height: 780});
   await reopenedRow.scrollIntoViewIfNeeded();
   const narrowShot = path.join(artifacts, '06-settings-rules-390.png');
   await settingsReopened.screenshot({path: narrowShot}); report.screenshots.push(narrowShot);
-  const narrow = await settingsReopened.evaluate(() => {const row = document.querySelector('.rule-row'),rule = row.getBoundingClientRect(),main=row.querySelector('.rule-main').getBoundingClientRect(),toggle=row.querySelector('.el-switch').getBoundingClientRect(),summary=row.querySelector('summary').getBoundingClientRect();return{viewport: innerWidth, scrollWidth:document.documentElement.scrollWidth, row:{left:rule.left,right:rule.right,height:rule.height},main:{left:main.left,right:main.right,top:main.top},toggle:{left:toggle.left,right:toggle.right,top:toggle.top},summaryHeight:summary.height, controls:[...document.querySelectorAll('.rule-row button,.rule-row .el-switch,.rule-mode')].map(node=>{const r=node.getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom}})}});
-  assert.ok(narrow.scrollWidth <= narrow.viewport, JSON.stringify(narrow));
-  assert.ok(narrow.row.left >= 0 && narrow.row.right <= 390, JSON.stringify(narrow));
-  assert.ok(narrow.main.left >= narrow.toggle.right + 4, `website and switch must not overlap: ${JSON.stringify(narrow)}`);
-  assert.ok(narrow.controls.every(rect => rect.left >= 0 && rect.right <= 390), JSON.stringify(narrow));
+  await settingsReopened.locator('.section-rules').scrollIntoViewIfNeeded();
+  await clipShot(settingsReopened,'06c-settings-section-390-zh-clip',await settingsReopened.locator('.section-rules').evaluate(node=>{const r=node.getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom};}));
+  await saveDom('settings-section-390-zh',await settingsReopened.locator('.section-rules').evaluate(node=>node.outerHTML));
+  const narrow = await rulesLayout(settingsReopened); assertCompactRules(narrow);
   report.narrowSettings = narrow;
+  await reopenedRow.getByRole('button',{name:'编辑',exact:true}).click();
+  assert.equal(await advanced.getAttribute('open'),null,'a fresh edit closes advanced again');
+  await editor.scrollIntoViewIfNeeded();
+  const editorNarrow = await editor.evaluate(node=>({left:node.getBoundingClientRect().left,right:node.getBoundingClientRect().right,viewport:innerWidth,scrollWidth:document.documentElement.scrollWidth}));
+  assert.ok(editorNarrow.left>=0&&editorNarrow.right<=390&&editorNarrow.scrollWidth<=390,JSON.stringify(editorNarrow));
+  const narrowEditorShot=path.join(artifacts,'06b-settings-editor-390.png');
+  await settingsReopened.screenshot({path:narrowEditorShot});report.screenshots.push(narrowEditorShot);
+  await editor.getByRole('button',{name:'取消',exact:true}).click();
+  await patch({uiLanguage:'en-US'});
+  await settingsReopened.reload();
+  await settingsReopened.locator('[data-settings-category="section-translation"], [data-settings-anchor-link="section-translation"]').first().click();
+  await reopenedRow.scrollIntoViewIfNeeded();
+  report.englishSettings = await rulesLayout(settingsReopened); assertCompactRules(report.englishSettings);
+  assert.match(await reopenedRow.locator('.rule-mode').innerText(),/Auto translate/);
+  const englishSettingsShot = path.join(artifacts,'07-settings-rules-390-en.png');
+  await settingsReopened.screenshot({path:englishSettingsShot});report.screenshots.push(englishSettingsShot);
+  await page.setViewportSize({width:390,height:780});
+  failureSurface = page;
+  await page.reload();await page.waitForSelector('#fluent-read-page-styles',{state:'attached'});
+  await activateExtensionTabWithoutForeground(context,page,30000);
+  await hover('#p1');await page.keyboard.press('Alt+R');await wait(pickerActive);
+  await clickPickerButton('.fr-section-expand');await wait(async()=>(await pickerState())?.selection==='locked');
+  await wait(async()=>await picker('return !this.querySelector(".fr-section-remember").hidden && !this.querySelector(".fr-section-confirm").disabled'),8000,'English selection inspection completes before remembering');
+  await clickPickerButton('.fr-section-remember-checkbox');
+  await wait(async()=>await picker('return this.querySelector(".fr-section-remember-checkbox").checked'));
+  report.englishPicker = await pickerLayout(); assertCompactPicker(report.englishPicker);
+  assert.equal(report.englishPicker.confirmation.text,'Translate and remember');
+  await shot('08-picker-remember-390-en');
+  await page.keyboard.press('Escape');await wait(async()=>!(await pickerActive()));
+  await patch({uiLanguage:'zh-CN'});
+  failureSurface = settingsReopened;
+  await settingsReopened.reload();
+  await settingsReopened.locator('[data-settings-category="section-translation"], [data-settings-anchor-link="section-translation"]').first().click();
   await reopenedRow.getByRole('button', {name: `删除 ${newSite} 的区域规则`, exact: true}).click();
   await wait(async () => (await readRules()).length === 0);
   await settingsReopened.reload();
   await settingsReopened.locator('[data-settings-category="section-translation"], [data-settings-anchor-link="section-translation"]').first().click();
   await settingsReopened.locator('[data-testid="section-translation-rules"]').waitFor({state: 'visible'});
   assert.equal(await settingsReopened.locator('.rule-row').count(), 0);
-  assert.match(await settingsReopened.locator('.rules-empty').innerText(), /还没有记住/);
+  assert.match(await settingsReopened.locator('.rules-empty').innerText(), /选择区域/);
+  assert.equal(await settingsReopened.locator('.rules-heading button').innerText(),'手动添加');
+  await page.goto(`${origin}/`);await page.waitForSelector('#fluent-read-page-styles',{state:'attached'});
+  failureSurface = page;
+  await hover('#p1');await page.keyboard.press('Alt+R');await wait(pickerActive);
+  await clickPickerButton('.fr-section-expand');await wait(async()=>(await pickerState())?.selection==='locked');
+  await wait(async()=>await picker('return !this.querySelector(".fr-section-remember").hidden && !this.querySelector(".fr-section-confirm").disabled'),8000,'Root-path inspection completes before remembering');
+  await clickPickerButton('.fr-section-remember-checkbox');
+  report.rootScope = await picker(`const scope=this.querySelector('.fr-section-remember-scope');return{scopeHidden:scope.parentElement.hidden,modeVisible:!this.querySelector('.fr-section-remember-mode').parentElement.hidden,describedBy:scope.getAttribute('aria-describedby'),address:this.querySelector('.fr-section-remember-address').textContent}`);
+  assert.equal(report.rootScope.scopeHidden,true,'identical site/path choices are hidden');assert.equal(report.rootScope.modeVisible,true);
+  await page.keyboard.press('Escape');
   report.persistence = {ruleId, modeSurvivedReload: true, enabledSurvivedClose: true, editedSite: newSite, deletionSurvivedReload: true};
   await settingsReopened.close(); report.cases.push(currentCase);
   report.totalRequests = await requestCount();
   assertFocusSafe();
-  assert.deepEqual(report.errors, []); report.success = true;
-})().catch(async error => {report.success = false; report.failure = {case: currentCase, message: error.stack}; process.exitCode = 1; if (page) await shot('failure').catch(() => {});}).finally(async () => {
+  assert.deepEqual(report.errors, []); assert.deepEqual(report.consoleErrors, []); report.success = true;
+})().catch(async error => {report.success = false; report.failure = {case: currentCase, message: error.stack}; process.exitCode = 1; if (failureSurface && !failureSurface.isClosed()) {const file=path.join(artifacts,'failure.png');await failureSurface.screenshot({path:file}).then(()=>report.screenshots.push(file)).catch(()=>{});await saveDom('failure',await failureSurface.content()).catch(()=>{});}}).finally(async () => {
   let closed = !launchAttempted;
   try {if (launched) {await launched.close(); closed = true;}} catch (error) {report.cleanupError = error.message; process.exitCode = 1;}
   if (focusMonitor) {

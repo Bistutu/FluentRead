@@ -1,7 +1,7 @@
 /**
  * @file src/features/section-translation/content/picker.css
  * 文件职责：定义局部翻译选择模式在封闭 Shadow Root 内的视觉，包括稳定区域高亮框、自然语言范围标签和固定确认操作条。
- * 主要内容：高亮框按“翻译/恢复原文/无可翻译内容”三种语气着色，选区几何立即贴合且只过渡颜色，标签显示动作、段落数和范围类型，操作条提供原文预览、扩大缩小、重新选择、区域记忆选项与显式确认，适配窄屏和键盘焦点；确认选择时播放短暂收束动画，触屏隐藏键盘提示，减少动态效果时关闭过渡。
+ * 主要内容：高亮框按动作着色并显示段落数与范围类型；紧凑操作条突出选择状态和确认，范围调整采用有名称的图标按钮，区域记忆仅在勾选后展示动作与范围；完整地址作为辅助说明保留，正文摘录与重复教程不常驻，适配窄屏、键盘焦点和减少动态效果。
  * 模块边界：该样式只注入 picker.ts 创建的 Shadow Root，不影响宿主页面，也不决定区域判定或翻译行为；宿主元素的抗覆盖布局由 TypeScript 以内联 important 设置。
  */
 :host {
@@ -112,13 +112,13 @@
     bottom: max(18px, env(safe-area-inset-bottom));
     left: 50vw;
     display: flex;
-    width: 560px;
+    width: 440px;
     max-width: calc(100vw - 24px);
     flex-direction: column;
-    gap: 10px;
-    padding: 14px;
+    gap: 8px;
+    padding: 12px;
     border: 1px solid rgba(255, 255, 255, .14);
-    border-radius: 16px;
+    border-radius: 12px;
     color: #f4f5f9;
     background: rgba(24, 27, 38, .96);
     box-shadow: 0 14px 34px rgba(12, 14, 22, .28);
@@ -142,16 +142,8 @@
     color: #c8cdd8;
 }
 
-.fr-section-bar-preview {
-    overflow: hidden;
-    padding: 8px 10px;
-    border-radius: 8px;
-    color: #e2e5ed;
-    background: rgba(255, 255, 255, .06);
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    unicode-bidi: plaintext;
-}
+.fr-section-bar-heading.is-locked .fr-section-bar-title { display: none; }
+.fr-section-bar-heading.is-locked .fr-section-bar-instruction { color: #f4f5f9; font-weight: 600; }
 
 .fr-section-button {
     min-height: 34px;
@@ -168,6 +160,8 @@
 .fr-section-button:hover:not(:disabled) {
     background: rgba(255, 255, 255, .14);
 }
+
+.fr-section-size-button { width: 34px; padding: 0; font-size: 18px; }
 
 .fr-section-button:disabled {
     opacity: .4;
@@ -214,12 +208,6 @@
     white-space: nowrap;
 }
 
-.fr-section-bar-keys {
-    flex: none;
-    color: #aeb4c2;
-    white-space: nowrap;
-}
-
 .fr-section-bar-close {
     display: inline-flex;
     width: 26px;
@@ -247,28 +235,11 @@
     outline-offset: 2px;
 }
 
-@media (pointer: coarse) {
-    .fr-section-bar-keys {
-        display: none;
-    }
-}
-
 @media (max-width: 520px) {
-    .fr-section-bar-keys {
-        display: none;
-    }
-    .fr-section-bar-actions {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-    .fr-section-confirm {
-        grid-column: 1 / -1;
-        margin-left: 0;
-    }
     .fr-section-button {
-        padding-inline: 5px;
-        white-space: normal;
+        padding-inline: 8px;
     }
+    .fr-section-size-button { padding: 0; }
     .fr-section-bar-instruction {
         white-space: normal;
     }
@@ -287,15 +258,16 @@
 }
 
 /* hidden 必须盖过内部 flex；只在锁定的可翻译范围显示记忆选项。 */
-.fr-section-remember[hidden], .fr-section-remember-fields[hidden], .fr-section-remember-address[hidden] { display: none; }
-.fr-section-remember { display: grid; gap: 8px; padding-block: 2px; }
+.fr-section-remember[hidden], .fr-section-remember-fields[hidden], .fr-section-remember-field[hidden], .fr-section-remember-address[hidden] { display: none; }
+.fr-section-remember { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; padding-top: 8px; border-top: 1px solid #ffffff1a; }
 .fr-section-remember-label, .fr-section-remember-fields, .fr-section-remember-field { display: flex; align-items: center; gap: 8px; }
-.fr-section-remember-label { width: fit-content; cursor: pointer; }
+.fr-section-remember-label { flex: none; width: fit-content; cursor: pointer; }
 .fr-section-remember-checkbox { width: 15px; height: 15px; margin: 0; accent-color: #ef4776; }
-.fr-section-remember-fields { flex-wrap: wrap; gap: 8px 16px; }
-.fr-section-remember-field { flex: 1; min-width: 180px; color: #c8cdd8; }
-.fr-section-remember-field select { flex: 1; min-width: 0; min-height: 32px; padding: 4px 7px; border: 1px solid #636a7b; border-radius: 7px; color: #f4f5f9; background: #272b38; font: inherit; }
+.fr-section-remember-fields { flex: 1; min-width: 210px; gap: 6px; }
+.fr-section-remember-field { flex: 1; min-width: 0; }
+.fr-section-remember-field select { width: 100%; min-width: 0; min-height: 32px; padding: 4px 6px; border: 1px solid #636a7b; border-radius: 7px; color: #f4f5f9; background: #272b38; font: inherit; }
 .fr-section-remember input:focus-visible, .fr-section-remember select:focus-visible { outline: 2px solid #ff8fb0; outline-offset: 2px; }
-.fr-section-remember-address { overflow: hidden; color: #aeb4c2; text-overflow: ellipsis; white-space: nowrap; }
-.fr-section-remember-status { color: #ffb5c8; font-size: 12px; }
+.fr-section-remember-address { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.fr-section-remember-status { flex-basis: 100%; color: #ffb5c8; font-size: 12px; }
+.fr-section-remember-status.is-progress { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); }
 .fr-section-remember-status:empty { display: none; }

@@ -739,7 +739,7 @@ export const zhCNMessages = {
     "sectionTranslation.picker.locked": "范围已锁定，可调整后确认",
     "sectionTranslation.picker.expand": "扩大范围",
     "sectionTranslation.picker.shrink": "缩小范围",
-    "sectionTranslation.picker.reselect": "重新选择",
+    "sectionTranslation.picker.reselect": "重选",
     "sectionTranslation.picker.confirm": "翻译所选区域",
     "sectionTranslation.picker.restore": "恢复原文",
     "sectionTranslation.picker.preview": "移动鼠标预览，点击或按住左键划选",

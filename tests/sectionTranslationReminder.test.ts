@@ -21,7 +21,7 @@ beforeEach(() => {
     dismiss = vi.fn();
 });
 afterEach(() => {controller.abort(); vi.restoreAllMocks(); vi.unstubAllGlobals();});
-const render = (): void => showSectionReminder({count: 2, text: key => key, translate, dismiss, signal: controller.signal});
+const render = (count = 2, text: (key: string, params?: Readonly<Record<string, string | number>>) => string = key => key): void => showSectionReminder({count, text, translate, dismiss, signal: controller.signal});
 function click(selector: string, trusted = true): void {
     const event = new document.defaultView!.Event('click', {bubbles: true});
     Object.defineProperty(event, 'isTrusted', {value: trusted});
@@ -30,18 +30,32 @@ function click(selector: string, trusted = true): void {
 const flush = async (): Promise<void> => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); };
 
 describe('记忆区域提醒', () => {
-    it('一行提供可访问操作，不抢焦点；忽略只关闭本提醒', () => {
-        render();
+    it('只显示翻译和关闭按钮，多个区域的数量保留在可访问名称中', () => {
+        const text = vi.fn((key: string) => key);
+        render(2, text);
         const host = document.querySelector('[data-fluent-read-ui="section-reminder"]')!;
         expect(host.getAttribute('translate')).toBe('no');
         expect(root.querySelector('[role="region"]')!.getAttribute('aria-label')).toBe('sectionTranslation.picker.title');
-        expect(root.querySelector('[role="status"]')!.textContent).toBe('sectionTranslation.rules.available');
+        const status = root.querySelector('[role="status"]') as HTMLElement;
+        expect(status.hidden).toBe(true);
+        expect(status.textContent).toBe('');
+        expect(root.querySelector('.fr-section-reminder')!.textContent).toBe('sectionTranslation.rules.translate×');
+        expect(root.querySelector('.fr-section-reminder-action')!.getAttribute('aria-label')).toBe('sectionTranslation.rules.translateCount');
+        expect(text).toHaveBeenCalledWith('sectionTranslation.rules.translateCount', {count: 2});
+        expect(text).not.toHaveBeenCalledWith('sectionTranslation.rules.available', expect.anything());
         click('.fr-section-reminder-close', false);
         expect(host.isConnected).toBe(true);
         click('.fr-section-reminder-close');
         expect(dismiss).toHaveBeenCalledOnce();
         expect(translate).not.toHaveBeenCalled();
         expect(host.isConnected).toBe(false);
+    });
+
+    it('单个区域直接以按钮文字作为可访问名称，不重复数量说明', () => {
+        render(1);
+        const action = root.querySelector('.fr-section-reminder-action')!;
+        expect(action.textContent).toBe('sectionTranslation.rules.translate');
+        expect(action.hasAttribute('aria-label')).toBe(false);
     });
 
     it('重复点击只发起一次；成功后关闭', async () => {
@@ -63,9 +77,14 @@ describe('记忆区域提醒', () => {
         translate.mockRejectedValueOnce(new Error('provider'));
         render();
         click('.fr-section-reminder-action'); await flush();
-        expect(root.querySelector('[role="status"]')!.textContent).toBe('translationCenter.requestError');
+        const status = root.querySelector('[role="status"]') as HTMLElement;
+        expect(status.textContent).toBe('sectionTranslation.rules.translateFailed');
+        expect(status.hidden).toBe(false);
         expect((root.querySelector('button') as HTMLButtonElement).disabled).toBe(false);
-        click('.fr-section-reminder-action'); await flush();
+        click('.fr-section-reminder-action');
+        expect(status.hidden).toBe(true);
+        expect(status.textContent).toBe('');
+        await flush();
         expect(translate).toHaveBeenCalledTimes(2);
         expect(dismiss).toHaveBeenCalledOnce();
 

@@ -6,15 +6,15 @@
     "sha256": "6ea4b78191049740a674be67591c8a76d792b6d6580f3eade98bf784adf5fa7f"
   },
   "candidate": {
-    "bytes": 2122537,
-    "sha256": "d811c98692a04e552016d76a6863a654bee5c185793fccfd6a1d9d11bc4750e0"
+    "bytes": 2122599,
+    "sha256": "5017ea26cccbccb05bab46bf6805595bca961408f674d0ab5b243e9ebf57b445"
   },
-  "deltaBytes": 19383,
-  "deltaPercent": 0.9216158208100785,
+  "deltaBytes": 19445,
+  "deltaPercent": 0.9245637742171995,
   "previousBudget": 2107100,
   "budget": 2123100,
-  "remainingBytes": 563,
+  "remainingBytes": 501,
   "budgetStepBytes": 1000,
   "note": "No new dependency. All existing protocol, resource and VM verification checks retained.",
-  "languageResourceCommit": "7f5b4685a3f5a99329d17e501d84a3a3c83f7de4"
+  "languageResourceCommit": "efb7902363befae82164fee4ed65799db34e895d"
 }

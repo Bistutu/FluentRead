@@ -36,52 +36,6 @@
     "requestsAfterClick": 21,
     "dismissedStayedQuiet": true
   },
-  "narrowSettings": {
-    "viewport": 390,
-    "scrollWidth": 390,
-    "row": {
-      "left": 16,
-      "right": 374,
-      "height": 134.09375
-    },
-    "main": {
-      "left": 88,
-      "right": 362,
-      "top": 426.3828125
-    },
-    "toggle": {
-      "left": 28,
-      "right": 80,
-      "top": 426.3828125
-    },
-    "summaryHeight": 17.59375,
-    "controls": [
-      {
-        "left": 28,
-        "right": 80,
-        "top": 426.3828125,
-        "bottom": 470.3828125
-      },
-      {
-        "left": 28,
-        "right": 144,
-        "top": 496.4765625,
-        "bottom": 536.4765625
-      },
-      {
-        "left": 264,
-        "right": 312,
-        "top": 496.4765625,
-        "bottom": 529.2734375
-      },
-      {
-        "left": 316,
-        "right": 362,
-        "top": 496.875,
-        "bottom": 528.875
-      }
-    ]
-  },
   "totalRequests": 21,
   "success": true,
   "focusEvents": {
@@ -100,5 +54,103 @@
     "displayTarget": "secondary",
     "browserFrontmost": false
   },
-  "productionBuildFreshnessVerified": true
+  "productionBuildFreshnessVerified": true,
+  "pickerHierarchy": {
+    "desktop": {
+      "viewport": 1272,
+      "width": 440,
+      "height": 128.5,
+      "rememberChecked": false,
+      "decisionsBeforeConfirmation": true,
+      "redundantContent": 0,
+      "visibleFieldHeadings": 0,
+      "confirmation": "翻译所选区域"
+    },
+    "narrowUnchecked": {
+      "viewport": 390,
+      "width": 366,
+      "height": 128.5,
+      "rememberChecked": false,
+      "decisionsBeforeConfirmation": true,
+      "redundantContent": 0,
+      "visibleFieldHeadings": 0,
+      "confirmation": "翻译所选区域"
+    },
+    "narrowRemembered": {
+      "viewport": 390,
+      "width": 366,
+      "height": 143,
+      "rememberChecked": true,
+      "decisionsBeforeConfirmation": true,
+      "redundantContent": 0,
+      "visibleFieldHeadings": 0,
+      "confirmation": "翻译并记住"
+    },
+    "english390": {
+      "viewport": 390,
+      "width": 366,
+      "height": 168.5,
+      "rememberChecked": true,
+      "decisionsBeforeConfirmation": true,
+      "redundantContent": 0,
+      "visibleFieldHeadings": 0,
+      "confirmation": "Translate and remember"
+    }
+  },
+  "settingsHierarchy": {
+    "desktop": {
+      "viewport": 1272,
+      "scrollWidth": 1272,
+      "rowHeight": 64,
+      "toggleTextGap": 10,
+      "redundantContent": 0,
+      "headingCount": 0,
+      "mode": {
+        "width": 144,
+        "height": 40,
+        "label": "自动翻译",
+        "labelLines": 1
+      }
+    },
+    "chinese390": {
+      "viewport": 390,
+      "scrollWidth": 390,
+      "rowHeight": 112,
+      "toggleTextGap": 8,
+      "redundantContent": 0,
+      "headingCount": 0,
+      "mode": {
+        "width": 144,
+        "height": 40,
+        "label": "自动翻译",
+        "labelLines": 1
+      }
+    },
+    "english390": {
+      "viewport": 390,
+      "scrollWidth": 390,
+      "rowHeight": 112,
+      "toggleTextGap": 8,
+      "redundantContent": 0,
+      "headingCount": 0,
+      "mode": {
+        "width": 144,
+        "height": 40,
+        "label": "Auto translate",
+        "labelLines": 1
+      }
+    }
+  },
+  "reminderHierarchy": {
+    "height": 42,
+    "narrowHeight": 42,
+    "labelHidden": true,
+    "buttons": 2,
+    "action": "翻译已记住的区域"
+  },
+  "rootScope": {
+    "scopeHidden": true,
+    "modeVisible": true,
+    "describedBy": "fr-section-remember-address"
+  }
 }
