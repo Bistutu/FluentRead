@@ -17,6 +17,7 @@ import {userscriptFetch} from './http';
 import {getStoredValue, setStoredValue} from './storage';
 import {mimoRetirementLegacyText} from '@/src/core/i18n/messages/mimoRetirement';
 import {aiRequestTimeoutMessages} from '@/src/core/i18n/messages/aiRequestTimeout';
+import {vocabularySpeechMessages} from './vocabularySpeechMessages';
 
 const pending = new Map<RegisteredUiLanguage, Promise<boolean>>();
 
@@ -171,6 +172,7 @@ export const ensureUiLanguageBundle: EnsureUiLanguageBundle = (value) => {
             registerUiLanguageBundle(registered, {...bundle, messages: {
                 ...recovery, ...bundle.messages, ...aiRequestTimeoutMessages[registered], ...sectionSweepMessages[registered],
                 ...deeplxMessages[registered],
+                ...(registered === 'en-US' ? {} : vocabularySpeechMessages[registered]),
             }, legacyText: {...bundle.legacyText, ...mimoRetirementLegacyText[registered]}});
             return true;
         })
