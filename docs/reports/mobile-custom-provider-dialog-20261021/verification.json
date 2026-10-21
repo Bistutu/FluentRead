@@ -324,7 +324,7 @@
     "real provider/API key/request/translation",
     "simultaneous full-field/header/footer visibility",
     "continuous focus or independent browser PID-group closure census",
-    "new native package installation/runtime; old c54 native evidence is not this build"
+    "new native package UI/runtime; U5 verifies installed binary identity only, old c54 UI evidence remains historical"
   ],
   "referenceProjectsUsed": false,
   "PRMerged": false,
@@ -436,5 +436,223 @@
     "newUnitTestExecution": false,
     "unchangedDialogLifecyclePrior159Tests": true,
     "independentFreshOutputPerFileReviewPassed": true
+  },
+  "nativeUpdate5": {
+    "scope": "dedicated-simulator-binary-identity-only",
+    "sourceCommit": "e4a9047465f302a3cd2d5e7b8fa6f13e53629b02",
+    "outerSession": 26557,
+    "outerExit": 0,
+    "elapsedMs": 33594.124625,
+    "singleInstall": true,
+    "commands": 12,
+    "streams": 24,
+    "allClosedReapedOwnGroupsAbsent": true,
+    "appFiles": 490,
+    "webFiles": 472,
+    "fourNewMapPairsEqualBuild": true,
+    "independentFreshInstalledAppWebPerFileAndAggregateHashVerified": true,
+    "all15EndedShutdown": true,
+    "other14WholeRecordsUnchanged": true,
+    "configurationPreservation": "UNKNOWN",
+    "permissionPreservation": "UNKNOWN",
+    "UIAcceptance": false,
+    "nativeDialogOrKeyboardAcceptance": false,
+    "evidence": {
+      "report": {
+        "path": "settings-selection-source-return-followup-1/fd81-update-5/update-only-runtime-1/update-only-report.json",
+        "bytes": 54249,
+        "sha256": "a5aa4e90bce104a0b1980675bbbe67f6ff8ae81282d8783092eac7d339049a68"
+      },
+      "rootReceipt": {
+        "path": "settings-selection-source-return-followup-1/fd81-update-5/update-only-runtime-1/root-execution-receipt.json",
+        "bytes": 7195,
+        "sha256": "20d3d8db47c27e4b42e1c08be6bd8e1cc76d9cce401131bac84d7a22e778e5d2"
+      },
+      "independentReview": {
+        "path": "settings-selection-source-return-followup-1/fd81-update-5/actual-independent-review.json",
+        "bytes": 8048,
+        "sha256": "f5978e6fd05692333ee837de570913f68716d8c202c4cc5433f7572c6e4ec21d"
+      },
+      "commitBridge": {
+        "path": "settings-selection-source-return-followup-1/fd81-update-5/root-build3-commit-bridge.json",
+        "bytes": 2090,
+        "sha256": "993d018f998653f6aa36271cc408672537406b661bb3e2da4903fe49fd8ed19e"
+      }
+    }
+  },
+  "nativeCategoryCase54": {
+    "productCommit": "e4a9047465f302a3cd2d5e7b8fa6f13e53629b02",
+    "installedPackage": "N3/U5",
+    "formal": {
+      "pass": 0,
+      "skip": 1,
+      "fail": 0
+    },
+    "durationSeconds": 19.46533501148224,
+    "AX": 7,
+    "UI": 6,
+    "PNG": 0,
+    "uniqueKnownRole": "other",
+    "knownNodeFrame": {
+      "x": 183,
+      "y": 74,
+      "width": 203,
+      "height": 35
+    },
+    "full44Gate": false,
+    "liveFreshGateReached": false,
+    "categoryClicks": 0,
+    "selectSemanticsProved": false,
+    "dialogOrKeyboardAccepted": false,
+    "cause": "UNKNOWN",
+    "commands": 21,
+    "streams": 42,
+    "closed": true,
+    "evidence": {
+      "report": {
+        "path": "fresh-installed84a-native-touch-selection-54/reading-options-readonly-execution-report.json",
+        "bytes": 61165,
+        "sha256": "1e752d3af9e8088e380d0c58ab551b2799e7ac605e74fb397244a6e0e730c2cd"
+      },
+      "rootReceipt": {
+        "path": "fresh-installed84a-native-touch-selection-54/root-execution-receipt.json",
+        "bytes": 7649,
+        "sha256": "5bf1aa36858f86cf718e6e998b462841bed112f5fbabeba852531c562ef5580c"
+      },
+      "independentReview": {
+        "path": "fresh-installed84a-native-touch-selection-54/actual-independent-review.json",
+        "bytes": 10225,
+        "sha256": "e846c3fd1d64cc7ff523f81d70c8163b50edc2d663a006c1c8f717468eebe152"
+      }
+    }
+  },
+  "UI7": {
+    "scope": "narrow-fine-category-CSS-and-controlled-seven-dialog-layouts",
+    "outerSession": 44885,
+    "outerExit": 0,
+    "elapsedMs": 21118.722999999998,
+    "caseCount": 7,
+    "originalPNGCount": 20,
+    "RootAll20OriginalsViewed": true,
+    "fineNonCoarseCategory": {
+      "case": "narrow-fine-category",
+      "stage": "initial-services-narrow-non-touch",
+      "label": "设置分类",
+      "visible": true,
+      "bounds": {
+        "x": 184,
+        "y": 12,
+        "width": 190,
+        "height": 46
+      },
+      "font": 16,
+      "narrow": true,
+      "coarse": false,
+      "fine": true
+    },
+    "navigationObservations": 13,
+    "visible46pxFont16Observations": 9,
+    "hiddenWideObservations": 4,
+    "publicSave": {
+      "persisted": true,
+      "noKey": true,
+      "reservedEndpoint": "https://example.invalid/v1/chat/completions",
+      "model": "fixture-model",
+      "defaultServiceUnchanged": true
+    },
+    "observedPageErrors": 0,
+    "observedHTTPAttempts": 0,
+    "nativeKeyboardOrTouchOrIOSAcceptance": false,
+    "cleanup": "guarded close fulfilled and profileRemoved; no saved PID/group census",
+    "nativeCase54IdentityIsHistorical": true,
+    "newUnitTestExecution": false,
+    "evidence": {
+      "report": {
+        "path": "mobile-custom-provider-ui-7/report.json",
+        "bytes": 52321,
+        "sha256": "6abc0ba63675371aca9716dc4b7d3f48f06cfb26a56e6aa4cbf6a6e7bbcf3244"
+      },
+      "rootReceipt": {
+        "path": "mobile-custom-provider-ui-7/root-execution-receipt.json",
+        "bytes": 9923,
+        "sha256": "da4b158b6e286e5cbd22c97a58dd56af69d5635075a5a10774496f912e1084e3"
+      },
+      "localChecks": {
+        "path": "settings-selection-source-return-followup-1/mobile-settings-category-local-checks.json",
+        "bytes": 2524,
+        "sha256": "b0c8768e618adec975fbea096ca541a30adfa2a62e0cdb63cfb9d0934fab1d10"
+      },
+      "independentReview": {
+        "path": "mobile-custom-provider-ui-7/actual-independent-review.json",
+        "bytes": 15443,
+        "sha256": "294a5e33da3b33d0fcfba4fd64958fdb25f6cffa2df9677aa5dfd3e509350ebe"
+      }
+    },
+    "original": {
+      "file": "ui7-narrow-fine-category-original.png",
+      "bytes": 64919,
+      "sha256": "6a6145e8dc497c2261f05e030b4c36588a1af3f5e54621b94a687fb58610caa0"
+    },
+    "independentAll20OriginalsViewed": true
+  },
+  "nativeBuild4": {
+    "passed": false,
+    "outerSession": 4017,
+    "outerExit": 1,
+    "commands": 3,
+    "streams": 6,
+    "nativeCompilationStarted": false,
+    "installed": false,
+    "reason": "Apple converter supplied-path access / manifest parse error; exact underlying OS cause not proven",
+    "report": {
+      "path": "settings-selection-source-return-followup-1/native-unsigned-build-4/native-build-result.json",
+      "bytes": 12400,
+      "sha256": "65be12b66b33582cd305d0980c11fdbca195e7074ce5414fc1c710c8fb1fcac1"
+    },
+    "rootReceipt": {
+      "path": "settings-selection-source-return-followup-1/native-unsigned-build-4/root-execution-receipt.json",
+      "bytes": 835,
+      "sha256": "9509164b91b1389a010ca08bd8b7a30a6507afc7ae48e36a4a2e40eb0e7fe0f4"
+    }
+  },
+  "nativeBuild5": {
+    "passed": true,
+    "scope": "unsigned-local-build-only",
+    "sourceBaseCommitContextOnly": "e4a9047465f302a3cd2d5e7b8fa6f13e53629b02",
+    "builtFromExactCleanCommit": false,
+    "outerSession": 36743,
+    "outerExit": 0,
+    "elapsedMs": 101116.320625,
+    "commands": 8,
+    "streams": 16,
+    "allClosedReapedOwnGroupsAbsent": true,
+    "sourceFiles": 2673,
+    "inputPins": 17,
+    "webFiles": 472,
+    "nativeAppFiles": [
+      487,
+      490,
+      490
+    ],
+    "installed": false,
+    "nativeUIAcceptance": false,
+    "evidence": {
+      "report": {
+        "path": "settings-selection-source-return-followup-1/native-unsigned-build-5/native-build-result.json",
+        "bytes": 32147,
+        "sha256": "96f06e9979e7a90937594eed4aaead7ba29d866c19fcdc671c77b39dc1d42259"
+      },
+      "rootReceipt": {
+        "path": "settings-selection-source-return-followup-1/native-unsigned-build-5/root-execution-receipt.json",
+        "bytes": 6442,
+        "sha256": "8f86849f514a820f425cf1ded3988a72ca57f30fe43563a77e08866ecde1d27d"
+      },
+      "independentReview": {
+        "path": "settings-selection-source-return-followup-1/native-unsigned-build-5/actual-independent-review.json",
+        "bytes": 13545,
+        "sha256": "b6e09c19a57414e74a4c9fd3dae5ed6ca9a492690605b5c0329f0a551fec6a9e"
+      }
+    },
+    "independentFreshSourceWebAndThreeAppPerFileMapsVerified": true
   }
 }

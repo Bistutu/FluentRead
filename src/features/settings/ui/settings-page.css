@@ -576,7 +576,7 @@ h1 { margin-bottom: 6px; font-size: 26px; line-height: 1.25; letter-spacing: -.0
   .settings-app .sidebar .brand strong { font-size: 14px; }
   .settings-app .sidebar .brand small { display: none; }
   .settings-app .sidebar nav { display: none; }
-  .mobile-settings-navigation { display: block; flex: 1; width: 100%; min-width: 0; min-height: 38px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); font: inherit; font-size: 12px; }
+  .mobile-settings-navigation { display: block; flex: 1; width: 100%; min-width: 0; box-sizing: border-box; min-height: 46px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); font: inherit; font-size: 16px; }
   .settings-app .workspace { padding: 18px 14px 12px; }
   .settings-app .topbar { flex-direction: column; align-items: stretch; gap: 14px; margin-bottom: 18px; }
   .settings-app .search-box { width: 100%; }

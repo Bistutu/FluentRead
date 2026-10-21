@@ -1,7 +1,7 @@
 /**
  * @file scripts/testing/run-mobile-provider-dialog-test.cjs
  * 文件职责：在实际生产扩展的临时后台 Edge 中，限定验证添加服务窗口的移动可见视口与滚动可达性。
- * 主要内容：320/390、触屏横屏、深色、180px 键盘和平移视口夹具及桌面600px；检查公开添加入口与窗口44px目标、16px输入、组合字段换行、取消重开和可选的无密钥公共保存。
+ * 主要内容：320/390、触屏横屏、深色、180px 键盘和平移视口夹具及桌面600px；检查窄屏非触屏分类、公开添加入口与窗口44px目标、16px输入、组合字段换行、取消重开和可选的无密钥公共保存。
  * 模块边界：一个自有浏览器，HTTP(S)离线并全部中止；仅首启语言使用临时配置夹具，服务窗口走真实公共UI。VV/触屏模拟不是OS键盘、iOS或物理设备验收。
  */
 'use strict';
@@ -42,7 +42,7 @@ const cases = [
   {name: 'keyboard-panned-180', width: 390, height: 560, touch: true, visibleHeight: 180, top: 140, composite: true},
   {name: 'desktop-600-dialog', width: 1280, height: 900, touch: false},
 ];
-const report = {ok: false, extensionDir, manifestSHA256: crypto.createHash('sha256').update(manifestBytes).digest('hex'), scope: 'Actual production options Add-service dialog only; controlled VisualViewport/touch media fixtures, not an OS keyboard or native/physical-device acceptance.', cases: [], addEntryTargets: [], screenshots: [], consoleErrors: [], httpAttempts: [], cleanup: {profileRemoved: false}, publicSaveRequested: saveProvider};
+const report = {ok: false, extensionDir, manifestSHA256: crypto.createHash('sha256').update(manifestBytes).digest('hex'), scope: 'Actual production options category target and Add-service dialog only; controlled VisualViewport/touch media fixtures, not an OS keyboard or native/physical-device acceptance.', cases: [], addEntryTargets: [], navigationTargets: [], screenshots: [], consoleErrors: [], httpAttempts: [], cleanup: {profileRemoved: false}, publicSaveRequested: saveProvider};
 let session, page, client, stopped = false, launchAttempted = false, timer, currentCase = 'setup';
 const began = performance.now(), actionDeadline = began + 160000;
 function available(maximum = 5000) {
@@ -92,7 +92,22 @@ async function completeLanguageFixture() {
   }));
   report.setup = 'Only uiLanguage=zh-CN and uiLanguageSetupCompleted=true seeded in the fresh owned profile; not onboarding acceptance.';
 }
+async function measureNavigation(stage) {
+  const target = await op('known settings category measurement', () => page.evaluate(() => {
+    const nodes = document.querySelectorAll('select.mobile-settings-navigation[aria-label="设置分类"]');
+    if (nodes.length !== 1) throw new Error('Expected one known settings category select');
+    const node = nodes[0], r = node.getBoundingClientRect(), style = getComputedStyle(node);
+    return {label: '设置分类', visible: node.getClientRects().length > 0 && style.visibility !== 'hidden',
+      bounds: {x: r.x, y: r.y, width: r.width, height: r.height}, font: parseFloat(style.fontSize),
+      narrow: matchMedia('(max-width: 700px)').matches, coarse: matchMedia('(any-pointer: coarse)').matches,
+      fine: matchMedia('(pointer: fine)').matches};
+  }));
+  report.navigationTargets.push({case: currentCase, stage, ...target});
+  if (target.visible) {assert(target.bounds.width >= 43.99 && target.bounds.height >= 43.99, 'Visible settings category must be at least44px');assert(target.font >= 16, 'Visible settings category text must be at least16px');}
+  return target;
+}
 async function openDialog() {
+  await measureNavigation('before-public-Add');
   const add = page.getByTestId('custom-service-add');
   if (!await op('public Add entry visibility', () => add.isVisible())) {
     const toggle = page.locator('.mobile-directory-toggle');
@@ -191,6 +206,13 @@ async function run() {
   await click(page.locator('button[data-section="settings-services"]'));
   await op('normal Add service entry', timeout => page.getByTestId('custom-service-add').waitFor({timeout}));
   const baseline = await readConfig();assert.equal(baseline.theme, 'auto');assert.equal((baseline.customOpenAIProviders || []).length, 0);
+  currentCase = 'narrow-fine-category';
+  await op('narrow non-touch viewport', () => page.setViewportSize({width: 390, height: 700}));
+  await op('narrow non-touch media', () => client.send('Emulation.setTouchEmulationEnabled', {enabled: false, maxTouchPoints: 1}));
+  await frames();
+  const navigation = await measureNavigation('initial-services-narrow-non-touch');
+  assert.equal(navigation.visible, true);assert.equal(navigation.narrow, true);assert.equal(navigation.coarse, false);assert.equal(navigation.fine, true);
+  await shot('narrow-fine-category-original');
   for (const c of cases) {
     currentCase = c.name;
     await op('layout viewport', () => page.setViewportSize({width: c.width, height: c.height}));
