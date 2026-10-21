@@ -594,7 +594,50 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
     eventOf(repair)();await drain()
     expect(createTab).toHaveBeenCalledWith({url:expect.stringContaining('options.html?service=google')});expect(close).toHaveBeenCalledOnce()
   })
-  it('无正文诊断直达适配目标并携带固定来源，普通导航不附加来源且服务参数不丢失',async()=>{
+  it('普通划词 More Settings 复用当前来源，只携带 returnTabId 和目标 section',async()=>{
+    await mount();await openFeature('selection');const sourceQueries=getTab.mock.calls.length,sourceGets=getSourceTab.mock.calls.length
+    await eventOf(document.querySelector('.drawer-settings-link')!)();await drain()
+    expect(createTab).toHaveBeenCalledOnce();const url=new URL(createTab.mock.calls[0][0].url)
+    expect(url.hash).toBe('#settings-selection');expect([...url.searchParams.entries()]).toEqual([['returnTabId','7']])
+    expect(openOptions).not.toHaveBeenCalled();expect(close).toHaveBeenCalledOnce();expect(commands()).toHaveLength(0);expect(requestAccess).not.toHaveBeenCalled()
+    expect(getTab).toHaveBeenCalledTimes(sourceQueries);expect(getSourceTab).toHaveBeenCalledTimes(sourceGets)
+  })
+  it('普通划词从固定 source 打开，不把其他活动 tab 当作返回来源',async()=>{
+    win.location.search='?sourceTabId=7';getTab.mockResolvedValue([{id:99,windowId:3,url:'https://other.example/'}]);await mount();await openFeature('selection')
+    await eventOf(document.querySelector('.drawer-settings-link')!)();await drain()
+    expect(createTab).toHaveBeenCalledOnce();const url=new URL(createTab.mock.calls[0][0].url)
+    expect(url.hash).toBe('#settings-selection');expect([...url.searchParams.entries()]).toEqual([['returnTabId','7']]);expect(getTab).not.toHaveBeenCalled();expect(getSourceTab).toHaveBeenCalledWith(7)
+    expect(openOptions).not.toHaveBeenCalled();expect(close).toHaveBeenCalledOnce();expect(commands()).toHaveLength(0)
+  })
+  it('普通划词没有来源仍可打开设置，不伪造 returnTabId 或修复参数',async()=>{
+    getTab.mockResolvedValue([]);await mount();await openFeature('selection');expect(state.currentTabId).toBeNull()
+    await eventOf(document.querySelector('.drawer-settings-link')!)();await drain()
+    expect(createTab).toHaveBeenCalledOnce();const url=new URL(createTab.mock.calls[0][0].url)
+    expect(url.hash).toBe('#settings-selection');expect([...url.searchParams.entries()]).toEqual([])
+    expect(openOptions).not.toHaveBeenCalled();expect(close).toHaveBeenCalledOnce();expect(commands()).toHaveLength(0)
+  })
+  it.each(['drawer','cached','pagehide','unmount'] as const)('普通划词旧 More Settings 回调在 %s 后不能借用新会话',async reason=>{
+    await mount();await openFeature('selection');const stale=eventOf(document.querySelector('.drawer-settings-link')!)
+    if(reason==='drawer'){eventOf(document.querySelector('.drawer-header > button')!)();await drain();await openFeature('selection')}
+    if(reason==='cached'){shown.value=false;await drain();shown.value=true;await drain();await openFeature('selection')}
+    if(reason==='pagehide')win.dispatchEvent(new win.Event('pagehide'))
+    if(reason==='unmount')app.unmount()
+    await drain();await stale();await drain();expect(createTab).not.toHaveBeenCalled();expect(openOptions).not.toHaveBeenCalled();expect(close).not.toHaveBeenCalled()
+    if(reason==='drawer'||reason==='cached'){
+      await eventOf(document.querySelector('.drawer-settings-link')!)();await drain();expect(createTab).toHaveBeenCalledOnce();expect(new URL(createTab.mock.calls[0][0].url).searchParams.get('returnTabId')).toBe('7');expect(close).toHaveBeenCalledOnce()
+    }
+  })
+  it('普通划词打开失败保留可恢复错误，迟到成功不能关闭重新激活的 Popup',async()=>{
+    await mount();await openFeature('selection');createTab.mockRejectedValueOnce(new Error('fixture-open-failure'))
+    await eventOf(document.querySelector('.drawer-settings-link')!)();await drain()
+    expect(state.noticeType).toBe('error');expect(close).not.toHaveBeenCalled();expect(state.drawerVisible).toBe(true);expect(createTab).toHaveBeenCalledOnce()
+    const reply=deferred();createTab.mockReturnValueOnce(reply.promise);const cached=eventOf(document.querySelector('.drawer-settings-link')!),pending=cached();await drain()
+    expect(createTab).toHaveBeenCalledTimes(2);shown.value=false;await drain();shown.value=true;await drain();reply.resolve({id:8});await pending;await cached();await drain()
+    expect(createTab).toHaveBeenCalledTimes(2);expect(close).not.toHaveBeenCalled();expect(state.notice).toBe('')
+    await openFeature('selection');await eventOf(document.querySelector('.drawer-settings-link')!)();await drain()
+    expect(createTab).toHaveBeenCalledTimes(3);expect(new URL(createTab.mock.calls[2][0].url).hash).toBe('#settings-selection');expect(close).toHaveBeenCalledOnce();expect(commands()).toHaveLength(0)
+  })
+  it('无正文诊断直达适配目标并携带固定来源，普通网站导航不附加来源且服务参数不丢失',async()=>{
     win.location.search='?sourceTabId=7';getTab.mockResolvedValue([{id:99,url:'https://other.example/'}]);await mount()
     runtimeEvent({type:'fullPageTranslationState',isTranslated:true,toolbarStatus:'error',documentToken:'popup-fixture-document',diagnostic:{code:'no-content'}},{id:'fixture-extension',url:'https://example.com/a',tab:{id:7,url:'https://example.com/a'},frameId:0});await drain()
     expectCollapsedDiagnostic();await openDiagnosticDetails();const inspect=document.querySelector('[data-diagnostic-primary][data-diagnostic-action="site-settings"]')!;await eventOf(inspect)();await drain()

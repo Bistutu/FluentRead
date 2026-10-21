@@ -1,0 +1,232 @@
+{
+  "schema": 1,
+  "scope": "controlled-production-chromium-viewport-media; unsigned-Safari-compilation",
+  "productPins": {
+    "src/app/popup/PopupApp.vue": {
+      "bytes": 80845,
+      "sha256": "e2724ed7cbaa8eabcdc5dd13ec66617cebc7f2284a8f819acdbcdfcaacf1cec2"
+    },
+    "src/features/settings/ui/SettingsSections.vue": {
+      "bytes": 83884,
+      "sha256": "43086f9b50bb9e639230a763da7cd83a8241ee287962e20417bfb6c8ee9164f1"
+    },
+    "src/features/settings/ui/services/ServiceRepairReturn.vue": {
+      "bytes": 5910,
+      "sha256": "ec2f27dd81e6f70865b40c86b6802b7f03fb70624e421e422458b63f8cafed41"
+    },
+    "tests/popupAppLifecycle.test.ts": {
+      "bytes": 106479,
+      "sha256": "fb3f383c5883442ce8096b80169a848ca90e775e1858ae3ada8ea4820d64fb3f"
+    },
+    "tests/settingsSectionsLifecycle.test.ts": {
+      "bytes": 86417,
+      "sha256": "983f95af8aafbe0b499915eeb58f17fa2368479f9a98d78f9b44704a79f15924"
+    },
+    "tests/serviceRepairReturn.test.ts": {
+      "bytes": 20135,
+      "sha256": "021b72e43805052c423621c8d492e9f199755eca5037b6acf2b9dc119a98a4b0"
+    }
+  },
+  "tests": {
+    "initialFocused": {
+      "total": 247,
+      "passed": 245,
+      "failed": 2,
+      "cause": "New tests incorrectly rejected existing parent pagehide/unmount draft handoff."
+    },
+    "correctedSettingsSections": {
+      "passed": 65,
+      "failed": 0
+    },
+    "otherTwoFilesOnInitialRun": {
+      "passed": 182,
+      "failed": 0
+    },
+    "ownership": {
+      "passed": 21,
+      "failed": 0
+    },
+    "correctedTypecheckExit": 0,
+    "testInventoryAuditExit": 0,
+    "auditIsExecutedTestCount": false
+  },
+  "builds": {
+    "chrome": 0,
+    "firefox": 0,
+    "safariWeb": 0,
+    "userscript": 0,
+    "userscriptVerifier": 0,
+    "userscriptBytes": 2100236
+  },
+  "browser": {
+    "passed": true,
+    "rows": [
+      {
+        "id": "coarse-320x700-light",
+        "passed": true,
+        "returnHeight": 44,
+        "previewHeights": [
+          44,
+          44
+        ]
+      },
+      {
+        "id": "coarse-320x700-dark",
+        "passed": true,
+        "returnHeight": 44,
+        "previewHeights": [
+          44,
+          44
+        ]
+      },
+      {
+        "id": "coarse-844x500-light",
+        "passed": true,
+        "returnHeight": 44,
+        "previewHeights": [
+          44,
+          44
+        ]
+      },
+      {
+        "id": "coarse-844x500-dark",
+        "passed": true,
+        "returnHeight": 44,
+        "previewHeights": [
+          44,
+          44
+        ]
+      },
+      {
+        "id": "fine-844x500-light-readonly",
+        "passed": true,
+        "returnHeight": 32,
+        "previewHeights": [
+          25,
+          25
+        ]
+      },
+      {
+        "id": "fine-320x700-dark",
+        "passed": true,
+        "returnHeight": 44,
+        "previewHeights": [
+          25,
+          25
+        ]
+      }
+    ],
+    "trustedActions": [
+      {
+        "scope": "popup",
+        "code": "chinese",
+        "trusted": true
+      },
+      {
+        "scope": "popup",
+        "code": "confirm",
+        "trusted": true
+      },
+      {
+        "scope": "popup",
+        "code": "tile",
+        "trusted": true
+      },
+      {
+        "scope": "popup",
+        "code": "more",
+        "trusted": true
+      },
+      {
+        "scope": "options",
+        "code": "return",
+        "trusted": true
+      }
+    ],
+    "sourceContentScrollViewportAndDocumentUnchanged": true,
+    "retainedOptions": true,
+    "actualOptionsVisibility": "visible",
+    "actualVisibilityLifecycleAcceptance": false,
+    "focusObserver": {
+      "stopped": true,
+      "eventCount": 0,
+      "ownedActivationCount": 0,
+      "error": null
+    },
+    "cleanup": {
+      "browserClosed": true,
+      "monitorStopped": true,
+      "launchAttempted": true,
+      "launchSettled": true,
+      "closeRequested": true,
+      "closeSettled": true,
+      "cleanupTimedOut": false,
+      "pendingAcquire": false,
+      "pendingClose": false,
+      "profileRemoved": true,
+      "fixtureStopped": true,
+      "fixtureStartSettled": true,
+      "fixtureConnectionsRemaining": 0,
+      "resourceReleased": true,
+      "manualRecoveryRequired": false
+    },
+    "production": {
+      "files": 483,
+      "bytes": 62588449,
+      "rawByteHash": "081e1da41f82279bd41b777d49795f24ab5260bf456f676de968ae1bc723b9c1",
+      "recordHash": "19ab2a471bb9f4e9d9d5bac031db7bd857e8a27438e55568f62de5d3c60375a6"
+    },
+    "report": {
+      "bytes": 47067,
+      "sha256": "4faea3c860b80f5a4da62638b90c578d8693e1701e4ce60fc86981bb240567c3"
+    },
+    "independentReview": {
+      "bytes": 9092,
+      "sha256": "f17ffc08b5636d1f747d5091dfbec2bb988c5dcad061f984b318a9a1b34de2c2"
+    }
+  },
+  "native": {
+    "passed": true,
+    "elapsedMs": 96500.94179200001,
+    "commands": 8,
+    "streams": 16,
+    "allCommandsClosedReapedAndGroupsAbsent": true,
+    "webFilesPerCopy": 472,
+    "webCopies": 4,
+    "nativeAppFiles": [
+      487,
+      490,
+      490
+    ],
+    "signed": false,
+    "installed": false,
+    "nativeAcceptance": false,
+    "report": {
+      "bytes": 30476,
+      "sha256": "5c644eac78d2aa93b54cbc3d9a6ef6a3e72bab9e87f87f425ee66213cd36b13d"
+    }
+  },
+  "originalImages": {
+    "options-320-light.png": {
+      "bytes": 48906,
+      "sha256": "854c380841d22a457c8f3f78daf87dd07ae990e70d34909d301189ea146c204a"
+    },
+    "options-320-dark.png": {
+      "bytes": 50626,
+      "sha256": "b29d451c96f02906725e417b8ae575503ec4781fe1a0f0efce985ab422579b17"
+    },
+    "options-844-light.png": {
+      "bytes": 59797,
+      "sha256": "0056255457f48179230bc34c7f4b11588bc96d4646c045da8847e5afa8123791"
+    }
+  },
+  "remaining": [
+    "installed native Safari selection route and return",
+    "actual hidden/show and BFCache behavior on new package",
+    "reading-question IME and software keyboard on installed new package",
+    "new-package configuration and permission retention",
+    "physical devices, long background and eviction",
+    "YouTube authenticated playback and AVKit system fullscreen bridge"
+  ],
+  "referenceProjectsUsed": false
+}
