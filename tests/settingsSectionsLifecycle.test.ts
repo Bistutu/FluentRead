@@ -58,21 +58,30 @@ function createDomRenderer(document: Document, focus: ReturnType<typeof vi.fn>) 
 type NumericChange = (value: number | undefined) => void;
 type NumericPort = {disabled: boolean; change: NumericChange};
 
-async function mountSections({ready = Promise.resolve(), configSnapshot, template = false, providerGate = Promise.resolve(), activeSection = 'settings-translation', requestLimits = false, development = false, serviceSelectors = false, search = '', repairReturn = false}:
-    {ready?: Promise<void>; configSnapshot?: Record<string, unknown>; template?: boolean; providerGate?: Promise<void>; activeSection?: string; requestLimits?: boolean; development?: boolean; serviceSelectors?: boolean; search?: string; repairReturn?: boolean} = {}) {
+async function mountSections({ready = Promise.resolve(), configSnapshot, template = false, providerGate = Promise.resolve(), activeSection = 'settings-translation', requestLimits = false, development = false, serviceSelectors = false, search = '', repairReturn = false, browserName = 'chrome'}:
+    {ready?: Promise<void>; configSnapshot?: Record<string, unknown>; template?: boolean; providerGate?: Promise<void>; activeSection?: string; requestLimits?: boolean; development?: boolean; serviceSelectors?: boolean; search?: string; repairReturn?: boolean; browserName?: string} = {}) {
     const frames = new Map<number, FrameRequestCallback>();let nextFrame = 0;
     const query = vi.fn((_options: Record<string, unknown>) => Promise.resolve([] as {id?: number}[]));
     const send = vi.fn((_id: number, _message: {type: string; isEnabled?: boolean; mode?: string}) => Promise.resolve());
-    const patch = vi.fn(() => Promise.resolve());const theme = vi.fn();const unsubscribe = vi.fn();
+    const patch = vi.fn((_value: unknown) => Promise.resolve());const theme = vi.fn();const unsubscribe = vi.fn();
     const media = {matches: false, onchange: null as (() => void) | null};
     const location = {hash: '', search, protocol: 'chrome-extension:'};
     if (repairReturn) vi.stubGlobal('location', {href: `chrome-extension://fixture/options.html${search}`});
-    vi.stubGlobal('window', Object.assign(new EventTarget(), {location, navigator: {userAgent: ''}, matchMedia: () => media,
+    const pageWindow = Object.assign(new EventTarget(), {location, navigator: {userAgent: ''}, matchMedia: () => media,
         requestAnimationFrame: (fn: FrameRequestCallback) => {frames.set(++nextFrame, fn);return nextFrame;},
-        cancelAnimationFrame: (id: number) => frames.delete(id)}));
+        cancelAnimationFrame: (id: number) => frames.delete(id)});
+    vi.stubGlobal('window', pageWindow);
     const findTarget = vi.fn(() => null as HTMLElement | null);
     const dom = template ? parseHTML('<html><body><main id="fixture"></main></body></html>') : undefined;
-    vi.stubGlobal('document', dom?.document ?? {querySelector: findTarget});
+    let pageVisibility: 'visible' | 'hidden' = 'visible';
+    const ownerDocument = dom?.document ?? Object.assign(new EventTarget(), {querySelector: findTarget});
+    Object.defineProperty(ownerDocument, 'visibilityState', {configurable: true, get: () => pageVisibility});
+    vi.stubGlobal('document', ownerDocument);
+    const setVisibility = (value: 'visible' | 'hidden') => {pageVisibility = value;
+        if (dom) dom.document.dispatchEvent(new dom.window.Event('visibilitychange'));
+        else ownerDocument.dispatchEvent(new Event('visibilitychange'));};
+    // window 使用原生 EventTarget；DOM 使用 LinkeDOM 事件，不能混用两个事件实现。
+    const pageEvent = (type: 'pagehide' | 'pageshow') => pageWindow.dispatchEvent(new Event(type));
     if (dom) vi.stubGlobal('HTMLInputElement', dom.window.HTMLInputElement);
     const focus = vi.fn(), providerMounted = vi.fn(), providerUnmounted = vi.fn();
     const numericPorts = new Map<string, NumericPort>();
@@ -136,7 +145,7 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
         if (id === '\0sections-element') return 'export const ElMessage = Object.assign(() => {}, {warning: () => {}});';
         if (id === '\0sections-icons') return 'export const ArrowRight = {};export const InfoFilled = {};export const Edit = {};';
         if (id === '\0sections-build-mode') return `export const chatGPTPlanDevelopmentEnabled = ${development};`;
-        if (id === '\0sections-capabilities') return "export const browserCapabilities = {browser: 'chrome'};";return null;
+        if (id === '\0sections-capabilities') return `export const browserCapabilities = {browser: ${JSON.stringify(browserName)}};`;return null;
     }};
     server = await createServer({configFile: false, appType: 'custom', logLevel: 'silent', root: process.cwd(),
         plugins: [mocks, vue()], resolve: {alias: {'@': resolve(process.cwd())}},
@@ -193,13 +202,69 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
     app.mount(dom ? dom.document.querySelector('#fixture')! : {});await settle();
     // 等实际异步目录组件挂载；静态表单仅需 Vue 更新队列，不为每例固定等待 60 ms。
     if (template && activeSection === 'settings-services') {await catalogReady.promise;await settle();}
-    return {state, props, visible, document: dom?.document, domWindow: dom?.window, numericPorts, loadProvider, focus, providerMounted, providerUnmounted,
+    return {state, props, visible, document: dom?.document, domWindow: dom?.window, setVisibility, pageEvent, numericPorts, loadProvider, focus, providerMounted, providerUnmounted,
         get providerState() {return providerState;}, get dialogPort() {return dialogPort;},
         async finishProviderLoad() {await providerReady.promise;await new Promise(resolve => setTimeout(resolve, 0));await settle();}, query, send, patch, theme, unsubscribe, frames, findTarget, location, data,
         notifyConfig: (value: unknown) => notifyConfig(value)};
 }
 
 describe('设置主表单实际组件异步归属', () => {
+    it('普通划词实际面板仅展示明确来源返回按钮，挂载不请求标签或修复焦点', async () => {
+        const h = await mountSections({template: true, repairReturn: true, activeSection: 'settings-selection', search: '?returnTabId=7'});
+        const section = h.document!.querySelector('#settings-selection')!;
+        const bar = section.querySelector('[data-service-repair-return]')!;
+        expect(bar).not.toBeNull();expect(section.querySelectorAll('[data-return-source-tab]')).toHaveLength(1);
+        expect(bar.querySelector('p')).toBeNull();expect(bar.textContent).toContain('返回原网页');expect(bar.textContent).not.toContain('重试翻译');
+        expect(h.data.browser.tabs.get).not.toHaveBeenCalled();expect(h.data.browser.tabs.update).not.toHaveBeenCalled();expect(h.focus).not.toHaveBeenCalled();
+        bar.querySelector('[data-return-source-tab]')!.dispatchEvent(new h.domWindow!.Event('click'));await settle();
+        expect(h.data.browser.tabs.get).toHaveBeenCalledWith(7);expect(h.data.browser.tabs.update).toHaveBeenCalledWith(7, {active: true});
+        expect(bar.querySelector('p')).toBeNull();expect(h.patch).not.toHaveBeenCalled();
+    });
+    it.each(['', '?returnTabId=-1', '?returnTabId=7&returnTabId=8'])('普通划词无有效来源 %s 时不渲染返回动作', async search => {
+        const h = await mountSections({template: true, repairReturn: true, activeSection: 'settings-selection', search});
+        expect(h.document!.querySelector('#settings-selection [data-return-source-tab]')).toBeNull();
+        expect(h.data.browser.tabs.get).not.toHaveBeenCalled();expect(h.data.browser.tabs.update).not.toHaveBeenCalled();
+    });
+    it('普通来源返回条只属于已访问的划词面板，v-show 离开后旧节点失活', async () => {
+        const h = await mountSections({template: true, repairReturn: true, activeSection: 'settings-general', search: '?returnTabId=7'});
+        expect(h.document!.querySelector('[data-return-source-tab]')).toBeNull();
+        h.props.activeSection = 'settings-selection';await settle();
+        const sourceButton = h.document!.querySelector('#settings-selection [data-return-source-tab]')!;
+        expect(sourceButton).not.toBeNull();h.props.activeSection = 'settings-general';await settle();
+        expect(h.document!.querySelector('#settings-general [data-return-source-tab]')).toBeNull();
+        // 已访问面板按既有 v-show 保留节点；不把 DOM 存在误当成可操作。
+        expect(sourceButton.hasAttribute('disabled')).toBe(true);sourceButton.dispatchEvent(new h.domWindow!.Event('click'));await settle();
+        expect(h.data.browser.tabs.get).not.toHaveBeenCalled();
+        h.props.activeSection = 'settings-selection';await settle();
+        h.document!.querySelector('#settings-selection [data-return-source-tab]')!.dispatchEvent(new h.domWindow!.Event('click'));await settle();
+        expect(h.data.browser.tabs.update).toHaveBeenCalledWith(7, {active: true});
+    });
+    it.each(['section', 'cached', 'config', 'visibility', 'pagehide', 'unmount'] as const)('普通划词返回等待中 %s 变化即使恢复也不复活旧查询', async reason => {
+        const h = await mountSections({template: true, repairReturn: true, activeSection: 'settings-selection', search: '?returnTabId=7'}), gate = deferred<{id: number; url: string}>();
+        const before = JSON.stringify(h.state.config);
+        h.data.browser.tabs.get.mockReturnValueOnce(gate.promise);
+        h.document!.querySelector('#settings-selection [data-return-source-tab]')!.dispatchEvent(new h.domWindow!.Event('click'));await settle();
+        expect(h.data.browser.tabs.get).toHaveBeenCalledOnce();
+        if (reason === 'section') {h.props.activeSection = 'settings-general';await settle();h.props.activeSection = 'settings-selection';}
+        if (reason === 'cached') {h.visible.value = false;await settle();h.visible.value = true;}
+        if (reason === 'config') h.state.config = {...h.state.config};
+        // 这两个用例是真实页面事件；并非 active prop 或 KeepAlive 的别名。
+        if (reason === 'visibility') {h.setVisibility('hidden');h.setVisibility('visible');}
+        if (reason === 'pagehide') {h.pageEvent('pagehide');h.pageEvent('pageshow');}
+        if (reason === 'unmount') {app!.unmount();app = undefined;}
+        await settle();expect(h.data.browser.tabs.get).toHaveBeenCalledOnce();gate.resolve({id: 7, url: 'https://example.test/late'});await settle();
+        expect(h.data.browser.tabs.update).not.toHaveBeenCalled();
+        if (reason !== 'unmount') {
+            const current = h.document!.querySelector('#settings-selection [data-return-source-tab]')!;
+            expect(current.hasAttribute('disabled')).toBe(false);current.dispatchEvent(new h.domWindow!.Event('click'));await settle();
+            expect(h.data.browser.tabs.get).toHaveBeenCalledTimes(2);expect(h.data.browser.tabs.update).toHaveBeenCalledWith(7, {active: true});
+        }
+        expect(JSON.stringify(h.state.config)).toBe(before);
+        // 父表单原有 pagehide/unmount 会交接最终草稿；返回动作不应额外修改或保存配置。
+        if (reason === 'pagehide' || reason === 'unmount') {
+            expect(h.patch).toHaveBeenCalledOnce();expect(JSON.stringify(h.patch.mock.calls[0][0])).toBe(before);
+        } else expect(h.patch).not.toHaveBeenCalled();
+    });
     it('网站修复返回条位于实际adaptation目标面板，只按明确来源返回', async () => {
         const h = await mountSections({template: true, repairReturn: true, activeSection: 'settings-sites', search: '?target=adaptation&returnTabId=7'});
         const button = h.document!.querySelector('[data-return-source-tab]')!;
@@ -340,6 +405,43 @@ describe('设置主表单实际组件异步归属', () => {
         query.mockResolvedValueOnce([{id: 1}]);state.floatingBallEnabled = false;await settle();expect(send).toHaveBeenCalledOnce();
         const tabs = deferred<{id?: number}[]>();query.mockReturnValueOnce(tabs.promise);state.imageTranslationEnabled = true;await settle();
         app?.unmount();app = undefined;tabs.resolve([{id: 1}]);await settle();expect(send).toHaveBeenCalledOnce();
+    });
+    it('Safari 快速功能编辑仍保存配置，模式回读不再查询或广播标签页', async () => {
+        const {state, query, send, patch, notifyConfig} = await mountSections({browserName: 'safari', configSnapshot: {
+            on: true, selectionTranslatorMode: 'bilingual', disableSelectionTranslator: false,
+        }});
+        for (let i = 0; i < 10; i++) {
+            state.floatingBallEnabled = i % 2 === 0;
+            state.imageTranslationEnabled = i % 2 === 0;
+            state.config.translationProgressPanelEnabled = i % 2 === 0;
+            state.handleTranslationProgressPanelChange(i % 2 === 0);
+        }
+        state.selectionAreaTranslationEnabled = true;
+        state.config.on = false;state.handlePluginStateChange(false);
+        state.config.selectionTranslatorMode = 'disabled';await settle();
+        state.config.selectionTranslatorMode = 'bilingual';state.config.selectionTranslatorMode = 'translation-only';await settle();
+        expect(patch).toHaveBeenLastCalledWith(expect.objectContaining({on: false, disableFloatingBall: true,
+            disableImageTranslator: true, selectionAreaEnabled: true, translationProgressPanelEnabled: false,
+            selectionTranslatorMode: 'translation-only', disableSelectionTranslator: false}), expect.any(Function));
+        expect(query).not.toHaveBeenCalled();expect(send).not.toHaveBeenCalled();
+
+        const saves = patch.mock.calls.length;
+        notifyConfig({...state.config, on: true, selectionTranslatorMode: 'bilingual', disableSelectionTranslator: false});await settle();
+        expect(state.config.on).toBe(true);expect(state.config.selectionTranslatorMode).toBe('bilingual');
+        expect(patch).toHaveBeenCalledTimes(saves);
+        expect(query).not.toHaveBeenCalled();expect(send).not.toHaveBeenCalled();
+    });
+    it('Safari 卸载后的配置通知和旧功能回调不保存或广播', async () => {
+        const {state, query, send, patch, data, notifyConfig, unsubscribe} = await mountSections({browserName: 'safari',
+            configSnapshot: {on: true, selectionTranslatorMode: 'bilingual'}});
+        app?.unmount();app = undefined;await settle();
+        const saves = patch.mock.calls.length, handoffs = data.handoffPendingConfigPatches.mock.calls.length;
+        const previous = JSON.stringify(state.config);
+        notifyConfig({...state.config, on: false, selectionTranslatorMode: 'disabled'});
+        state.handlePluginStateChange(false);state.handleTranslationProgressPanelChange(false);await settle();
+        expect(JSON.stringify(state.config)).toBe(previous);expect(unsubscribe).toHaveBeenCalledOnce();
+        expect(patch).toHaveBeenCalledTimes(saves);expect(data.handoffPendingConfigPatches).toHaveBeenCalledTimes(handoffs);
+        expect(query).not.toHaveBeenCalled();expect(send).not.toHaveBeenCalled();
     });
     it('服务列表直接复用已筛选能力结果，切换显示模式不会再分配同样的列表', async () => {
         const {state} = await mountSections();const first = state.configurationCompute.filteredServices;

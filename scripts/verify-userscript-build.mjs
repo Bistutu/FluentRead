@@ -131,7 +131,10 @@ const artifactBytes = Buffer.byteLength(source);
 // 即时显示模式切换：同依赖独立 main 391499398 为 2,099,247，候选为 2,101,020，增加 1,773（0.0845%）。
 // 利用原余量 853 后按既有 1 KB 步长最小增加 1 KB，余 80；全部协议、资源及 VM 校验保留。
 // 构建环境与产物散列见 docs/reports/popup-display-mode-20261018/userscript-size.json。
-const MAX_USERSCRIPT_BYTES = 2_101_100;
+// man7 手册的可恢复正文分段：同依赖独立 main 5a362c671 为 2,101,032 字节，
+// 候选为 2,106,163，增加 5,131（0.2442%）；按既有 1 KB 步长最小增加 6 KB，余 937。
+// 保留全部协议、资源和 VM 校验；构建对照与散列见 docs/reports/man7-pre-translation-20261021/userscript-size.json。
+const MAX_USERSCRIPT_BYTES = 2_107_100;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';
 const preludeEndMarker = '/* FluentRead userscript compatibility prelude:end */';
 const preludeStart = source.indexOf(preludeStartMarker);
@@ -161,7 +164,8 @@ const assertions = [
   [source.includes('// @require      https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako_inflate.min.js'), 'pako fallback @require is missing'],
   [source.includes('globalThis.__fluentReadUserscriptCssCompressed='), 'userscript CSS must be compressed'],
   [source.includes('__FLUENTREAD_BROWSER_CAPABILITY_BUILD__:userscript:mv2__'), 'userscript browser capability marker is missing'],
-  [artifactBytes <= MAX_USERSCRIPT_BYTES, `artifact exceeds the ${MAX_USERSCRIPT_BYTES.toLocaleString()}-byte size budget`],
+  [artifactBytes <= MAX_USERSCRIPT_BYTES,
+    `artifact is ${artifactBytes.toLocaleString()} bytes; ${Math.max(0, artifactBytes - MAX_USERSCRIPT_BYTES).toLocaleString()} bytes over the ${MAX_USERSCRIPT_BYTES.toLocaleString()}-byte size budget`],
   [!/(^|[^\w])import\s*\(/u.test(source), 'the artifact must not contain runtime dynamic imports'],
   [!/\bglobalThis\s*(?:\.\s*(?:browser|chrome)\b|\[\s*['"](?:browser|chrome)['"]\s*\])/u.test(source), 'privileged browser shims must stay lexical'],
   [source.split('// ==UserScript==').length === 2, 'metadata header must occur exactly once'],

@@ -1,7 +1,7 @@
 /**
  * @file src/app/content/qqMailFrameRuntime.ts
  * 文件职责：为受支持邮箱的正文 frame 组装翻译，并把全文手势交给顶层会话。
- * 主要内容：通过既有配置订阅即时重排网页双语与仅译文工件，不重发翻译请求；QQ 旧版与网易免费邮箱各自使用受限消息协议，共享无凭据会话快照、样式和键盘生命周期；真实阅读路由变化同步失效上下文与请求提交代次，同地址通知不重复清理。
+ * 主要内容：通过既有配置订阅即时重排网页双语与仅译文工件，不重发翻译请求；QQ 旧版与网易免费邮箱各自使用受限消息协议，共享无凭据会话及当前页字体快照、样式和键盘生命周期；真实阅读路由变化同步失效上下文与请求提交代次，同地址通知不重复清理。
  * 模块边界：只在经过后台认证的阅读 frame 激活，不挂载悬浮球等顶层 UI；翻译请求与异步状态由共享 feature 承担。
  */
 import {installContentPageLifecycle} from './pageLifecycle';
@@ -36,6 +36,7 @@ import {installPageStyles} from './pageStyles';
 import {syncBilingualSentenceHighlight} from './bilingualSentenceHighlight';
 import {applyCoreTranslationPreferences, createContentSiteAdaptationRuntime} from './siteAdaptationRuntime';
 import {createHoverTranslationConfigSubscription} from './hoverTranslationConfig';
+import {createPageTranslationFontRuntime} from './pageTranslationFont';
 
 type MailFrameKind = 'qq' | 'netease';
 const messageTypes = {
@@ -45,7 +46,8 @@ const messageTypes = {
 } as const;
 
 /** 顶层消息仅通过扩展后台到达；页面事件只提示读取真实会话，不能设置快照。 */
-function installMailTopFrameBridge(kind: MailFrameKind, isEnabled: () => boolean, signal: AbortSignal): ((invocation?: PageTranslationInvocation) => void) | undefined {
+function installMailTopFrameBridge(kind: MailFrameKind, isEnabled: () => boolean, signal: AbortSignal,
+    readBrowserDefaultFont?: () => boolean): ((invocation?: PageTranslationInvocation) => void) | undefined {
     if (!(kind === 'qq' ? isQqMailLegacyTopUrl(window.location.href) : isNeteaseMailTopUrl(window.location.href))) return;
     const messages = messageTypes[kind];
     const available = () => isEnabled() && (kind === 'qq' || isNeteaseMailReadUrl(window.location.href));
@@ -67,13 +69,15 @@ function installMailTopFrameBridge(kind: MailFrameKind, isEnabled: () => boolean
         if (message?.type !== messages.command || sender?.id !== browser.runtime.id) return false;
         if (message.action !== 'state' && message.action !== 'toggle') return false;
         if (message.action === 'toggle') toggle(message.invocation);
-        respond({...getFullPageTranslationFrameState(), enabled: available()});
+        respond({...getFullPageTranslationFrameState(), enabled: available(),
+            ...(readBrowserDefaultFont ? {browserDefaultFont: readBrowserDefaultFont()} : {})});
         return true;
     };
     const removeMessageListener = addRuntimeMessageListener(browser.runtime, listener);
     signal.addEventListener('abort', removeMessageListener, {once: true});
     document.addEventListener('fluentread-translation-started', notify, {signal});
     document.addEventListener('fluentread-translation-ended', notify, {signal});
+    document.addEventListener('fluentread-page-translation-font-changed', notify, {signal});
     if (kind === 'netease') {
         const routeChanged = () => {
             if (!isNeteaseMailReadUrl(window.location.href)) restoreOriginalContent();
@@ -86,12 +90,14 @@ function installMailTopFrameBridge(kind: MailFrameKind, isEnabled: () => boolean
     return toggle;
 }
 
-export function installQqMailTopFrameBridge(isEnabled: () => boolean, signal: AbortSignal): ((invocation?: PageTranslationInvocation) => void) | undefined {
-    return installMailTopFrameBridge('qq', isEnabled, signal);
+export function installQqMailTopFrameBridge(isEnabled: () => boolean, signal: AbortSignal,
+    readBrowserDefaultFont?: () => boolean): ((invocation?: PageTranslationInvocation) => void) | undefined {
+    return installMailTopFrameBridge('qq', isEnabled, signal, readBrowserDefaultFont);
 }
 
-export function installNeteaseMailTopFrameBridge(isEnabled: () => boolean, signal: AbortSignal): ((invocation?: PageTranslationInvocation) => void) | undefined {
-    return installMailTopFrameBridge('netease', isEnabled, signal);
+export function installNeteaseMailTopFrameBridge(isEnabled: () => boolean, signal: AbortSignal,
+    readBrowserDefaultFont?: () => boolean): ((invocation?: PageTranslationInvocation) => void) | undefined {
+    return installMailTopFrameBridge('netease', isEnabled, signal, readBrowserDefaultFont);
 }
 
 /** 子 frame 先读取顶层授权状态，再挂载手势；未匹配的顶层或子页面没有 UI 和输入监听器。 */
@@ -124,6 +130,7 @@ async function startMailFrameApp(ctx: ContentScriptContext, kind: MailFrameKind)
     let activation: AbortController | null = null;
     let removeStyles: (() => void) | null = null;
     let authorized = false;
+    const pageTranslationFont = createPageTranslationFontRuntime({document});
     let selectionMountGeneration = 0;
     const enabled = () => !disposed && !pageLifecycle.isSuspended() && config.on !== false
         && isReadableFrame()
@@ -159,6 +166,7 @@ async function startMailFrameApp(ctx: ContentScriptContext, kind: MailFrameKind)
     const setAvailable = (available: boolean) => {
         authorized = available;
         if (!available) {
+            pageTranslationFont.reset();
             selectionMountGeneration += 1;
             activation?.abort(); activation = null;
             if (kind === 'netease') unmountSelectionTranslator();
@@ -185,6 +193,7 @@ async function startMailFrameApp(ctx: ContentScriptContext, kind: MailFrameKind)
     const controller = createFrameSessionController({
         readState: () => browser.runtime.sendMessage({type: messages.request, action: 'state'}),
         isEnabled: enabled, setAvailable, restore,
+        syncState: state => { pageTranslationFont.set(state.browserDefaultFont === true); },
         start: (state) => autoTranslateEnglishPage({
             service: state.translationConfig!.service, model: state.translationConfig!.model,
             targetLanguage: state.translationConfig!.targetLanguage, displayMode: state.translationConfig!.displayMode,
@@ -224,6 +233,7 @@ async function startMailFrameApp(ctx: ContentScriptContext, kind: MailFrameKind)
     cleanup = () => {
         if (lifetime.signal.aborted) return;
         disposed = true; lifetime.abort(); controller.dispose(); unsubscribe();
+        pageTranslationFont.dispose();
         removeMessageListener();
     };
     if (enabled()) await controller.refresh();

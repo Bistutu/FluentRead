@@ -513,6 +513,8 @@ async function mountServiceClient(initialService = 'freeTranslation', developmen
     fallbackHeading = repairDocument.querySelector<HTMLElement>('h4')!
     fallbackHeading.getClientRects = () => [1] as unknown as DOMRectList
     fallbackHeading.focus = vi.fn(() => {focusElement = fallbackHeading!;repairDocument!.dispatchEvent(new parsed.window.Event('focusin'))})
+    // 真实返回组件监听 Window 的页面生命周期；使用同一文档的事件目标，定时器仍由全局 fake clock 提供。
+    vi.stubGlobal('window', parsed.window)
     vi.stubGlobal('document', repairDocument);vi.stubGlobal('location', {href: repair.href || 'chrome-extension://fixture/options.html?returnTabId=7&service=freeTranslation'})
     const returned = compileVueInlineFixture('src/features/settings/ui/services/ServiceRepairReturn.vue', {id: 'service-return-parent-focus'})
     const childModule = {exports: {} as {default: import('vue').Component}}

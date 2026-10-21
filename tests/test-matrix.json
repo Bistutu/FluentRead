@@ -42,6 +42,8 @@
       "tests/testConfiguration.test.ts"
     ],
     "unit": [
+      "tests/safariTabBroadcast.test.ts",
+      "tests/safariTabBroadcastIntegration.test.ts",
       "tests/materialOriginalText.test.ts",
       "tests/materialParagraphScan.test.ts",
       "tests/freeProviderPermissions.test.ts",
@@ -159,6 +161,7 @@
       "tests/translationAppearance.test.ts",
       "tests/translationAppearanceStyles.test.ts",
       "tests/pageStyles.test.ts",
+      "tests/pageTranslationFont.test.ts",
       "tests/interfaceFonts.test.ts",
       "tests/usePopupLayoutReorder.test.ts",
       "tests/legacyPageCache.test.ts",
@@ -619,6 +622,7 @@
       "tests/visionProbeStatusLifecycle.test.ts",
       "tests/interfaceAppearanceLifecycle.test.ts",
       "tests/interfaceSettingsLifecycle.test.ts",
+      "tests/videoSubtitleAppearanceSettingsLifecycle.test.ts",
       "tests/videoSentenceLearningAppearanceSettingsLifecycle.test.ts",
       "tests/modelVisionSettingsLifecycle.test.ts",
       "tests/serviceConfigurationLifecycle.test.ts",
@@ -641,6 +645,7 @@
       "tests/configStoreAuditBoundaries.test.ts",
       "tests/documentBinaryLifecycle.test.ts",
       "tests/documentAppLifecycle.test.ts",
+      "tests/selectionSettingsConsumer.test.ts",
       "tests/sharedUiComponentsLifecycle.test.ts",
       "tests/shadowSelectOutside.test.ts",
       "tests/shadowColorPicker.test.ts",
@@ -721,7 +726,8 @@
       "tests/selfHelpNotice.test.ts",
       "tests/serviceRepairReturn.test.ts",
       "tests/materialRepository.test.ts",
-      "tests/serviceRepairFocus.test.ts"
+      "tests/serviceRepairFocus.test.ts",
+      "tests/manpagePreparation.test.ts"
     ],
     "regression": [
       "tests/discordServerIconBoundary.test.ts",

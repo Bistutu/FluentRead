@@ -1,0 +1,329 @@
+{
+  "schemaVersion": 1,
+  "baseCommit": "ce3b9a2a90dc39a27ea99f0a5cc6463330ee187d",
+  "sourceAtExecution": "Base commit plus frozen three-file working diff; source hashes below are the execution subject",
+  "sourcePins": [
+    {
+      "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/src/features/input-translation/content/index.ts",
+      "bytes": 54257,
+      "sha256": "177c23603836233d65cae92c365c601f6dc47719a3fbee21c15a317024b63ddb"
+    },
+    {
+      "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/src/features/share-card/ui/ShareCardStudio.vue",
+      "bytes": 26086,
+      "sha256": "dc687e9b6b3ac71cdccf84aab5af87bd1cca24be824c75f32afcfe5a9f3a1bea"
+    },
+    {
+      "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/tests/inputTranslationContentFeature.test.ts",
+      "bytes": 108746,
+      "sha256": "364ce297ef2b7c23bf1d2a9f753e3da79443b0c8c7a957c02061438fc119d531"
+    }
+  ],
+  "resourcePolicy": {
+    "cpuTarget": 40,
+    "maxWorkers": 1,
+    "concurrency": 1,
+    "serial": true
+  },
+  "unitTests": {
+    "files": 3,
+    "passed": 121,
+    "skipped": 0,
+    "failed": 0,
+    "log": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/extra-touch-verification-4/tests.log",
+      "bytes": 457,
+      "sha256": "3cf81083afb535f0b8cdc6e0390b737a34144372e7a7124867c36200db0944f3"
+    }
+  },
+  "verification": {
+    "sourceBefore": [
+      {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/src/features/input-translation/content/index.ts",
+        "bytes": 54257,
+        "sha256": "177c23603836233d65cae92c365c601f6dc47719a3fbee21c15a317024b63ddb"
+      },
+      {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/src/features/share-card/ui/ShareCardStudio.vue",
+        "bytes": 26086,
+        "sha256": "dc687e9b6b3ac71cdccf84aab5af87bd1cca24be824c75f32afcfe5a9f3a1bea"
+      },
+      {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/tests/inputTranslationContentFeature.test.ts",
+        "bytes": 108746,
+        "sha256": "364ce297ef2b7c23bf1d2a9f753e3da79443b0c8c7a957c02061438fc119d531"
+      }
+    ],
+    "sourceAfter": [
+      {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/src/features/input-translation/content/index.ts",
+        "bytes": 54257,
+        "sha256": "177c23603836233d65cae92c365c601f6dc47719a3fbee21c15a317024b63ddb"
+      },
+      {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/src/features/share-card/ui/ShareCardStudio.vue",
+        "bytes": 26086,
+        "sha256": "dc687e9b6b3ac71cdccf84aab5af87bd1cca24be824c75f32afcfe5a9f3a1bea"
+      },
+      {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/tests/inputTranslationContentFeature.test.ts",
+        "bytes": 108746,
+        "sha256": "364ce297ef2b7c23bf1d2a9f753e3da79443b0c8c7a957c02061438fc119d531"
+      }
+    ],
+    "commands": [
+      {
+        "label": "tests",
+        "argv": [
+          "/opt/homebrew/opt/node@22/bin/node",
+          "node_modules/vitest/vitest.mjs",
+          "run",
+          "tests/inputTranslationContentFeature.test.ts",
+          "tests/shareCardStudio.test.ts",
+          "tests/mobileVisualViewport.test.ts"
+        ],
+        "exitCode": 0,
+        "seconds": 3.1533683750000003,
+        "log": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/extra-touch-verification-4/tests.log",
+          "bytes": 457,
+          "sha256": "3cf81083afb535f0b8cdc6e0390b737a34144372e7a7124867c36200db0944f3"
+        }
+      },
+      {
+        "label": "types",
+        "argv": [
+          "/opt/homebrew/opt/node@22/bin/node",
+          "node_modules/vue-tsc/bin/vue-tsc.js",
+          "--noEmit"
+        ],
+        "exitCode": 0,
+        "seconds": 38.136343292,
+        "log": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/extra-touch-verification-4/types.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      {
+        "label": "chrome",
+        "argv": [
+          "/opt/homebrew/opt/node@22/bin/node",
+          "node_modules/wxt/bin/wxt.mjs",
+          "build"
+        ],
+        "exitCode": 0,
+        "seconds": 24.293470542,
+        "log": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/extra-touch-verification-4/chrome.log",
+          "bytes": 84239,
+          "sha256": "991a4fb5f2dbb54eeeee62008e9f5216cbce4b5c40cdff9a992f5cd4e63b6cd0"
+        }
+      },
+      {
+        "label": "firefox",
+        "argv": [
+          "/opt/homebrew/opt/node@22/bin/node",
+          "node_modules/wxt/bin/wxt.mjs",
+          "build",
+          "-b",
+          "firefox"
+        ],
+        "exitCode": 0,
+        "seconds": 24.74870575,
+        "log": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/extra-touch-verification-4/firefox.log",
+          "bytes": 84751,
+          "sha256": "3a944434a4027b5ed165b265de4584c56746418ca72bef542693e8ed76aa139c"
+        }
+      },
+      {
+        "label": "safari-web",
+        "argv": [
+          "/opt/homebrew/opt/node@22/bin/node",
+          "node_modules/wxt/bin/wxt.mjs",
+          "build",
+          "-b",
+          "safari",
+          "--mv2"
+        ],
+        "exitCode": 0,
+        "seconds": 23.765594124999993,
+        "log": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/extra-touch-verification-4/safari-web.log",
+          "bytes": 82975,
+          "sha256": "2a8f6afb5623c1821e5984e4c7dba81143bd29f5f04f73d91b96262754f60a38"
+        }
+      },
+      {
+        "label": "userscript",
+        "argv": [
+          "/opt/homebrew/opt/node@22/bin/node",
+          "node_modules/vite/bin/vite.js",
+          "build",
+          "--config",
+          "userscript/vite.config.ts"
+        ],
+        "exitCode": 0,
+        "seconds": 5.083755832999998,
+        "log": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/extra-touch-verification-4/userscript.log",
+          "bytes": 219,
+          "sha256": "3da34d48d61e46ba9ae7c93e439a3b3e81cd50baedc7fa9808220b578161c9d8"
+        }
+      },
+      {
+        "label": "verify-userscript",
+        "argv": [
+          "/opt/homebrew/opt/node@22/bin/node",
+          "scripts/verify-userscript-build.mjs"
+        ],
+        "exitCode": 0,
+        "seconds": 0.14075641700000574,
+        "log": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/extra-touch-verification-4/verify-userscript.log",
+          "bytes": 66,
+          "sha256": "12c1bac3c74cfae473c1282cdda8485cc59290cc356daba5c2717498dcf4b638"
+        }
+      }
+    ],
+    "nativeRuntimeAcceptance": false,
+    "userscript": {
+      "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/userscript/fluent-read.user.js",
+      "bytes": 2100290,
+      "sha256": "20b0430abdf336db271e90cc0e50fbf245be78c847153b75058c0ab79f0b342c"
+    },
+    "userscriptCap": 2101100
+  },
+  "production": {
+    "count": 478,
+    "bytes": 62438427,
+    "recordHash": "5fb5219235552ef87bb9f5537d2ac7f4ae0734d70ef388ff66dde81eeab8377f"
+  },
+  "input": {
+    "report": {
+      "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/docs/reports/mobile-safari-integration-20261016/mobile-input-share-touch-evidence/input-report.json",
+      "bytes": 100676,
+      "sha256": "5d0861efbf54139500d197d223f04f750963f5d7bfda4714e24d453b0819ae2d"
+    },
+    "rows": 6,
+    "controlledProviderRequests": 4,
+    "trustedNormalActions": 4,
+    "previewWheels": 4,
+    "minimum58": {
+      "tooltip": {
+        "left": 36,
+        "top": 130,
+        "right": 354,
+        "bottom": 188,
+        "width": 318,
+        "height": 58
+      },
+      "port": {
+        "left": 24,
+        "top": 130,
+        "right": 366,
+        "bottom": 188
+      },
+      "action": {
+        "rect": {
+          "left": 232.09375,
+          "top": 137,
+          "right": 276.09375,
+          "bottom": 181,
+          "width": 44,
+          "height": 44
+        },
+        "font": 14,
+        "label": "关闭",
+        "disabled": false,
+        "withinTooltip": true,
+        "withinPort": true,
+        "hits": [
+          {
+            "owned": true,
+            "tag": "BUTTON",
+            "className": "",
+            "outerHost": true
+          },
+          {
+            "owned": true,
+            "tag": "BUTTON",
+            "className": "",
+            "outerHost": true
+          },
+          {
+            "owned": true,
+            "tag": "BUTTON",
+            "className": "",
+            "outerHost": true
+          },
+          {
+            "owned": true,
+            "tag": "BUTTON",
+            "className": "",
+            "outerHost": true
+          },
+          {
+            "owned": true,
+            "tag": "BUTTON",
+            "className": "",
+            "outerHost": true
+          }
+        ]
+      },
+      "sameTooltip": true,
+      "samePreview": true
+    }
+  },
+  "share": {
+    "report": {
+      "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/docs/reports/mobile-safari-integration-20261016/mobile-input-share-touch-evidence/share-report.json",
+      "bytes": 117352,
+      "sha256": "86375ed77c71749342b621d91e8bed84e22bb588dfb2292c900f57c43351877e"
+    },
+    "rows": 4,
+    "selectionDrags": 4,
+    "trustedCoordinateClicks": 24,
+    "wheels": 9,
+    "directCloseFromBottom": true,
+    "controlledProviderCalls": 4,
+    "unknownWorkerFetches": 0,
+    "clipboardActions": 0,
+    "downloadActions": 0
+  },
+  "actualOuterReceipts": [
+    {
+      "file": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/input-tooltip-followup/input-current-root-attempt3/root-execution-receipt.json",
+        "bytes": 133366,
+        "sha256": "757018fc3d015fadb9ecca31a7b9995cb2e554c49813c9a80ea05df338023e3d"
+      },
+      "exitCode": 0,
+      "wrapperReaped": true,
+      "outerTimedOut": false,
+      "pinsUnchangedAfter": true,
+      "seconds": 13.469254732131958
+    },
+    {
+      "file": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/share-card-touch-followup/share-current-root-attempt8/root-execution-receipt.json",
+        "bytes": 133726,
+        "sha256": "7f28370780f39ccea9297c5b0eaf2c1074659672a8d4d0866c0986ccd093e01f"
+      },
+      "exitCode": 0,
+      "wrapperReaped": true,
+      "outerTimedOut": false,
+      "pinsUnchangedAfter": true,
+      "seconds": 16.577714920043945
+    }
+  ],
+  "limits": [
+    "Controlled production Edge, local Microsoft response, synthetic coarse media and controlled input VisualViewport values. No live provider, OS keyboard, physical touch, native Safari or actual browser pinch zoom acceptance.",
+    "48-line preview scrolled in both directions but not proved to the last line. Minimum58 proves Close reachability, not all content on first screen. Ordinary input restore was exercised at desktop size.",
+    "Share export control geometry/enabled state inspected; clipboard and download were not invoked. Share short layout is actual resized viewport, not OS-keyboard VisualViewport proof.",
+    "Native installed app still older e1fee subject; new native package/update/UI is separate.",
+    "Original PNG pixel verification disproved the intermediate missing-header visual-preview interpretation; no product header-paint failure is claimed."
+  ],
+  "noReferenceRepositoryCodeUsed": true
+}

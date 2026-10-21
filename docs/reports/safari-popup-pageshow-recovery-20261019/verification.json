@@ -1,0 +1,195 @@
+{
+  "schema": 1,
+  "sourceBaseCommit": "a672e87ecaa11dfb1a2f9f2b9a0b35ca68e49038",
+  "sourceFiles": [
+    {
+      "path": "src/app/popup/PopupApp.vue",
+      "bytes": 80047,
+      "sha256": "d113f96a686ab95c971dab3bdd24a6e8ba55b3b033541c43346e3dda0796b8d4"
+    },
+    {
+      "path": "tests/popupAppLifecycle.test.ts",
+      "bytes": 97361,
+      "sha256": "b65b43ad9c6ef8d8559fbb0fd0713470cb7053ab38fb14f3dd39f6483f1878ca"
+    }
+  ],
+  "focusedTests": {
+    "files": 5,
+    "passed": 271,
+    "skipped": 0,
+    "failed": 0
+  },
+  "webCommands": [
+    {
+      "label": "00-focus-before",
+      "exitCode": 0,
+      "timedOut": false,
+      "ownGroupAbsent": true,
+      "leaderReaped": true,
+      "cleanupErrors": []
+    },
+    {
+      "label": "01-focused-tests",
+      "exitCode": 0,
+      "timedOut": false,
+      "ownGroupAbsent": true,
+      "leaderReaped": true,
+      "cleanupErrors": []
+    },
+    {
+      "label": "02-typecheck",
+      "exitCode": 0,
+      "timedOut": false,
+      "ownGroupAbsent": true,
+      "leaderReaped": true,
+      "cleanupErrors": []
+    },
+    {
+      "label": "03-chrome-build",
+      "exitCode": 0,
+      "timedOut": false,
+      "ownGroupAbsent": true,
+      "leaderReaped": true,
+      "cleanupErrors": []
+    },
+    {
+      "label": "04-firefox-build",
+      "exitCode": 0,
+      "timedOut": false,
+      "ownGroupAbsent": true,
+      "leaderReaped": true,
+      "cleanupErrors": []
+    },
+    {
+      "label": "05-safari-web-build",
+      "exitCode": 0,
+      "timedOut": false,
+      "ownGroupAbsent": true,
+      "leaderReaped": true,
+      "cleanupErrors": []
+    },
+    {
+      "label": "06-safari-package-verify",
+      "exitCode": 0,
+      "timedOut": false,
+      "ownGroupAbsent": true,
+      "leaderReaped": true,
+      "cleanupErrors": []
+    },
+    {
+      "label": "07-focus-after",
+      "exitCode": 0,
+      "timedOut": false,
+      "ownGroupAbsent": true,
+      "leaderReaped": true,
+      "cleanupErrors": []
+    }
+  ],
+  "webOuterExit": 1,
+  "webOuterReason": "UNAVAILABLE_FOCUS_NULL_BEFORE_AND_AFTER_INCORRECTLY_LABELLED_FOCUS_CHANGED",
+  "focusObservation": "UNAVAILABLE",
+  "nativeBuildPassed": true,
+  "nativeCommands": [
+    {
+      "label": "00-git-head",
+      "exitCode": 0,
+      "timedOut": false,
+      "ownGroupAbsent": true,
+      "leaderReaped": true,
+      "cleanupErrors": []
+    },
+    {
+      "label": "01-git-status",
+      "exitCode": 0,
+      "timedOut": false,
+      "ownGroupAbsent": true,
+      "leaderReaped": true,
+      "cleanupErrors": []
+    },
+    {
+      "label": "02-package",
+      "exitCode": 0,
+      "timedOut": false,
+      "ownGroupAbsent": true,
+      "leaderReaped": true,
+      "cleanupErrors": []
+    },
+    {
+      "label": "03-macos",
+      "exitCode": 0,
+      "timedOut": false,
+      "ownGroupAbsent": true,
+      "leaderReaped": true,
+      "cleanupErrors": []
+    },
+    {
+      "label": "04-ios-simulator",
+      "exitCode": 0,
+      "timedOut": false,
+      "ownGroupAbsent": true,
+      "leaderReaped": true,
+      "cleanupErrors": []
+    },
+    {
+      "label": "05-iphoneos",
+      "exitCode": 0,
+      "timedOut": false,
+      "ownGroupAbsent": true,
+      "leaderReaped": true,
+      "cleanupErrors": []
+    }
+  ],
+  "webFileCount": 467,
+  "matchingWebCopies": [
+    {
+      "matchedWebFiles": 467,
+      "totalFiles": 467
+    },
+    {
+      "matchedWebFiles": 467,
+      "totalFiles": 467
+    },
+    {
+      "matchedWebFiles": 467,
+      "totalFiles": 469
+    },
+    {
+      "matchedWebFiles": 467,
+      "totalFiles": 469
+    }
+  ],
+  "developerSigningPerformed": false,
+  "nativeRuntimeAcceptance": false,
+  "actualBFCacheAcceptance": false,
+  "configurationRetention": "UNKNOWN",
+  "priorNativeArticle": {
+    "productCommit": "a672e87ecaa11dfb1a2f9f2b9a0b35ca68e49038",
+    "passed": 0,
+    "skipped": 1,
+    "failed": 0,
+    "translateNativeTap": 1,
+    "permissionsRequestActuallyCalled": "UNKNOWN",
+    "systemPromptObserved": false,
+    "rootCause": "UNKNOWN",
+    "translationAcceptance": false,
+    "restorationAcceptance": false
+  },
+  "evidence": [
+    {
+      "name": "validation-result.json",
+      "bytes": 14068,
+      "sha256": "76d9723b3ac953ae3fb6cb23dc4203802dc8e56b4fee9e0b501e2dd1c7ce1155"
+    },
+    {
+      "name": "native-build-result.json",
+      "bytes": 86816,
+      "sha256": "9fa22be637f39d7e5adfb9181a68eac268c00692c083c67e668a94a3703e94af"
+    },
+    {
+      "name": "root-article-translate-tap-no-prompt-result.json",
+      "bytes": 4756,
+      "sha256": "253293ddaa3e70ac606a5613873a0e7071ce01ecc66ff28afa8bc767fcc944b8"
+    }
+  ],
+  "fullGoalComplete": false
+}

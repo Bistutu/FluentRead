@@ -576,8 +576,10 @@ describe('browser regression focus safety', () => {
         expect(selectionHash).toBe('#settings-selection');
         const selectionSection = resolveRequestedSection(selectionHash!);
         expect(resolveNavigationItem(selectionSection).label).toBe('划词翻译');
-        expect(readScript('src/features/settings/ui/SettingsSections.vue'))
-            .toMatch(new RegExp(`id="${selectionSection}"[^>]*>\\s*<SelectionSettings`, 'u'));
+        const selectionMarkup = readScript('src/features/settings/ui/SettingsSections.vue')
+            .match(new RegExp(`<section\\b[^>]*\\bid="${selectionSection}"[^>]*>([\\s\\S]*?)</section>`, 'u'))?.[1];
+        expect(selectionMarkup).toBeDefined();
+        expect(selectionMarkup).toMatch(/<SelectionSettings\b/u);
         expect(selectionSource).not.toContain('/options.html#settings-shortcuts');
         const fullPageSource = readScript('scripts/run-full-page-translation-test.cjs');
         expect(fullPageSource).toContain("matches(':hover') === true");

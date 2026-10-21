@@ -1,7 +1,7 @@
 /**
  * @file src/core/translation/text.ts
  *
- * 文件职责：提取和校验候选中的可读文本，拒绝标识符、独立时间与数值（含拆分行内节点的展示）、空白、扩展译文及脚本、表单或敏感区域的节点。
+ * 文件职责：提取和校验候选中的可读文本，拒绝标识符、独立时间与数值（含拆分行内节点的展示）、空白、扩展译文及脚本、表单或敏感区域的节点；已准备的 man 手册 PRE 只允许受信且仍为自然语言的说明段提供来源。
  * 主要内容：提供文本规范化、仅确认至少两个 Unicode 字母的 meaningful 判定与共享的 identifier 模式判定、元素与文本节点保护检查、嵌套 tooltip 来源隔离、WeakMap 状态缓存和受预算约束的深度扫描；语言预检副本保留真实行内邻接，在换行、语义块和保护省略处保留边界，不改动翻译槽。 可核对的公开符号包括 normalizeTranslationText、isIdentifierLikeText、isMeaningfulTranslationText、setMinimumTranslationTextLength、isTranslationTextNodeProtected、TranslationTextProtectionCache、createTranslationTextProtectionCache、isTranslationTextElementProtected、hasMeaningfulTranslationTextInNodes。
  * 模块边界：本文件属于可独立测试的 core 候选领域；可以读取传入 DOM 以计算结果，但不访问配置存储、不调用 provider、不注册页面监听器，也不负责译文渲染或 feature 生命周期；文本语言与同目标跳过统一由 src/core/language 判断。
  */
@@ -15,6 +15,7 @@ import {
     maxComposedAncestorDepth,
 } from './dom';
 import type {TranslationTextProtectionOptions} from './dom';
+import {isUnpreparedManpageText} from './manpage';
 import {isNonTranslatableLiveData} from './liveData';
 import {isAcronymWord, isMixedCaseName, isNameVariantWord, isTechnicalAbbreviation} from '@/src/core/language/technicalTokens';
 import {FUNCTION_WORDS} from '@/src/core/language/lexicon';
@@ -76,7 +77,7 @@ export function isTranslationTextNodeProtected(
     protectionCache = createTranslationTextProtectionCache(),
 ): boolean {
     const parent = node.parentElement;
-    if (!parent || isNonTranslatableLiveData(node.nodeValue ?? '')) return true;
+    if (!parent || isUnpreparedManpageText(node) || isNonTranslatableLiveData(node.nodeValue ?? '')) return true;
     // 同一次同步提取中的文本节点共享祖先；调用方传入缓存时只在相同判定参数下复用。
     return isTranslationTextElementProtected(
         parent,
@@ -418,7 +419,7 @@ export function hasMeaningfulTranslationTextInNodes(
         if (current.nodeType === 3) {
             stack.pop();
             const textNode = current as Text;
-            if (!textNode.parentElement || elementIsProtected(textNode.parentElement)) continue;
+            if (!textNode.parentElement || isUnpreparedManpageText(textNode) || elementIsProtected(textNode.parentElement)) continue;
             textNodes += 1;
             const remaining = discoveryCharacterBudget - characters;
             const value = normalizeTranslationText((textNode.nodeValue ?? '').slice(0, remaining));

@@ -24,6 +24,8 @@ When a translation matches the source, FluentRead keeps the source without displ
 2. Choose the target language and translation service, then click **Translate this page**.
 3. Read in bilingual mode, or select **Translation only** to focus on the result. Click **Restore original** to return to the page as it was.
 
+If the website's font makes translations hard to read, click **Aa** at the bottom right of the quick panel's translation card and choose **Translation font on this page → Browser default**. Existing and later translations update immediately in both bilingual and translation-only modes, without translating again. Choose **Original font** to restore the previous font settings. This choice applies only to this page and resets on refresh or navigation; other tabs and global preferences stay separate.
+
 Links retained in bilingual translations, such as user mentions (`@username`) and web addresses, keep the original link color so they remain easy to distinguish from surrounding text.
 
 The default translates as you read. If you need the whole page at once, change the translation range in settings. After restoring, you can translate again with another language or service.
@@ -121,9 +123,11 @@ When an announcement or modal dialog blocks the page, full-page translation hand
 
 #### Buttons show the translation only
 
-Buttons, tabs, form labels and toolbar actions are interface controls whose size is fixed by the site's own styling. In bilingual mode this text is **replaced by the translation instead of stacked with the original**, so a button is never pushed taller, its label never overflows, and a toolbar row never breaks apart. Native buttons, elements with a control `role`, button-styled links and buttons built from input elements all follow the same rule. Restoring the original text puts the original labels back.
+Buttons, tabs, form labels and toolbar actions are interface controls whose size is fixed by the site's own styling. In bilingual mode this text is **replaced by the translation instead of stacked with the original**, so a button is never pushed taller, its label never overflows, and a toolbar row never breaks apart. Native buttons, elements with a control `role`, button-styled links and buttons built from input elements follow this rule by default. Restoring the original text puts the original labels back.
 
 Full sentences in paragraphs, headings and disclosure sections still follow the display mode you picked, so bilingual reading is unaffected.
+
+Website adaptation rules can explicitly select a content-bearing button or its internal headline label as a content target. Kagi News headlines keep the original alongside the translation in bilingual mode and show only the translation in translation-only mode. Search, settings and mark-as-read buttons retain their control behavior, and headlines still expand and collapse stories when clicked.
 
 Buttons that are submitted with a form (submit buttons that carry a `name`) and the contents of text fields are left untouched, so the site never receives an action it cannot recognise and your own input is never rewritten.
 

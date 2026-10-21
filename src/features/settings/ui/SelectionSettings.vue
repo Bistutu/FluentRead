@@ -68,5 +68,8 @@ const enabled = computed({get: () => props.config.selectionTranslatorMode !== 'd
 .selection-preview-word { border-top:1px solid var(--line); padding-top:14px; font-size:12px; }
 .selection-pos { display:inline-block; background:color-mix(in srgb, var(--brand) 10%, transparent); color:var(--brand); padding:3px 7px; border-radius:5px; margin-right:10px; }
 .selection-preview-word p { line-height:1.7; }
-.selection-preview-word small, button:focus-visible, summary:focus-visible { outline:2px solid var(--brand); outline-offset:3px; }
+button:focus-visible, summary:focus-visible { outline:2px solid var(--brand); outline-offset:3px; }
+@media (any-pointer: coarse) {
+  .selection-preview-tabs button { min-width:44px; min-height:44px; padding:8px 12px; font-size:13px; }
+}
 </style>

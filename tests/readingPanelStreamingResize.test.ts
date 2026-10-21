@@ -1,12 +1,13 @@
 /**
  * @file tests/readingPanelStreamingResize.test.ts
  * 文件职责：执行阅读面板真实 Vue setup 与客户端模板，验证流式正文不重复要求父卡片测量。
- * 主要内容：逐次刷新回答与结构变化、同帧首次回答/完成/错误、用户阅读位置、晚到译文、隐藏/替换/卸载的迟到响应；统一导航顶栏的唯一传送工具、正文追问与回答优先顺序、菜单边界和监听清理，以及真实表单/按钮事件。
+ * 主要内容：逐次刷新回答与结构变化、同帧首次回答/完成/错误、用户阅读位置、晚到译文、隐藏/替换/卸载的迟到响应；统一导航顶栏的唯一传送工具、正文外追问的焦点与输入法连续性、菜单边界和监听清理，以及真实表单/按钮事件。
  * 模块边界：仅控制后台流端口、展示子组件与 DOM 几何；不复制阅读业务，不请求模型，不声称真实浏览器性能。
  */
 import {createRequire} from 'node:module';
 import {parseHTML} from 'linkedom';
 import {useRenderDateFormatter} from '@/src/ui/dateFormat';
+import {getSafeVisualViewportRect} from '@/src/platform/dom/visualViewport';
 import {compileVueFixture} from './helpers/compiledVueFixture';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {DEFAULT_HARNESS_PREFERENCES, HARNESS_ACTIONS, isReadingActionSupported, isReadingFollowUpSupported} from '@/src/core/config/harness';
@@ -29,7 +30,7 @@ afterEach(async()=>{dispose?.();dispose=undefined;await tick();expect(frames.siz
 
 async function mountPanel(overrides:Record<string,unknown>={}) {
   const {document,window}=parseHTML('<html><body></body></html>');
-  const view={innerHeight:800,innerWidth:390,addEventListener:document.addEventListener.bind(document),removeEventListener:document.removeEventListener.bind(document),dispatchEvent:document.dispatchEvent.bind(document)};
+  const view={innerHeight:800,innerWidth:390,getComputedStyle:()=>({direction:'ltr'}),addEventListener:document.addEventListener.bind(document),removeEventListener:document.removeEventListener.bind(document),dispatchEvent:document.dispatchEvent.bind(document)};
   Object.defineProperty(document,'defaultView',{configurable:true,value:view});
   vi.stubGlobal('document',document);
   vi.stubGlobal('CustomEvent',window.CustomEvent);
@@ -52,6 +53,7 @@ async function mountPanel(overrides:Record<string,unknown>={}) {
     vue:runtime,
     // 日期复用属于本组件的真实 Vue update 生命周期，不能以格式化 stub 绕过。
     '@/src/ui/dateFormat':{useRenderDateFormatter},
+    '@/src/platform/dom/visualViewport':{getSafeVisualViewportRect},
     '@/src/core/translation/result':{hasDistinctTranslation},
     '@/src/core/harness/evidence':{buildReadingEvidence, readingEvidenceText},
     '@/src/ui/i18n':{useUiI18n:()=>({t:(key:string)=>key,translateLegacy})},
@@ -179,7 +181,7 @@ describe('reading panel streaming resize boundaries through actual setup and tem
     const form=host.querySelector('.fr-reading-followup')!;
     const input=form.querySelector('input') as unknown as HTMLInputElement;
     const button=form.querySelector('button')!;
-    expect(form.parentNode).toBe(host.querySelector(externalNavigation?'.fr-reading-body':'[data-reading-panel]'));
+    expect(form.parentNode).toBe(host.querySelector('[data-reading-panel]'));
     expect(host.querySelectorAll('.fr-reading-followup')).toHaveLength(1);
     for(const element of [form,input,button,...host.querySelectorAll('.fr-reading-feedback')]) expect(element.hasAttribute('data-v-reading-stream-resize')).toBe(true);
     for(const fragment of ['.fr-reading-followup input','.fr-reading-followup button','.fr-reading-feedback']){
@@ -200,7 +202,7 @@ describe('reading panel streaming resize boundaries through actual setup and tem
     props.preferences.service='deepseek';await tick();expect(host.querySelectorAll('.fr-reading-followup')).toHaveLength(1);
   });
 
-  it('keeps standalone controls while external navigation teleports unique tools to the fixed slot and leaves followup in the answer',async()=>{
+  it('keeps standalone controls while external navigation teleports unique tools and reserves followup outside the answer scroller',async()=>{
     const {host,toolsTarget,props,calls,viewport,finish,styles}=await mountPanel({externalNavigation:false});
     const root=host.querySelector('[data-reading-panel]')!;
     expect(host.querySelector('.fr-reading-toolbar')?.parentNode).toBe(root);
@@ -216,14 +218,14 @@ describe('reading panel streaming resize boundaries through actual setup and tem
     expect(toolsTarget.contains(host.querySelector('.fr-reading-tools'))).toBe(true);
     expect(viewport.querySelector('.fr-reading-tools')).toBeNull();
     expect(host.querySelector('.fr-reading-inline-controls')).toBeNull();
-    expect(viewport.contains(host.querySelector('.fr-reading-followup'))).toBe(true);
+    expect(viewport.contains(host.querySelector('.fr-reading-followup'))).toBe(false);
+    expect(host.querySelector('.fr-reading-followup')?.parentNode).toBe(root);
     expect(host.querySelector('.fr-reading-status')).not.toBeNull();
     calls[0].callbacks.progress({kind:'text',text:'Heading\nFirst answer paragraph'});await tick();
     expect(host.querySelector('.fr-reading-body > .fr-reading-status')).toBeNull();
     expect(host.querySelector('.fr-reading-controls button[aria-label="停止"]')).not.toBeNull();
     expect(host.querySelector('.fr-reading-controls [role="status"]')).not.toBeNull();
-    const body=host.querySelector('.fr-reading-body')!;
-    expect([...body.children].indexOf(host.querySelector('.fr-reading-followup')!)).toBeGreaterThan([...body.children].indexOf(host.querySelector('.fr-reading-answer')!));
+    expect([...root.children].indexOf(host.querySelector('.fr-reading-followup')!)).toBeGreaterThan([...root.children].indexOf(viewport));
     finish('Complete answer');await tick();
     expect(host.querySelector('.fr-reading-controls button[aria-label="停止"]')).toBeNull();
     expect(host.querySelectorAll('.fr-reading-footer')).toHaveLength(1);
@@ -236,6 +238,38 @@ describe('reading panel streaming resize boundaries through actual setup and tem
     expect(calls).toHaveLength(1);
   });
 
+  it.each([false,true])('retains the focused composing input outside a constrained answer scroller across navigation changes (external=%s)',async externalNavigation=>{
+    const {host,panel,props,calls,viewport,window,finish}=await mountPanel({externalNavigation});
+    vi.stubGlobal('Event',window.Event);
+    finish('Completed explanation');await tick();
+    panel.question='Draft';await tick();
+    const root=host.querySelector('[data-reading-panel]')!;
+    const form=host.querySelector('.fr-reading-followup')!;
+    const input=form.querySelector('input') as unknown as HTMLInputElement;
+    // Linkedom has no focus manager: a detached input loses this scoped DOM focus port.
+    Object.defineProperty(host.ownerDocument,'activeElement',{configurable:true,get:()=>input.isConnected ? input : null});
+    input.dispatchEvent(new window.Event('focusin',{bubbles:true}));
+    input.dispatchEvent(new window.Event('compositionstart'));input.value='尚未提交的追问';
+    input.dispatchEvent(new window.Event('input',{bubbles:true}));await tick();
+    expect(panel.question).toBe('Draft');
+    Object.defineProperty(viewport,'clientHeight',{configurable:true,value:80});
+    Object.defineProperty(viewport,'scrollHeight',{configurable:true,value:600});
+    viewport.scrollTop=180;viewport.dispatchEvent(new window.Event('scroll'));
+    for(const navigation of [!externalNavigation,externalNavigation]) {
+      props.externalNavigation=navigation;
+      props.sourceTranslation={source:'Practice helps.',text:'晚到的译文'};
+      await tick();
+      expect(host.querySelector('.fr-reading-followup')).toBe(form);
+      expect(host.querySelector('input[aria-label="继续追问"]')).toBe(input);
+      expect(form.parentNode).toBe(root);expect(viewport.contains(input)).toBe(false);
+      expect(host.ownerDocument.activeElement).toBe(input);expect(input.value).toBe('尚未提交的追问');
+      expect(host.querySelectorAll('.fr-reading-followup')).toHaveLength(1);
+      expect(input.hasAttribute('disabled')).toBe(false);expect(panel.question).toBe('Draft');
+    }
+    input.dispatchEvent(new window.Event('compositionend'));await tick();
+    expect(panel.question).toBe('尚未提交的追问');expect(calls).toHaveLength(1);
+  });
+
   it('bounds the teleported menu above or below its trigger and releases sizing listeners on close, view switches and unmount',async()=>{
     const {host,panel,props,window,unmount}=await mountPanel({externalNavigation:true});
     const details=host.querySelector('.fr-reading-tools') as unknown as HTMLDetailsElement;
@@ -243,17 +277,18 @@ describe('reading panel streaming resize boundaries through actual setup and tem
     const menu=details.querySelector('.fr-reading-tool-list') as HTMLElement;
     Object.defineProperty(summary,'offsetHeight',{configurable:true,value:32});
     Object.defineProperty(menu,'scrollHeight',{configurable:true,value:320});
-    let rect={top:740,bottom:772,height:32};
+    let rect={left:310,right:342,width:32,top:740,bottom:772,height:32};
     summary.getBoundingClientRect=()=>rect as DOMRect;
+    details.getBoundingClientRect=()=>rect as DOMRect;
     const view=details.ownerDocument.defaultView!;
     const add=vi.spyOn(view,'addEventListener'), remove=vi.spyOn(view,'removeEventListener');
     const open=()=>{details.open=true;details.dispatchEvent(new window.Event('toggle'));};
     open();
     expect(menu.style.top).toBe('auto');expect(menu.style.bottom).toBe('36px');expect(menu.style.maxHeight).toBe('310px');
     expect(add).toHaveBeenCalledWith('resize',panel.fitToolsMenu);
-    rect={top:20,bottom:52,height:32};view.dispatchEvent(new window.Event('resize'));
+    rect={left:310,right:342,width:32,top:20,bottom:52,height:32};view.dispatchEvent(new window.Event('resize'));
     expect(menu.style.top).toBe('36px');expect(menu.style.bottom).toBe('auto');expect(menu.style.maxHeight).toBe('310px');
-    rect={top:620,bottom:684,height:64};view.dispatchEvent(new window.Event('resize'));
+    rect={left:260,right:324,width:64,top:620,bottom:684,height:64};view.dispatchEvent(new window.Event('resize'));
     expect(menu.style.top).toBe('auto');expect(menu.style.maxHeight).toBe('302px');expect(menu.style.width).toBe('183px');
     panel.dismissToolsOutside({target:menu.querySelector('button')});expect(details.open).toBe(true);
     const focus=vi.fn();summary.focus=focus;
@@ -273,6 +308,46 @@ describe('reading panel streaming resize boundaries through actual setup and tem
     remove.mockClear();unmount();await tick();
     expect(remove).toHaveBeenCalledWith('resize',panel.fitToolsMenu);
     expect(host.querySelector('.fr-reading-tools')).toBeNull();
+  });
+
+  it.each([
+    {name:'short keyboard viewport',visual:{offsetLeft:0,offsetTop:0,width:390,height:280},safe:{left:0,top:0,right:390,bottom:280},
+      rect:{left:310,right:342,width:32,top:60,bottom:92,height:32},direction:'ltr',insets:[0,0,0,0],up:false},
+    {name:'offset viewport with safe insets',visual:{offsetLeft:120,offsetTop:180,width:200,height:260},safe:{left:128,top:186,right:316,bottom:430},
+      rect:{left:135,right:167,width:32,top:365,bottom:397,height:32},direction:'ltr',insets:[6,4,10,8],up:true},
+    {name:'scaled trigger in a narrow offset viewport',visual:{offsetLeft:100,offsetTop:200,width:220,height:300},safe:{left:100,top:200,right:320,bottom:500},
+      rect:{left:260,right:324,width:64,top:410,bottom:474,height:64},direction:'ltr',insets:[0,0,0,0],up:true},
+    {name:'RTL inline-end anchor',visual:{offsetLeft:0,offsetTop:0,width:390,height:280},safe:{left:0,top:0,right:390,bottom:280},
+      rect:{left:30,right:62,width:32,top:60,bottom:92,height:32},direction:'rtl',insets:[0,0,0,0],up:false},
+  ])('keeps the teleported menu within the actual visible bounds: $name',async({visual,safe,rect,direction,insets,up})=>{
+    const {host,window,viewport,errors}=await mountPanel({externalNavigation:true});
+    const details=host.querySelector('.fr-reading-tools') as unknown as HTMLDetailsElement;
+    const summary=details.querySelector('summary')!;
+    const menu=details.querySelector('.fr-reading-tool-list') as HTMLElement;
+    // Linkedom loses the first inline-style write when creating its backing attribute; do not prefill any measured size.
+    menu.setAttribute('style','');
+    Object.defineProperty(summary,'offsetHeight',{configurable:true,value:32});
+    Object.defineProperty(menu,'scrollHeight',{configurable:true,value:320});
+    summary.getBoundingClientRect=()=>rect as DOMRect;
+    details.getBoundingClientRect=()=>rect as DOMRect;
+    const view=details.ownerDocument.defaultView!;
+    Object.defineProperty(view,'visualViewport',{configurable:true,value:visual});
+    Object.defineProperty(view,'document',{configurable:true,value:details.ownerDocument});
+    vi.spyOn(view,'getComputedStyle').mockReturnValue({direction,paddingTop:`${insets[0]}px`,paddingRight:`${insets[1]}px`,
+      paddingBottom:`${insets[2]}px`,paddingLeft:`${insets[3]}px`} as CSSStyleDeclaration);
+    const focus=vi.fn();summary.focus=focus;viewport.scrollTop=41;
+    details.open=true;details.dispatchEvent(new window.Event('toggle'));
+    expect(errors).not.toHaveBeenCalled();expect(details.open).toBe(true);
+    expect(menu.style.top==='auto').toBe(up);
+    // Interpret the resulting CSS box in viewport coordinates, rather than recomputing the fitting algorithm.
+    const scale=rect.height/32,width=Number.parseFloat(menu.style.width)*scale,height=Number.parseFloat(menu.style.maxHeight)*scale;
+    const left=rect.left+Number.parseFloat(menu.style.left)*scale;
+    const top=up ? rect.bottom-Number.parseFloat(menu.style.bottom)*scale-height : rect.top+Number.parseFloat(menu.style.top)*scale;
+    expect(width).toBeGreaterThan(0);expect(height).toBeGreaterThan(0);
+    expect(left).toBeGreaterThanOrEqual(safe.left+12);expect(left+width).toBeLessThanOrEqual(safe.right-12);
+    expect(top).toBeGreaterThanOrEqual(safe.top+8);expect(top+height).toBeLessThanOrEqual(safe.bottom-8);
+    if(direction==='rtl') expect(left).toBe(rect.left);
+    expect(viewport.scrollTop).toBe(41);expect(focus).not.toHaveBeenCalled();
   });
 
   it('enters records without restoring focus to the removed menu trigger and keeps source viewing focused on the answer',async()=>{

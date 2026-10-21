@@ -1,0 +1,253 @@
+{
+  "schemaVersion": 1,
+  "status": "CONTROLLED_CHROMIUM_PRODUCTION_MENU_PASS_NOT_NATIVE_ACCEPTANCE",
+  "source": {
+    "baseCommit": "00c9770bfbb6e392ba5f44da69059230b19a9e01",
+    "uncommittedProductChangesAtExecution": true,
+    "newCommitNotAssignedAtExecution": true,
+    "productFiles": {
+      "src/features/video-subtitle/content/playerMenu.ts": {
+        "bytes": 44607,
+        "sha256": "61a702a9470668faea96c242d7edb37fe06828875a46cf8c52e9759e4cbed1aa"
+      },
+      "src/features/video-subtitle/content/ui.ts": {
+        "bytes": 96148,
+        "sha256": "c6fae27a3e1aa1bf49840b28ba7faec9dc6750454e242c1c3393ee7758f26ea0"
+      },
+      "src/features/video-subtitle/content/runtime.ts": {
+        "bytes": 93131,
+        "sha256": "4d6ed6e4c76cc63c3db62fc658e403393ac41c07dc4e1005f6fb18661d2cb06f"
+      }
+    }
+  },
+  "productionArtifact": {
+    "target": "chrome-mv3",
+    "manifest": {
+      "relativePath": ".output/chrome-mv3/manifest.json",
+      "bytes": 3250,
+      "sha256": "d84f2ae185318d9f0add60b335e45056b476d2cce62f2dedc39a15fc9bd7ce1b"
+    },
+    "contentScript": {
+      "relativePath": ".output/chrome-mv3/content-scripts/content.js",
+      "bytes": 2780495,
+      "sha256": "d0b3bdcf4281f637c2cde8d836a08fed1ac0c0deb77ca31bbde639e91c5781b8"
+    },
+    "sourceBinding": "Same source file bytes before/after the recorded build and production run; manifest alone does not prove source identity."
+  },
+  "verification": {
+    "focused": {
+      "files": 3,
+      "passed": 183,
+      "skipped": 0,
+      "perFile": {
+        "videoPlayerBinding.test.ts": 112,
+        "videoUiI18n.test.ts": 36,
+        "videoSubtitleViewport.test.ts": 35
+      }
+    },
+    "typecheckExit": 0,
+    "staticAuditExit": 0,
+    "chromeProductionBuildExit": 0,
+    "productionMenu": {
+      "exit": 0,
+      "elapsedSeconds": 22.991557915999998,
+      "reportCases": 7,
+      "rawPNGCount": 49,
+      "errors": [],
+      "report": {
+        "artifact": "new-production-green-v2/report.json",
+        "bytes": 614393,
+        "sha256": "c4deed340120054095075b420308f6b22bf542e3d47a82faa192478348a500f4"
+      },
+      "focusEvents": 0,
+      "profileRemoved": true
+    },
+    "firefoxProductionBuildExit": 0,
+    "safariProductionBuildExit": 0,
+    "safariResourceVerifyExit": 0
+  },
+  "observations": {
+    "closeOnlyHeightsTested": [
+      44,
+      54,
+      58,
+      80,
+      83,
+      84,
+      127
+    ],
+    "normalHeight": 128,
+    "normalBodyClientHeight": 44,
+    "focusedBodyScrollTop": [
+      3,
+      216,
+      3
+    ],
+    "wholeFocusedControlMinimumCSSPx": 44,
+    "hitPointsPerTarget": 5,
+    "nonzeroCollapseRestore": {
+      "before": 216,
+      "foldedNoBoxReadback": 0,
+      "expanded": 216,
+      "sameBodyAndModeNodes": true,
+      "sameSelection": true,
+      "closeRetainsFocus": true
+    },
+    "pageScrollUnchanged": true,
+    "restoredHeight": 280,
+    "sameSizeRefreshDoesNotPullManualScroll": "unit regression; no new observer or page scroll",
+    "originalPromptAndDesktopFocus": "existing behavior retained; focused test coverage, not a new native prompt scenario"
+  },
+  "history": {
+    "initial58": "Old production Close44 had only32 visible pixels and two failed lower hit points; outer exit1 retained.",
+    "first84": "Earlier runner exit0 accepted only Close; Root UI review found a4px non-inert body scrollport for44px controls.",
+    "v2OracleOldProduct": "The stronger oracle rerun on that earlier production bundle exited1 at84 because close-only was absent.",
+    "oldRecordsPreserved": true
+  },
+  "receipts": {
+    "focused-tests-v2-execution-receipt.json": {
+      "receipt": {
+        "artifact": "focused-tests-v2-execution-receipt.json",
+        "bytes": 3772,
+        "sha256": "0009803963f4507215dc2336bad849b082d30d7dc72abe8cf5dfb2f6c47c89eb"
+      },
+      "log": {
+        "artifact": "focused-tests-v2-execution.log",
+        "bytes": 2369,
+        "sha256": "6fc588005643092fa56432ed2c8fd99201002a572b8a18f3fbbb5670078642d5"
+      },
+      "exitCode": 0
+    },
+    "typecheck-v2-execution-receipt.json": {
+      "receipt": {
+        "artifact": "typecheck-v2-execution-receipt.json",
+        "bytes": 3635,
+        "sha256": "2da08b96a7802bf3f7d11d957ae0d2260b8329c2a3e20285fd4533ca5adf4839"
+      },
+      "log": {
+        "artifact": "typecheck-v2-execution.log",
+        "bytes": 150,
+        "sha256": "f7e4b6f36ebe8998f79ebb387c69a963a6fe62d79868210170326c4581c2e2c1"
+      },
+      "exitCode": 0
+    },
+    "static-audit-v2-execution-receipt.json": {
+      "receipt": {
+        "artifact": "static-audit-v2-execution-receipt.json",
+        "bytes": 3619,
+        "sha256": "ad0b754282c987d897d73d8b8eb8dbf8ca2ea002d8e80df26d576b43df0d5b00"
+      },
+      "log": {
+        "artifact": "static-audit-v2-execution.log",
+        "bytes": 301,
+        "sha256": "4a0788d22e15042eb7ccedc4fcc418301f123ab41a54227dd1d906b3e78e67de"
+      },
+      "exitCode": 0
+    },
+    "production-build-v2-execution-receipt.json": {
+      "receipt": {
+        "artifact": "production-build-v2-execution-receipt.json",
+        "bytes": 3635,
+        "sha256": "938c7bd0e0d69110d2c9ca56a9ce1249e779474c9afdeb20b602a80bae2ff171"
+      },
+      "log": {
+        "artifact": "production-build-v2-execution.log",
+        "bytes": 84379,
+        "sha256": "10b06d569c4940827567b66c946116933c8c3c2b12409d2bc92e0950cb1a45cf"
+      },
+      "exitCode": 0
+    },
+    "production-menu-green-v2-execution-receipt.json": {
+      "receipt": {
+        "artifact": "production-menu-green-v2-execution-receipt.json",
+        "bytes": 5052,
+        "sha256": "f6b5a32257a5f55802c85db3e60b7c39300d1f13a4d71d8814a2f1dcfaad9ced"
+      },
+      "log": {
+        "artifact": "production-menu-green-v2-execution.log",
+        "bytes": 1044,
+        "sha256": "96978fba2c837afccb51cef834d4d182af0e04bdfbf1297030534cbc7f6570a9"
+      },
+      "exitCode": 0
+    },
+    "firefox-build-v2-execution-receipt.json": {
+      "receipt": {
+        "artifact": "firefox-build-v2-execution-receipt.json",
+        "bytes": 3660,
+        "sha256": "50ae7ab8a020d46d5ed867928eed01bc1d026fde32cf1b4dd78644a011018fb4"
+      },
+      "log": {
+        "artifact": "firefox-build-v2-execution.log",
+        "bytes": 84902,
+        "sha256": "f2c194e5e749b0eb4a25026d485b180b0da21163aae02827a9d2e4a44943cbe1"
+      },
+      "exitCode": 0
+    },
+    "safari-build-v2-execution-receipt.json": {
+      "receipt": {
+        "artifact": "safari-build-v2-execution-receipt.json",
+        "bytes": 3664,
+        "sha256": "e517fc8f55b714424967106553c85e25439fd1f18222802d507e51b84d78fe07"
+      },
+      "log": {
+        "artifact": "safari-build-v2-execution.log",
+        "bytes": 83131,
+        "sha256": "d0dc972e57e0cd0b757e677f23d109f58df1f380a3acf5ea96c6f79fdb1012ea"
+      },
+      "exitCode": 0
+    },
+    "safari-verify-v2-execution-receipt.json": {
+      "receipt": {
+        "artifact": "safari-verify-v2-execution-receipt.json",
+        "bytes": 3627,
+        "sha256": "e127c484b202278da461ac8f59579c9cc573654f8ebb359a26db9d5dab16fade"
+      },
+      "log": {
+        "artifact": "safari-verify-v2-execution.log",
+        "bytes": 509,
+        "sha256": "247972fc5a518879c1e2c566b09d71b47655c41d00291c7b1f35ff7c8a4d6469"
+      },
+      "exitCode": 0
+    }
+  },
+  "publicEvidence": {
+    "copyIndex": "copy-index.json",
+    "rawPNGs": [
+      "portrait-320-menu-first-screen.png",
+      "landscape-844-menu-first-screen.png",
+      "very-short-44-close.png",
+      "normal-128-open-selected.png",
+      "normal-128-keyboard-last.png",
+      "very-short-restored-280-primary.png"
+    ],
+    "count": 6
+  },
+  "independentUIReview": {
+    "artifact": "v2-independent-production-ui-operation-review.json",
+    "bytes": 45101,
+    "sha256": "6d2611f34962da858591c263add8d500345f7dd6a74d549658f29fc6ebeb42b3",
+    "findings": [],
+    "allRawPNGsViewed": 49,
+    "geometryObservations": 42,
+    "targetObservations": 171,
+    "fullyVisibleTargetObservations": 149,
+    "fullyVisibleTargetHitPointsPassed": 745,
+    "partialBodyTargetObservationsNotClaimedFullyVisible": 22,
+    "twoP2FindingsClosedWithinControlledScope": true
+  },
+  "limits": [
+    "Controlled local HTML/timedtext/mock translation with production Chrome MV3 content/style/binding.",
+    "VisualViewport numerical fixture, coarse-pointer/viewport emulation and explicit DOM fullscreen property fixture; no native or OS keyboard acceptance.",
+    "Actual safe-area inset emulation was unavailable; known offset ports and root-transform geometry were exercised.",
+    "No new Safari/Firefox runtime, physical device, live provider, all-language/theme matrix or caption native-paint acceptance.",
+    "No native build/UI result from an earlier product is carried forward.",
+    "128px promises one44px scroll-revealed body control, not all controls at once."
+  ],
+  "referenceRepositoriesUsed": false,
+  "independentSourceReview": {
+    "artifact": "v2-independent-source-review.json",
+    "bytes": 8467,
+    "sha256": "48901b5d401fa6c19b43a00d8c6ceb44971e742d98ab8c7dd1922ba252f90ad2",
+    "findings": []
+  }
+}

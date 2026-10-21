@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "sourceCommit": "4aa991c60348e7070405a8d93544b91d549abc97",
+  "integratedMain": "36be753f63c9d937cd89297b121d981d1f874e6b",
+  "previousDelivery": "0e333e02b3a206e376e402c8b001b78e95c70321",
+  "focusedTests": {
+    "files": 7,
+    "passed": 497,
+    "skipped": 0,
+    "failed": 0,
+    "treeMatchedSubsequentCommit": true
+  },
+  "typeCheckPassed": true,
+  "staticTestAuditPassed": true,
+  "productionBuilds": [
+    "Chrome MV3",
+    "Firefox",
+    "Safari MV2",
+    "userscript"
+  ],
+  "productionVerifiersPassed": [
+    "userscript",
+    "extension-manifests",
+    "Safari resources"
+  ],
+  "browser": {
+    "name": "isolated visible background Edge",
+    "layoutCasesAndOperations": 7,
+    "persistenceChecks": 4,
+    "rawScreenshotsReviewed": 14,
+    "publishedScreenshots": [
+      {
+        "file": "popup-zh-touch-2x.png",
+        "bytes": 117013,
+        "sha256": "85db1c8a26ede81a99157d2115f624b0e20a28c231f2b1ceb72d50032c937784"
+      },
+      {
+        "file": "popup-diagnostic-touch-2x.png",
+        "bytes": 110829,
+        "sha256": "d409853f3383009e9e69fd9ac5a609a5733507491f42828005305f5f9fce22a4"
+      }
+    ],
+    "coarsePointerEmulated": true,
+    "consoleErrors": 0,
+    "cleanupErrors": 0,
+    "providerRequests": 1,
+    "modeSwitchMadeNoAdditionalProviderRequests": true,
+    "temporaryProfileRemoved": true,
+    "nativeAppActivationObserver": {
+      "events": 0,
+      "ownedBrowserActivations": 0,
+      "boundary": "Application activation events during this run only; not all input focus."
+    }
+  },
+  "limits": [
+    "Popup opened at manifest URL as extension tab; active-tab lookup bound to local content fixture.",
+    "Diagnostic response fixture and local deterministic provider.",
+    "Desktop CDP touch emulation; no Safari native sheet, native keyboard, real site or physical device acceptance.",
+    "Original D9 native baseline readback remains separate and incomplete; latest product is not installed by these checks.",
+    "No developer signing, publication, real device operation or PR merge."
+  ]
+}

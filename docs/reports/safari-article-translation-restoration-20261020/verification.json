@@ -1,0 +1,101 @@
+{
+  "kind": "installed-safari-visible-article-translation-restoration-evidence",
+  "sourceCommit": "84a214351f00440617048b157b0a2d2ed53e6eb4",
+  "status": "VISIBLE_REGION_FLOW_VERIFIED_BY_DOM_AND_ORIGINAL_IMAGES_FORMAL_COLLECTION_SKIPPED",
+  "report": {
+    "path": "fresh-local-safari-article-10-current-bound-1/article10-execution-report.json",
+    "bytes": 55444,
+    "sha256": "157f16e34e0c79373b99cd41fc6950d1c8345076483f75ef94c3d861654d00aa"
+  },
+  "rootReceipt": {
+    "path": "fresh-local-safari-article-10-current-bound-1/root-execution-receipt.json",
+    "bytes": 4844,
+    "sha256": "adc2c77fc017a6a742dfab3ab3b48d684b12e1ed860df0a67c94817e7f3d93c9"
+  },
+  "independentReview": {
+    "path": "fresh-local-safari-article-10-current-bound-1/independent-native-result-review.json",
+    "bytes": 5669,
+    "sha256": "28b1e68500c7ccb5364d222103f9648e50711b1d80d50eb6ed010de6fba4c152"
+  },
+  "formal": {
+    "passed": 0,
+    "skipped": 1,
+    "failed": 0,
+    "durationSeconds": 36.77823507785797,
+    "reason": "TRANSLATE_RESTORE_DOM_STAGES_AND_ORIGINALS_COLLECTED_PAINT_REQUIRES_INDEPENDENT_REVIEW"
+  },
+  "actions": {
+    "allowMicrosoftOneDay": 1,
+    "extensionPopup": 1,
+    "pageMenu": 1,
+    "restore": 1,
+    "restoreDone": 1,
+    "restoreExtensionPopup": 1,
+    "restorePageMenu": 1,
+    "SafariActivate": 1,
+    "translate": 1,
+    "translationDone": 1
+  },
+  "metrics": {
+    "bilingualCount": [
+      0,
+      6,
+      0
+    ],
+    "singleSlotCount": [
+      0,
+      0,
+      0
+    ],
+    "sourceTextPresent": true,
+    "scrollXY": [
+      0,
+      0
+    ]
+  },
+  "originalPNGs": 4,
+  "rootAndIndependentReviewerViewedAllOriginals": true,
+  "repositoryOriginalImages": [
+    {
+      "path": "article-translated.png",
+      "original": {
+        "path": "fresh-local-safari-article-10-current-bound-1/runtime-attachments/70B23F36-C27D-47A6-88B6-2F35D10CED41.png",
+        "bytes": 419621,
+        "sha256": "702e3b3b05476ed4fcc2b49934e972cde095150a8988b24b3f2ea8cc57c36457"
+      },
+      "bytes": 419621,
+      "sha256": "702e3b3b05476ed4fcc2b49934e972cde095150a8988b24b3f2ea8cc57c36457"
+    },
+    {
+      "path": "article-restored.png",
+      "original": {
+        "path": "fresh-local-safari-article-10-current-bound-1/runtime-attachments/6C5D0788-36C0-46DC-BF31-7E86A17226A1.png",
+        "bytes": 368834,
+        "sha256": "84a1650147051af795e4a0ce2808ab81045f3359dfa466f14e235756ed12d39b"
+      },
+      "bytes": 368834,
+      "sha256": "84a1650147051af795e4a0ce2808ab81045f3359dfa466f14e235756ed12d39b"
+    }
+  ],
+  "installedAppFiles": 490,
+  "installedWebFiles": 472,
+  "wholeMapsBeforeBootAfterExact": true,
+  "all21CommandsZeroClosedReapedGroupsAbsent": true,
+  "other14WholeRecordsUnchanged": true,
+  "all15Shutdown": true,
+  "fixtureServerClosedReapedGroupAbsent": true,
+  "visibleTranslationAndRestorationObserved": true,
+  "wholeArticleCompletion": false,
+  "pixelExactRestoration": false,
+  "providerIdentityResponseOrCacheMissProved": false,
+  "permissionPersistence": "UNKNOWN",
+  "configurationRetention": "UNKNOWN",
+  "createdTabs": "UNKNOWN",
+  "typedURLSubmission": "NOT_EXECUTED",
+  "nativeLongPressSelectionAcceptance": false,
+  "selectionCardReverseCloseAcceptance": false,
+  "physicalDeviceAcceptance": false,
+  "wholeMobileGoalComplete": false,
+  "referenceBorrowing": false,
+  "pathConvention": "Evidence pins are relative to the existing mobile research evidence root."
+}

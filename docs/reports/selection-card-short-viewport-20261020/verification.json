@@ -1,0 +1,786 @@
+{
+  "kind": "selection-card-short-viewport-evidence",
+  "sourceBase": "703f4767aed8ad038ee14b987d15c79827205773",
+  "source": [
+    {
+      "path": "src/features/selection-translation/ui/SelectionTranslator.vue",
+      "bytes": 164478,
+      "sha256": "eadaa67b19e0039c33a566eafccd6b87c57e7c305c8a34997a4d5563dea15ddb"
+    },
+    {
+      "path": "tests/selectionTranslatorLifecycle.test.ts",
+      "bytes": 264564,
+      "sha256": "6ba6429ff930ae49ae893e9d8f4af4b559a0152ad7dc4057befa6c15fefb62fc"
+    }
+  ],
+  "red": {
+    "executedTests": 1,
+    "failed": 1,
+    "filteredNotExecuted": 352,
+    "oldCardHeight": 34,
+    "closeHeight": 44,
+    "bottomHit": "FOOTER",
+    "originalPNG": {
+      "path": "before-58.png",
+      "bytes": 24519,
+      "sha256": "ed490a6292b1ff712935a895930e9e389d6b003477d5f5678de016ef140d4b89"
+    }
+  },
+  "validation": {
+    "executedTests": 432,
+    "passed": 432,
+    "failed": 0,
+    "skipped": 0,
+    "typecheckExitCode": 0,
+    "chromeBuildExitCode": 0,
+    "firefoxBuildExitCode": 0,
+    "safariWebBuildExitCode": 0,
+    "safariPackageVerifyExitCode": 0,
+    "userscriptVerifierExitCode": 0,
+    "userscriptBytes": 2101091,
+    "unchangedUserscriptBudget": 2101100,
+    "userscriptSHA256": "782f2924d6a7ffc573d49fb4e03ca8499bf73f8129c81df0d230d200975d0851",
+    "nativeBuildOrInstall": false
+  },
+  "browser": {
+    "outerExitCode": 0,
+    "rows": 6,
+    "originalPNGs": 10,
+    "scope": "Production MV3 main selection card in one temporary visible secondary Edge window. Actual product indicator and close, controlled Microsoft response, DOM Range fixture and isolated-world numeric VisualViewport override. Not a live provider, OS keyboard, mobile device, Firefox or Safari result.",
+    "sourceAndBuildUnchanged": true,
+    "ownedActivationCount": 0,
+    "sameForegroundPid": true,
+    "cleanup": {
+      "browserClosed": true,
+      "serverClosed": true,
+      "profileDeleted": true,
+      "optionsTabsClosed": true
+    },
+    "cleanupErrors": [],
+    "rowsSummary": [
+      {
+        "name": "390-main-card-safe58",
+        "passed": true,
+        "safeHeight": 58,
+        "cardHeight": 58,
+        "closeHeight": 44,
+        "initialCloseFullyVisible": true,
+        "touchPanCount": 6,
+        "bodyScrollTop": 26,
+        "reverseScrollTop": 0,
+        "physicalLimit": null,
+        "sameCard": true,
+        "requestCount": 1
+      },
+      {
+        "name": "390-main-card-safe44",
+        "passed": true,
+        "safeHeight": 44,
+        "cardHeight": 44,
+        "closeHeight": 44,
+        "initialCloseFullyVisible": true,
+        "touchPanCount": 7,
+        "bodyScrollTop": 35,
+        "reverseScrollTop": 0,
+        "physicalLimit": null,
+        "sameCard": true,
+        "requestCount": 1
+      },
+      {
+        "name": "320-main-card-safe32-dark",
+        "passed": true,
+        "safeHeight": 32,
+        "cardHeight": 32,
+        "closeHeight": 44,
+        "initialCloseFullyVisible": false,
+        "touchPanCount": 6,
+        "bodyScrollTop": 50,
+        "reverseScrollTop": null,
+        "physicalLimit": "32px cannot contain a 44px close target; target retained, normal viewport restored before close",
+        "sameCard": true,
+        "requestCount": 1
+      },
+      {
+        "name": "320-main-card-safe116-dark",
+        "passed": true,
+        "safeHeight": 116,
+        "cardHeight": 116,
+        "closeHeight": 44,
+        "initialCloseFullyVisible": true,
+        "touchPanCount": 3,
+        "bodyScrollTop": 7,
+        "reverseScrollTop": 0,
+        "physicalLimit": null,
+        "sameCard": true,
+        "requestCount": 1
+      },
+      {
+        "name": "390-main-card-normal280",
+        "passed": true,
+        "safeHeight": 280,
+        "cardHeight": 186,
+        "closeHeight": 44,
+        "initialCloseFullyVisible": true,
+        "touchPanCount": 0,
+        "bodyScrollTop": null,
+        "reverseScrollTop": null,
+        "physicalLimit": null,
+        "sameCard": true,
+        "requestCount": 1
+      },
+      {
+        "name": "1280-main-card-normal-fine",
+        "passed": true,
+        "safeHeight": 900,
+        "cardHeight": 132,
+        "closeHeight": 26,
+        "initialCloseFullyVisible": true,
+        "touchPanCount": 0,
+        "bodyScrollTop": null,
+        "reverseScrollTop": null,
+        "physicalLimit": null,
+        "sameCard": true,
+        "requestCount": 1
+      }
+    ]
+  },
+  "reviews": {
+    "rootCodeLogicAndTenPNGs": true,
+    "independentP4CodeLogicAndTenPNGs": true,
+    "sourcePreparationTitleAgentCodeReview": true
+  },
+  "rawEvidence": {
+    "redObservation": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/selection-card-short-viewport-followup-1/root-red-observation.json",
+      "bytes": 2146,
+      "sha256": "bf09d27a46b03e7f5bd7107f950703953c3d750d308a025ce0680eba8b433ea6"
+    },
+    "greenObservation": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/selection-card-short-viewport-followup-1/root-green-observation.json",
+      "bytes": 1348,
+      "sha256": "78533194dfa0e20c22ea0f16519c7fb36af1f95021d0bc48371550cf85c8c99e"
+    },
+    "validation": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/selection-card-short-viewport-followup-1/validation-9/validation-result.json",
+      "bytes": 17558,
+      "sha256": "167223de191123fc44885806c785e759d9d8de4e6e01a08440194038231e121e"
+    },
+    "browser": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/selection-card-short-viewport-followup-1/browser-green-1/report.json",
+      "bytes": 91943,
+      "sha256": "407fae461bec4887984821b92411e1dd03bdab0d6bb7b9210b89e8a7bbfff45b"
+    }
+  },
+  "remaining": {
+    "nativeIMEAndSafariShortCard": false,
+    "physicalDevice": false,
+    "liveTranslationProvider": false,
+    "wholeGoalComplete": false
+  },
+  "integratedFollowup": {
+    "sourceCommit": "2990c32e3d134e0bddb1a32ff0042d48eb1bf330",
+    "mainParent": "2cff10745b42bc15d5329aeb2bf6d15e923c3a86",
+    "validation": {
+      "report": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/selection-card-short-viewport-followup-1/integration-1/validation-result.json",
+        "bytes": 17953,
+        "sha256": "d2b25289504579bb0b288acdc9b47302f372dd5b434929a81172bcf8d07d64ab"
+      },
+      "executedTests": 791,
+      "passed": 791,
+      "failed": 0,
+      "skipped": 0,
+      "typeAndThreeWebBuildsPassed": true
+    },
+    "browser": {
+      "rootReceipt": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/selection-card-short-viewport-followup-1/root-integration-browser-observation.json",
+        "bytes": 4669,
+        "sha256": "2514e25290d005dd933bfd4af15f06a43e6ec1e159ec77a9cd187fd45b597911"
+      },
+      "report": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/selection-card-short-viewport-followup-1/integration-browser-1/report.json",
+        "bytes": 80067,
+        "sha256": "b55c27582ceeb47c90cac8e6b41634e81bdbcc331f1a971f79fc9eced5b8de23"
+      },
+      "rows": 6,
+      "originalPNGs": 10,
+      "rootAndIndependentReviewerViewedAllOriginals": true,
+      "scope": "Controlled Edge VisualViewport and transport only; no native IME/Safari/nativePDF consumer/live provider claim"
+    },
+    "unsignedNativeBuild": {
+      "rootReceipt": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/selection-card-short-viewport-followup-1/root-native-integrated-execution.json",
+        "bytes": 877,
+        "sha256": "637678b89efa84b20ff0630294e381c810e4e4cc4d98cacfa37ce3c67ce439cc"
+      },
+      "report": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/selection-card-short-viewport-followup-1/native-integrated-1/native-build-result.json",
+        "bytes": 169095,
+        "sha256": "59c3b8d0b111f902004f1e241fb548b9ab297c030383a2011c3a6aedf035e6d1"
+      },
+      "targets": [
+        "macOS",
+        "iOS Simulator",
+        "iPhoneOS arm64"
+      ],
+      "allTenCommandsClosedZero": true,
+      "webFiles": 472,
+      "allFourCopiesMatch": true,
+      "bootInstallOrUI": false
+    },
+    "currentDedicatedSimulatorInstalledCommit": "2990c32e3d134e0bddb1a32ff0042d48eb1bf330",
+    "wholeGoalComplete": false,
+    "installedFollowup": {
+      "kind": "root-dedicated-integrated-update-execution",
+      "execution": {
+        "session": 2718,
+        "initialChunk": "879494",
+        "completionChunk": "9ff270",
+        "actualOuterExitCode": 0
+      },
+      "report": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/selection-card-short-viewport-followup-1/dedicated-integrated-update-1/update-only-runtime-1/update-only-report.json",
+        "bytes": 50520,
+        "sha256": "2e187967612828de89f12cd3992508b1e3945ed34322ed1c026fa63453cb2048"
+      },
+      "sourceCommit": "2990c32e3d134e0bddb1a32ff0042d48eb1bf330",
+      "oldInstalledCommit": "703f4767aed8ad038ee14b987d15c79827205773",
+      "allTwelveCommandsClosedZero": true,
+      "otherFourteenWholeRecordsUnchanged": true,
+      "allFifteenShutdown": true,
+      "appFileCount": 490,
+      "webFileCount": 472,
+      "installedWhileBootedAndAfterShutdownMatchSource": true,
+      "sameForegroundPointSample": true,
+      "continuousFocusMonitoring": false,
+      "configurationPreservation": "UNKNOWN",
+      "runtimeUIOrProviderAcceptance": false
+    }
+  },
+  "readingKeyboardFollowup": {
+    "kind": "reading-followup-and-safari-keyboard-evidence",
+    "status": "LOCAL_VALIDATION_AND_SCOPED_SHARED_SOURCE_NATIVE_FUNCTIONAL_PASS_OUTER_FOCUS_GATE_FAILED",
+    "source": [
+      {
+        "path": "src/features/reading-assistant/ui/ReadingPanel.vue",
+        "bytes": 59648,
+        "sha256": "a3681b1e1e70e0120c0ae68f578af11989a1f91fdb52425ef976a1ba1fb4b9b9"
+      },
+      {
+        "path": "src/features/selection-translation/ui/SelectionTranslator.vue",
+        "bytes": 175249,
+        "sha256": "977b258560a1dc47d548bdbca925ff8ffcebd97855ed5e860e3f29bacbcf223a"
+      },
+      {
+        "path": "tests/readingPanelStreamingResize.test.ts",
+        "bytes": 48167,
+        "sha256": "d53df7165e044812ccf6f2aa6aa6fb7cb310a42372b452a0b7a48581b650fc4b"
+      },
+      {
+        "path": "tests/selectionTranslatorLifecycle.test.ts",
+        "bytes": 290930,
+        "sha256": "b0ebd0256299c2dcd451aea7aaf2c08149da8207bb9f948fa4a0d2873730c71c"
+      }
+    ],
+    "behavior": {
+      "followupPlacement": "Stable sibling outside the answer scroll area; focused input/VNode/IME/request ownership retained",
+      "rotation": "Explicit screen or valid legacy orientation axis may precede VV width; fixed 800ms window without renewal",
+      "inputReveal": "One own-card scroll after actual viewport change for the same focused input/card/source in short overflow; user intent/cancellation/expiry stops it",
+      "internalPanTail": {
+        "maximumMs": 400,
+        "maximumCumulativeHostTravelCSSPx": 2,
+        "renewedByMovesOrScroll": false,
+        "allGestureAcceptance": false
+      },
+      "programmaticHostScrollOrRefocusAdded": false
+    },
+    "validation": {
+      "report": {
+        "path": "reading-rotation-fix-verification-6/verification.json",
+        "bytes": 16972,
+        "sha256": "fe23624b18d3d3e9a97479dea4a1385ea67a655eac0cdd4660882f6ef1284bb8"
+      },
+      "tests": {
+        "executed": 567,
+        "passed": 567,
+        "failed": 0,
+        "skipped": 0,
+        "result": {
+          "path": "reading-rotation-fix-verification-6/tests.json",
+          "bytes": 219152,
+          "sha256": "eb4b2c504a5221384165813e7d8db7d16f3adf6a58a58d30e75f304ed1d1b0bb"
+        }
+      },
+      "commands": [
+        {
+          "label": "focused-tests",
+          "exitCode": 0,
+          "closed": true,
+          "leaderReaped": true,
+          "ownedGroupAbsent": true
+        },
+        {
+          "label": "types",
+          "exitCode": 0,
+          "closed": true,
+          "leaderReaped": true,
+          "ownedGroupAbsent": true
+        },
+        {
+          "label": "chrome",
+          "exitCode": 0,
+          "closed": true,
+          "leaderReaped": true,
+          "ownedGroupAbsent": true
+        },
+        {
+          "label": "firefox",
+          "exitCode": 0,
+          "closed": true,
+          "leaderReaped": true,
+          "ownedGroupAbsent": true
+        },
+        {
+          "label": "safari-web",
+          "exitCode": 0,
+          "closed": true,
+          "leaderReaped": true,
+          "ownedGroupAbsent": true
+        },
+        {
+          "label": "userscript",
+          "exitCode": 0,
+          "closed": true,
+          "leaderReaped": true,
+          "ownedGroupAbsent": true
+        },
+        {
+          "label": "userscript-verifier",
+          "exitCode": 0,
+          "closed": true,
+          "leaderReaped": true,
+          "ownedGroupAbsent": true
+        },
+        {
+          "label": "standalone-userscript",
+          "exitCode": 0,
+          "closed": true,
+          "leaderReaped": true,
+          "ownedGroupAbsent": true
+        },
+        {
+          "label": "standalone-verifier",
+          "exitCode": 0,
+          "closed": true,
+          "leaderReaped": true,
+          "ownedGroupAbsent": true
+        }
+      ],
+      "sourceInputsBeforeAfterExact": true,
+      "standardUserscript": {
+        "path": ".output/userscript/fluent-read.user.js",
+        "bytes": 2100236,
+        "sha256": "e2a537d46f3b07dfa7e2d46af0a9b58006a018fa77755d2c21bff02ac96c4835",
+        "unchangedMaximumBytes": 2101100,
+        "verifierExitCode": 0
+      },
+      "standaloneUserscriptBuildExitCode": 0,
+      "standaloneVerifierExitCode": 0,
+      "nativeUIAcceptance": false,
+      "liveProviderAcceptance": false
+    },
+    "sharedSourceSafari": {
+      "case": "fresh-local-selection-card-keyboard-17",
+      "report": {
+        "path": "fresh-local-selection-card-keyboard-17/selection-keyboard-execution-report.json",
+        "bytes": 54932,
+        "sha256": "c334fc43912fd03bd136d76e0c315096acc44f661a4d67f6856725fe7cad7b00"
+      },
+      "officialSummary": {
+        "path": "fresh-local-selection-card-keyboard-17/official-summary.stdout.log",
+        "bytes": 1006,
+        "sha256": "c24d7e9575d63bf458769f018ba11288ee98891a96f5885581f7ee719328b524"
+      },
+      "officialDetails": {
+        "path": "fresh-local-selection-card-keyboard-17/official-details.stdout.log",
+        "bytes": 1933,
+        "sha256": "d73de7fdb337ed4b88cae6adf6c2e795d9cf12323f9894d5e96aa272e066486a"
+      },
+      "formal": {
+        "passed": 0,
+        "skipped": 1,
+        "failed": 0,
+        "durationSeconds": 16.703730940818787
+      },
+      "fixtureBuild": {
+        "path": "local-selection-card-keyboard-event-trace-build-8/build-result.json",
+        "bytes": 56963,
+        "sha256": "cf4614ebf271aedb5381b2a05bfd502e1fe2a1ae0e3dadf2376c547e722fedb7"
+      },
+      "programmaticRangeSeed": true,
+      "controlledLocalTranslationAndReading": true,
+      "nativeLongPressSelectionProved": false,
+      "portrait": {
+        "realKeyboard": true,
+        "inputFullyVisibleInRootReviewedOriginal": true,
+        "focusedFollowup": true,
+        "cardClientCSSPx": 350,
+        "readingClientCSSPx": 223
+      },
+      "landscape": {
+        "realKeyboard": true,
+        "inputFullyVisibleInRootReviewedOriginal": true,
+        "focusedFollowup": true,
+        "cardClientCSSPx": 78,
+        "cardScrollHeightCSSPx": 392,
+        "safeHeightCSSPx": 78
+      },
+      "forward": {
+        "gestureAttempts": 1,
+        "ownCardScrollTopBefore": 304,
+        "ownCardScrollTopAfter": 314,
+        "hostScrollYBefore": 557,
+        "hostScrollYAfter": 557,
+        "focusedFollowupAfter": true,
+        "readoutProved": true
+      },
+      "reverse": {
+        "gestureAttempts": 1,
+        "ownCardScrollTopBefore": 314,
+        "ownCardScrollTopAfter": 314,
+        "hostScrollYAfter": 557,
+        "focusedFollowupReadoutAfter": true,
+        "readoutProved": false,
+        "rootReviewedOriginal": "ALL_BLACK_NOT_VALID_COMPLETE_PAINT_EVIDENCE",
+        "liveKeyboardInputMapping": "UNAVAILABLE",
+        "cause": "UNKNOWN"
+      },
+      "closeAttempts": 0,
+      "configurationWrites": 0,
+      "permissionChoices": 0,
+      "sendAttempts": 0,
+      "originalPNGCount": 4,
+      "originalPNGReview": "ROOT_REVIEWED_NO_NEW_IMAGE_REVIEW_CLAIM_BY_DRAFT_AUTHOR",
+      "nativeProcessExitCode": 0,
+      "resourceHelperExitCode": 0,
+      "cleanupErrors": [],
+      "preservationErrors": [],
+      "allRecordedGroupsAbsent": true,
+      "installedProductCommit": "2990c32e3d134e0bddb1a32ff0042d48eb1bf330",
+      "installedProductIsProvenanceOnly": true,
+      "fixInstalledInExtension": false
+    },
+    "setupFailures": [
+      {
+        "case": "fresh-local-selection-card-keyboard-16",
+        "report": {
+          "path": "fresh-local-selection-card-keyboard-16/selection-keyboard-execution-report.json",
+          "bytes": 44851,
+          "sha256": "caea99ca6987a9af781c6d10fb7ce5ba01024d1306c51ae8a8bcb14bb7fdb724"
+        },
+        "setupExitCode": 60,
+        "nativeTestAttempts": 0,
+        "nativeUIExecuted": false,
+        "allRecordedGroupsAbsent": true,
+        "cleanupErrors": [],
+        "preservationErrors": []
+      },
+      {
+        "case": "fresh-local-selection-card-keyboard-18",
+        "report": {
+          "path": "fresh-local-selection-card-keyboard-18/selection-keyboard-execution-report.json",
+          "bytes": 44834,
+          "sha256": "f5f1040e1e87719f0992ee421885233d90e1121eb956bc9942a4e1afa3cb9890"
+        },
+        "setupExitCode": 60,
+        "nativeTestAttempts": 0,
+        "nativeUIExecuted": false,
+        "allRecordedGroupsAbsent": true,
+        "cleanupErrors": [],
+        "preservationErrors": []
+      }
+    ],
+    "scope": {
+      "sharedSourceFixtureOnly": true,
+      "productionInstalledExtensionAcceptance": false,
+      "liveProviderAcceptance": false,
+      "nativeSelectionAcceptance": false,
+      "physicalDeviceAcceptance": false,
+      "reverseAndCloseAcceptance": true,
+      "wholeMobileGoalComplete": false,
+      "referenceBorrowing": false,
+      "reverseAndCloseAcceptanceScope": "Shared-source controlled fixture only; installed-extension path remains unverified"
+    },
+    "pathConvention": "Source paths are repository-relative; evidence paths are relative to the existing research evidence root. No personal absolute paths are embedded.",
+    "latestSharedSourceFollowup": {
+      "case": "fresh-local-selection-card-keyboard-19",
+      "report": {
+        "path": "fresh-local-selection-card-keyboard-19/selection-keyboard-execution-report.json",
+        "bytes": 56957,
+        "sha256": "eeb9e71499fe4fb64f54ab8a93e4ecb32bc5c3ad5a729c1adbbdf0bef1b53385"
+      },
+      "officialSummary": {
+        "path": "fresh-local-selection-card-keyboard-19/official-summary.stdout.log",
+        "bytes": 1006,
+        "sha256": "5b7a362fd43b2e47557307d92f68edba3657e20092cbb8d7c9702967b9fbc51c"
+      },
+      "officialDetails": {
+        "path": "fresh-local-selection-card-keyboard-19/official-details.stdout.log",
+        "bytes": 1932,
+        "sha256": "ee9759b7353d220e5a85c74d1bb3ef0f6cad655173e0ebdbbe47508153bb8171"
+      },
+      "formal": {
+        "passed": 0,
+        "skipped": 1,
+        "failed": 0,
+        "durationSeconds": 16.803559064865112
+      },
+      "landscape": {
+        "focusedFollowup": true,
+        "cardScrollTop": 304,
+        "hostScrollY": 557,
+        "safeHeightCSSPx": 78
+      },
+      "forward": {
+        "gestureAttempts": 1,
+        "ownCardScrollTopBefore": 304,
+        "ownCardScrollTopAfter": 314,
+        "hostScrollYBefore": 557,
+        "hostScrollYAfter": 557,
+        "focusedFollowupAfter": true,
+        "readoutProved": true
+      },
+      "reverse": {
+        "gestureAttempts": 1,
+        "ownCardScrollTopBefore": 314,
+        "ownCardScrollTopAfter": null,
+        "hostScrollYAfter": null,
+        "focusedFollowupAfter": null,
+        "afterReverseFRSEL1": "NOT_OBSERVED",
+        "readoutProved": false,
+        "liveKeyboardInputMapping": "UNAVAILABLE",
+        "cause": "UNKNOWN"
+      },
+      "closeAttempts": 0,
+      "publicSnapshots": 10,
+      "originalPNGCount": 4,
+      "stopReason": "Current Keyboard mapping/owned original input unavailable; no repair",
+      "nativeProcessExitCode": 0,
+      "resourceHelperExitCode": 0,
+      "allRecordedGroupsAbsent": true,
+      "errors": [],
+      "cleanupErrors": [],
+      "preservationErrors": [],
+      "fixInstalledInExtension": false,
+      "productionExtensionAcceptance": false,
+      "reverseAndCloseAcceptance": false,
+      "formalSkipIsNotFunctionPass": true
+    },
+    "repositoryOriginalImages": [
+      {
+        "path": "native-reading-before-landscape.png",
+        "case": "fresh-local-selection-card-keyboard-14",
+        "originalFilename": "1D73F099-CCFA-4338-AD20-3882715FD596.png",
+        "bytes": 231861,
+        "sha256": "10d28d51946ec04f11ddb1d1a3dc399887c723255971a75661287bb1cff061dd",
+        "unmodifiedOriginal": true
+      },
+      {
+        "path": "native-reading-after-landscape.png",
+        "case": "fresh-local-selection-card-keyboard-17",
+        "originalFilename": "1F560107-5B3C-457F-BC2F-A10B9D281212.png",
+        "bytes": 213166,
+        "sha256": "ecacf5d2cc9723722f312006ebb20b5ad1c5a9f64ccf977861ac2fe6a94799d9",
+        "unmodifiedOriginal": true
+      },
+      {
+        "path": "native-reading-after-portrait.png",
+        "case": "fresh-local-selection-card-keyboard-17",
+        "originalFilename": "92DACCCF-951C-423B-8BFA-3244018610E9.png",
+        "bytes": 431161,
+        "sha256": "6b07d441aa2b65d4d9f825a7695f17e659ace05b6d3aaf78eb62d73899baecb2",
+        "unmodifiedOriginal": true
+      },
+      {
+        "path": "native-reading-reverse-close-entry.png",
+        "case": "fresh-local-selection-card-keyboard-20",
+        "originalFilename": "CD284F2B-CF7C-4B58-B058-A59F49DFF5C9.png",
+        "bytes": 217394,
+        "sha256": "b959f23fa3f6b0ecbff7cfb0327980e7001afd9ca6f03e9aeeb2d5a552701a69",
+        "unmodifiedOriginal": true
+      }
+    ],
+    "unsignedNativeBuild": {
+      "sourceCommit": "84a214351f00440617048b157b0a2d2ed53e6eb4",
+      "scope": "LOCAL_UNSIGNED_BUILD_ONLY_NO_BOOT_INSTALL_TEST_OR_RELEASE",
+      "report": {
+        "path": "reading-rotation-fix-native-build-2/native-build-result.json",
+        "bytes": 169881,
+        "sha256": "470becda468e64827c95857bbdac0f4032b4127727315b222e2920cde06ee8fe"
+      },
+      "outer": {
+        "path": "reading-rotation-fix-native-build-2/root-execution-receipt.json",
+        "bytes": 780,
+        "sha256": "287ca9687f69d95c62c309e7bcf4e36ffdf7ab5a7124891fa24005e66dbf3177"
+      },
+      "actualOuterExitCode": 0,
+      "commands": 10,
+      "streamsRehashed": 20,
+      "allCommandsZeroClosedReapedOwnGroupAbsent": true,
+      "stages": [
+        "package",
+        "macOS Release",
+        "iOS Simulator Release",
+        "iPhoneOS Release"
+      ],
+      "webFiles": 472,
+      "webCopies": 4,
+      "allFourCopiesMatch": true,
+      "fourSourceInputsBeforeAfterExact": true,
+      "nativeUIAcceptance": false
+    },
+    "installedFollowup": {
+      "report": {
+        "path": "reading-rotation-dedicated-update-2/update-only-runtime-1/update-only-report.json",
+        "bytes": 49524,
+        "sha256": "24f4bcdf16b83fdd74f75590c1eca84a288c51b6f3a521f63dfc3441e7dc47a4"
+      },
+      "outer": {
+        "path": "reading-rotation-dedicated-update-2/update-only-runtime-1/root-execution-receipt.json",
+        "bytes": 985,
+        "sha256": "ea5108e45f1abaafe6ef20ae1854ec5368e99f34530080fd8143f3a6330ae0d0"
+      },
+      "independentResultReview": {
+        "path": "reading-rotation-dedicated-update-2/independent-update-runtime-result-review.json",
+        "bytes": 5577,
+        "sha256": "368f1b045d20a7302f5c034f58fa27da32b45a3459512d323693b3ca27d37b67"
+      },
+      "oldInstalledCommit": "2990c32e3d134e0bddb1a32ff0042d48eb1bf330",
+      "oldSourceEquivalenceCommit": "22c58493952036b290c29c336275e839b0c32aed",
+      "newInstalledCommit": "84a214351f00440617048b157b0a2d2ed53e6eb4",
+      "deviceUDID": "FD81DB27-E632-4181-89AE-06382C1D0508",
+      "actualOuterExitCode": 0,
+      "helperExitIntended": 0,
+      "elapsedMs": 31287.801916,
+      "commands": 12,
+      "streamsRehashed": 24,
+      "allCommandsZeroClosedReapedOwnGroupAbsent": true,
+      "bootAttempts": 1,
+      "installAttempts": 1,
+      "shutdownAttempts": 1,
+      "savedFullMapsVerified": 12,
+      "currentAppFiles": 490,
+      "currentWebFiles": 472,
+      "fullSourceAndInstalledByteIdentityVerified": true,
+      "other14WholeDeviceRecordsUnchanged": true,
+      "all15Shutdown": true,
+      "officialAppContainerUUID": "90B74BF1-AE38-49F0-A9B8-A4C9A7DE0916",
+      "officialDataContainerUUID": "6F5F72A3-843C-473C-A0F6-3689AF5467CD",
+      "appPathChanged": true,
+      "dataPathChanged": true,
+      "configurationPreservation": "UNKNOWN",
+      "UIAcceptance": "NOT_TESTED",
+      "providerAcceptance": "NOT_TESTED",
+      "sameForegroundPointSamples": true,
+      "continuousFocusMonitoring": false,
+      "errors": [],
+      "cleanupErrors": [],
+      "resourceErrors": [],
+      "GO": false
+    },
+    "case20SharedSourceFollowup": {
+      "case": "fresh-local-selection-card-keyboard-20",
+      "report": {
+        "path": "fresh-local-selection-card-keyboard-20/selection-keyboard-execution-report.json",
+        "bytes": 57349,
+        "sha256": "b6193a69ee7720a13e7f0672b48a29eadf16e5276ec7f4a8dbaeb94b865eda49"
+      },
+      "independentReview": {
+        "path": "fresh-local-selection-card-keyboard-20/independent-native-result-review.json",
+        "bytes": 5667,
+        "sha256": "4544a4a01036a1542fb9d3271ec5691d5a2e097d4ef39f7cbeb3561dc09c8b95"
+      },
+      "formal": {
+        "passed": 1,
+        "skipped": 0,
+        "failed": 0,
+        "nativeSeconds": 19.517744064331055,
+        "nativeProcessExitCode": 0
+      },
+      "functionalEvidence": {
+        "finalLedger": {
+          "file": "runtime-attachments/0335DD8A-C146-413E-91C9-416664992993.json",
+          "bytes": 881,
+          "sha256": "b67901dda79c5c7b64e6f9609161f175452693f15ee509fada8933ffb5d5cce0"
+        },
+        "snapshots": 12,
+        "UIIncludingPortraitCleanup": 9,
+        "PNGs": 4,
+        "forwardOnce": [
+          304,
+          314
+        ],
+        "reverseOnce": [
+          314,
+          0
+        ],
+        "ownCardClient": 78,
+        "ownCardScrollHeight": 392,
+        "landscapeVV": [
+          874,
+          98
+        ],
+        "VVScale": 1,
+        "hostYDuringGestures": [
+          557,
+          557,
+          557
+        ],
+        "focusedDuringGestures": [
+          true,
+          true,
+          true
+        ],
+        "CloseAttempts": 1,
+        "afterClose": {
+          "phase": "CLOSED",
+          "cardCount": 0,
+          "focusedFollowup": false,
+          "hostY": 557
+        },
+        "finallyPortraitObserved": true,
+        "Send": 0,
+        "permissionChoices": 0,
+        "configurationWrites": 0
+      },
+      "programmaticRangeSeed": true,
+      "controlledLocalTranslationAndReading": true,
+      "installedProductCommit": "84a214351f00440617048b157b0a2d2ed53e6eb4",
+      "currentSharedSourceMatchesInstalledProduct": true,
+      "productionExtensionPathAcceptance": false,
+      "nativeLongPressSelectionAcceptance": false,
+      "actualOuterExitCode": 1,
+      "cleanupErrors": [
+        "final-focus-and-ps:POINT_FOCUS_CHANGED"
+      ],
+      "originalTerminalPSExecuted": false,
+      "focusChangeCause": "UNKNOWN",
+      "wholeRunFocusSafeAcceptance": false,
+      "recordedCommands": 20,
+      "allRecordedCommandsZeroClosedReapedGroupsAbsent": true,
+      "all15Shutdown": true,
+      "old14WholeDeviceRecordsUnchanged": true,
+      "allFourOriginalPNGsReviewedByRootAndIndependentReviewer": true,
+      "noPostClosePNG": true,
+      "simultaneousInputAndToolbarVisibilityClaim": false,
+      "laterReadOnlyPS": {
+        "path": "fresh-local-selection-card-keyboard-20-supplemental-ps-1/supplemental-ps-receipt.json",
+        "bytes": 4684,
+        "sha256": "226f921f0512ad797223c05d298724db38f330b57da68deb51c8848f3653f5cb"
+      },
+      "laterPSDoesNotRewriteOriginalOuterOrMissingPS": true,
+      "wholeMobileGoalComplete": false
+    }
+  }
+}

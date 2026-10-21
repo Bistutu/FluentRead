@@ -1,11 +1,12 @@
 /**
  * @file src/features/full-page-translation/content/runtime.ts
- * 文件职责：实现全文翻译的页面级会话引擎，负责候选发现、可见性调度、批量请求、动态 DOM 重扫、失败重试、缓存复用和恢复原文。
+ * 文件职责：实现全文翻译的页面级会话引擎，负责候选发现、可见性调度、批量请求、动态 DOM 重扫、失败重试、缓存复用和恢复原文；显式翻译与增量扫描共用 man7 手册段落准备，完整恢复与卸载清理对应包装。
  * 主要内容：已提交与在途结果复用原译文槽同步当前全局显示模式，显式快捷覆盖保持冻结；精确相同译文和有同目标语言证据的排版回显保留原文且不重复展示；以增量计数发布完成与失败摘要，仅对本会话失败目标重试和定位；维护 FullPageSession、AbortController、Intersection/Mutation 观察器、弹窗优先调度、精确属性写入过滤、候选所有权和生命周期重试；对变化来源等待安静窗口、跳过持续变化的计数，并清理延迟重扫，只有真实宿主删除启动候选与断连观察根回收，重连前保留已排队 DOM 记录，实际翻译 owner 通过公共端口为其开放根安装译文样式，SPA 切换刷新全部活观察根的站点属性依赖，同批重复属性变化只处理一次；按时间片派发并在全文结果提交前让出主线程，合并同段 DOM 写入并在重挂时复用同批布局读数与单文本来源快照；合成行内段在延迟 loading 前后都按精确来源节点、HTML 和 Text 槽识别自身迁移；已拥有状态的发现候选直接登记复验，取消记录命中后才提取原文，避免整批重扫重复计算熔断签名；连续滚动时限频派发当前可见候选，空闲后恢复预取，按阅读进度撤回离开预取区的待派发候选，冻结请求/展示配置与识别范围，在弹窗关闭后继续正文，按实际节点阶段发布进度及工具栏结果；悬浮按候选停留而非每次移动计时，同段复用冻结的独立服务与快捷方案配置，到期复验最新命中并在路由切换取消；同目标预检单独读取受保护规则约束的行内代码语言上下文，发送与渲染仍只使用可翻译文本槽；恢复单个所有者或全文时重置篇章证据，统一恢复原文并清理重挂预算及孤儿产物；向局部翻译开放单候选 translateTarget 与单个译文所有者的恢复入口。
  * 模块边界：这是 content 侧编排层，不实现 provider 协议、纯候选算法或底层状态存储；自动应用外壳许可在重试重新解析和所有者切换时保留来源，不降级为手动解析；翻译调用经 app client，发现规则来自 core/translation，渲染与状态分别交给 renderer、liveTextRender 和 state。
  * 诊断接线：仅当前全文会话的真实失败进入共享分类器；成功、恢复和换路由清除，完整根扫描没有任何候选时提示无正文，目标语预检和离屏等待不影响候选存在证据。
  */
 import {resetPageDiscourseContext} from '@/src/services/translation/context/pageDiscourse';
+import {prepareManpageContent, restoreManpageContent} from './manpagePreparation';
 import {resolveTranslationToolbarStatus, countFullPageTranslationWork} from '../toolbarStatus';
 import {hasDistinctTargetTranslation as hasDistinctTranslation} from '@/src/core/translation/targetResult';
 import {getFullPageTranslationStateRevision, getFullPageTranslationDiagnostic, notifyFullPageTranslationDiagnostic, notifyFullPageTranslationState, notifyTranslationToolbarStatus} from './stateNotification';
@@ -1327,9 +1328,11 @@ function flushMutationRescans(session: FullPageSession): void {
             normalizeOrphanedTranslationArtifacts(root);
             normalizeOrphanedSingleSlots(root);
             if (!isConnectedMutationRoot(root)) continue;
+            const core = getCurrentTranslationCore(session.scope);
+            prepareManpageContent(root, core.url, core.adapters);
             session.activeDiscovery = {
                 root,
-                steps: getCurrentTranslationCore(session.scope).discoverSteps(root),
+                steps: core.discoverSteps(root),
             };
         }
 
@@ -2086,6 +2089,7 @@ export function restoreOriginalContent(): void {
     stopFullPageSession(); resetHoverTranslationRequestSession(createAbortError());
     hoverBilingualRemountCapitulations = createBilingualRemountCapitulationRegistry();
     restorePageTranslationContent();
+    restoreManpageContent();
     notifyFullPageTranslationState(false);
 }
 
@@ -2098,6 +2102,9 @@ export function autoTranslateEnglishPage(invocation: PageTranslationInvocation =
     if (fullPageSession?.active || !checkConfig(invocation, true)) return;
     const root = document.documentElement;
     if (!root) return;
+
+    const core = getCurrentTranslationCore(invocation.scope ?? config.translationScope);
+    prepareManpageContent(root, core.url, core.adapters);
 
     const session = createFullPageSession(root, invocation, inheritedConfig);
     fullPageSession = session;
@@ -2171,6 +2178,8 @@ export function handleTranslation(
     mouseY: number,
     invocation: HoverTranslationInvocation = {},
 ): void {
+    const core = getCurrentTranslationCore(invocation.scope ?? config.translationScope);
+    prepareManpageContent(document.documentElement, core.url, core.adapters);
     hoverTranslationScheduler.handle(mouseX, mouseY, invocation);
 }
 

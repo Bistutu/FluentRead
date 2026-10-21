@@ -6,7 +6,7 @@ import {buildPdfReadingPlan, type PdfReadingRegionEntry} from '@/src/features/do
 import type {ParsedDocument, PdfDocumentPage} from '@/src/features/document-translation/core/document';
 import {createPdfReaderRenderPort, PDF_READER_MAX_CANVAS_EDGE, PDF_READER_MAX_PAGE_PIXELS, PDF_READER_MAX_RESIDENT_PAGES, pdfReaderCanvasSize, pdfReaderDisplayRect, pdfReaderPageHasTranslation, pdfReaderPageKey, pdfReaderPageWindow, PdfReaderScheduler, type PdfReaderPageState, type PdfReaderRenderedPage, type PdfReaderSettings} from '@/src/features/document-translation/ui/pdfReader';
 import {acquirePdfDocument, releasePdfDocument, rasterizePdfReadingPages, sampledBackgroundRgb, sampledForegroundColor, sampledPdfBlockColors} from '@/src/features/document-translation/ui/pdfPreview';
-import {DEFAULT_INFORMATION_HIGHLIGHT_PREFERENCES} from '@/src/core/config/informationHighlight';
+import {DEFAULT_INFORMATION_HIGHLIGHT_PREFERENCES, normalizeInformationHighlightPreferences} from '@/src/core/config/informationHighlight';
 import {scoreInformationKeywords} from '@/src/features/information-highlight/domain/keywords';
 import {INFORMATION_HIGHLIGHT_NAME} from '@/src/features/information-highlight/public';
 
@@ -633,17 +633,15 @@ function nativeInformationPaint() {
 function clickInformation(root: HTMLElement): void {const event = document.createEvent('Event'); event.initEvent('click', true, true); root.querySelector('.pdf-information-highlight')!.dispatchEvent(event);}
 
 describe('PDF reader information highlight composition', () => {
-    it('rescores an already active PDF with the selected model identity', async () => {
+    it('switches an active PDF from keywords to migrated Base preferences without requesting the retired chat model', async () => {
         nativeInformationPaint();
         const score = vi.fn(async (text: string, _signal: AbortSignal, _modelId?: string) => scoreInformationKeywords(text));
-        const reader = mountReader(model(2), 'source', [], {information: {preferences: {...DEFAULT_INFORMATION_HIGHLIGHT_PREFERENCES, enabled: true, mode: 'surprisal-local'}, scoreLocal: score, available: true}});
+        const reader = mountReader(model(2), 'source', [], {information: {preferences: {...DEFAULT_INFORMATION_HIGHLIGHT_PREFERENCES, enabled: true, mode: 'keywords'}, scoreLocal: score, available: true}});
         await vi.waitFor(async () => {flushFrames(); await componentFlush(); expect(reader.state.informationState.phase).toBe('active');}, {timeout: 3000});
-        expect(score.mock.calls.length).toBeGreaterThan(0);
-        expect(score.mock.calls.every(([, , modelId]) => modelId === 'qwen2.5-0.5b')).toBe(true);
-        score.mockClear();
-        reader.currentInformation.value = {...reader.currentInformation.value!, preferences: {...reader.currentInformation.value!.preferences, model: 'qwen3-0.6b'}};
+        expect(score).not.toHaveBeenCalled();
+        reader.currentInformation.value = {...reader.currentInformation.value!, preferences: normalizeInformationHighlightPreferences({...reader.currentInformation.value!.preferences, mode: 'surprisal-local', model: 'qwen3-0.6b'})};
         await vi.waitFor(async () => {flushFrames(); await componentFlush(); expect(score.mock.calls.length).toBeGreaterThan(0); expect(reader.state.informationState.phase).toBe('active');}, {timeout: 3000});
-        expect(score.mock.calls.every(([, , modelId]) => modelId === 'qwen3-0.6b')).toBe(true);
+        expect(score.mock.calls.every(([, , modelId]) => modelId === 'qwen2.5-0.5b')).toBe(true);
         expect(reader.state.informationState.enabled).toBe(true);
     });
     it('starts by explicit action, independently scores selectable original and translated text, and cleans paint across zoom and document replacement', async () => {

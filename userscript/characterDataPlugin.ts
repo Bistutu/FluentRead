@@ -6,7 +6,7 @@
  */
 import {createHash} from 'node:crypto';
 import {resolve} from 'node:path';
-import {gzipSync} from 'node:zlib';
+import {gzipUserscriptBuildData} from './buildGzip';
 import ts from 'typescript';
 import {normalizePath, type Plugin} from 'vite';
 
@@ -50,7 +50,7 @@ export function createUserscriptCharacterDataCompressionPlugin(root: string, ena
                 }
             }
             if (!names.length) throw unsupported();
-            const compressed = gzipSync(Buffer.from(JSON.stringify(tables)), {level: 9}).toString('base64');
+            const compressed = gzipUserscriptBuildData(Buffer.from(JSON.stringify(tables))).toString('base64');
             const digest = createHash('sha256').update(code).digest('hex');
             return {
                 code: [

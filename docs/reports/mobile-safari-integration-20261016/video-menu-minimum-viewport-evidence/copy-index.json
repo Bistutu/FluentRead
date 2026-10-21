@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "kind": "video-menu-minimum-viewport-original-png-copy-index",
+  "sourceRun": "new-production-green-v2",
+  "count": 6,
+  "imageEditing": false,
+  "files": [
+    {
+      "file": "portrait-320-menu-first-screen.png",
+      "sourceArtifact": "research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/very-short-video-menu-viewport-repair-20261018/new-production-green-v2/portrait-320-menu-first-screen.png",
+      "bytes": 71883,
+      "sha256": "684cd38c32c1c62781f25bb494fa73586f6fa373038a9bde1feb21dde41bbc63",
+      "byteExact": true
+    },
+    {
+      "file": "landscape-844-menu-first-screen.png",
+      "sourceArtifact": "research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/very-short-video-menu-viewport-repair-20261018/new-production-green-v2/landscape-844-menu-first-screen.png",
+      "bytes": 41397,
+      "sha256": "d3373fdac144698180999c456ffebb6114f612e03578751f7cd0c9ee2f108644",
+      "byteExact": true
+    },
+    {
+      "file": "very-short-44-close.png",
+      "sourceArtifact": "research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/very-short-video-menu-viewport-repair-20261018/new-production-green-v2/very-short-44-close.png",
+      "bytes": 37861,
+      "sha256": "32096cbac32799170cd4e31e58ab664d242ea75a480962980bff747143e54846",
+      "byteExact": true
+    },
+    {
+      "file": "normal-128-open-selected.png",
+      "sourceArtifact": "research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/very-short-video-menu-viewport-repair-20261018/new-production-green-v2/normal-128-open-selected.png",
+      "bytes": 32510,
+      "sha256": "d312d4e46e3b4276e515e4792f83a7ac4b84f3bb608e53b89f796abc21d6dd3d",
+      "byteExact": true
+    },
+    {
+      "file": "normal-128-keyboard-last.png",
+      "sourceArtifact": "research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/very-short-video-menu-viewport-repair-20261018/new-production-green-v2/normal-128-keyboard-last.png",
+      "bytes": 33594,
+      "sha256": "e2a6b5b9525f238245196d7eafd845c8d091ca1a8166a1784ee8e61b4af6afc9",
+      "byteExact": true
+    },
+    {
+      "file": "very-short-restored-280-primary.png",
+      "sourceArtifact": "research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/very-short-video-menu-viewport-repair-20261018/new-production-green-v2/very-short-restored-280-primary.png",
+      "bytes": 20037,
+      "sha256": "ca239af0f2d833fae1849fd710c8b98095e51618137cb8ce3f0f426c0dfaf894",
+      "byteExact": true
+    }
+  ]
+}

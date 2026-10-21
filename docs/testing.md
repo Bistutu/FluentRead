@@ -2,6 +2,12 @@
 
 网页兼容维护集与生命周期验收见 [网页翻译稳定性维护](maintainers/web-stability.md)。该入口显式选择十个独立站点，复用已有正文与保护区契约，并将宿主 DOM 探针、原生站点操作、在线供应商和不同浏览器的证据分开记录。`fullPageVisibilityScheduling` 新增路由观察选项刷新、断连 ShadowRoot 回收/重新插入，以及重连观察器时保留待投递保护区变化；`contentFeatureMounting` 与划词 `--lifecycle-only` 验证入口被移除后的恢复、取消、错误重试、禁用和窄屏键盘操作。
 
+## man7 Linux 手册正文
+
+man7 的 Linux 手册将自然语言正文、参数说明、终端会话和源码混放在 `pre` 中。翻译时按手册段落建立可恢复的正文边界，保留原来的换行、缩进和行内链接；命令会话与程序源码继续保持原文。此能力限定于经过结构核验的 man7 Linux 手册，普通网页代码块和 RFC 的格式化文本仍遵守原有保护策略。
+
+生产 Chrome 构建后运行 `node scripts/testing/run-man7-translation-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper scripts/testing/focus-safe-browser.cjs --artifacts-dir <证据目录>`。专项在临时 Edge 第二屏后台正常窗口访问 `core.5.html`，逐段检查 DESCRIPTION 前后正文、参数说明、NOTES 和 EXAMPLES 的说明，验证悬浮与全文翻译—恢复—再次翻译、链接及代码保留，以及恢复后原文 HTML。默认翻译响应受控；在线供应商须另用 `--online` 验证并单独记录，Chrome 构建通过不代表 Firefox 运行验收。
+
 ## Hugging Face Spaces 内嵌正文
 
 扩展通过受限子 frame 入口翻译 Hugging Face Space 的 `*.hf.space` 应用正文，复用顶层全文会话、恢复原文和子 frame 快捷键；从 Hugging Face 其他页面软导航进入 Space 也会建立会话。后台核验浏览器提供的顶层 URL、子 frame URL 和 frameId，仅允许 Space 标识与应用子域精确配对。当前支持名称由英文字母、数字及单连字符组成的标准 Space 地址；含点、下划线或自定义域名的映射尚未覆盖。
@@ -603,7 +609,9 @@ node scripts/testing/run-resource-safe.mjs -- node scripts/testing/run-affected-
 
 `src` 与 `userscript` 的 Vue 另受 `tests/architecture/vue-verification-owners.json` 约束：已纳入严格覆盖的组件复用该边界；其他有业务行为的组件必须明确登记实际 SFC 消费者及场景。门禁检查测试存在且已归类、组件依赖可追踪、真实装载/执行与断言形态，并拒绝只出现源码名称、删除执行入口、挂载无关组件或仅 mock 目标 SFC 的登记；这些结构检查仍不能代替对领域断言的审查。纯展示与静态组装例外逐项说明，并检查脚本及模板没有新增状态、方法、事件和副作用。
 
-本轮保留 38 份历史 Vue 验证债务，记录完整源码 SHA-256、固定 `e765165d` Git blob、缺口及迁出条件；它们明确不算已验证的业务 owner。修改源码、刷新清单 hash 或把新增组件放进历史记录都会失败，必须迁出到真实组件行为测试或正式严格覆盖。少量记录附现有隔离浏览器入口及证据限制，入口存在不等于本轮已执行；不能用父组件的 mock、构建成功或任意浏览器脚本替代该组件行为证明。
+本轮保留 34 份历史 Vue 验证债务，记录完整源码 SHA-256、固定 `e765165d` Git blob、缺口及迁出条件；它们明确不算已验证的业务 owner。修改源码、刷新清单 hash 或把新增组件放进历史记录都会失败，必须迁出到真实组件行为测试或正式严格覆盖。少量记录附现有隔离浏览器入口及证据限制，入口存在不等于本轮已执行；不能用父组件的 mock、构建成功或任意浏览器脚本替代该组件行为证明。
+
+`videoSubtitleAppearanceSettingsLifecycle` 挂载真实字幕外观设置 SFC，验证自动贴底与手动偏移联动、位置显隐、七语标签及 ARIA、字号和皮肤预览、重置及草稿替换；Element Plus 与语言上下文作为受控端口。该组件已从冻结债务迁为真实行为消费者，测试不代表真实浏览器排版或辅助技术语音验收。
 
 文档翻译的 parser、预览生成、二进制格式服务、翻译编排和展示模型全部进入第一道门禁；PDF.js worker 与真实 Canvas 像素采样适配由双浏览器构建及屏幕外文档浏览器回归负责。
 
@@ -1400,3 +1408,9 @@ Popup 服务概览显示默认、继承和独立功能在配置中选择的模�
 生产 Chrome 构建后运行 `scripts/testing/run-deeplx-direct-test.cjs`，显式提供 `--extension-dir`、`--playwright-root`、`--artifacts-dir`，并使用仓库 `scripts/testing/focus-safe-browser.cjs` 作为 `--focus-safe-helper`。默认使用临时 Edge profile、第二屏后台可见窗口与焦点监控。
 
 确定性夹具经过真实 broker 和 core，覆盖默认直连且不请求公共端点、繁体目标、429 后公共回退、1500 UTF-16 分块、自定义地址边界、取消中止，以及真实 Control 悬浮翻译/恢复/再翻译的 `[1,0,1]` 和邻段 `[0,0,0]`。`--live` 额外只发送一句公开短文到 DeepL，公共备用端点仍用夹具；结果单独记录，不能推断长期可用性、全部语言质量或 Firefox 实机表现。实现及本次证据范围见 [DeepLX 直连验证](maintainers/deeplx-direct-968.md)。
+
+## Kagi News 内容型标题按钮（issue #1045）
+
+生产 Chrome 构建后，运行 `node scripts/testing/run-kagi-headline-translation-test.cjs --allow-network --extension-dir .output/chrome-mv3 --playwright-root <工作区 Node.js 包目录> --artifacts-dir /private/tmp/fluentread-kagi-headlines`。可用 `--focus-safe-helper` 指定等价的焦点安全 helper，默认使用仓库版本。
+
+专项创建临时 Edge profile 与第二屏后台可见窗口，先检查 Kagi 原生展开/收起以确认页面水合，再验证正文/全部节点范围的双语标题、普通按钮原位替换、上下排版、点击与 Enter/空格、动态插入、仅译文闭合 Shadow 文本、恢复重译、Control 悬浮切换和真实分类切换。DOM、截图和报告写入证据目录；结束后关闭本次浏览器并删除临时 profile。翻译使用确定性微软响应，仅证明真实站点 DOM 与生产扩展的兼容性，不代表在线供应商质量或 Firefox 实机验收。

@@ -12,6 +12,7 @@
           <div><h2 id="fr-card-title">{{ t('shareCard.create') }}</h2></div>
           <button class="fr-card-close" type="button" :aria-label="t('shareCard.close')" autofocus @click="close">×</button>
         </header>
+        <div class="fr-card-body">
         <div class="fr-card-workspace">
           <section class="fr-card-preview" :aria-label="t('shareCard.preview')" :aria-busy="rendering">
             <div class="fr-card-preview-top"><span>{{ t('shareCard.preview') }}</span><span v-if="result">{{ Math.ceil(result.blob.size / 1024) }} KB · PNG</span></div>
@@ -67,6 +68,7 @@
           </div>
           <p v-if="!copyAvailable" class="fr-card-fallback">{{ t('shareCard.copyUnavailable') }}</p>
         </footer>
+        </div>
       </template>
     </dialog>
   </div>
@@ -229,6 +231,7 @@ button { border: 1px solid #dfe1e8; border-radius: 8px; background: #fff; color:
 button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 2px solid var(--fr-card-accent); outline-offset: 3px; }
 .fr-card-dialog { position: fixed; inset: 0; margin: auto; width: min(560px, calc(100vw - 24px)); max-width: none; max-height: min(800px, calc(100dvh - 32px)); padding: 0; border: 1px solid #e5e8ef; border-radius: 16px; background: #ffffff; color: #172033; box-shadow: 0 24px 80px #14261f30; overflow: hidden; overscroll-behavior: contain; }
 .fr-card-dialog[open] { display: flex; flex-direction: column; } .fr-card-dialog::backdrop { background: #171b3066; }
+.fr-card-body { display: contents; }
 .fr-card-header { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 16px 22px 12px; flex-shrink: 0; }
 h2 { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.5; } .fr-card-close { font-size: 22px; line-height: 1; padding: 4px 7px; border-color: transparent; background: transparent; color: #747888; }
 .fr-card-workspace { min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #cdd2df transparent; }
@@ -288,4 +291,16 @@ input:not([type=checkbox]), textarea { border-radius: 10px; background: #f7f8fb;
 @media (max-width: 460px) { .fr-card-dialog { width: calc(100vw - 16px); max-height: calc(100dvh - 16px); border-radius: 12px; } .fr-card-header { padding: 12px 16px; } .fr-card-preview { padding: 0 14px 4px; } .fr-card-controls { padding: 12px 14px 6px; } .fr-card-footer { padding: 12px 14px; } .fr-card-local-note { width: 100%; } .fr-card-export-actions { width: 100%; } .fr-card-export-actions button { flex: 1; min-width: 0; min-height: 36px; white-space: normal; overflow-wrap: anywhere; line-height: 1.5; } }
 @media (max-width: 460px) { .fr-card-dialog:not(:lang(zh)) .fr-card-options-row { grid-template-columns: 1fr; } }
 @media (max-width: 380px) { .fr-card-options-row { grid-template-columns: 1fr; } }
+@media (any-pointer: coarse) {
+  .fr-card-dialog button, summary { min-width: 44px; min-height: 44px; }
+  .fr-card-close { width: 44px; height: 44px; flex: none; }
+  .fr-card-header > div { min-width: 0; overflow-wrap: anywhere; }
+  summary, .fr-card-export-actions button { font-size: 14px; }
+  .fr-card-segments button { font-size: 13px; }
+  input:not([type=checkbox]), textarea { min-height: 44px; font-size: 16px; }
+}
+@media (any-pointer: coarse) and (max-height: 480px) {
+  .fr-card-body { display: block; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  .fr-card-workspace { overflow: visible; }
+}
 </style>

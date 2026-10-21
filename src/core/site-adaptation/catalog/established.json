@@ -1,5 +1,32 @@
 [
   {
+    "id": "kagi-news",
+    "name": "Kagi News 新闻标题",
+    "match": {
+      "hosts": ["news.kagi.com"]
+    },
+    "allScopes": true,
+    "mode": "augment",
+    "content": [
+      {
+        "css": [
+          "button[aria-label=\"Expand story\"] > span[dir]",
+          "button[aria-label=\"Collapse story\"] > span[dir]"
+        ],
+        "resolve": "closest",
+        "key": "kagi-news:headline"
+      },
+      {
+        "css": [
+          "button[aria-label=\"Expand story\"]",
+          "button[aria-label=\"Collapse story\"]"
+        ],
+        "atomic": false,
+        "key": "kagi-news:headline-button"
+      }
+    ]
+  },
+  {
     "id": "openrouter",
     "name": "OpenRouter",
     "allScopes": true,
@@ -606,6 +633,16 @@
     "omit": [
       "div.flex.items-center.ml-auto.shrink-0.gap-1"
     ]
+  },
+  {
+    "id": "man7",
+    "name": "Linux man-pages",
+    "match": {"hosts": ["man7.org"], "paths": ["/linux/man-pages/man*/*.html"]},
+    "priority": 360,
+    "allScopes": true,
+    "mode": "augment",
+    "literalTokens": ["pre b", "pre i"],
+    "omit": ["h2 .top-link", "pre .headline", "pre .footline"]
   },
   {
     "id": "ubuntu-manpage",

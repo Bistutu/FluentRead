@@ -1,0 +1,1684 @@
+{
+  "schema": 1,
+  "scope": "production-options-custom-provider-mobile-dialog-controlled-viewport",
+  "source": {
+    "file": "src/features/settings/ui/services/CustomOpenAIProviderDialog.vue",
+    "bytes": 17050,
+    "sha256": "021b493dae18ed2f42308b355bdd7efe025962440e3152f9a8eb7bd0058e7812"
+  },
+  "builtFromExactCleanCommit": false,
+  "baselineCommitContextOnly": "234f09d6d2c7bf2a4fac9c3d2873dde5c9adfaf6",
+  "ui": {
+    "caseCount": 7,
+    "originalPNGCount": 18,
+    "all18OriginalsPersonallyReviewed": true,
+    "representativeOriginalsCopiedByteExact": 6,
+    "cases": [
+      {
+        "name": "portrait-320",
+        "visibleViewport": {
+          "left": 0,
+          "top": 0,
+          "width": 320,
+          "height": 560
+        },
+        "dialog": {
+          "x": 14,
+          "y": 12,
+          "width": 292,
+          "height": 536,
+          "right": 306,
+          "bottom": 548
+        }
+      },
+      {
+        "name": "portrait-390",
+        "visibleViewport": {
+          "left": 0,
+          "top": 0,
+          "width": 390,
+          "height": 700
+        },
+        "dialog": {
+          "x": 14,
+          "y": 12,
+          "width": 362,
+          "height": 541.28125,
+          "right": 376,
+          "bottom": 553.28125
+        }
+      },
+      {
+        "name": "landscape-844",
+        "visibleViewport": {
+          "left": 0,
+          "top": 0,
+          "width": 844,
+          "height": 390
+        },
+        "dialog": {
+          "x": 122,
+          "y": 12,
+          "width": 600,
+          "height": 366,
+          "right": 722,
+          "bottom": 378
+        }
+      },
+      {
+        "name": "dark-390",
+        "visibleViewport": {
+          "left": 0,
+          "top": 0,
+          "width": 390,
+          "height": 700
+        },
+        "dialog": {
+          "x": 14,
+          "y": 12,
+          "width": 362,
+          "height": 541.28125,
+          "right": 376,
+          "bottom": 553.28125
+        }
+      },
+      {
+        "name": "keyboard-180",
+        "visibleViewport": {
+          "left": 0,
+          "top": 0,
+          "width": 390,
+          "height": 180
+        },
+        "dialog": {
+          "x": 14,
+          "y": 12,
+          "width": 362,
+          "height": 156,
+          "right": 376,
+          "bottom": 168
+        }
+      },
+      {
+        "name": "keyboard-panned-180",
+        "visibleViewport": {
+          "left": 0,
+          "top": 140,
+          "width": 390,
+          "height": 180
+        },
+        "dialog": {
+          "x": 14,
+          "y": 152,
+          "width": 362,
+          "height": 156,
+          "right": 376,
+          "bottom": 308
+        }
+      },
+      {
+        "name": "desktop-600-dialog",
+        "visibleViewport": {
+          "left": 0,
+          "top": 0,
+          "width": 1280,
+          "height": 900
+        },
+        "dialog": {
+          "x": 340,
+          "y": 135,
+          "width": 600,
+          "height": 491.6875,
+          "right": 940,
+          "bottom": 626.6875
+        }
+      }
+    ],
+    "mobileMinTargetPx": 44,
+    "mobileMinInputSelectFontPx": 16,
+    "ownDialogScroll": true,
+    "inputAndFooterIndividuallyReachable": true,
+    "allControlsSimultaneouslyVisible": false,
+    "horizontalOverflow": false,
+    "recordedOuterScrollX": 0,
+    "recordedOuterScrollY": 0,
+    "desktop": {
+      "dialogWidthPx": 600,
+      "inputFontPx": 13,
+      "inputHeightPx": 38
+    },
+    "interfaceCancelReopenClearedAt320": true,
+    "compositeCancelReopenResetCases": [
+      "portrait-320",
+      "landscape-844",
+      "keyboard-panned-180"
+    ],
+    "publicSave": {
+      "persisted": true,
+      "noKey": true,
+      "reservedEndpoint": "https://example.invalid/v1/chat/completions",
+      "model": "fixture-model",
+      "defaultServiceUnchanged": true,
+      "layout": "desktop-600-dialog"
+    },
+    "observedPageErrors": 0,
+    "ordinaryConsoleErrorsIndependentlyMonitored": false,
+    "observedHTTPAttempts": 0,
+    "elapsedMs": 20083.897458,
+    "allCasesVisualViewportDimensionsAndOffsetsInjectedOnExistingObject": true,
+    "coarsePointerEmulated": true,
+    "mouseConvertedToTouch": false,
+    "reachUsesDialogScrollTopAndCenterHitTest": true,
+    "realOSKeyboardOrTouchOrIOSAcceptance": false,
+    "languageOnlyTemporaryProfileFixture": true,
+    "focusEvidence": "startup placement before/after only; not end-of-run or continuous monitoring",
+    "cleanupEvidence": "guarded session.close fulfilled and profileRemoved=true; no saved PID/group census",
+    "acceptedAttempt": 5,
+    "earlierFourHarnessAttemptsPreservedNotAccepted": true
+  },
+  "localChecks": {
+    "focusedTestFiles": 4,
+    "focusedTestsPassed": 159,
+    "focusedTestSeconds": 45.73,
+    "testFiles": [
+      "serviceEditorLifecycle.test.ts",
+      "settingsSectionsLifecycle.test.ts",
+      "mobileVisualViewport.test.ts",
+      "settingsUiArchitecture.test.ts"
+    ],
+    "vueTscNoEmitExit": 0,
+    "testAuditStatus": "ok",
+    "productionWebBuildExits": {
+      "Chrome": 0,
+      "Firefox": 0,
+      "SafariWeb": 0
+    },
+    "ChromeBuildEvidence": "Root tool session30929 exit0 recorded in local-checks and validation; no separate Chrome stdout log retained here"
+  },
+  "nativeBuild": {
+    "output": "native-unsigned-build-2",
+    "outerExit": 0,
+    "elapsedMs": 104519.99450000002,
+    "packageAndThreeReleaseTargetsExit0": true,
+    "platforms": [
+      "macOS",
+      "iOS Simulator",
+      "iPhoneOS arm64"
+    ],
+    "commands": 8,
+    "streams": 16,
+    "allClosedReapedOwnedGroupsAbsent": true,
+    "admittedInputPins": 16,
+    "sourceInventoryFiles": 2673,
+    "sourceInventoryBeforeAfterExact": true,
+    "sourceInventoryScope": "src,entrypoints,public,assets,styles,userscript,scripts,integrations and declared root configs; tests/docs excluded",
+    "webSnapshotFiles": 472,
+    "nativeAppFiles": [
+      487,
+      490,
+      490
+    ],
+    "independentFreshOutputPerFileRehashPassed": true,
+    "unsigned": true,
+    "installed": false,
+    "launched": false,
+    "nativeAcceptance": false,
+    "physicalDeviceAcceptance": false
+  },
+  "originalImages": {
+    "portrait-320-interface-input.png": {
+      "bytes": 40590,
+      "sha256": "ab185f91a063ad0053a4a87c70ba073e75302c0097c5347f9e853c66bead260e"
+    },
+    "portrait-320-interface-footer.png": {
+      "bytes": 40635,
+      "sha256": "03d3538a74e3bcfbf88be8dd66d171f1250eab64c04b1f0701b4c83f2548e437"
+    },
+    "landscape-844-interface-footer.png": {
+      "bytes": 53337,
+      "sha256": "8ed2cfc44bc57ed909e65808eae12def01556b38c37b396b3547adc3a73654f6"
+    },
+    "dark-390-interface-input.png": {
+      "bytes": 53835,
+      "sha256": "65bebcf2f3875aa5eb301b745b73749375a7c1d7cff5da0028dbd42590dc66a3"
+    },
+    "keyboard-panned-180-interface-footer.png": {
+      "bytes": 42854,
+      "sha256": "10437febec77259a512352614394d0f334d8fa1f6f7d140d39eb6de1a465db28"
+    },
+    "desktop-600-dialog-interface-input.png": {
+      "bytes": 168318,
+      "sha256": "d3c0679800b0ea65e3a3161e5339460c7c222e43c4ed75c05393d387b4971afa"
+    }
+  },
+  "researchEvidenceRoot": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018",
+  "machineEvidence": {
+    "UI5Report": {
+      "path": "mobile-custom-provider-ui-5/report.json",
+      "bytes": 45421,
+      "sha256": "579f8acddb7ea6a8f84cc0e64be0e0f3558a1f4c6a9888a541546b2ca352201f"
+    },
+    "UI5IndependentReview": {
+      "path": "mobile-custom-provider-ui-5/actual-independent-review.json",
+      "bytes": 11818,
+      "sha256": "33b9435b13df553e96997062b854e58936241c43396cebdd5fb47e9001ed9752"
+    },
+    "finalUIDriver": {
+      "path": "scripts/testing/run-mobile-provider-dialog-test.cjs",
+      "bytes": 23074,
+      "sha256": "dfb67bff1aed721d66dc1e2a24aac5b943a9d59242c1513e320992b7cd25efa2"
+    },
+    "localChecks": {
+      "path": "settings-selection-source-return-followup-1/mobile-custom-provider-local-checks.json",
+      "bytes": 2187,
+      "sha256": "82a90065058239ff9f1fcb6dd79a1c7b72ad8f8a574c39cb4ac070e4c72ee4a2"
+    },
+    "validation": {
+      "path": "settings-selection-source-return-followup-1/mobile-custom-provider-native-build-prep-2/root-current-validation.json",
+      "bytes": 10235,
+      "sha256": "cfbd82e320e323a84272e0e74e7b6c87fbcc2ed96e9f70f2329b847c8aa1286f"
+    },
+    "typeLog": {
+      "path": "/private/tmp/fluentread-mobile-provider-typecheck-20261021.log",
+      "bytes": 120,
+      "sha256": "100574242dda4d664ba4e95411f14a89596cbad23fe807a926735c4da8e3e401"
+    },
+    "focusedTestsLog": {
+      "path": "/private/tmp/fluentread-mobile-provider-focused-tests-20261021.log",
+      "bytes": 13285,
+      "sha256": "df6b94479158d0b51fab4e479ff9636689c20d87f47fac8895436a2e08099b90"
+    },
+    "FirefoxBuildLog": {
+      "path": "/private/tmp/fluentread-mobile-provider-firefox-build-20261021.log",
+      "bytes": 86524,
+      "sha256": "3c4119687787a5f893bb5f016a6c31617dc43f122c22ca310d691c077c93d6fa"
+    },
+    "SafariWebBuildLog": {
+      "path": "/private/tmp/fluentread-mobile-provider-safari-web-build-20261021.log",
+      "bytes": 84746,
+      "sha256": "d50ee916997da0458739e507f335602dbd156aa0784389418559152bface257f"
+    },
+    "testAuditLog": {
+      "path": "/private/tmp/fluentread-mobile-provider-test-audit-20261021.log",
+      "bytes": 271,
+      "sha256": "cbf8a6ba6449490da0d453475a2d3301ac1f9f7b8204e609a46f33ee23bed854"
+    },
+    "nativeReport": {
+      "path": "settings-selection-source-return-followup-1/native-unsigned-build-2/native-build-result.json",
+      "bytes": 31688,
+      "sha256": "4c20eacdffae5b2c212f5c5388ca91a7ead861c5b8ece9bf23552b6f2bffa2c8"
+    },
+    "nativeRootReceipt": {
+      "path": "settings-selection-source-return-followup-1/native-unsigned-build-2/root-execution-receipt.json",
+      "bytes": 6354,
+      "sha256": "57cd540186008df09b4b001a06e36d23856351a37de1459abeecc3ad306f5031"
+    },
+    "nativeIndependentReview": {
+      "path": "settings-selection-source-return-followup-1/native-unsigned-build-2/actual-independent-review.json",
+      "bytes": 12653,
+      "sha256": "3515897830b99ff1036f3d0e930809bf90d31d3feaf9a1577637367ae8425470"
+    }
+  },
+  "scopeGaps": [
+    "physical device, native zoom, landscape and all mobile layout combinations beyond the recorded cases",
+    "real provider/API key/request/translation in custom provider dialog",
+    "simultaneous full-field/header/footer visibility is not the short-viewport design or an acceptance claim",
+    "continuous focus monitoring or independent browser PID-group closure census",
+    "configuration and permission retention; native category/select full DOM touch-target bounds",
+    "Popup selection drawer toggle/mode/More interactions not covered by case65; case62 standard element tap failure remains recorded"
+  ],
+  "referenceProjectsUsed": false,
+  "PRMerged": false,
+  "docsBuildRunByReportAuthor": true,
+  "UI6": {
+    "scope": "controlled-production-Options-public-Add-entry44-recheck",
+    "sourceServiceCatalog": {
+      "file": "src/features/settings/ui/services/ServiceCatalog.vue",
+      "bytes": 41002,
+      "sha256": "b8666cf2ab6b194a32112c1b90ba8e4e77bc047aab12d6e4fe530bdd475bb2ad"
+    },
+    "finalDriver": {
+      "file": "scripts/testing/run-mobile-provider-dialog-test.cjs",
+      "bytes": 24171,
+      "sha256": "0c4cdc3336efefe3e58755c004b5e92c16274d82a50707248210784bf1c449da"
+    },
+    "outerExit": 0,
+    "outerEvidence": "Root saved receipt74259",
+    "elapsedMs": 21635.376625,
+    "caseCount": 7,
+    "originalPNGCount": 19,
+    "independentAll19OriginalsViewed": true,
+    "addOpeningObservations": 12,
+    "mobile104x44Observations": 10,
+    "fineDesktop104x34Observations": 2,
+    "allCasesSameObjectControlledVisualViewport": true,
+    "allInterfaceInputsAndFooterSeparatelyReachable": true,
+    "publicSave": {
+      "persisted": true,
+      "noKey": true,
+      "reservedEndpoint": "https://example.invalid/v1/chat/completions",
+      "model": "fixture-model",
+      "defaultServiceUnchanged": true
+    },
+    "pageErrorsObserved": 0,
+    "HTTPAttemptsObserved": 0,
+    "cleanup": "guarded close fulfilled + profileRemoved; no PID/group census",
+    "scopeLimits": "Controlled dimensions/coarse/mouse; no real OS keyboard/touch/Safari/iOS/physical-device or simultaneous all-control visibility. Long-label wrapping not runtime-exercised.",
+    "entryOriginal": {
+      "file": "ui6-portrait-320-add-entry-original.png",
+      "bytes": 42063,
+      "sha256": "cac7c4c6a8c72190fbd0a55f3baf0fcb0ce032eaa64c32f5ccb3695d7fd1b291"
+    },
+    "evidence": {
+      "report": {
+        "path": "mobile-custom-provider-ui-6/report.json",
+        "bytes": 47862,
+        "sha256": "4d7324e4ec8436fad6445c1a0e5b6e9f4d41d81abc99674170d5f4a8e1f5cc62"
+      },
+      "RootReceipt": {
+        "path": "mobile-custom-provider-ui-6/root-execution-receipt.json",
+        "bytes": 11161,
+        "sha256": "62e5434ba662be34b1a6412b9526c108a988dc0356550acce58de082de18af51"
+      },
+      "independentReview": {
+        "path": "mobile-custom-provider-ui-6/actual-independent-review.json",
+        "bytes": 7393,
+        "sha256": "ef7557d0b00be823d455fa1ed135bd85984c2b0b80d15dd45a4be655b9e4484f"
+      }
+    },
+    "nativeBuildOrInstallAcceptanceForEntryFix": false,
+    "historicalUI5AndNative2ValuesPreserved": true
+  },
+  "nativeBuild3": {
+    "scope": "entry44-current-source-unsigned-build-only",
+    "output": "native-unsigned-build-3",
+    "outerSession": 71674,
+    "outerExit": 0,
+    "elapsedMs": 104759.214542,
+    "commands": 8,
+    "streams": 16,
+    "inputs": 17,
+    "sourceFiles": 2673,
+    "sourceBeforeAfterIdentical": true,
+    "freshOutputTreesRootRehashed": true,
+    "nativeAppFiles": [
+      487,
+      490,
+      490
+    ],
+    "webFiles": 472,
+    "unsigned": true,
+    "installed": false,
+    "nativeAcceptance": false,
+    "physicalDeviceAcceptance": false,
+    "priorNative2AndU4Installed": false,
+    "evidence": {
+      "report": {
+        "path": "settings-selection-source-return-followup-1/native-unsigned-build-3/native-build-result.json",
+        "bytes": 32160,
+        "sha256": "cdce0324a337243e3d4e28daf380d4494a44855e29499ac019703e9acbcd8d3b"
+      },
+      "rootReceipt": {
+        "path": "settings-selection-source-return-followup-1/native-unsigned-build-3/root-execution-receipt.json",
+        "bytes": 6356,
+        "sha256": "d118cedc7f9be88aefd2d57ed92e88fbe9269ab2d2b661ec68ed89be487dbbb5"
+      },
+      "independentReview": {
+        "path": "settings-selection-source-return-followup-1/native-unsigned-build-3/actual-independent-review.json",
+        "bytes": 13268,
+        "sha256": "59d09719f7f98bdbcc5d37172edf21f832b7307dac7c53bfa2e3188db0a053c9"
+      }
+    },
+    "newWebBuildSessionsExit0": [
+      95642,
+      61103,
+      17052
+    ],
+    "newUnitTestExecution": false,
+    "unchangedDialogLifecyclePrior159Tests": true,
+    "independentFreshOutputPerFileReviewPassed": true
+  },
+  "nativeUpdate5": {
+    "scope": "dedicated-simulator-binary-identity-only",
+    "sourceCommit": "e4a9047465f302a3cd2d5e7b8fa6f13e53629b02",
+    "outerSession": 26557,
+    "outerExit": 0,
+    "elapsedMs": 33594.124625,
+    "singleInstall": true,
+    "commands": 12,
+    "streams": 24,
+    "allClosedReapedOwnGroupsAbsent": true,
+    "appFiles": 490,
+    "webFiles": 472,
+    "fourNewMapPairsEqualBuild": true,
+    "independentFreshInstalledAppWebPerFileAndAggregateHashVerified": true,
+    "all15EndedShutdown": true,
+    "other14WholeRecordsUnchanged": true,
+    "configurationPreservation": "UNKNOWN",
+    "permissionPreservation": "UNKNOWN",
+    "UIAcceptance": false,
+    "nativeDialogOrKeyboardAcceptance": false,
+    "evidence": {
+      "report": {
+        "path": "settings-selection-source-return-followup-1/fd81-update-5/update-only-runtime-1/update-only-report.json",
+        "bytes": 54249,
+        "sha256": "a5aa4e90bce104a0b1980675bbbe67f6ff8ae81282d8783092eac7d339049a68"
+      },
+      "rootReceipt": {
+        "path": "settings-selection-source-return-followup-1/fd81-update-5/update-only-runtime-1/root-execution-receipt.json",
+        "bytes": 7195,
+        "sha256": "20d3d8db47c27e4b42e1c08be6bd8e1cc76d9cce401131bac84d7a22e778e5d2"
+      },
+      "independentReview": {
+        "path": "settings-selection-source-return-followup-1/fd81-update-5/actual-independent-review.json",
+        "bytes": 8048,
+        "sha256": "f5978e6fd05692333ee837de570913f68716d8c202c4cc5433f7572c6e4ec21d"
+      },
+      "commitBridge": {
+        "path": "settings-selection-source-return-followup-1/fd81-update-5/root-build3-commit-bridge.json",
+        "bytes": 2090,
+        "sha256": "993d018f998653f6aa36271cc408672537406b661bb3e2da4903fe49fd8ed19e"
+      }
+    }
+  },
+  "nativeCategoryCase54": {
+    "productCommit": "e4a9047465f302a3cd2d5e7b8fa6f13e53629b02",
+    "installedPackage": "N3/U5",
+    "formal": {
+      "pass": 0,
+      "skip": 1,
+      "fail": 0
+    },
+    "durationSeconds": 19.46533501148224,
+    "AX": 7,
+    "UI": 6,
+    "PNG": 0,
+    "uniqueKnownRole": "other",
+    "knownNodeFrame": {
+      "x": 183,
+      "y": 74,
+      "width": 203,
+      "height": 35
+    },
+    "full44Gate": false,
+    "liveFreshGateReached": false,
+    "categoryClicks": 0,
+    "selectSemanticsProved": false,
+    "dialogOrKeyboardAccepted": false,
+    "cause": "UNKNOWN",
+    "commands": 21,
+    "streams": 42,
+    "closed": true,
+    "evidence": {
+      "report": {
+        "path": "fresh-installed84a-native-touch-selection-54/reading-options-readonly-execution-report.json",
+        "bytes": 61165,
+        "sha256": "1e752d3af9e8088e380d0c58ab551b2799e7ac605e74fb397244a6e0e730c2cd"
+      },
+      "rootReceipt": {
+        "path": "fresh-installed84a-native-touch-selection-54/root-execution-receipt.json",
+        "bytes": 7649,
+        "sha256": "5bf1aa36858f86cf718e6e998b462841bed112f5fbabeba852531c562ef5580c"
+      },
+      "independentReview": {
+        "path": "fresh-installed84a-native-touch-selection-54/actual-independent-review.json",
+        "bytes": 10225,
+        "sha256": "e846c3fd1d64cc7ff523f81d70c8163b50edc2d663a006c1c8f717468eebe152"
+      }
+    }
+  },
+  "UI7": {
+    "scope": "narrow-fine-category-CSS-and-controlled-seven-dialog-layouts",
+    "outerSession": 44885,
+    "outerExit": 0,
+    "elapsedMs": 21118.722999999998,
+    "caseCount": 7,
+    "originalPNGCount": 20,
+    "RootAll20OriginalsViewed": true,
+    "fineNonCoarseCategory": {
+      "case": "narrow-fine-category",
+      "stage": "initial-services-narrow-non-touch",
+      "label": "\u8bbe\u7f6e\u5206\u7c7b",
+      "visible": true,
+      "bounds": {
+        "x": 184,
+        "y": 12,
+        "width": 190,
+        "height": 46
+      },
+      "font": 16,
+      "narrow": true,
+      "coarse": false,
+      "fine": true
+    },
+    "navigationObservations": 13,
+    "visible46pxFont16Observations": 9,
+    "hiddenWideObservations": 4,
+    "publicSave": {
+      "persisted": true,
+      "noKey": true,
+      "reservedEndpoint": "https://example.invalid/v1/chat/completions",
+      "model": "fixture-model",
+      "defaultServiceUnchanged": true
+    },
+    "observedPageErrors": 0,
+    "observedHTTPAttempts": 0,
+    "nativeKeyboardOrTouchOrIOSAcceptance": false,
+    "cleanup": "guarded close fulfilled and profileRemoved; no saved PID/group census",
+    "nativeCase54IdentityIsHistorical": true,
+    "newUnitTestExecution": false,
+    "evidence": {
+      "report": {
+        "path": "mobile-custom-provider-ui-7/report.json",
+        "bytes": 52321,
+        "sha256": "6abc0ba63675371aca9716dc4b7d3f48f06cfb26a56e6aa4cbf6a6e7bbcf3244"
+      },
+      "rootReceipt": {
+        "path": "mobile-custom-provider-ui-7/root-execution-receipt.json",
+        "bytes": 9923,
+        "sha256": "da4b158b6e286e5cbd22c97a58dd56af69d5635075a5a10774496f912e1084e3"
+      },
+      "localChecks": {
+        "path": "settings-selection-source-return-followup-1/mobile-settings-category-local-checks.json",
+        "bytes": 2524,
+        "sha256": "b0c8768e618adec975fbea096ca541a30adfa2a62e0cdb63cfb9d0934fab1d10"
+      },
+      "independentReview": {
+        "path": "mobile-custom-provider-ui-7/actual-independent-review.json",
+        "bytes": 15443,
+        "sha256": "294a5e33da3b33d0fcfba4fd64958fdb25f6cffa2df9677aa5dfd3e509350ebe"
+      }
+    },
+    "original": {
+      "file": "ui7-narrow-fine-category-original.png",
+      "bytes": 64919,
+      "sha256": "6a6145e8dc497c2261f05e030b4c36588a1af3f5e54621b94a687fb58610caa0"
+    },
+    "independentAll20OriginalsViewed": true
+  },
+  "nativeBuild4": {
+    "passed": false,
+    "outerSession": 4017,
+    "outerExit": 1,
+    "commands": 3,
+    "streams": 6,
+    "nativeCompilationStarted": false,
+    "installed": false,
+    "reason": "Apple converter supplied-path access / manifest parse error; exact underlying OS cause not proven",
+    "report": {
+      "path": "settings-selection-source-return-followup-1/native-unsigned-build-4/native-build-result.json",
+      "bytes": 12400,
+      "sha256": "65be12b66b33582cd305d0980c11fdbca195e7074ce5414fc1c710c8fb1fcac1"
+    },
+    "rootReceipt": {
+      "path": "settings-selection-source-return-followup-1/native-unsigned-build-4/root-execution-receipt.json",
+      "bytes": 835,
+      "sha256": "9509164b91b1389a010ca08bd8b7a30a6507afc7ae48e36a4a2e40eb0e7fe0f4"
+    }
+  },
+  "nativeBuild5": {
+    "passed": true,
+    "scope": "unsigned-local-build-only",
+    "sourceBaseCommitContextOnly": "e4a9047465f302a3cd2d5e7b8fa6f13e53629b02",
+    "builtFromExactCleanCommit": false,
+    "outerSession": 36743,
+    "outerExit": 0,
+    "elapsedMs": 101116.320625,
+    "commands": 8,
+    "streams": 16,
+    "allClosedReapedOwnGroupsAbsent": true,
+    "sourceFiles": 2673,
+    "inputPins": 17,
+    "webFiles": 472,
+    "nativeAppFiles": [
+      487,
+      490,
+      490
+    ],
+    "installed": false,
+    "nativeUIAcceptance": false,
+    "evidence": {
+      "report": {
+        "path": "settings-selection-source-return-followup-1/native-unsigned-build-5/native-build-result.json",
+        "bytes": 32147,
+        "sha256": "96f06e9979e7a90937594eed4aaead7ba29d866c19fcdc671c77b39dc1d42259"
+      },
+      "rootReceipt": {
+        "path": "settings-selection-source-return-followup-1/native-unsigned-build-5/root-execution-receipt.json",
+        "bytes": 6442,
+        "sha256": "8f86849f514a820f425cf1ded3988a72ca57f30fe43563a77e08866ecde1d27d"
+      },
+      "independentReview": {
+        "path": "settings-selection-source-return-followup-1/native-unsigned-build-5/actual-independent-review.json",
+        "bytes": 13545,
+        "sha256": "b6e09c19a57414e74a4c9fd3dae5ed6ca9a492690605b5c0329f0a551fec6a9e"
+      }
+    },
+    "independentFreshSourceWebAndThreeAppPerFileMapsVerified": true
+  },
+  "nativeUpdate6": {
+    "scope": "dedicated-simulator-binary-identity-only",
+    "sourceCommit": "0ea3b708e372321e3cdd3da7497584398e4d266e",
+    "outerSession": 15524,
+    "outerExit": 0,
+    "elapsedMs": 30841.337708999996,
+    "singleInstall": true,
+    "commands": 12,
+    "streams": 24,
+    "allClosedReapedOwnGroupsAbsent": true,
+    "appFiles": 490,
+    "webFiles": 472,
+    "fourNewMapPairsEqualBuild": true,
+    "RootFreshInstalledAppWebHashVerified": true,
+    "all15EndedShutdown": true,
+    "other14WholeRecordsUnchanged": true,
+    "configurationPreservation": "UNKNOWN",
+    "permissionPreservation": "UNKNOWN",
+    "UIAcceptance": false,
+    "nativeDialogOrKeyboardAcceptance": false,
+    "evidence": {
+      "report": {
+        "path": "settings-selection-source-return-followup-1/fd81-update-6/update-only-runtime-1/update-only-report.json",
+        "bytes": 54257,
+        "sha256": "459a54e1a93cea4c2c1553a8a72e23844e614d91c07d5ae760da29a83a5a8c51"
+      },
+      "rootReceipt": {
+        "path": "settings-selection-source-return-followup-1/fd81-update-6/update-only-runtime-1/root-execution-receipt.json",
+        "bytes": 7263,
+        "sha256": "575165b3b5335283edee8ee82727d3e308446eea7840be17e93d0b6a677ecb88"
+      },
+      "commitBridge": {
+        "path": "settings-selection-source-return-followup-1/fd81-update-6/root-build5-commit-bridge.json",
+        "bytes": 2105,
+        "sha256": "4074d52c44fe13c454696c0bb149d13d6dd680d6d7e0d10a855ac91851ff0a21"
+      },
+      "independentReview": {
+        "path": "settings-selection-source-return-followup-1/fd81-update-6/actual-independent-review.json",
+        "bytes": 10126,
+        "sha256": "25a77810695da0f179b04403f84c48180272794cd211e5001552ed88a2c46b69"
+      }
+    },
+    "independentFreshInstalledAppWebPerFileAndAggregateHashVerified": true
+  },
+  "nativeCategoryCase55": {
+    "productCommit": "0ea3b708e372321e3cdd3da7497584398e4d266e",
+    "installedPackage": "N5/U6",
+    "formal": {
+      "pass": 0,
+      "skip": 1,
+      "fail": 0,
+      "durationSeconds": 17.021232962608337
+    },
+    "AX": 4,
+    "UI": 4,
+    "PNG": 0,
+    "popupGesture": 1,
+    "knownExactDisabledButtonCount": 1,
+    "readinessElapsedSeconds": 5.011412978172302,
+    "optionsReached": false,
+    "categoryObserved": false,
+    "categoryClicks": 0,
+    "dialogOrKeyboardAccepted": false,
+    "cause": "UNKNOWN",
+    "commands": 21,
+    "streams": 42,
+    "allClosedReapedOwnGroupsAbsent": true,
+    "evidence": {
+      "report": {
+        "path": "fresh-installed84a-native-touch-selection-55/reading-options-readonly-execution-report.json",
+        "bytes": 61063,
+        "sha256": "15ed60db1ab7c39aa86aa4f76d394f579eadb12a1142d26b5caec4004e2d067c"
+      },
+      "rootReceipt": {
+        "path": "fresh-installed84a-native-touch-selection-55/root-execution-receipt.json",
+        "bytes": 4401,
+        "sha256": "9eff120b492e278a8a40621573d6f8eca72448a08d58bfa5e5ba349e65fba72c"
+      },
+      "independentReview": {
+        "path": "fresh-installed84a-native-touch-selection-55/actual-independent-review.json",
+        "bytes": 10189,
+        "sha256": "73485ae8d6eca0db3b4ea41f75c0244d1f766d9776917f09cc1a771008a3b5eb"
+      }
+    },
+    "independentSavedEvidenceReviewPassed": true
+  },
+  "nativeCategoryCase56": {
+    "productCommit": "0ea3b708e372321e3cdd3da7497584398e4d266e",
+    "installedPackage": "N5/U6",
+    "formal": {
+      "pass": 0,
+      "skip": 1,
+      "fail": 0,
+      "durationSeconds": 15.438373923301697
+    },
+    "AX": 6,
+    "UI": 5,
+    "PNG": 0,
+    "fullSettings": {
+      "tapAttempts": 1,
+      "frame": {
+        "height": 46,
+        "width": 60,
+        "x": 320,
+        "y": 491
+      },
+      "newTabCreationProved": false
+    },
+    "category": {
+      "tapAttempts": 1,
+      "frame": {
+        "height": 35,
+        "width": 203,
+        "x": 183,
+        "y": 74
+      },
+      "role": "other",
+      "knownLiveGuardPassed": true,
+      "full44PositiveFinite": false,
+      "DOMOuterBoundsProved": false
+    },
+    "postCategory": {
+      "AddInputSaveReturnOrPermissionActions": 0,
+      "additionalSnapshots": 1,
+      "categoryTapAttempts": 1,
+      "categoryTapReturned": true,
+      "countCappedAt17": 1,
+      "fresh3s": true,
+      "knownLabel": "\u7ffb\u8bd1\u670d\u52a1",
+      "knownRowsMaximum16": [
+        {
+          "frame": {
+            "height": 42,
+            "width": 250.00000000000003,
+            "x": 143.99999999999997,
+            "y": 154.33333333333331
+          },
+          "hasCachedWebAncestor": false,
+          "positiveFinite": true,
+          "roleRawValue": 9,
+          "rootFullyContainsKnownNode": true
+        }
+      ],
+      "newMenuSemanticsProved": false,
+      "roleCounts": [
+        {
+          "countCappedAt17": 1,
+          "roleRawValue": 9
+        }
+      ],
+      "sameRunOptionsOwnerObserved": false,
+      "scope": "ONE_POST_CATEGORY_CACHED_SNAPSHOT_KNOWN_SERVICE_LABEL_ROLE_COUNT_FRAME_ONLY",
+      "screenshotsRequestedByContinuation": 0,
+      "serviceOptionTapAttempts": 0,
+      "touchTargetSizeAcceptance": false,
+      "valueIdentifierOrUnknownLabelExported": false
+    },
+    "SelectionMoreGestureActions": 0,
+    "serviceOptionAddInputSavePermissionActions": 0,
+    "dialogOrKeyboardAccepted": false,
+    "commands": 21,
+    "streams": 42,
+    "allClosedReapedOwnGroupsAbsent": true,
+    "evidence": {
+      "report": {
+        "path": "fresh-installed84a-native-touch-selection-56/reading-options-readonly-execution-report.json",
+        "bytes": 61271,
+        "sha256": "91232778596e649d120ff45de0b4c487c864e16ddd759aa04f714f2c92036b14"
+      },
+      "rootReceipt": {
+        "path": "fresh-installed84a-native-touch-selection-56/root-execution-receipt.json",
+        "bytes": 7460,
+        "sha256": "96c16f88a849118fbf89c2b193ece9aaabc7e803e60624e0088cb5a7d090836b"
+      },
+      "independentReview": {
+        "path": "fresh-installed84a-native-touch-selection-56/actual-independent-review.json",
+        "bytes": 13029,
+        "sha256": "004b419a8c141e246ad40ee0c2986b819682b83fa60925b23e7e8f02f09f3e76"
+      }
+    },
+    "independentSavedEvidenceReviewPassed": true
+  },
+  "nativeProviderJourneyCase57": {
+    "productCommit": "0ea3b708e372321e3cdd3da7497584398e4d266e",
+    "installedPackage": "N5/U6",
+    "driverSource": 8,
+    "formal": {
+      "pass": 0,
+      "skip": 1,
+      "fail": 0,
+      "durationSeconds": 9.854565978050232
+    },
+    "AX": 4,
+    "UI": 3,
+    "PNG": 0,
+    "fullSettingsTapAttempts": 0,
+    "dialogOrKeyboardAccepted": false,
+    "configurationWritesInputSavePermissionActions": 0,
+    "cause": "UNKNOWN",
+    "commands": 21,
+    "streams": 42,
+    "allClosedReapedOwnGroupsAbsent": true,
+    "fiveSavedAppWebPairsExactU6": true,
+    "all15ShutdownOther14WholeUnchanged": true,
+    "independentSavedEvidenceReviewPassed": true,
+    "evidence": {
+      "report": {
+        "path": "fresh-installed84a-native-touch-selection-57/reading-options-readonly-execution-report.json",
+        "bytes": 61542,
+        "sha256": "1ce5151b34363b8545a72b30025cd7d641e52633bb2ef2778cb08016bdba82b8"
+      },
+      "rootReceipt": {
+        "path": "fresh-installed84a-native-touch-selection-57/root-execution-receipt.json",
+        "bytes": 3947,
+        "sha256": "7f2dd27ceedd38d3c87a1f39efd1e9cb4b757c02f40b2276f375d2f6eea04544"
+      },
+      "independentReview": {
+        "path": "fresh-installed84a-native-touch-selection-57/actual-independent-review.json",
+        "bytes": 21468,
+        "sha256": "ba4f970f670cf87e60ddb6df0e2c89091b3b4b83b30b0baf8b323c7968567f31"
+      }
+    },
+    "fullSettingsCached": {
+      "cachedEnabled": true,
+      "cachedFrame": {
+        "height": 46,
+        "width": 60,
+        "x": 320,
+        "y": 491
+      },
+      "full44IsUIAcceptanceMetricOnly": true,
+      "full44PositiveFinite": true,
+      "knownLabel": "\u6253\u5f00\u5b8c\u6574\u8bbe\u7f6e",
+      "positiveFiniteRootContentContained": true,
+      "scope": "ONE_PUBLIC_POPUP_HEADER_FULL_SETTINGS_BUTTON_ONLY",
+      "SelectionMoreOrGestureActions": 0,
+      "touchTargetSizeAcceptance": false,
+      "valueIdentifierOrUnknownLabelExported": false
+    },
+    "preciseStop": "Original unique live role/id/label/frame/enabled/hit/fresh3s gate unavailable",
+    "firstFailedPredicate": "UNKNOWN_COMPOUND_GATE_NOT_EXPORTED",
+    "optionsReached": false
+  },
+  "nativeProviderJourneyCase58": {
+    "productCommit": "0ea3b708e372321e3cdd3da7497584398e4d266e",
+    "installedPackage": "N5/U6",
+    "driverSource": 9,
+    "formal": {
+      "pass": 0,
+      "skip": 1,
+      "fail": 0,
+      "durationSeconds": 24.525696992874146
+    },
+    "AX": 6,
+    "UI": 6,
+    "PNG": 0,
+    "fullSettingsTapAttempts": 1,
+    "dialogOrKeyboardAccepted": false,
+    "configurationWritesInputSavePermissionActions": 0,
+    "cause": "UNKNOWN",
+    "commands": 21,
+    "streams": 42,
+    "allClosedReapedOwnGroupsAbsent": true,
+    "fiveSavedAppWebPairsExactU6": true,
+    "all15ShutdownOther14WholeUnchanged": true,
+    "independentSavedEvidenceReviewPassed": true,
+    "evidence": {
+      "report": {
+        "path": "fresh-installed84a-native-touch-selection-58/reading-options-readonly-execution-report.json",
+        "bytes": 61624,
+        "sha256": "25b7699aeafd5da3a3a6b0cb94425906a32179f151ca1d7bad52295a3917d6b7"
+      },
+      "rootReceipt": {
+        "path": "fresh-installed84a-native-touch-selection-58/root-execution-receipt.json",
+        "bytes": 9674,
+        "sha256": "3a5727fac17546db8185308ed9eb23e42e5df1e9c9af9765acaf978014ec12a8"
+      },
+      "independentReview": {
+        "path": "fresh-installed84a-native-touch-selection-58/actual-independent-review.json",
+        "bytes": 32393,
+        "sha256": "f9d05a179689df140965b392bca6cbe29bbfbbbb301e159eef0f0a319ae7b36c"
+      }
+    },
+    "fullSettings": {
+      "boundedReadiness": {
+        "callbackLimitReached": false,
+        "elapsedSeconds": 1.4083319902420044,
+        "lastNotReadyPredicate": "NONE",
+        "noSnapshotOrClockReset": true,
+        "noTapOrAlternatePath": true,
+        "rawIdentifierUnknownLabelValueOrOwnerExported": false,
+        "ready": true,
+        "result": "COMPLETED",
+        "scope": "ONE_EXACT_PUBLIC_FULL_SETTINGS_BUTTON_BOUNDED_READINESS",
+        "terminalInvalid": false,
+        "terminalReason": "NONE",
+        "timeoutSeconds": 5
+      },
+      "cachedEnabled": true,
+      "cachedFrame": {
+        "height": 46,
+        "width": 60,
+        "x": 320,
+        "y": 491
+      },
+      "full44IsUIAcceptanceMetricOnly": true,
+      "full44PositiveFinite": true,
+      "knownLabel": "\u6253\u5f00\u5b8c\u6574\u8bbe\u7f6e",
+      "newTabCreationProved": false,
+      "optionsOwnerDistinctFromSourceObserved": true,
+      "originalLiveGateDiagnostic": {
+        "accepted": true,
+        "elapsedSeconds": 0.4952150583267212,
+        "firstFailedPredicate": "NONE",
+        "originalExpressionOrderAndLiveGetterCountsPreserved": true,
+        "predicateOrder": [
+          "freshAtEntry",
+          "cachedFramePositive",
+          "rootContainsCachedFrame",
+          "appFrameMatchesCachedScene",
+          "liveExists",
+          "liveRoleMatchesCached",
+          "liveIdentifierMatchesCached",
+          "liveLabelMatchesCached",
+          "cachedEnabled",
+          "liveEnabled",
+          "liveHittable",
+          "liveFrameMatchesCached",
+          "originalButtonMinimum20",
+          "freshAtExit"
+        ],
+        "predicates": {
+          "appFrameMatchesCachedScene": true,
+          "cachedEnabled": true,
+          "cachedFramePositive": true,
+          "freshAtEntry": true,
+          "freshAtExit": true,
+          "liveEnabled": true,
+          "liveExists": true,
+          "liveFrameMatchesCached": true,
+          "liveHittable": true,
+          "liveIdentifierMatchesCached": true,
+          "liveLabelMatchesCached": true,
+          "liveRoleMatchesCached": true,
+          "originalButtonMinimum20": true,
+          "rootContainsCachedFrame": true
+        },
+        "productRootCause": "UNKNOWN",
+        "rawIdentifierUnknownLabelValueFrameOrOwnerExported": false,
+        "scope": "PUBLIC_FULL_SETTINGS_ORIGINAL_LIVE_GATE_ORDERED_DIAGNOSTIC"
+      },
+      "positiveFiniteRootContentContained": true,
+      "scope": "ONE_PUBLIC_POPUP_HEADER_FULL_SETTINGS_BUTTON_ONLY",
+      "SelectionMoreOrGestureActions": 0,
+      "tapAttempted": true,
+      "tapReturned": true,
+      "touchTargetSizeAcceptance": false,
+      "valueIdentifierOrUnknownLabelExported": false
+    },
+    "category": {
+      "cachedEnabled": true,
+      "cachedFrame": {
+        "height": 35,
+        "width": 203,
+        "x": 183,
+        "y": 74
+      },
+      "categoryClickAdmitted": true,
+      "categoryClicks": 1,
+      "categoryTapReturned": true,
+      "completeKnownSameFrameWebChain": true,
+      "full44IsUIAcceptanceMetricOnly": true,
+      "full44PositiveFinite": false,
+      "knownLabel": "\u8bbe\u7f6e\u5206\u7c7b",
+      "knownRoleCounts": [
+        {
+          "countCappedAt2": 0,
+          "knownRole": "popUpButton"
+        },
+        {
+          "countCappedAt2": 0,
+          "knownRole": "button"
+        },
+        {
+          "countCappedAt2": 1,
+          "knownRole": "other"
+        }
+      ],
+      "knownRoleLabelIdentifierEnabledHittableAndFrameMatched": true,
+      "knownWebChainCountCappedAt4": 3,
+      "liveFreshGatePassed": true,
+      "nativeSelectSemanticsProved": false,
+      "optionsOwnerDistinctFromSourceObserved": true,
+      "qualificationResult": "KNOWN_UNIQUE_LIVE_ELEMENT_ADMITTED_FOR_ONE_CATEGORY_TAP",
+      "rootAndContentFullyContainKnownNode": true,
+      "sameKnownLiveRoleCountCappedAt2": 1,
+      "sameRunOptionsOwnerBound": true,
+      "scope": "ONE_CACHED_OPTIONS_KNOWN_LABEL_THREE_ROLE_QUALIFICATION_ONLY",
+      "touchTargetSizeAcceptance": false,
+      "uniqueAcrossKnownRoles": true,
+      "uniqueKnownRole": "other",
+      "unknownLabelIdentifierValueOrOwnerUUIDExported": false,
+      "valueRead": false
+    },
+    "providerJourneyActions": {
+      "serviceOption": 1
+    },
+    "postServiceQualifiedSceneCaptured": false,
+    "exactServiceAnchorObservedWithin5Seconds": false,
+    "preciseStop": "Native picker did not restore known service page; no guessed dismissal action",
+    "cannotInferPickerRemainsOrServicePageLoadFailed": true
+  },
+  "nativeProviderJourneyCase59": {
+    "productCommit": "0ea3b708e372321e3cdd3da7497584398e4d266e",
+    "installedPackage": "N5/U6",
+    "driverSource": 10,
+    "formal": {
+      "pass": 0,
+      "skip": 1,
+      "fail": 0,
+      "durationSeconds": 14.114521026611328
+    },
+    "AX": 3,
+    "UI": 3,
+    "PNG": 0,
+    "fullSettingsTapAttempts": 0,
+    "dialogOrKeyboardAccepted": false,
+    "configurationWritesInputSavePermissionActions": 0,
+    "cause": "UNKNOWN",
+    "commands": 21,
+    "streams": 42,
+    "allClosedReapedOwnGroupsAbsent": true,
+    "fiveSavedAppWebPairsExactU6": true,
+    "all15ShutdownOther14WholeUnchanged": true,
+    "independentSavedEvidenceReviewPassed": true,
+    "evidence": {
+      "report": {
+        "path": "fresh-installed84a-native-touch-selection-59/reading-options-readonly-execution-report.json",
+        "bytes": 61621,
+        "sha256": "7dead731e6ad854335a06925d168f322701d1ae024b2973858bff75716861c5a"
+      },
+      "rootReceipt": {
+        "path": "fresh-installed84a-native-touch-selection-59/root-execution-receipt.json",
+        "bytes": 4299,
+        "sha256": "49178ee7e9f219da019f8d735e80fe095da00cd85629d218fa6ff0a9f4751f0c"
+      },
+      "independentReview": {
+        "path": "fresh-installed84a-native-touch-selection-59/actual-independent-review.json",
+        "bytes": 5647,
+        "sha256": "0df0e09886c3a55deb48bd478e8bf1ed170b65eff2ccef497862f754cc0d3481"
+      }
+    },
+    "fullSettingsReadiness": {
+      "callbackLimitReached": false,
+      "elapsedSeconds": 5.006441950798035,
+      "lastNotReadyPredicate": "LIVE_HITTABLE_FALSE",
+      "noSnapshotOrClockReset": true,
+      "noTapOrAlternatePath": true,
+      "rawIdentifierUnknownLabelValueOrOwnerExported": false,
+      "ready": false,
+      "result": "NOT_COMPLETED",
+      "scope": "ONE_EXACT_PUBLIC_FULL_SETTINGS_BUTTON_BOUNDED_READINESS",
+      "terminalInvalid": true,
+      "terminalReason": "ABSOLUTE_DEADLINE",
+      "timeoutSeconds": 5
+    },
+    "preciseStop": "Bounded exact Full Settings readiness unavailable; no retry or alternate route",
+    "postServiceCandidateObservationReached": false,
+    "optionsReached": false
+  },
+  "nativeProviderJourneyCase60": {
+    "productCommit": "0ea3b708e372321e3cdd3da7497584398e4d266e",
+    "installedPackage": "N5/U6",
+    "driverSource": 11,
+    "formal": {
+      "pass": 0,
+      "skip": 1,
+      "fail": 0,
+      "durationSeconds": 20.436667919158936
+    },
+    "AX": 7,
+    "UI": 6,
+    "PNG": 0,
+    "fullSettingsTapAttempts": 1,
+    "fullSettingsNativeHittableObserved": true,
+    "originalFullSettingsGateAccepted": true,
+    "falseHittabilityBranchExercised": false,
+    "categoryTapAttempts": 1,
+    "serviceOptionTapAttempts": 1,
+    "postServiceCandidates": {
+      "additionalSnapshotOrActionForObservation": false,
+      "fresh3s": true,
+      "knownCandidates": [
+        {
+          "countCappedAt17": 0,
+          "knownLabel": "\u7ffb\u8bd1\u670d\u52a1\u914d\u7f6e",
+          "knownRowsMaximum16": [],
+          "roleCounts": []
+        },
+        {
+          "countCappedAt17": 0,
+          "knownLabel": "\u5f53\u524d\u7ffb\u8bd1\u670d\u52a1\u8be6\u60c5",
+          "knownRowsMaximum16": [],
+          "roleCounts": []
+        },
+        {
+          "countCappedAt17": 0,
+          "dynamicAccessibleNameExported": false,
+          "fixedContainsButtonCountCappedAt17": 1,
+          "fixedContainsButtonRowsMaximum16": [
+            {
+              "hasCachedWebAncestor": true,
+              "originalOwnerCompleteKnownTitleThreeWebChain": false,
+              "positiveFinite": true,
+              "roleRawValue": 9,
+              "rootFullyContainsKnownNode": true,
+              "safeContainedFrame": {
+                "height": 44,
+                "width": 348,
+                "x": 27,
+                "y": 206
+              }
+            }
+          ],
+          "knownLabel": "\u5207\u6362\u914d\u7f6e\u670d\u52a1",
+          "knownRowsMaximum16": [],
+          "roleCounts": []
+        },
+        {
+          "countCappedAt17": 0,
+          "knownLabel": "\u81ea\u5b9a\u4e49\u670d\u52a1",
+          "knownRowsMaximum16": [],
+          "roleCounts": []
+        },
+        {
+          "countCappedAt17": 1,
+          "knownLabel": "\u8bbe\u7f6e\u5206\u7c7b",
+          "knownRowsMaximum16": [
+            {
+              "hasCachedWebAncestor": true,
+              "originalOwnerCompleteKnownTitleThreeWebChain": false,
+              "positiveFinite": true,
+              "roleRawValue": 1,
+              "rootFullyContainsKnownNode": true,
+              "safeContainedFrame": {
+                "height": 35,
+                "width": 203,
+                "x": 183,
+                "y": 74
+              }
+            }
+          ],
+          "roleCounts": [
+            {
+              "countCappedAt17": 1,
+              "roleRawValue": 1
+            }
+          ]
+        }
+      ],
+      "productRootCause": "UNKNOWN",
+      "rawUnknownLabelIdentifierValueOrOwnerExported": false,
+      "recordedServiceOptionOneNoInterveningDriverUI": true,
+      "sameRunOriginalOptionsOwnerObserved": true,
+      "scope": "ONE_POST_SERVICE_SCENE_FIXED_PUBLIC_CANDIDATES_ONLY"
+    },
+    "directoryAddFocusSavePermissionActions": 0,
+    "dialogOrKeyboardAccepted": false,
+    "cause": "UNKNOWN",
+    "preciseStop": "No unique known public service-page member in original Options complete titled three-Web chain; no alternate target",
+    "individualFailedChainSubpredicate": "UNKNOWN",
+    "commands": 21,
+    "streams": 42,
+    "allClosedReapedOwnGroupsAbsent": true,
+    "fiveSavedAppWebPairsExactU6": true,
+    "all15ShutdownOther14WholeUnchanged": true,
+    "independentSavedEvidenceReviewPassed": true,
+    "evidence": {
+      "report": {
+        "path": "fresh-installed84a-native-touch-selection-60/reading-options-readonly-execution-report.json",
+        "bytes": 61630,
+        "sha256": "1664400d2bf9236b5d26aeaef4199252791f9b630bc5c74d1675f56600218dbf"
+      },
+      "rootReceipt": {
+        "path": "fresh-installed84a-native-touch-selection-60/root-execution-receipt.json",
+        "bytes": 8665,
+        "sha256": "f67f3cd8861e0e348d6c544333ceae87b21b20f50e70959726757e5e1bc82595"
+      },
+      "independentReview": {
+        "path": "fresh-installed84a-native-touch-selection-60/actual-independent-review.json",
+        "bytes": 5779,
+        "sha256": "362010add62e5306eff5e200a068d975faca995564a979bfd7aa37733cdad09c"
+      }
+    }
+  },
+  "nativeProviderJourneyCase61": {
+    "productCommit": "0ea3b708e372321e3cdd3da7497584398e4d266e",
+    "installedPackage": "N5/U6",
+    "driverSource": 12,
+    "formal": {
+      "pass": 0,
+      "skip": 0,
+      "fail": 1,
+      "durationSeconds": 13.975022077560425
+    },
+    "outerExit": 1,
+    "nativeCommandExit": 65,
+    "other20CommandExits": 0,
+    "nativeFAILPreserved": true,
+    "header13NonHittabilityPredicates": true,
+    "headerNativeHittableObserved": false,
+    "originalHeaderGateAccepted": false,
+    "standardElementTapAdmissionAccepted": true,
+    "driverHeaderTapCalls": 1,
+    "driverTapCallReturned": false,
+    "xctestInternalAttempts": 3,
+    "xctestComputedHitPoint": [
+      -1,
+      -1
+    ],
+    "optionsAndSource12ServiceContinuationReached": false,
+    "configurationWritesInputSavePermissionActions": 0,
+    "cause": "UNKNOWN",
+    "driverPNG": 0,
+    "systemVideo": 1,
+    "systemSnapshotPlists": 6,
+    "systemEventPlists": 2,
+    "hierarchyTXT": 1,
+    "all5DerivedVideoFramesViewed": true,
+    "sampledVideoMediaSeconds": 8.386667,
+    "wholeWallTimeCovered": false,
+    "lastFrame": "Visible public Settings button and clipped bottom tiles at initial Popup position. Does not prove manual touch fails.",
+    "representativeFrame": {
+      "path": "docs/reports/mobile-custom-provider-dialog-20261021/case61-initial-popup-failure-frame.png",
+      "bytes": 550995,
+      "sha256": "000976e5ec8b7d38e09e247e3c4c22feec4c6e0a356cdcc67533bbc8b4f21a6c"
+    },
+    "commands": 21,
+    "streams": 42,
+    "allClosedReapedOwnGroupsAbsent": true,
+    "fiveSavedAppWebPairsExactU6": true,
+    "all15ShutdownOther14WholeUnchanged": true,
+    "independentSavedEvidenceReviewPassed": true,
+    "evidence": {
+      "report": {
+        "path": "fresh-installed84a-native-touch-selection-61/reading-options-readonly-execution-report.json",
+        "bytes": 61663,
+        "sha256": "5c198983b5ee7f3089455efd54eba953a7fbfe98b93bfeb3da75aae1f75fc1ca"
+      },
+      "rootReceipt": {
+        "path": "fresh-installed84a-native-touch-selection-61/root-execution-receipt.json",
+        "bytes": 11173,
+        "sha256": "ca2fbe4fe7848b7686bf65c5c267ae83564d80df24161d5a24f40a0162bf7f0b"
+      },
+      "independentReview": {
+        "path": "fresh-installed84a-native-touch-selection-61/actual-independent-review.json",
+        "bytes": 6019,
+        "sha256": "1eb5c7e1573ec19bcebdba64899584ec5e5c41304e14c55264f641c2ead06414"
+      }
+    }
+  },
+  "nativeProviderJourneyCase63": {
+    "productCommit": "0ea3b708e372321e3cdd3da7497584398e4d266e",
+    "installedPackage": "N5/U6",
+    "driverSource": 14,
+    "formal": {
+      "pass": 1,
+      "skip": 0,
+      "fail": 0,
+      "durationSeconds": 49.78570103645325
+    },
+    "outerExit": 0,
+    "nativeCommandExit": 0,
+    "AX": 13,
+    "UI": 11,
+    "PNG": 1,
+    "headerPrimaryExactLiveCenterCoordinateTaps": 1,
+    "headerNativeHittableObserved": true,
+    "coordinateUnderFalseHittabilityExercised": false,
+    "categoryTaps": 1,
+    "journeyActions": {
+      "Add": 1,
+      "Cancel": 1,
+      "directory": 1,
+      "nameFocus": 1,
+      "panelUp": 1,
+      "serviceOption": 1
+    },
+    "keyboardFrame": {
+      "height": 233,
+      "width": 402,
+      "x": 0,
+      "y": 583
+    },
+    "modelFrame": {
+      "height": 44,
+      "width": 350,
+      "x": 26,
+      "y": 309
+    },
+    "cancelFrame": {
+      "height": 44,
+      "width": 171,
+      "x": 26,
+      "y": 370
+    },
+    "nativeEmptyDraftKeyboardModelCancelJourneyAccepted": true,
+    "modelAndCancelIndependentlyReachable": true,
+    "dialogAndKeyboardAbsentAfterCancel": true,
+    "originalOptionsServiceOwnerRestored": true,
+    "postServiceCompleteSameFrameWebAncestors": 3,
+    "currentFixedSettingsTitleMatched": false,
+    "currentTitleProjectionRequired": false,
+    "configurationWritesInputSavePermissionActions": 0,
+    "providerRequestsByDriver": 0,
+    "providerRequestsByProduct": "UNKNOWN_NOT_INTERCEPTED",
+    "visualLimit": "Only cropped empty name input was captured and viewed; no full native dialog or keyboard image.",
+    "physicalDeviceOrAllMobileTouchSizesAccepted": false,
+    "configurationRetention": "UNKNOWN",
+    "permissionRetention": "UNKNOWN",
+    "commands": 21,
+    "streams": 42,
+    "allClosedReapedOwnGroupsAbsent": true,
+    "fiveSavedAppWebPairsExactU6": true,
+    "all15ShutdownOther14WholeUnchanged": true,
+    "independentSavedEvidenceReviewPassed": true,
+    "evidence": {
+      "report": {
+        "path": "fresh-installed84a-native-touch-selection-63/reading-options-readonly-execution-report.json",
+        "bytes": 61641,
+        "sha256": "9e4a8aefb519465acf4fe47d00f2b8ca919f68e2a444d34946a87fe1d0da3f69"
+      },
+      "rootReceipt": {
+        "path": "fresh-installed84a-native-touch-selection-63/root-execution-receipt.json",
+        "bytes": 18461,
+        "sha256": "57725123eb2e392144dbeedc766a40691697de686c00dc1069db0c0427eb8cd6"
+      },
+      "independentReview": {
+        "path": "fresh-installed84a-native-touch-selection-63/actual-independent-review.json",
+        "bytes": 6431,
+        "sha256": "3f21f69b697f15adb496d1142ac0b6b9fe2c5707c74de50a60ca9201fa4c894e"
+      },
+      "nameFieldPNG": {
+        "path": "fresh-installed84a-native-touch-selection-63/runtime-attachments/D6163F7A-9F53-430A-86A0-FB763CE2B896.png",
+        "bytes": 11885,
+        "sha256": "4939e23e3d62570e12d9b2caffe8e8ab366fab47b1b4e61fe2a2d362460ca06b"
+      }
+    }
+  },
+  "nativePopupSelectionCase62": {
+    "productCommit": "0ea3b708e372321e3cdd3da7497584398e4d266e",
+    "installedPackage": "N5/U6",
+    "driverSource": 13,
+    "formal": {
+      "pass": 0,
+      "skip": 0,
+      "fail": 1,
+      "durationSeconds": 15.189284920692444
+    },
+    "outerExit": 1,
+    "nativeCommandExit": 65,
+    "PNG": 0,
+    "oneOriginalCenterPan": true,
+    "tileFrameBeforePan": {
+      "height": 49,
+      "width": 175,
+      "x": 204,
+      "y": 835
+    },
+    "tileFrameAfterPan": {
+      "height": 49,
+      "width": 175,
+      "x": 204,
+      "y": 697
+    },
+    "rawVisibleIntersectionAfterPan": {
+      "height": 49,
+      "width": 175,
+      "x": 204,
+      "y": 697
+    },
+    "sameRootOuterHeaderContinuityValidated": true,
+    "strictCompleteChainFullContainment": true,
+    "nativeHittableObserved": false,
+    "other13LivePredicatesTrue": true,
+    "standardElementTapDriverCalls": 1,
+    "xctestInternalAttempts": 3,
+    "xctestComputedHitPoint": [
+      -1,
+      -1
+    ],
+    "actualSelectionDrawerObserved": false,
+    "DOMScrollOwnerProved": false,
+    "systemFailureVideoOrSnapshotPixelsReviewed": false,
+    "productCause": "UNKNOWN",
+    "commands": 21,
+    "streams": 42,
+    "allClosedReapedOwnGroupsAbsent": true,
+    "fiveSavedAppWebPairsExactU6": true,
+    "all15ShutdownOther14WholeUnchanged": true,
+    "independentSavedEvidenceReviewPassed": true,
+    "evidence": {
+      "report": {
+        "path": "fresh-installed84a-native-touch-selection-62/reading-options-readonly-execution-report.json",
+        "bytes": 61658,
+        "sha256": "4b203ca67d86789af644d9a954ba7ed87f88a4d1e12cedd48ab5129935d4ec5e"
+      },
+      "rootReceipt": {
+        "path": "fresh-installed84a-native-touch-selection-62/root-execution-receipt.json",
+        "bytes": 13491,
+        "sha256": "909c329ad6bfc3a11ccbf9533fc9b09d508d03e8ae4079f4faf07c5bf89a5f03"
+      },
+      "independentReview": {
+        "path": "fresh-installed84a-native-touch-selection-62/actual-independent-review.json",
+        "bytes": 4551,
+        "sha256": "02483b77fabfda702a8de77651c031dab8c31e9ff83ec69f4387f2d82b30b1a3"
+      }
+    }
+  },
+  "nativeProviderJourneyCase64": {
+    "productCommit": "0ea3b708e372321e3cdd3da7497584398e4d266e",
+    "installedPackage": "N5/U6",
+    "driverSource": 15,
+    "formal": {
+      "pass": 1,
+      "skip": 0,
+      "fail": 0,
+      "durationSeconds": 42.905933022499084
+    },
+    "outerExit": 0,
+    "nativeCommandExit": 0,
+    "AX": 15,
+    "UI": 11,
+    "PNG": 3,
+    "headerPrimaryExactLiveCenterCoordinateTaps": 1,
+    "headerNativeHittableObserved": true,
+    "coordinateUnderFalseHittabilityExercised": false,
+    "categoryTaps": 1,
+    "journeyActions": {
+      "Add": 1,
+      "Cancel": 1,
+      "directory": 1,
+      "nameFocus": 1,
+      "panelUp": 1,
+      "serviceOption": 1
+    },
+    "keyboardFrame": {
+      "height": 233,
+      "width": 402,
+      "x": 0,
+      "y": 583
+    },
+    "modelFrame": {
+      "height": 44,
+      "width": 350,
+      "x": 26,
+      "y": 309
+    },
+    "cancelFrame": {
+      "height": 44,
+      "width": 171,
+      "x": 26,
+      "y": 370
+    },
+    "nativeEmptyDraftKeyboardModelCancelJourneyAccepted": true,
+    "modelAndCancelIndependentlyReachable": true,
+    "dialogAndKeyboardAbsentAfterCancel": true,
+    "originalOptionsServiceOwnerRestored": true,
+    "postServiceCompleteSameFrameWebAncestors": 3,
+    "currentFixedSettingsTitleMatched": false,
+    "currentTitleProjectionRequired": false,
+    "configurationWritesInputSavePermissionActions": 0,
+    "providerRequestsByDriver": 0,
+    "providerRequestsByProduct": "UNKNOWN_NOT_INTERCEPTED",
+    "visualLimit": "Two separate positions show new empty form and model/Cancel above actual keyboard; whole header/form/footer simultaneous visibility, physical device, landscape and all mobile combinations not accepted.",
+    "physicalDeviceOrAllMobileTouchSizesAccepted": false,
+    "configurationRetention": "UNKNOWN",
+    "permissionRetention": "UNKNOWN",
+    "commands": 21,
+    "streams": 42,
+    "allClosedReapedOwnGroupsAbsent": true,
+    "fiveSavedAppWebPairsExactU6": true,
+    "all15ShutdownOther14WholeUnchanged": true,
+    "independentSavedEvidenceReviewPassed": true,
+    "evidence": {
+      "report": {
+        "path": "fresh-installed84a-native-touch-selection-64/reading-options-readonly-execution-report.json",
+        "bytes": 61819,
+        "sha256": "9f54503096eb023203d163bc9b55173a5a712b1c2607e0a632fac2b689e28a2e"
+      },
+      "rootReceipt": {
+        "path": "fresh-installed84a-native-touch-selection-64/root-execution-receipt.json",
+        "bytes": 19858,
+        "sha256": "d2b6d8b5f6bea889f71a65f810aa74a419e4a8f65df135e56bbfd00c81578c7e"
+      },
+      "newEmptyDraftPNG": {
+        "path": "fresh-installed84a-native-touch-selection-64/runtime-attachments/2269F3B7-40EB-4DA2-B203-8C3E808312E9.png",
+        "bytes": 422996,
+        "sha256": "b33940e6daf33e329fb9cfdd1a5c476c01bbd9eb22557b54c99b530d5082795f",
+        "repositoryImage": "case64-native-empty-dialog-keyboard.png"
+      },
+      "modelCancelPNG": {
+        "path": "fresh-installed84a-native-touch-selection-64/runtime-attachments/8E345D58-8CB4-4DC2-BDC4-2740FAE0211A.png",
+        "bytes": 410042,
+        "sha256": "dea28412e853ec586e2d0cc1edb5b89a4c73a873554c6f53d4216f9312e865d0",
+        "repositoryImage": "case64-native-model-cancel-keyboard.png"
+      },
+      "independentReview": {
+        "path": "fresh-installed84a-native-touch-selection-64/actual-independent-review.json",
+        "bytes": 7667,
+        "sha256": "866b8f2b9ba1fdd26d215b3dc37538ef0f99b27c0ad6fa64591a4d81f2d3f37a"
+      }
+    },
+    "rawFullAppPNGs": 2,
+    "all3PNGsRootPersonallyViewed": true,
+    "nativeAutomationVisualFlag": false,
+    "externalRootVisualReview": {
+      "all3ProducedPNGsPersonallyViewed": true,
+      "rawFullAppImages": 2,
+      "nativeKeyboardShown": true,
+      "twoSeparateScrollPositions": "New empty draft with name/endpoint; after one upward dialog pan model and Cancel/Save fully inside dialog above native keyboard. Header has scrolled away in second image.",
+      "horizontalOverflowSeen": false,
+      "keyboardOverlapOfModelOrCancelSeen": false,
+      "allFieldsHeaderFooterSimultaneouslyVisibleProved": false,
+      "physicalDeviceAccepted": false,
+      "nativeAutomationReviewFlagRemainsFalsePendingExternalReview": true
+    },
+    "independentNativeVisualReviewAccepted": true
+  },
+  "nativePopupSelectionCase65": {
+    "productCommit": "0ea3b708e372321e3cdd3da7497584398e4d266e",
+    "installedPackage": "N5/U6",
+    "driverSource": 16,
+    "formal": {
+      "pass": 1,
+      "skip": 0,
+      "fail": 0,
+      "durationSeconds": 14.88064992427826
+    },
+    "outerExit": 0,
+    "nativeCommandExit": 0,
+    "AX": 6,
+    "UI": 5,
+    "PNG": 1,
+    "oneOriginalCenterPan": true,
+    "tileFrameAfterPan": {
+      "height": 49,
+      "width": 175,
+      "x": 204,
+      "y": 697
+    },
+    "rawVisibleIntersectionAfterPan": {
+      "height": 49,
+      "width": 175,
+      "x": 204,
+      "y": 697
+    },
+    "sameRootOuterHeaderContinuityValidated": true,
+    "nativeHittableObserved": false,
+    "primaryExactLiveCenterTapAttempts": 1,
+    "standardElementTapFirstFallbackOrRetry": false,
+    "actualSelectionDrawerObserved": true,
+    "knownSignatureObserved": true,
+    "originalAppScreenshotCaptured": true,
+    "configurationWritesInputSavePermissionActions": 0,
+    "moreSettingsActions": 0,
+    "DOMScrollOwnerProved": false,
+    "rootVisualReview": {
+      "allProducedPNGsPersonallyViewed": true,
+      "drawerTitleCloseSwitchModesMoreSettingsVisible": true,
+      "horizontalOverflowSeen": false,
+      "clippedDrawerActionsSeen": false,
+      "twoModeControlsDisabledConsistentWithFeatureOff": true,
+      "nativeSafariParentSheetHeaderVisible": true,
+      "underlayDimAndBlurExpected": true,
+      "scope": "One portrait drawer original screenshot; no switch, modes, More, keyboard, landscape, zoom or physical device acceptance."
+    },
+    "independentSavedEvidenceReviewPassed": true,
+    "commands": 21,
+    "streams": 42,
+    "allClosedReapedOwnGroupsAbsent": true,
+    "fiveSavedAppWebPairsExactU6": true,
+    "all15ShutdownOther14WholeUnchanged": true,
+    "configurationRetention": "UNKNOWN",
+    "permissionRetention": "UNKNOWN",
+    "evidence": {
+      "report": {
+        "path": "fresh-installed84a-native-touch-selection-65/reading-options-readonly-execution-report.json",
+        "bytes": 61883,
+        "sha256": "b226603f73b82f07fb31b6b54add1ba8dce8ef4de2276d3d2ac182e5f3f28258"
+      },
+      "rootReceipt": {
+        "path": "fresh-installed84a-native-touch-selection-65/root-execution-receipt.json",
+        "bytes": 11525,
+        "sha256": "0a257b735f3b640cc60e39d3b606b1213251b98ab3dc7f76b38e218b26c96b21"
+      },
+      "drawerPNG": {
+        "path": "fresh-installed84a-native-touch-selection-65/runtime-attachments/A9AF0D17-7931-4EAC-8C32-7990AC360B73.png",
+        "bytes": 322094,
+        "sha256": "e3181e15c5d89037c4f0d70030e1a44312395ad4fea53ba289da5bea7c39a72a",
+        "repositoryImage": "case65-native-selection-drawer.png"
+      },
+      "independentReview": {
+        "path": "fresh-installed84a-native-touch-selection-65/actual-independent-review.json",
+        "bytes": 7493,
+        "sha256": "e670fbe8cea39517289965ce9a5aab110370930304cde34f9218698f2d5702ac"
+      }
+    },
+    "independentNativeVisualReviewAccepted": true
+  },
+  "reportFollowupValidation": {
+    "documentationBuild": "vitepress1.6.3 exit0 via resource-safe cpu40/maxworkers1/concurrency1; internal reports intentionally excluded from public site",
+    "JSON": "parsed",
+    "diffCheck": "passed before commit",
+    "productSourceChangedInThisReportFollowup": false,
+    "storybookBuild": "storybook8.6.18 exit0 via resource-safe cpu40/maxworkers1/concurrency1",
+    "docsCheck": {
+      "exitCode": 0,
+      "pages": 87,
+      "links": 4895,
+      "anchors": 851,
+      "images": 172
+    },
+    "initialDocsCheck": "Failed only because freshly cleared VitePress output lacked Storybook; built Storybook and reran successfully."
+  }
+}
