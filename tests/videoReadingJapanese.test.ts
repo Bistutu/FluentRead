@@ -49,6 +49,41 @@ describe('Japanese video reading annotation', () => {
         expect(formatJapaneseReadings([token('フルーエントリード')])).toBe('furūentorīdo');
     });
 
+    it('checks separate Han runs across particles and punctuation while keeping suffix grouping', () => {
+        expect(formatJapaneseReadings([
+            token('東京', 'トーキョー'), token('大学', 'ダイガク'), token('で', 'デ', '助詞'),
+            token('日本', 'ニホン'), token('語', 'ゴ', '名詞', '接尾'), token('を', 'ヲ', '助詞'),
+            token('学ぶ', 'マナブ', '動詞'), token('。', undefined, '記号'), token('学校', 'ガッコー'),
+        ])).toBe('tōkyō daigaku de nihongo o manabu. gakkō');
+    });
+
+    it('resumes checking after unknown runs and counter skips without partially guessing uncertain Han', () => {
+        expect(formatJapaneseReadings([
+            token('一', 'イチ'), token('人', 'ニン'), token('暮らし', 'グラシ', '名詞', '接尾'), token('と', 'ト', '助詞'),
+            token('小鳥', 'コトリ'), token('遊'), token('さん', 'サン'), token('は', 'ワ', '助詞'),
+            token('二', 'ニ'), token('人', 'ニン'), token('家族', 'カゾク'), token('。', undefined, '記号'),
+        ])).toBe('hitorigurashi to 小鳥遊 san wa futari kazoku.');
+        expect(formatJapaneseReadings([
+            token('二', 'ニ'), token('人', 'ニン'), token('小鳥', 'コトリ'), token('遊'),
+        ])).toBe('二人小鳥遊');
+    });
+
+    it('bounds input-property reads linearly for known Han runs up to the subtitle input limit', () => {
+        for (const length of [64, 256, 1024, 3000]) {
+            let reads = 0;
+            const tokens: JapaneseReadingToken[] = Array.from({length}, () => ({
+                get surface_form() {reads++; return '学';},
+                get pronunciation() {reads++; return 'ガク';},
+                get reading() {reads++; return undefined;},
+                get pos() {reads++; return '名詞';},
+                get pos_detail_1() {reads++; return '';},
+            }));
+            expect(formatJapaneseReadings(tokens)).toBe(Array.from({length}, () => 'gaku').join(' '));
+            // 给每词元留出宽裕读取预算，检测重复遍历输入，不依赖机器速度或内部扫描次数。
+            expect(reads).toBeLessThanOrEqual(length * 20);
+        }
+    });
+
     it('preserves mixed Latin text, whitespace and safe text characters without creating markup', () => {
         expect(formatJapaneseReadings([token('YouTube'), token('で', 'デ', '助詞'), token('AI'), token('を', 'ヲ', '助詞'), token('学ぶ', 'マナブ', '動詞')])).toBe('YouTube de AI o manabu');
         expect(formatJapaneseReadings([token('「', undefined, '記号'), token('東京', 'トーキョー'), token('」', undefined, '記号'), token(' ', undefined, '記号'), token('&'), token(' '), token('test')])).toBe('"tōkyō" & test');

@@ -61,9 +61,10 @@ function tokenUnit(token: JapaneseReadingToken): ReadingUnit {
 /** 组合读音而不是组合 HTML；词典没有覆盖整段汉字时保留原段，避免输出半个猜测的人名或外语名称。 */
 function createUnits(tokens: readonly JapaneseReadingToken[]): ReadingUnit[] {
     const units: ReadingUnit[] = [];
+    let checkedKnownHanEnd = 0;
     for (let i = 0; i < tokens.length; i++) {
         const token = tokens[i];
-        if (hanOnly.test(token.surface_form)) {
+        if (i >= checkedKnownHanEnd && hanOnly.test(token.surface_form)) {
             let end = i + 1;
             while (end < tokens.length && hanOnly.test(tokens[end].surface_form)) end++;
             const run = tokens.slice(i, end);
@@ -73,6 +74,8 @@ function createUnits(tokens: readonly JapaneseReadingToken[]): ReadingUnit[] {
                 i = end - 1;
                 continue;
             }
+            // 已确认整段都有读音，后续词元仍逐个处理，但不再反复扫描剩余汉字段。
+            checkedKnownHanEnd = end;
         }
         if (numeric.test(token.surface_form) && (i === 0 || !numeric.test(tokens[i - 1].surface_form))) {
             let end = i + 1;
