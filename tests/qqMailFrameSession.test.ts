@@ -11,6 +11,8 @@ describe('QQ mail frame session snapshots', () => {
         expect(isFrameTranslationState(state())).toBe(true);
         expect(isFrameTranslationState(state({scope: 'content'}))).toBe(true);
         expect(isFrameTranslationState(state({scope: 'all'}))).toBe(true);
+        for (const browserDefaultFont of [true, false]) expect(isFrameTranslationState(state({browserDefaultFont}))).toBe(true);
+        expect(isFrameTranslationState({...state(), browserDefaultFont: 'true'})).toBe(false);
         for (const enableNativeBatch of [true, false]) {
             expect(isFrameTranslationState(state({translationConfig: {...config, enableNativeBatch}}))).toBe(true);
         }
@@ -52,6 +54,35 @@ describe('QQ mail frame session snapshots', () => {
         const deps = {readState: vi.fn(async () => state()), isEnabled: vi.fn(() => true), setAvailable: vi.fn(), start: vi.fn(), restore: vi.fn()};
         const controller = createFrameSessionController(deps); await controller.refresh(); await controller.refresh();
         expect(deps.setAvailable).toHaveBeenCalledWith(true); expect(deps.start).toHaveBeenCalledTimes(1); expect(deps.restore).toHaveBeenCalledTimes(1);
+    });
+
+    it('同步当前页字体不恢复同一会话，空闲时也可先选择字体', async () => {
+        let next = state({browserDefaultFont: true});
+        const deps = {readState: vi.fn(async () => next), isEnabled: () => true, setAvailable: vi.fn(),
+            syncState: vi.fn(), start: vi.fn(), restore: vi.fn()};
+        const controller = createFrameSessionController(deps);
+        await controller.refresh();
+        next = state({browserDefaultFont: false});
+        await controller.refresh();
+        expect(deps.syncState).toHaveBeenLastCalledWith(expect.objectContaining({browserDefaultFont: false}));
+        expect(deps.start).toHaveBeenCalledOnce();
+        expect(deps.restore).toHaveBeenCalledOnce();
+        next = state({sessionId: null, browserDefaultFont: true});
+        await controller.refresh();
+        expect(deps.syncState).toHaveBeenLastCalledWith(expect.objectContaining({sessionId: null, browserDefaultFont: true}));
+    });
+
+    it.each(['suspend', 'refresh'] as const)('字体同步中的同步 %s 不提交旧会话', async action => {
+        const deps = {readState: vi.fn().mockResolvedValueOnce(state({revision: 1})).mockResolvedValue(state({revision: 2})),
+            isEnabled: () => true, setAvailable: vi.fn(), syncState: vi.fn(), start: vi.fn(), restore: vi.fn()};
+        const controller = createFrameSessionController(deps);
+        deps.syncState.mockImplementationOnce(() => { void controller[action](); });
+        await controller.refresh();
+        if (action === 'suspend') expect(deps.start).not.toHaveBeenCalled();
+        else {
+            expect(deps.start).toHaveBeenCalledOnce();
+            expect(deps.start).toHaveBeenCalledWith(expect.objectContaining({revision: 2}));
+        }
     });
 
     it('restores and starts a new session or revision, and clears disabled/bad/rejected reads', async () => {

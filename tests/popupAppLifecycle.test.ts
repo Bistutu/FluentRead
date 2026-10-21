@@ -83,6 +83,7 @@ async function openDiagnosticDetails(){
   expect(document.querySelector('[data-diagnostic-details-toggle]')!.getAttribute('aria-expanded')).toBe('true');expect(document.querySelector('[data-diagnostic-details]')).not.toBeNull()
 }
 async function openFeature(name:string){eventOf(document.querySelector(`[data-popup-quick-feature="${name}"]`)!)();for(let i=0;i<100;i++){await drain();if(document.querySelector('.drawer-header > button'))return;await new Promise(resolve=>setTimeout(resolve,2))}throw new Error('实际抽屉端口未挂载')}
+async function openPageFont(){eventOf(button('page-font-entry'))();for(let i=0;i<100;i++){await drain();if(document.querySelector('.drawer-header > button'))return;await new Promise(resolve=>setTimeout(resolve,2))}throw new Error('实际字体抽屉端口未挂载')}
 function eventOf(el:Element,name='onClick'){const fn=events.get(el)?.[name];expect(fn,name).toBeTypeOf('function');return fn}
 function button(name:string){return document.querySelector(`[data-testid="${name}"]`)!}
 function commands(){return send.mock.calls.filter(call=>call[1].type==='contextMenuTranslate')}
@@ -170,6 +171,54 @@ async function mount(){
   app=renderer.createApp({setup:()=>()=>runtime.h(runtime.KeepAlive,null,{default:()=>shown.value?runtime.h(component,{ref:(vm:any)=>{if(vm)state=vm.$.setupState}}):runtime.h({render:()=>null},{key:'other'})})});app.component('OwnedTransition',{setup:(_:unknown,{slots}:any)=>()=>slots.default?.()});app.config.warnHandler=()=>{};app.mount(document.getElementById('app')!);await drain()
 }
 describe('实际 Popup 缓存模板与页面操作',()=>{
+  it('译文显示抽屉当前页字体立即切换与还原，关闭重开读取真值且不写配置',async()=>{
+    localized=true;let font=false;send.mockImplementation(async(_id,message)=>{
+      if(message.type==='getPageTranslationFontState'||message.type==='setPageTranslationFont'){
+        if(message.type==='setPageTranslationFont')font=message.browserDefault;
+        return {status:'success',browserDefault:font,documentToken:'page-font-document',pageUrl:'https://example.com/a'};
+      }
+      return {isTranslated:false,documentToken:'popup-fixture-document'};
+    });
+    await mount();expect(send.mock.calls.some(call=>call[1].type==='getPageTranslationFontState')).toBe(false);
+    expect(document.querySelector('[data-popup-quick-feature="appearance"]')).toBeNull();expect(button('page-font-entry').getAttribute('aria-label')).toBe('当前页译文字体');
+    await openPageFont();await drain();const original=()=>button('page-font-host'),browserFont=()=>button('page-font-browser-default');
+    expect(document.querySelector('.drawer-content')!.textContent).toContain('当前页译文字体');expect(document.querySelector('.drawer-content')!.textContent).toContain('无需重新翻译');
+    expect(original().textContent).toBe('原字体');expect(browserFont().textContent).toBe('浏览器默认');expect(original().getAttribute('aria-pressed')).toBe('true');
+    await eventOf(browserFont())();await drain();expect(browserFont().getAttribute('aria-pressed')).toBe('true');
+    expect(send).toHaveBeenLastCalledWith(7,{type:'setPageTranslationFont',browserDefault:true,documentToken:'page-font-document',pageUrl:'https://example.com/a'},{frameId:0});
+    await eventOf(original())();await drain();expect(original().getAttribute('aria-pressed')).toBe('true');
+    const old=eventOf(browserFont());eventOf(document.querySelector('.drawer-header > button')!)();await drain();font=true;
+    await openPageFont();await drain();expect(browserFont().getAttribute('aria-pressed')).toBe('true');
+    const calls=send.mock.calls.length;old();await drain();expect(send).toHaveBeenCalledTimes(calls);
+    expect(patches).not.toHaveBeenCalled();expect(commands()).toHaveLength(0);
+  });
+  it('当前页字体读取和切换失败不假选中，重试及不支持页面保持可访问反馈',async()=>{
+    localized=true;await mount();send.mockResolvedValueOnce({status:'error'});await openPageFont();await drain();
+    expect(button('page-font-browser-default').hasAttribute('disabled')).toBe(true);expect(document.querySelector('.drawer-content [role="alert"]')?.textContent).toBe('未能读取当前页字体，请重试。');
+    send.mockResolvedValueOnce({status:'success',browserDefault:false,documentToken:'font-doc',pageUrl:'https://example.com/a'});
+    await eventOf(button('page-font-retry'))();await drain();expect(button('page-font-host').getAttribute('aria-pressed')).toBe('true');
+    send.mockRejectedValueOnce(Error('message failed'));await eventOf(button('page-font-browser-default'))();await drain();
+    expect(button('page-font-host').getAttribute('aria-pressed')).toBe('false');expect(button('page-font-browser-default').getAttribute('aria-pressed')).toBe('false');
+    expect(document.querySelector('.drawer-content [role="alert"]')?.textContent).toBe('未能确认字体已切换，请重试。');
+    getTab.mockResolvedValue([{id:7,url:'chrome://settings'}]);await eventOf(button('page-font-retry'))();await drain();
+    expect(button('page-font-host').hasAttribute('disabled')).toBe(true);expect(button('page-font-browser-default').hasAttribute('disabled')).toBe(true);expect(button('page-font-retry')).toBeNull();
+    expect(document.querySelector('.drawer-content [role="status"]')?.textContent).toBe('当前页面不支持调整译文字体。');
+  });
+  it('关闭抽屉、导航及失活同步撤销字体控件，等待中的旧点击不发送给新页面',async()=>{
+    localized=true;send.mockImplementation(async(_id,message)=>message.type==='getPageTranslationFontState'?{status:'success',browserDefault:false,documentToken:'font-doc',pageUrl:'https://example.com/a'}:{isTranslated:false});
+    await mount();const oldEntry=eventOf(button('page-font-entry'));await openPageFont();await drain();const old=eventOf(button('page-font-browser-default'));
+    const query=deferred<Array<{id:number;url:string}>>();getTab.mockReturnValueOnce(query.promise);const pending=old();await drain();
+    expect(button('page-font-browser-default').hasAttribute('disabled')).toBe(true);
+    getTab.mockResolvedValue([{id:8,windowId:3,url:'https://example.net/b'}]);tabEvent('onActivated',{tabId:8,windowId:3});await drain();
+    query.resolve([{id:8,url:'https://example.net/b'}]);await pending;await drain();expect(send.mock.calls.some(call=>call[1].type==='setPageTranslationFont')).toBe(false);
+    eventOf(document.querySelector('.drawer-header > button')!)();await drain();old();oldEntry();await drain();expect(state.drawerVisible).toBe(false);expect(send.mock.calls.some(call=>call[1].type==='setPageTranslationFont')).toBe(false);
+    shown.value=false;await drain();old();await drain();expect(send.mock.calls.some(call=>call[1].type==='setPageTranslationFont')).toBe(false);
+  });
+  it.each(['pdf','thunderbird','unsupported'])('%s 页面不展示无效的常驻字体入口',async kind=>{
+    if(kind==='thunderbird')(globalThis as any).__popupFixture.capabilities.browser='thunderbird';
+    else getTab.mockResolvedValue([{id:7,url:kind==='pdf'?'https://example.com/article.pdf':'chrome://settings'}]);
+    await mount();expect(button('page-font-entry')).toBeNull();expect(send.mock.calls.some(call=>call[1].type==='getPageTranslationFontState')).toBe(false);
+  });
   it('真实服务搜索在键盘 viewport 变化时保留输入，清除、返回与关闭仍属当前抽屉',async()=>{
     executeServicePicker=true;await mount();eventOf(document.querySelector('.provider-summary')!)()
     for(let i=0;i<100&&!document.querySelector('[data-feature-service="default"]');i++){await drain();await new Promise(resolve=>setTimeout(resolve,2))}

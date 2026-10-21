@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({
     resetRouteState: vi.fn(), autoTranslate: vi.fn(), fullPageActive: false,
     addRuntimeListener: vi.fn(), removeRuntimeListener: vi.fn(), createMessageHandler: vi.fn(),
     setBridges: vi.fn(), siteAdaptationRouteChanged: vi.fn(),
+    pageFontEnabled: false, pageFontReset: vi.fn(), pageFontDispose: vi.fn(),
     mountWriting: vi.fn(), unmountWriting: vi.fn(), writingMounted: false,
     floatingBallAllowed: true, shareCardMounted: false, mountShareCard: vi.fn(), mountReencounter: vi.fn(), unmountReencounter: vi.fn(),
     mountMaterial: vi.fn(), unmountMaterial: vi.fn(),
@@ -80,6 +81,12 @@ vi.mock('@/src/app/content/hotkeyRuntime', () => ({
 }));
 vi.mock('@/src/app/content/quickTranslationRuntime', () => ({mountConfiguredQuickTranslation: vi.fn()}));
 vi.mock('@/src/app/content/pageStyles', () => ({installPageStyles: mocks.installPageStyles}));
+vi.mock('@/src/app/content/pageTranslationFont', () => ({createPageTranslationFontRuntime: () => ({
+    read: () => mocks.pageFontEnabled,
+    set: (enabled: boolean) => {mocks.pageFontEnabled = enabled; return true;},
+    reset: () => {mocks.pageFontEnabled = false; mocks.pageFontReset();},
+    dispose: () => {mocks.pageFontEnabled = false; mocks.pageFontDispose();},
+})}));
 vi.mock('@/src/app/content/qqMailFrameRuntime', () => ({
     installQqMailTopFrameBridge: vi.fn(),
     installNeteaseMailTopFrameBridge: vi.fn(),
@@ -413,6 +420,7 @@ describe('content composition root 冷启动与暂停恢复', () => {
         vi.resetModules();
         vi.clearAllMocks();
         mocks.config.on = true;
+        mocks.pageFontEnabled = false;
         mocks.config.autoTranslate = false;
         mocks.config.alwaysTranslateDomains = [];
         mocks.fullPageActive = false;
@@ -443,6 +451,32 @@ describe('content composition root 冷启动与暂停恢复', () => {
     });
 
     afterEach(() => { invalidated?.(); vi.unstubAllGlobals(); });
+
+    it('当前页字体通过消息状态装配，普通锚点保留，文章路由、总开关、暂停和卸载均清理', async () => {
+        const {startContentApp} = await import('@/src/app/content/runtime');
+        const starting = startContentApp(context as never); ready(); await starting;
+        const state = mocks.createMessageHandler.mock.calls[0]![1] as {pageTranslationFont: {read(): boolean; set(value: boolean): boolean}};
+        state.pageTranslationFont.set(true);
+        Object.assign(page, {location: {href: 'https://example.com/article#contents'}});
+        document.dispatchEvent(new Event('fluentread-route-change'));
+        expect(state.pageTranslationFont.read()).toBe(true);
+        expect(mocks.pageFontReset).not.toHaveBeenCalled();
+        Object.assign(page, {location: {href: 'https://example.com/next'}});
+        document.dispatchEvent(new Event('fluentread-route-change'));
+        expect(state.pageTranslationFont.read()).toBe(false);
+        state.pageTranslationFont.set(true);
+        mocks.config.on = false;
+        mocks.subscribeConfig.mock.calls[0]![0](mocks.config);
+        expect(state.pageTranslationFont.read()).toBe(false);
+        mocks.config.on = true;
+        mocks.subscribeConfig.mock.calls[0]![0](mocks.config);
+        await vi.waitFor(() => expect(mocks.installPageStyles).toHaveBeenCalledTimes(2));
+        state.pageTranslationFont.set(true);
+        transition(page, 'pagehide', true);
+        expect(state.pageTranslationFont.read()).toBe(false);
+        invalidated();
+        expect(mocks.pageFontDispose).toHaveBeenCalledOnce();
+    });
 
     it('恢复原文后进入下一篇文章重启始终翻译，锚点和重复路由不重复触发', async () => {
         mocks.config.alwaysTranslateDomains = ['example.com'];

@@ -287,7 +287,7 @@ describe('userscript browser shim injection', () => {
             }
             const kept = Object.fromEntries(Object.entries(original.messages).filter(([key]) =>
                 !key.startsWith('informationHighlight.') && !key.startsWith('contextMenu.notice.') && !key.startsWith('video.learning.') && key !== 'video.nativeFullscreenHint' && !key.startsWith('popup.compact.') && !key.startsWith('popup.displayMode.')
-                && !key.startsWith('diagnostics.')
+                && !key.startsWith('diagnostics.') && !key.startsWith('popup.pageFont.')
                 && !['waitingTranslation', 'crossPageContext', 'fullPassage', 'closePassage'].some(name => key === `document.pdfReading.${name}`)
                 && !key.startsWith('document.config.') && !key.startsWith('document.translationRecovery.') && !key.startsWith('document.retainedRevisions.')
                 && !key.startsWith('safari.freePool.')
@@ -374,7 +374,9 @@ describe('userscript browser shim injection', () => {
         const readerDialogKeys = ['waitingTranslation', 'crossPageContext', 'fullPassage', 'closePassage'].map(name => `document.pdfReading.${name}`);
         const safariPermissionKeys = Object.keys(extension).filter(key => key.startsWith('safari.freePool.'));
         expect(safariPermissionKeys).toHaveLength(8);
-        for (const key of [...diagnosticKeys, ...readerDialogKeys, ...safariPermissionKeys]) {
+        const pageFontKeys = Object.keys(extension).filter(key => key.startsWith('popup.pageFont.'));
+        expect(pageFontKeys).toHaveLength(9);
+        for (const key of [...diagnosticKeys, ...readerDialogKeys, ...safariPermissionKeys, ...pageFontKeys]) {
             expect(extension[key]).toBeTruthy();
             expect(Object.hasOwn(projected, key)).toBe(false);
         }
@@ -390,7 +392,7 @@ describe('userscript browser shim injection', () => {
             && !noticeKeys.includes(key) && !learningKeys.includes(key) && !readerRecoveryKeys.includes(key)
             && !diagnosticKeys.includes(key) && !readerDialogKeys.includes(key)
             && key !== 'video.nativeFullscreenHint'
-            && !safariPermissionKeys.includes(key)
+            && !safariPermissionKeys.includes(key) && !pageFontKeys.includes(key)
             && key !== 'popup.compact.translate' && key !== 'popup.compact.restore' && !key.startsWith('popup.displayMode.')
             && (_language === 'zh-CN' || _language === 'en-US' || !registeredSupplementKeys.includes(key)));
         expect(Object.keys(projected)).toHaveLength(retainedKeys.length);

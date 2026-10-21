@@ -1,7 +1,7 @@
 <!--
  @file src/app/popup/PopupApp.vue
  文件职责：实现浏览器 Popup 的主交互界面，连接当前标签页状态、翻译配置、可插拔皮肤、功能抽屉和高频操作，让现场开关与显示操作保持简短，将长期偏好引导到对应设置页。
- 主要内容：翻译卡片右下角的双语/仅译文图标与网站规则同行，模式回调随服务和操作变化失效；品牌官网入口保留稳定点击区域，内部图标在悬停和键盘聚焦时缓慢单次摇摆并遵循动画偏好，停留后显示可用 Escape 关闭的官网提示；复用真实全文完成状态呈现首次翻译指引和就地自助诊断，配置修复定位当前服务，本地报告由用户预览并手动导出；在配置 hydration 后汇总翻译服务，直接展示网页默认服务与适用的配置模型；翻译与局部同排，主操作用短标题合并平台快捷键并保留加载状态，长组合在悬停提示中完整显示，站点开关保留独立按钮；赞赏码在当前弹窗内切换放大与还原，关闭后重置；悬停、划词与图片抽屉优先展示开关和操作示意，首次单屏语言选择独占内容，保存后立即显示主菜单；页面操作、抽屉和导航绑定活跃会话，等待期间独占请求，关闭和配置切换使旧回复失效；网站规则写前复验标签页，等待后台确认并呈现保存忙碌、暂停与失败反馈；Safari 免费池精确授权，撤权取消待发操作，授权事件合并刷新，错误随语言资源更新；打开的实际 teleport 抽屉复用平台可见视口订阅跟随键盘与缩放，整页遮罩保持背景拦截，关闭、缓存失活和卸载立即释放，根画布保持固有尺寸。
+ 主要内容：译文显示抽屉读取当前文档的字体状态，提供仅当前页的原字体与浏览器默认切换，并在导航、关闭与失活时撤销旧操作；翻译卡片右下角的双语/仅译文图标与网站规则同行，模式回调随服务和操作变化失效；品牌官网入口保留稳定点击区域，内部图标在悬停和键盘聚焦时缓慢单次摇摆并遵循动画偏好，停留后显示可用 Escape 关闭的官网提示；复用真实全文完成状态呈现首次翻译指引和就地自助诊断，配置修复定位当前服务，本地报告由用户预览并手动导出；在配置 hydration 后汇总翻译服务，直接展示网页默认服务与适用的配置模型；翻译与局部同排，主操作用短标题合并平台快捷键并保留加载状态，长组合在悬停提示中完整显示，站点开关保留独立按钮；赞赏码在当前弹窗内切换放大与还原，关闭后重置；悬停、划词与图片抽屉优先展示开关和操作示意，首次单屏语言选择独占内容，保存后立即显示主菜单；页面操作、抽屉和导航绑定活跃会话，等待期间独占请求，关闭和配置切换使旧回复失效；网站规则写前复验标签页，等待后台确认并呈现保存忙碌、暂停与失败反馈；Safari 免费池精确授权，撤权取消待发操作，授权事件合并刷新，错误随语言资源更新；打开的实际 teleport 抽屉复用平台可见视口订阅跟随键盘与缩放，整页遮罩保持背景拦截，关闭、缓存失活和卸载立即释放，根画布保持固有尺寸。
  模块边界：组件编排 UI、浏览器导航事件与生命周期；页内面板通过授权来源固定发起网页，页面消息归属由 pageActions 管理，不实现翻译 provider、缓存存储或 content 挂载；公共配置由 services/config 管理；配置草稿复用共享编辑会话，保留 post 合并和关闭补丁交接。
 -->
 <!-- Popup 页面归 app 层所有；WXT 入口只负责调用挂载函数。 -->
@@ -179,7 +179,9 @@
         />
         <div class="translation-tools">
           <DiagnosticNotice v-if="pageDiagnostic" :diagnostic="pageDiagnostic" :language="config.uiLanguage" :busy="translating" :version="version" @action="diagnosticAction" />
-          <span class="display-mode-slot" :title="displayModeButton.label" data-i18n-ignore>
+          <span class="display-mode-slot" :class="{'with-page-font': pageFontEntryVisible}" :title="displayModeButton.label" data-i18n-ignore>
+            <button v-if="pageFontEntryVisible" class="display-mode-button page-font-entry" type="button" data-testid="page-font-entry"
+              :aria-label="t('popup.pageFont.title')" :title="t('popup.pageFont.title')" :disabled="!config.on || currentSiteExtensionDisabled" :onClick="pageButtons.font">Aa</button>
             <button class="display-mode-button" type="button" data-testid="popup-display-mode"
               :data-display-mode="config.display === 1 ? 'bilingual' : 'translation-only'"
               :aria-label="displayModeButton.label" :title="displayModeButton.label" :aria-pressed="config.display === 1"
@@ -379,6 +381,16 @@
       </div>
 
       <div v-else class="drawer-content">
+        <div class="choice-block" data-i18n-ignore>
+          <label>{{ t('popup.pageFont.title') }}</label>
+          <div class="chips two" role="group" :aria-label="t('popup.pageFont.title')" :aria-busy="pageFontState.loading || pageFontState.busy">
+            <button v-for="item in pageFontButtons" :key="item.testId" type="button" :data-testid="item.testId" :class="{selected: pageFontState.browserDefault === item.value}" :aria-pressed="pageFontState.browserDefault === item.value" :disabled="item.disabled" :onClick="item.choose">{{ item.label }}</button>
+          </div>
+          <p class="drawer-hint">{{ t('popup.pageFont.hint') }}</p>
+          <p v-if="pageFontState.loading || pageFontState.unavailable" class="drawer-hint" role="status">{{ t(pageFontState.loading ? 'popup.pageFont.loading' : 'popup.pageFont.unavailable') }}</p>
+          <p v-if="pageFontState.error" class="drawer-hint" role="alert">{{ t(pageFontState.error) }}</p>
+          <button v-if="pageFontState.error" class="secondary-action" type="button" data-testid="page-font-retry" :onClick="pageFontRetry">{{ t('popup.pageFont.retry') }}</button>
+        </div>
         <div class="choice-block">
           <label>翻译模式</label>
           <div class="chips two" role="group" aria-label="翻译模式">
@@ -449,6 +461,7 @@ import {
 import { resolveAIContextPresentation } from '@/src/ui/view-model/aiContext';
 import {createPopupPageActions, type PopupPageState, type PopupSiteRulePatch} from './pageActions';
 import {createPopupTabSource} from './sourceTab';
+import {createPopupPageFontActions, type PopupPageFontState} from './pageFontActions';
 import {getEmbeddedPopupTabId, closePopupSurface} from './embedded';
 import {useSettingsActionContext} from '@/src/features/settings/model/useSettingsActionContext';
 import {waitForSettingsTask} from '@/src/features/settings/model/taskWait';
@@ -610,6 +623,7 @@ const canUseAIContext = computed(() => servicesType.isUseAIContext(
 const missingCredentialMessage = computed(() => getMissingCredentialMessage(config.value.service, config.value));
 const credentialWarning = computed(() => selectedServiceUnavailableMessage.value || missingCredentialMessage.value);
 const isThunderbird = browserCapabilities.browser === 'thunderbird';
+const pageFontEntryVisible = computed(() => !isThunderbird && !currentPdfSource.value && /^(?:https?|file):/u.test(pageState.url));
 const currentSiteSupported = computed(() => !isThunderbird && currentTabId.value !== null && Boolean(currentSiteDomain.value));
 const currentSiteRuleEnabled = computed(() => currentSiteSupported.value
   && (config.value.alwaysTranslateDomains ?? []).includes(currentSiteDomain.value));
@@ -875,6 +889,7 @@ const pageButtons = computed(() => {
   const current = pageContext.capture(), version = pageRenderRevision.value;
   const owns = () => current() && version === pageRenderRevision.value;
   return {toggle: () => {if (owns()) return runPageWithFreePoolAccess('toggle')}, section: () => {if (owns()) return runPageWithFreePoolAccess('section')},
+    font: () => {if (owns()) openDrawer('appearance')},
     always: (value: boolean) => {if (owns()) return setCurrentSiteAlwaysTranslated(value)},
     disabled: (value: boolean) => {if (owns()) return setCurrentSiteExtensionDisabled(value)}};
 });
@@ -955,6 +970,29 @@ const drawerContext = useSettingsActionContext(() => popupContext.active.value &
     config.value.selectionTranslatorMode, config.value.selectionTranslatorPresentation, config.value.selectionAreaEnabled,
     config.value.disableImageTranslator, config.value.display, config.value.service, config.value.enableAIContext,
     browserCapabilities.areaTranslation, browserCapabilities.imageTranslation]);
+const pageFontState = reactive<PopupPageFontState>({browserDefault: null, loading: false, busy: false, unavailable: false, error: ''});
+const pageFontContext = useSettingsActionContext(() => popupContext.active.value && drawerVisible.value
+  && activeDrawer.value === 'appearance' && config.value.on && !currentSiteExtensionDisabled.value,
+  () => [pageState.tabId, pageState.url]);
+const pageFontActions = createPopupPageFontActions({state: pageFontState, active: () => pageFontContext.active.value,
+  getTab: tabSource.getTab, send: (id, message) => browser.tabs.sendMessage(id, message, {frameId: 0})});
+watch(pageFontContext.revision, () => {
+  if (pageFontContext.active.value) void pageFontActions.load();
+  else pageFontActions.invalidate();
+}, {flush: 'sync'});
+const pageFontButtonContext = useSettingsActionContext(() => pageFontContext.active.value,
+  () => [pageFontContext.revision.value, pageFontState.browserDefault, pageFontState.loading, pageFontState.busy, pageFontState.error]);
+const pageFontButtons = computed(() => {
+  const current = pageFontButtonContext.capture();
+  const disabled = !pageFontContext.active.value || pageFontState.browserDefault === null || pageFontState.loading || pageFontState.busy;
+  return [{value: false, label: t('popup.pageFont.original'), testId: 'page-font-host'},
+    {value: true, label: t('popup.pageFont.browserDefault'), testId: 'page-font-browser-default'}]
+    .map(item => ({...item, disabled, choose: () => {if (current() && !disabled) return pageFontActions.set(item.value)}}));
+});
+const pageFontRetry = computed(() => {
+  const current = pageFontButtonContext.capture();
+  return () => {if (current()) return pageFontActions.load()};
+});
 const drawerActions = computed(() => {
   const current = drawerContext.capture(), section = drawerSettingsSection[activeDrawer.value];
   const bind = (run: () => void | Promise<void>) => () => {if (current()) return run()};
