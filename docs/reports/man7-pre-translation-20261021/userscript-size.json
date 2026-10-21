@@ -1,0 +1,19 @@
+{
+  "baselineCommit": "5a362c67194e6ba56b0ce66e2b03ba00e1abbd3f",
+  "node": "v20.11.1",
+  "dependencies": "Same node_modules, locked WXT 0.20.18 and Vite 5.4.19; baseline exported from origin/main, prepared and built independently",
+  "baseline": {
+    "bytes": 2101032,
+    "sha256": "629feb83a61698d761f9fc41750ccbc5af000fc546f9f59dffaaca0c013b5bd9"
+  },
+  "candidate": {
+    "bytes": 2106163,
+    "sha256": "cbcc72622f019fc7dd529a14d5bd4ce7b6e2ff8be76fbf9701680f89c006af31"
+  },
+  "deltaBytes": 5131,
+  "deltaPercent": 0.2442133199303961,
+  "previousBudget": 2101100,
+  "budget": 2107100,
+  "headroom": 937,
+  "validation": "Size allowance adjusted in 1000-byte steps; protocol, resource and VM runtime assertions retained"
+}

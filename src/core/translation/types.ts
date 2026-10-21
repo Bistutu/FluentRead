@@ -47,6 +47,8 @@ export interface TranslationSiteAdapter {
     priority?: number;
     /** 仅显式声明的规则在全部节点范围继续生效。 */
     allScopes?: boolean;
+    /** 仅内置规则授予的预格式手册准备能力；停用或自定义同名替换时撤销。 */
+    preformattedProse?: 'manpage';
     /** `targets-only` 仍允许 force-target，但禁止通用块和内联 run 回退。 */
     genericCandidatePolicy?: TranslationGenericCandidatePolicy;
     /** 规则依赖的属性名；null 表示不能安全穷举，必须观察全部属性。 */
