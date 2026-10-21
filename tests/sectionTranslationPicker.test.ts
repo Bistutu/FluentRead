@@ -1889,3 +1889,125 @@ describe('局部翻译选择模式', () => {
         harness.picker.stopSectionPicker();
     });
 });
+
+describe('局部区域记忆交互', () => {
+    const setupRemember = async (onRemember: ReturnType<typeof vi.fn>) => {
+        const h = await createHarness();
+        h.picker.startSectionPicker({...h.options, rememberScopes: {site: 'example.com', path: 'example.com/articles/'}, onRemember} as never);
+        h.flushFrames();
+        expect(query(h.shadow(), '.fr-section-remember').hidden).toBe(true);
+        h.emit('click', {clientX: 50, clientY: 70}); h.flushFrames(); vi.advanceTimersByTime(90);
+        const checkbox = query(h.shadow(), '.fr-section-remember-checkbox') as HTMLInputElement;
+        const change = () => {
+            const event = new (h.document.defaultView as unknown as {Event: typeof Event}).Event('change');
+            Object.defineProperty(event, 'isTrusted', {value: true});
+            checkbox.dispatchEvent(event);
+        };
+        expect(query(h.shadow(), '.fr-section-remember').hidden).toBe(false);
+        expect(checkbox.checked).not.toBe(true);
+        checkbox.checked = true; change();
+        return h;
+    };
+    const settle = async () => { for (let index = 0; index < 8; index += 1) await Promise.resolve(); };
+
+    it('显式记住默认当前路径并提醒，等待保存后才退出翻译，重复确认不重复保存', async () => {
+        let finish!: (value: boolean) => void;
+        const onRemember = vi.fn(() => new Promise<boolean>(resolve => {finish = resolve;}));
+        const h = await setupRemember(onRemember);
+        expect(button(h, 'confirm').textContent).toBe('sectionTranslation.rules.confirm');
+        clickButton(h, 'confirm'); clickButton(h, 'confirm'); h.emit('keydown', {key: 'Enter'});
+        await settle();
+        expect(onRemember).toHaveBeenCalledOnce();
+        expect(onRemember).toHaveBeenCalledWith(h.byId('para'), {site: 'example.com/articles/', mode: 'remind'});
+        expect(h.onPick).not.toHaveBeenCalled(); expect(button(h, 'confirm').disabled).toBe(true);
+        finish(true); await settle();
+        expect(h.onPick).toHaveBeenCalledOnce(); expect(h.picker.isSectionPickerActive()).toBe(false);
+    });
+
+    it('网站自动模式保存失败保留选区与选项，允许重试', async () => {
+        const onRemember = vi.fn().mockResolvedValueOnce(false).mockRejectedValueOnce(new Error('write failed')).mockResolvedValueOnce(true);
+        const h = await setupRemember(onRemember);
+        const scope = query(h.shadow(), '.fr-section-remember-scope') as HTMLSelectElement;
+        const mode = query(h.shadow(), '.fr-section-remember-mode') as HTMLSelectElement;
+        Object.defineProperty(scope, 'value', {configurable: true, value: 'site'});
+        Object.defineProperty(mode, 'value', {configurable: true, value: 'auto'});
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+            clickButton(h, 'confirm'); await settle();
+            expect(h.picker.isSectionPickerActive()).toBe(true); expect(h.onPick).not.toHaveBeenCalled();
+            expect(query(h.shadow(), '.fr-section-remember-status').textContent).toBe('sectionTranslation.rules.saveFailed');
+            expect(button(h, 'confirm').disabled).toBe(false);
+        }
+        clickButton(h, 'confirm'); await settle();
+        expect(onRemember).toHaveBeenCalledTimes(3); expect(onRemember).toHaveBeenLastCalledWith(h.byId('para'), {site: 'example.com', mode: 'auto'});
+        expect(h.onPick).toHaveBeenCalledOnce();
+    });
+
+    it('退出或选区移除后忽略迟到保存结果，保存前立即退出不发送请求', async () => {
+        for (const action of ['exit', 'remove', 'immediate-exit']) {
+            let finish!: (value: boolean) => void;
+            const onRemember = vi.fn(() => new Promise<boolean>(resolve => {finish = resolve;}));
+            const h = await setupRemember(onRemember);
+            clickButton(h, 'confirm');
+            if (action === 'immediate-exit') h.emit('keydown', {key: 'Escape'});
+            await settle();
+            if (action === 'immediate-exit') expect(onRemember).not.toHaveBeenCalled();
+            else {
+                if (action === 'exit') h.emit('keydown', {key: 'Escape'});
+                else {h.byId('para').remove(); h.emitMutation(h.byId('readme')); h.flushFrames();}
+                finish(true); await settle();
+            }
+            expect(h.onPick).not.toHaveBeenCalled(); h.picker.stopSectionPicker();
+        }
+    });
+
+    it('记忆原生控件保留方向键、Enter 和空格，恢复模式隐藏记忆入口', async () => {
+        const h = await setupRemember(vi.fn());
+        for (const selector of ['.fr-section-remember-checkbox', '.fr-section-remember-scope', '.fr-section-remember-mode']) {
+            Object.defineProperty(h.shadow(), 'activeElement', {configurable: true, get: () => query(h.shadow(), selector)});
+            for (const key of ['ArrowUp', 'ArrowDown', 'Enter', ' ']) {
+                const event = h.emit('keydown', {key, composedPath: () => [h.host(), h.document.body]});
+                expect(event.preventDefault).not.toHaveBeenCalled();
+            }
+        }
+        h.inspect.mockReturnValue(summary({action: 'restore', active: 2, pending: 0}));
+        h.emitMutation(h.byId('para')); vi.advanceTimersByTime(90); h.flushFrames();
+        expect(query(h.shadow(), '.fr-section-remember').hidden).toBe(true);
+        h.picker.stopSectionPicker();
+    });
+    it('保存期间方向键和已排队的控件变化不修改确认中的区域或清除保存状态', async () => {
+        let finish!: (value: boolean) => void;
+        const onRemember = vi.fn(() => new Promise<boolean>(resolve => {finish = resolve;}));
+        const h = await setupRemember(onRemember);
+        clickButton(h, 'confirm'); await settle();
+        for (const key of ['ArrowUp', 'ArrowDown']) {
+            const event = h.emit('keydown', {key, repeat: true});
+            expect(event.preventDefault).toHaveBeenCalledOnce();
+        }
+        for (const trusted of [false, true]) {
+            for (const selector of ['.fr-section-remember-checkbox', '.fr-section-remember-scope', '.fr-section-remember-mode']) {
+                const event = new (h.document.defaultView as unknown as {Event: typeof Event}).Event('change');
+                Object.defineProperty(event, 'isTrusted', {value: trusted});
+                query(h.shadow(), selector).dispatchEvent(event);
+            }
+        }
+        expect(query(h.shadow(), '.fr-section-remember-status').textContent).toBe('sectionTranslation.rules.saving');
+        expect(button(h, 'confirm').disabled).toBe(true);
+        expect(onRemember).toHaveBeenCalledOnce();
+        finish(true); await settle();
+        expect(h.onPick).toHaveBeenCalledOnce(); expect(h.onPick).toHaveBeenCalledWith(h.byId('para'));
+    });
+
+    it.each(['退出', '节点移除'] as const)('保存拒绝迟到时不对已失效选择继续报错或翻译：%s', async action => {
+        let fail!: (error: Error) => void;
+        const onRemember = vi.fn(() => new Promise<boolean>((_resolve, reject) => {fail = reject;}));
+        const h = await setupRemember(onRemember);
+        clickButton(h, 'confirm'); await settle();
+        if (action === '退出') h.emit('keydown', {key: 'Escape'});
+        else { h.byId('para').remove(); h.emitMutation(h.byId('readme')); h.flushFrames(); }
+        fail(new Error('Late storage rejection')); await settle();
+        expect(h.onPick).not.toHaveBeenCalled();
+        expect(query(h.shadow(), '.fr-section-remember-status').textContent).not.toBe('sectionTranslation.rules.saveFailed');
+        h.picker.stopSectionPicker();
+    });
+
+});

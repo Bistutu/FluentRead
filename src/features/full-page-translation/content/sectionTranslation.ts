@@ -1,7 +1,7 @@
 /**
  * @file src/features/full-page-translation/content/sectionTranslation.ts
  * 文件职责：把全文翻译引擎限定在用户点选或划选的网页区域内执行，负责多区域候选去重、译文状态盘点、按阅读位置排序的批量翻译，以及只恢复所选区域的原文。
- * 主要内容：导出区域盘点与切换接口；按译文所有者索引发现待翻译、失败与需切换方案的段落，冻结局部快捷方案请求配置；预览按步数限流，完整发现和阅读位置测量按时间片推进，以有界在途数接入共享翻译队列；区域再次确认、入口卸载或全页恢复时取消精确的在途请求，保留已提交译文，并按请求身份和原文快照记住无需翻译的候选。
+ * 主要内容：导出区域盘点、手动切换与只补齐未译内容的自动翻译接口；按译文所有者索引发现待翻译、失败与需切换方案的段落，冻结局部快捷方案请求配置；预览按步数限流，完整发现和阅读位置测量按时间片推进，以有界在途数接入共享翻译队列；区域再次确认、入口卸载或全页恢复时取消精确的在途请求，保留已提交译文，并按请求身份和原文快照记住无需翻译的候选。
  * 模块边界：本文件只编排区域级调用，按旧状态重建候选时保留自动外壳策略来源；单个候选的请求、渲染、状态机和全文会话协作全部复用 runtime 的 translateTarget 与 restoreTranslationOwner；不监听手势、不绘制高亮，也不决定提示文案。
  */
 import {checkConfig} from '@/src/features/full-page-translation/content/configCheck';
@@ -89,6 +89,8 @@ interface SectionOperation {
 
 /** 以真实区域节点隔离正在扫描或派发的操作；旧操作收尾不得清除后来接管的操作。 */
 const sectionOperations = new WeakMap<Element, SectionOperation>();
+/** 自动补齐不能打断父子区域中已确认的操作；只保留当前在途实例，完成即移除。 */
+const activeSectionOperations = new Set<SectionOperation>();
 
 function isWithinSection(root: Element, node: Node): boolean {
     let current: Node | null = node;
@@ -246,11 +248,11 @@ function resolveSectionAction(total: number, active: number, pending: number): T
 }
 
 function* summarize(roots: readonly Element[], maxSteps: number, snapshot: () => FullPageTranslationConfigSnapshot,
-    compareInvocation: boolean, operation?: SectionOperation): Generator<void, {summary: TranslationSectionSummary; pending: TranslationCandidate[]}> {
+    compareInvocation: boolean, operation?: SectionOperation, ensureOnly = false): Generator<void, {summary: TranslationSectionSummary; pending: TranslationCandidate[]}> {
     // 新候选和默认恢复不比较请求身份；避免每次预览都归一化、散列整份词库。
     let identity: string | undefined;
     const invocationIdentity = (): string => identity ??= getTranslationInvocationIdentity(snapshot());
-    const needsProfileSwitch = (owner: HTMLElement): boolean => compareInvocation
+    const needsProfileSwitch = (owner: HTMLElement): boolean => !ensureOnly && compareInvocation
         && getTranslationState(owner)?.translationInvocationIdentity !== invocationIdentity();
     const activeOwners = new Set<Node>();
     const pending = new Map<Node, TranslationCandidate>();
@@ -275,7 +277,9 @@ function* summarize(roots: readonly Element[], maxSteps: number, snapshot: () =>
             const state = getTranslationState(owner);
             // 所有者列表是本轮快照；让帧期间恢复的节点已失去状态，不能重建旧请求。
             if (state) {
-                if (state.phase === 'error' || needsProfileSwitch(owner)) {
+                if (ensureOnly && state.phase === 'error') {
+                    settledOwners.add(owner);
+                } else if (state.phase === 'error' || needsProfileSwitch(owner)) {
                     const candidate = translationOwnerCandidate(owner);
                     pending.set(owner, candidate);
                     rememberPending(operation, candidate, state);
@@ -289,8 +293,10 @@ function* summarize(roots: readonly Element[], maxSteps: number, snapshot: () =>
         const {candidates} = discovery;
         for (const candidate of candidates) {
             const owner = resolveTranslationStateNode(candidate);
-            if (!owner || (!activeOwners.has(owner) && !pending.has(owner))) {
-                if (isSettled(candidate, invocationIdentity)) settledOwners.add(getTranslationCandidateKey(candidate));
+            if (!owner || (!activeOwners.has(owner) && !pending.has(owner) && !settledOwners.has(owner))) {
+                // 自动补齐不循环重试失败段落，错误保留给页面上的显式重试入口。
+                if (ensureOnly && owner && getTranslationState(owner)?.phase === 'error') settledOwners.add(owner);
+                else if (isSettled(candidate, invocationIdentity)) settledOwners.add(getTranslationCandidateKey(candidate));
                 else {
                     pending.set(owner ?? getTranslationCandidateKey(candidate), candidate);
                     rememberPending(operation, candidate, owner ? getTranslationState(owner) : undefined);
@@ -423,10 +429,28 @@ function restoreSection(roots: readonly Element[]): number {
  * 对点选区域执行一次“翻译或恢复原文”：区域内还有待翻译段落就翻译它们（失败段落一并重试），
  * 否则恢复区域内的全部译文。点击时完整盘点，不受悬停预览的步数预算影响。
  */
-export async function toggleTranslationSection(selection: Element | readonly Element[], overrides?: PageTranslationConfigOverrides,
+export function toggleTranslationSection(selection: Element | readonly Element[], overrides?: PageTranslationConfigOverrides,
     signal?: AbortSignal): Promise<TranslationSectionResult> {
+    return runTranslationSection(selection, overrides, signal, false);
+}
+
+/**
+ * 自动规则只补齐区域内的新内容，保持现有译文、在途请求与手动选择的方案。
+ * 失败段落仍显示原有重试入口，不由页面变更驱动无限重试；父子区域正在执行时本次让位。
+ */
+export function ensureTranslationSection(selection: Element | readonly Element[], overrides?: PageTranslationConfigOverrides,
+    signal?: AbortSignal): Promise<TranslationSectionResult> {
+    return runTranslationSection(selection, overrides, signal, true);
+}
+
+async function runTranslationSection(selection: Element | readonly Element[], overrides: PageTranslationConfigOverrides | undefined,
+    signal: AbortSignal | undefined, ensureOnly: boolean): Promise<TranslationSectionResult> {
     const roots = sectionRoots(selection);
     if (signal?.aborted || roots.some(root => root.isConnected === false)) return {action: 'cancelled', ...EMPTY_TALLY};
+    if (ensureOnly && [...activeSectionOperations].some(operation => operation.isCurrent() && roots.some(root =>
+        operation.roots.some(other => isWithinSection(root, other) || isWithinSection(other, root))))) {
+        return {action: 'cancelled', ...EMPTY_TALLY};
+    }
     const snapshot = captureFullPageTranslationConfig(overrides);
     const identity = getTranslationInvocationIdentity(snapshot);
     const previousOperations = new Set(roots.map(root => sectionOperations.get(root)));
@@ -468,8 +492,9 @@ export async function toggleTranslationSection(selection: Element | readonly Ele
     signal?.addEventListener('abort', cancel, {once: true});
     requestSession.requestSignal.addEventListener('abort', cancel, {once: true});
     roots.forEach(root => sectionOperations.set(root, operation));
+    activeSectionOperations.add(operation);
     try {
-        const work = runSectionWork(summarize(roots, Number.POSITIVE_INFINITY, () => snapshot, Boolean(overrides), operation), operation);
+        const work = runSectionWork(summarize(roots, Number.POSITIVE_INFINITY, () => snapshot, Boolean(overrides), operation, ensureOnly), operation);
         const inventory = work instanceof Promise ? await work : work;
         if (!inventory) return {action: 'cancelled', ...EMPTY_TALLY};
         const {summary, pending} = inventory;
@@ -482,10 +507,12 @@ export async function toggleTranslationSection(selection: Element | readonly Ele
             if (!candidates) return {action: 'cancelled', ...EMPTY_TALLY};
             return await translatePendingCandidates(candidates, snapshot, operation);
         }
-        if (summary.action === 'restore') return {action: 'restored', ...EMPTY_TALLY, restored: restoreSection(roots)};
+        if (summary.action === 'restore') return ensureOnly ? {action: 'settled', ...EMPTY_TALLY}
+            : {action: 'restored', ...EMPTY_TALLY, restored: restoreSection(roots)};
         return {action: summary.action, ...EMPTY_TALLY};
     } finally {
         operation.controller.abort();
+        activeSectionOperations.delete(operation);
         unsubscribe();
         signal?.removeEventListener('abort', cancel);
         requestSession.requestSignal.removeEventListener('abort', cancel);

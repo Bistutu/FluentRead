@@ -1,6 +1,6 @@
 <!--
  * @file src/features/settings/ui/SectionTranslationSettings.vue
- * 文件职责：在翻译交互设置中介绍局部翻译（点选网页中的一块区域、只翻译这部分）的用法，并提供进入选择模式的快捷键开关、预设组合、自定义录制和独立快捷方案。
+ * 文件职责：在翻译交互设置中介绍局部翻译（点选网页中的一块区域、只翻译这部分）的用法，并提供进入选择模式的快捷键开关、预设组合、自定义录制、独立快捷方案和已记住区域的规则管理。
  * 主要内容：展示功能说明与操作方式，绑定 sectionTranslationHotkeyEnabled、sectionTranslationHotkey 与 customSectionTranslationHotkey，对悬浮、全文、划词、圈选、段落复制、输入框翻译和快捷翻译方案的占用给出冲突提示，录制期间保留原有组合，隐藏或配置变更时关闭所属草稿。
  * 模块边界：本组件只修改传入的 config 对象并提示冲突，不持久化配置、不监听网页按键，也不执行翻译；快捷键归一化归 core/config/sectionTranslation，选择模式与区域翻译归 features/section-translation 与全文翻译 feature。
  -->
@@ -24,6 +24,7 @@
         </div>
       </div>
     </SettingsItem>
+    <SectionTranslationRules :config="props.config" :active="props.active" />
     <QuickTranslationProfiles :active="props.active" :config="props.config" action="section" :profiles="props.config.quickTranslationProfiles"
       @update:profiles="props.config.quickTranslationProfiles = $event" />
   </SettingsGroup>
@@ -60,6 +61,7 @@ import {useHotkeyDraft} from './useHotkeyDraft';
 import SettingsGroup from './components/SettingsGroup.vue';
 import SettingsItem from './components/SettingsItem.vue';
 
+const SectionTranslationRules = defineAsyncComponent(() => import('./SectionTranslationRules.vue'));
 const QuickTranslationProfiles = defineAsyncComponent(() => import('./QuickTranslationProfiles.vue'));
 const CustomHotkeyInput = defineAsyncComponent(() => import('@/src/ui/components/CustomHotkeyInput.vue'));
 

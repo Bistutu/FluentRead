@@ -1,0 +1,104 @@
+{
+  "scope": "production extension, trusted CDP pointer/keyboard gestures, deterministic Google transport; not live provider latency or quality",
+  "cases": [
+    "trusted picker saves the article with its default reminder; settings enables automatic mode",
+    "reload automatically translates only remembered roots; dynamic content fills once",
+    "manual restore pauses automatic translation until a route change",
+    "SPA route exits stop matching; entering a remembered path resumes its precise region",
+    "reminder mode waits for a trusted click and dismiss stays quiet for the current page",
+    "settings mode, enablement, site editing and deletion survive storage and page reload"
+  ],
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "nativeSelectCoverage": {
+    "defaultValueVerified": true,
+    "switchingByTrustedGesture": false,
+    "limitation": "macOS background Edge/CDP delivers trusted uncancelled keys to both ordinary page and picker native selects without committing a value change. Native-select-probe evidence records the comparison; automatic mode is selected through actual Element Plus settings controls below."
+  },
+  "dynamic": {
+    "requestsBeforeReload": 3,
+    "afterDynamic": 7,
+    "stableForMs": 1200,
+    "wrappersPerParagraph": [
+      1,
+      1,
+      1
+    ]
+  },
+  "routeFromPicker": {
+    "pickerClosed": true,
+    "requestsBefore": 15,
+    "requestsAfter": 18,
+    "translatedSegments": 3
+  },
+  "reminder": {
+    "requestsBeforeClick": 18,
+    "requestsAfterClick": 21,
+    "dismissedStayedQuiet": true
+  },
+  "narrowSettings": {
+    "viewport": 390,
+    "scrollWidth": 390,
+    "row": {
+      "left": 16,
+      "right": 374,
+      "height": 134.09375
+    },
+    "main": {
+      "left": 88,
+      "right": 362,
+      "top": 426.3828125
+    },
+    "toggle": {
+      "left": 28,
+      "right": 80,
+      "top": 426.3828125
+    },
+    "summaryHeight": 17.59375,
+    "controls": [
+      {
+        "left": 28,
+        "right": 80,
+        "top": 426.3828125,
+        "bottom": 470.3828125
+      },
+      {
+        "left": 28,
+        "right": 144,
+        "top": 496.4765625,
+        "bottom": 536.4765625
+      },
+      {
+        "left": 264,
+        "right": 312,
+        "top": 496.4765625,
+        "bottom": 529.2734375
+      },
+      {
+        "left": 316,
+        "right": 362,
+        "top": 496.875,
+        "bottom": 528.875
+      }
+    ]
+  },
+  "totalRequests": 21,
+  "success": true,
+  "focusEvents": {
+    "monitoring": "native macOS activation events throughout the test",
+    "browserActivations": 0,
+    "observerClosed": true
+  },
+  "profileRemoved": true,
+  "pageErrors": 0,
+  "consoleErrors": 0,
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "windowState": "normal",
+    "displayTarget": "secondary",
+    "browserFrontmost": false
+  },
+  "productionBuildFreshnessVerified": true
+}

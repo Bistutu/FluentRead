@@ -470,7 +470,10 @@
       "tests/selfHelpDiagnostics.test.ts",
       "tests/popupStartupFeedback.test.ts",
       "tests/materialSource.test.ts",
-      "tests/materialClient.test.ts"
+      "tests/materialClient.test.ts",
+      "tests/sectionTranslationRules.test.ts",
+      "tests/sectionTranslationLocator.test.ts",
+      "tests/sectionTranslationSave.test.ts"
     ],
     "functional": [
       "tests/videoAiRequestSession.test.ts",
@@ -725,7 +728,10 @@
       "tests/serviceRepairReturn.test.ts",
       "tests/materialRepository.test.ts",
       "tests/serviceRepairFocus.test.ts",
-      "tests/manpagePreparation.test.ts"
+      "tests/manpagePreparation.test.ts",
+      "tests/sectionTranslationReminder.test.ts",
+      "tests/sectionTranslationRemembered.test.ts",
+      "tests/sectionTranslationRulesUi.test.ts"
     ],
     "regression": [
       "tests/discordServerIconBoundary.test.ts",

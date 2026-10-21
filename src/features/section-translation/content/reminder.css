@@ -1,0 +1,16 @@
+/**
+ * @file src/features/section-translation/content/reminder.css
+ * 文件职责：为保存区域的页内提醒提供紧凑、可换行和深色适配的隔离外观。
+ * 主要内容：一行状态、翻译操作与关闭按钮，窄屏自然换行，触控及键盘焦点可见。
+ * 模块边界：仅供 reminder 的 ShadowRoot 使用，不影响宿主页或其他浮层。
+ */
+:host { color-scheme: light dark; }
+.fr-section-reminder { display:flex;align-items:center;gap:10px;padding:9px 10px 9px 14px;max-width:400px;box-sizing:border-box;border:1px solid #dce3df;border-radius:12px;background:#fff;color:#26352e;box-shadow:0 6px 24px #142b1f20;font:13px/1.5 system-ui,sans-serif; }
+.fr-section-reminder-text { min-width:0;overflow-wrap:anywhere; }
+button { flex:none;border:0;cursor:pointer;font:inherit;min-height:32px;border-radius:7px; }
+.fr-section-reminder-action { color:#fff;background:#26754c;padding:4px 12px; }
+.fr-section-reminder-close { color:#68766e;background:transparent;width:32px;font-size:21px; }
+button:focus-visible { outline:2px solid #2d885d;outline-offset:2px; }
+button:disabled { opacity:.6;cursor:wait; }
+@media (max-width:420px) { .fr-section-reminder { gap:6px;padding-left:10px; } }
+@media (prefers-color-scheme:dark) { .fr-section-reminder { color:#e1ebe5;background:#202b25;border-color:#425148;box-shadow:0 6px 24px #0005; }.fr-section-reminder-close { color:#c0cec5; } }

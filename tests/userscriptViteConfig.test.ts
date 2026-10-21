@@ -396,11 +396,11 @@ describe('userscript browser shim injection', () => {
         'popup.sectionTranslationTitle', 'settings.services.deeplx.endpointHelp',
         'document.pdfReading.exportHint', 'document.pdfReading.layoutExportHint', 'document.pdfReading.exportPageCount'];
     const pinnedLanguageFiles = {
-        'ja-JP': 'ja-JP.ee48c32301e71a68.json',
-        'ko-KR': 'ko-KR.7540452a4d4f4bf9.json',
-        'fr-FR': 'fr-FR.8e06551370151179.json',
-        'ru-RU': 'ru-RU.7d4fda8f8d41c709.json',
-        'es-ES': 'es-ES.106df7a8f5c384e5.json',
+        'ja-JP': 'ja-JP.1f77a8c253b891c6.json',
+        'ko-KR': 'ko-KR.8362e60a4e86e730.json',
+        'fr-FR': 'fr-FR.17f9e4f833bdff5e.json',
+        'ru-RU': 'ru-RU.9f3389da3f262d98.json',
+        'es-ES': 'es-ES.28c6afdbdf209b29.json',
     };
     const publishedMessages: Record<string, Record<string, string>> = Object.fromEntries(Object.entries(pinnedLanguageFiles)
         .map(([language, file]) => [language, JSON.parse(readFileSync(resolve(process.cwd(), 'userscript/languages', file), 'utf8')).messages]));
@@ -579,7 +579,7 @@ describe('userscript browser shim injection', () => {
         const defines = (userscriptConfig as {define: Record<string, string>}).define;
         const commit = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_RESOURCE_COMMIT__);
         const bundles = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_REMOTE_LANGUAGES__) as Record<string, string>;
-        expect(commit).toBe('76192ae0358130a79bb7c952c0f1d84748200692');
+        expect(commit).toBe('7f5b4685a3f5a99329d17e501d84a3a3c83f7de4');
         expect(bundles).toEqual(pinnedLanguageFiles);
         for (const file of Object.values(bundles)) {
             const path = `userscript/languages/${file}`;

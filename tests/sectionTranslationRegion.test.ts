@@ -76,6 +76,7 @@ import {
     SECTION_PREVIEW_DISCOVERY_STEPS,
     inspectTranslationSection,
     toggleTranslationSection,
+    ensureTranslationSection,
 } from '@/src/features/full-page-translation/content/sectionTranslation';
 
 function element(id: string, top = 0, parent: FakeElement | null = null, text = `text ${id}`): FakeElement {
@@ -1067,5 +1068,89 @@ describe('连续划选的多个区域', () => {
         const controller = new AbortController(); controller.abort();
         expect(await toggleTranslationSection([root] as unknown as Element[], undefined, controller.signal)).toMatchObject({action: 'cancelled'});
         expect(harness.translateTarget).not.toHaveBeenCalled();
+    });
+});
+
+
+describe('自动局部翻译只补齐未译内容', () => {
+    it('重复执行保留已有译文，新插入的段落单独翻译，失败节点不自动重试', async () => {
+        const translated = candidate(element('auto-done', 0, root));
+        const failed = candidate(element('auto-error', 30, root));
+        const fresh = candidate(element('auto-fresh', 60, root));
+        own(translated.element, 'translated', {translationInvocationIdentity: 'manual-profile'});
+        own(failed.element, 'error');
+        harness.discoveries.content = steps([translated, failed]);
+        const override = {profileId: 'automatic-profile', targetLanguage: 'ja'};
+        await expect(ensureTranslationSection(root as unknown as Element, override)).resolves.toMatchObject({action: 'settled'});
+        harness.discoveries.content = steps([translated, failed, fresh]);
+        harness.translateTarget.mockImplementation(async (item: FakeCandidate) => {
+            own(item.element, 'translated');
+            return {status: 'committed'};
+        });
+        await expect(ensureTranslationSection(root as unknown as Element, override)).resolves.toMatchObject({action: 'translated', translated: 1});
+        await expect(ensureTranslationSection(root as unknown as Element, override)).resolves.toMatchObject({action: 'settled'});
+        expect(harness.translateTarget).toHaveBeenCalledOnce();
+        expect(harness.translateTarget.mock.calls[0][0]).toBe(fresh);
+        expect(harness.restoreTranslationOwner).not.toHaveBeenCalled();
+        expect(harness.states.get(translated.element)?.translationInvocationIdentity).toBe('manual-profile');
+    });
+
+    it('祖先所有者保持原方案，发现阶段遗漏的错误所有者也不重试', async () => {
+        const ancestor = element('auto-ancestor');
+        const inner = element('auto-inner', 0, ancestor);
+        own(ancestor, 'translated', {translationInvocationIdentity: 'manual-profile'});
+        await expect(ensureTranslationSection(inner as unknown as Element, {targetLanguage: 'ja'})).resolves.toMatchObject({action: 'settled'});
+        harness.owners = [];
+        const error = candidate(element('auto-orphan-error', 0, root));
+        harness.states.set(error.element, {phase: 'error'});
+        harness.discoveries.content = steps([error]);
+        await expect(ensureTranslationSection(root as unknown as Element)).resolves.toMatchObject({action: 'settled'});
+        expect(harness.translateTarget).not.toHaveBeenCalled();
+        expect(harness.restoreTranslationOwner).not.toHaveBeenCalled();
+    });
+
+    it.each(['same', 'parent', 'child'] as const)('自动补齐不取消重叠的手动区域操作：%s', async mode => {
+        const region = element(`manual-region-${mode}`, 0, root);
+        const item = candidate(element(`manual-item-${mode}`, 0, region));
+        harness.discoveries.content = steps([item]);
+        let finish!: (value: unknown) => void;
+        harness.translateTarget.mockImplementation(() => new Promise(resolve => {finish = resolve;}));
+        const manual = toggleTranslationSection(region as unknown as Element);
+        const automaticRoot = mode === 'same' ? region : mode === 'parent' ? root : item.element;
+        await expect(ensureTranslationSection(automaticRoot as unknown as Element)).resolves.toMatchObject({action: 'cancelled'});
+        expect(harness.translateTarget).toHaveBeenCalledOnce();
+        expect(harness.restoreTranslationOwner).not.toHaveBeenCalled();
+        expect(inspectTranslationSection(region as unknown as Element)).toMatchObject({action: 'restore'});
+        finish({status: 'committed'});
+        await expect(manual).resolves.toMatchObject({action: 'translated', translated: 1});
+    });
+
+    it('自动请求中全页恢复立即取消未派发内容，迟到结果不会留下完成记忆', async () => {
+        vi.useFakeTimers();
+        harness.config.maxConcurrentTranslations = 1;
+        const items = [candidate(element('auto-pending-a', 0, root)), candidate(element('auto-pending-b', 30, root))];
+        harness.discoveries.content = steps(items);
+        let finish!: (value: unknown) => void;
+        harness.translateTarget.mockImplementation((item: FakeCandidate) => {
+            own(item.element, 'loading');
+            return new Promise(resolve => {finish = resolve;});
+        });
+        harness.restoreTranslationOwner.mockImplementation((owner: unknown) => {
+            harness.states.delete(owner);
+            harness.owners = harness.owners.filter(value => value !== owner);
+            return true;
+        });
+        const lifecycle = new AbortController();
+        harness.requestSession.requestSignal = lifecycle.signal;
+        const automatic = ensureTranslationSection(root as unknown as Element);
+        lifecycle.abort();
+        await expect(automatic).resolves.toMatchObject({action: 'cancelled', restored: 1});
+        finish({status: 'unchanged'});
+        await Promise.resolve();
+        await vi.runAllTimersAsync();
+        expect(harness.translateTarget).toHaveBeenCalledOnce();
+        expect(harness.states.size).toBe(0);
+        expect(inspectTranslationSection(root as unknown as Element)).toMatchObject({action: 'translate', pending: 2});
+        expect(vi.getTimerCount()).toBe(0);
     });
 });

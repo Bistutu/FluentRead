@@ -59,6 +59,7 @@ export default defineConfig({
         resolve(__dirname, 'src/features/settings/ui/TranslationCacheSettings.vue'),
         resolve(__dirname, 'src/features/settings/ui/VideoLocalModelSettings.vue'),
         resolve(__dirname, 'src/features/settings/ui/VideoSentenceLearningAppearanceSettings.vue'),
+        resolve(__dirname, 'src/features/settings/ui/SectionTranslationRules.vue'),
         resolve(__dirname, 'src/features/settings/ui/WebDavBackup.vue'),
         resolve(__dirname, 'src/features/settings/ui/components/SettingsPanel.vue'),
         resolve(__dirname, 'src/features/settings/ui/components/SettingsPreviewLayout.vue'),
@@ -84,7 +85,7 @@ export default defineConfig({
         environment: 'node',
         // 对已发布 core 执行同一 transport/browser 替换，避免 Node 外置依赖绕过插件。
         server: {deps: {inline: ['@deeplx/core']}},
-        testTransformMode: {web: ['**/tests/chatgptPlanSettingsLifecycle.test.ts', '**/tests/videoSentenceLearningAppearanceSettingsLifecycle.test.ts', '**/tests/personalCorrectionUiPanel.test.ts', '**/tests/pdfReaderLifecycle.test.ts', '**/tests/finalCoveragePublicBoundariesA.test.ts', '**/tests/implementationAudit49A.test.ts', '**/tests/implementationAudit49B.test.ts', '**/tests/implementationAudit49C.test.ts', '**/tests/implementationAudit49E.test.ts', '**/tests/implementationAudit49F.test.ts', '**/tests/implementationAudit49H.test.ts', '**/tests/implementationAudit48J.test.ts', '**/tests/implementationAudit48I.test.ts', '**/tests/implementationAudit48C.test.ts', '**/tests/implementationAudit48E.test.ts', '**/tests/mangaEntryComponentLifecycle.test.ts', '**/tests/customHotkeyInputLifecycle.test.ts', '**/tests/sharedUiComponentsLifecycle.test.ts', '**/tests/documentAppLifecycle.test.ts', '**/tests/documentUserActions.test.ts']},
+        testTransformMode: {web: ['**/tests/sectionTranslationRulesUi.test.ts', '**/tests/chatgptPlanSettingsLifecycle.test.ts', '**/tests/videoSentenceLearningAppearanceSettingsLifecycle.test.ts', '**/tests/personalCorrectionUiPanel.test.ts', '**/tests/pdfReaderLifecycle.test.ts', '**/tests/finalCoveragePublicBoundariesA.test.ts', '**/tests/implementationAudit49A.test.ts', '**/tests/implementationAudit49B.test.ts', '**/tests/implementationAudit49C.test.ts', '**/tests/implementationAudit49E.test.ts', '**/tests/implementationAudit49F.test.ts', '**/tests/implementationAudit49H.test.ts', '**/tests/implementationAudit48J.test.ts', '**/tests/implementationAudit48I.test.ts', '**/tests/implementationAudit48C.test.ts', '**/tests/implementationAudit48E.test.ts', '**/tests/mangaEntryComponentLifecycle.test.ts', '**/tests/customHotkeyInputLifecycle.test.ts', '**/tests/sharedUiComponentsLifecycle.test.ts', '**/tests/documentAppLifecycle.test.ts', '**/tests/documentUserActions.test.ts']},
         include: ['tests/**/*.test.ts'],
         globalSetup: ['./scripts/testing/vitest-resource-lock.mjs'],
         maxWorkers,

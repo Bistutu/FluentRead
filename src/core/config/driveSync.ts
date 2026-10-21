@@ -170,6 +170,7 @@ const VISIBLE_FIELDS: Record<string, string> = {
     floatingBallCollapsedOpacity: '悬浮球收起不透明度',
     paragraphCopyEnabled: '段落复制',
     sectionTranslationHotkeyEnabled: '局部翻译快捷键',
+    sectionTranslationRules: '记住的翻译区域',
     selectionAreaEnabled: '圈选翻译',
     imageTranslationMangaEnabled: '漫画连续翻译入口',
     imageTranslationMangaPromptEnabled: '独立漫画按钮',
@@ -256,11 +257,11 @@ export function projectDriveSyncConfig(config: DriveSyncConfig, includeSensitive
         .map(([key, value]) => [key, structuredClone(value)]));
 }
 
-/** 普通范围替换可备份设置；旧备份缺失的网站规则及本机完整连接、未知字段和私密偏好保留。 */
+/** 普通范围替换可备份设置；旧备份缺失的网站/局部区域规则及本机完整连接、未知字段和私密偏好保留。 */
 export function restoreDriveSyncSettings(local: DriveSyncConfig, settings: DriveSyncConfig): DriveSyncConfig {
     const projected = projectDriveSyncConfig(local);
     const preserved = Object.fromEntries(Object.entries(local).filter(([key]) => !Object.hasOwn(projected, key)
-        || key === 'siteAdaptation' && !Object.hasOwn(settings, key)));
+        || (key === 'siteAdaptation' || key === 'sectionTranslationRules') && !Object.hasOwn(settings, key)));
     return {...structuredClone(settings), ...structuredClone(preserved)};
 }
 
