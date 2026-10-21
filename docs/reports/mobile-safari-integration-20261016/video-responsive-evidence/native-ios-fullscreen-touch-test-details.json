@@ -1,0 +1,57 @@
+{
+  "devices" : [
+    {
+      "architecture" : "arm64",
+      "deviceId" : "A407390F-7AA8-42AE-AFEB-F93EE99E9FF8",
+      "deviceName" : "FluentRead-PR995-FreshPermissions-20261015",
+      "modelName" : "iPhone 16 Pro",
+      "osBuildNumber" : "23C52",
+      "osVersion" : "26.2",
+      "platform" : "iOS Simulator"
+    }
+  ],
+  "duration" : "Ran for 24秒钟",
+  "durationInSeconds" : 24.91915202140808,
+  "hasMediaAttachments" : true,
+  "hasPerformanceMetrics" : false,
+  "startTime" : 1792296439.604,
+  "testDescription" : "Test case with 1 run",
+  "testIdentifier" : "CurrentProductionMYouTubeKnownEntryAfterReadinessDiagnosticTests/testCurrentProductionOwnedTEDKnownEntryAfterReadinessMenuReadOnlyOnce()",
+  "testIdentifierURL" : "test://com.apple.xcode/NativeHarness/SafariSmokeUITests/CurrentProductionMYouTubeKnownEntryAfterReadinessDiagnosticTests/testCurrentProductionOwnedTEDKnownEntryAfterReadinessMenuReadOnlyOnce",
+  "testName" : "testCurrentProductionOwnedTEDKnownEntryAfterReadinessMenuReadOnlyOnce()",
+  "testPlanConfigurations" : [
+    {
+      "configurationId" : "1",
+      "configurationName" : "Test Scheme Action"
+    }
+  ],
+  "testResult" : "Skipped",
+  "testRuns" : [
+    {
+      "children" : [
+        {
+          "children" : [
+            {
+              "name" : "Test skipped - Current normal fullscreen control absent after bounded conditional player touch; no additional touch/play/unmute",
+              "nodeType" : "Test Case Run",
+              "result" : "Skipped"
+            }
+          ],
+          "duration" : "24秒",
+          "durationInSeconds" : 24.91915202140808,
+          "name" : "Test Scheme Action",
+          "nodeIdentifier" : "1",
+          "nodeType" : "Test Plan Configuration",
+          "result" : "Skipped"
+        }
+      ],
+      "details" : "iOS Simulator 26.2",
+      "duration" : "24秒",
+      "durationInSeconds" : 24.91915202140808,
+      "name" : "iPhone 16 Pro",
+      "nodeIdentifier" : "A407390F-7AA8-42AE-AFEB-F93EE99E9FF8",
+      "nodeType" : "Device",
+      "result" : "Skipped"
+    }
+  ]
+}

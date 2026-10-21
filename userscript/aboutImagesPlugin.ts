@@ -7,7 +7,7 @@
 import {createHash} from 'node:crypto';
 import {readFileSync, realpathSync} from 'node:fs';
 import {resolve} from 'node:path';
-import {gzipSync} from 'node:zlib';
+import {gzipUserscriptBuildData} from './buildGzip';
 import {normalizePath, type Plugin} from 'vite';
 
 /** 普通、Greasy Fork 与扩展出口沿用原模块；只处理没有 query 或虚拟前缀的精确物理路径。 */
@@ -19,7 +19,7 @@ export function createUserscriptAboutImagesCompressionPlugin(root: string, enabl
         const image = readFileSync(resolve(root, relativePath));
         const dataUrl = `data:image/jpeg;base64,${image.toString('base64')}`;
         return {
-            compressed: gzipSync(Buffer.from(dataUrl, 'utf8'), {level: 9}).toString('base64'),
+            compressed: gzipUserscriptBuildData(Buffer.from(dataUrl, 'utf8')).toString('base64'),
             sha256: createHash('sha256').update(image).digest('hex'),
         };
     };

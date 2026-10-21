@@ -1,0 +1,478 @@
+{
+  "sourceCommit": "95cac87cb1777c7c7824a3f158033a557f7acda8",
+  "integratedMain": "9d6f2864fffa4e8a7447d8746778369558bc3cf2",
+  "ok": true,
+  "version": "0.0.39",
+  "productionManifestSHA256": "d84f2ae185318d9f0add60b335e45056b476d2cce62f2dedc39a15fc9bd7ce1b",
+  "manifestAloneIsUniqueSourceBinding": false,
+  "sourceBinding": "Clean source before builds and identity capture; rebuilt output directory used by runtime, with actual new brand 46px checks. Manifest is unchanged from previous version and not a unique bundle identity.",
+  "builds": [
+    {
+      "stage": "focused-tests",
+      "exitCode": 0,
+      "log": {
+        "path": "main9d6-integrated-focused-tests.log",
+        "bytes": 7691,
+        "sha256": "d3d83c6962f17a707b3c6b0f447d951c7acffc5bbd651c6a4e7d325c5ba628aa"
+      }
+    },
+    {
+      "stage": "compile",
+      "exitCode": 0,
+      "log": {
+        "path": "main9d6-integrated-compile.log",
+        "bytes": 97,
+        "sha256": "bdac79ad2b79ddaea447b6ce09c8dec2f814f322eb048d432093404ea218ab6f"
+      }
+    },
+    {
+      "stage": "chrome",
+      "exitCode": 0,
+      "log": {
+        "path": "main9d6-integrated-chrome.log",
+        "bytes": 84329,
+        "sha256": "5a2b42e90af357fffc3f071a5dc10cb0660ccbde3ba62866881a5f88d0c04b7b"
+      }
+    },
+    {
+      "stage": "firefox",
+      "exitCode": 0,
+      "log": {
+        "path": "main9d6-integrated-firefox.log",
+        "bytes": 84852,
+        "sha256": "50b6a2ae55a9ddfbf80b0acd76c3ba4cdc4eba6ba982952475234c18b159624a"
+      }
+    },
+    {
+      "stage": "safari",
+      "exitCode": 0,
+      "log": {
+        "path": "main9d6-integrated-safari.log",
+        "bytes": 83081,
+        "sha256": "a13d826644e0068fe6840e029f7091e3967262fb521deb2b712ed551aa2adecf"
+      }
+    },
+    {
+      "stage": "userscript",
+      "exitCode": 0,
+      "log": {
+        "path": "main9d6-integrated-userscript.log",
+        "bytes": 345,
+        "sha256": "74f3b45263d66d9418143033d712697b38ac43eef46a7fa1a183ada679996cc3"
+      }
+    },
+    {
+      "stage": "userscript-verify",
+      "exitCode": 0,
+      "log": {
+        "path": "main9d6-integrated-userscript-verify.log",
+        "bytes": 207,
+        "sha256": "ba3ba6e6c452d210ff2aa0a3394ca1683db47199004e4a0a19bfebcdde420fba"
+      }
+    },
+    {
+      "stage": "manifests",
+      "exitCode": 0,
+      "log": {
+        "path": "main9d6-integrated-manifests.log",
+        "bytes": 1001,
+        "sha256": "ff5b3bf734b70e90b7636b191551335cff4566fd50108563112a196466818a7a"
+      }
+    },
+    {
+      "stage": "safari-verify",
+      "exitCode": 0,
+      "log": {
+        "path": "main9d6-integrated-safari-verify.log",
+        "bytes": 509,
+        "sha256": "16f2523295f0dc4eb674f6b7ddaacaaa8e7aa6e944603bd52cf53067a344b80e"
+      }
+    }
+  ],
+  "focusedTests": {
+    "filesPassed": 9,
+    "testsPassed": 589,
+    "skipped": 0,
+    "scope": "Actual 9 matched test files; command also contained a nonexistent sharedUiLifecycle.test.ts filter, which was not an executed test file."
+  },
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "centered": true,
+    "windowState": "normal",
+    "bounds": {
+      "left": 212,
+      "top": -990,
+      "width": 1280,
+      "height": 900
+    },
+    "displayTarget": "secondary",
+    "source": "macos-nsscreen",
+    "screenIndex": 1,
+    "browserFrontmost": false,
+    "frontmostBefore": {
+      "pid": 63036,
+      "name": "Claude"
+    },
+    "frontmostAfter": {
+      "pid": 63036,
+      "name": "Claude"
+    }
+  },
+  "focusSamplingOnly": true,
+  "cases": [
+    {
+      "label": "touch-320-source",
+      "ok": true,
+      "issues": [],
+      "originalPNGCount": 3,
+      "brand": {
+        "box": {
+          "left": 16,
+          "top": 10,
+          "right": 62,
+          "bottom": 56,
+          "width": 46,
+          "height": 46
+        },
+        "port": {
+          "left": 0,
+          "top": 0,
+          "right": 320,
+          "bottom": 538
+        },
+        "contained": true,
+        "hits": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "visible": true,
+        "enabled": true,
+        "usable": true
+      },
+      "popupReopened": true,
+      "persistedConfig": {
+        "on": true,
+        "from": "en",
+        "to": "zh-Hans",
+        "uiLanguage": "zh-CN",
+        "theme": "light",
+        "interfaceSkin": "default"
+      }
+    },
+    {
+      "label": "touch-320-target",
+      "ok": true,
+      "issues": [],
+      "originalPNGCount": 3,
+      "brand": {
+        "box": {
+          "left": 16,
+          "top": 10,
+          "right": 62,
+          "bottom": 56,
+          "width": 46,
+          "height": 46
+        },
+        "port": {
+          "left": 0,
+          "top": 0,
+          "right": 320,
+          "bottom": 538
+        },
+        "contained": true,
+        "hits": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "visible": true,
+        "enabled": true,
+        "usable": true
+      },
+      "popupReopened": true,
+      "persistedConfig": {
+        "on": true,
+        "from": "auto",
+        "to": "ja",
+        "uiLanguage": "zh-CN",
+        "theme": "light",
+        "interfaceSkin": "default"
+      }
+    },
+    {
+      "label": "touch-390-source",
+      "ok": true,
+      "issues": [],
+      "originalPNGCount": 3,
+      "brand": {
+        "box": {
+          "left": 16,
+          "top": 10,
+          "right": 62,
+          "bottom": 56,
+          "width": 46,
+          "height": 46
+        },
+        "port": {
+          "left": 0,
+          "top": 0,
+          "right": 320,
+          "bottom": 538
+        },
+        "contained": true,
+        "hits": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "visible": true,
+        "enabled": true,
+        "usable": true
+      },
+      "popupReopened": true,
+      "persistedConfig": {
+        "on": true,
+        "from": "en",
+        "to": "zh-Hans",
+        "uiLanguage": "zh-CN",
+        "theme": "light",
+        "interfaceSkin": "default"
+      }
+    },
+    {
+      "label": "touch-390-target",
+      "ok": true,
+      "issues": [],
+      "originalPNGCount": 3,
+      "brand": {
+        "box": {
+          "left": 16,
+          "top": 10,
+          "right": 62,
+          "bottom": 56,
+          "width": 46,
+          "height": 46
+        },
+        "port": {
+          "left": 0,
+          "top": 0,
+          "right": 320,
+          "bottom": 538
+        },
+        "contained": true,
+        "hits": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "visible": true,
+        "enabled": true,
+        "usable": true
+      },
+      "popupReopened": true,
+      "persistedConfig": {
+        "on": true,
+        "from": "auto",
+        "to": "ja",
+        "uiLanguage": "zh-CN",
+        "theme": "light",
+        "interfaceSkin": "default"
+      }
+    },
+    {
+      "label": "touch-landscape-780x220",
+      "ok": true,
+      "issues": [],
+      "originalPNGCount": 1,
+      "brand": {
+        "box": {
+          "left": 16,
+          "top": 10,
+          "right": 62,
+          "bottom": 56,
+          "width": 46,
+          "height": 46
+        },
+        "port": {
+          "left": 0,
+          "top": 0,
+          "right": 320,
+          "bottom": 220
+        },
+        "contained": true,
+        "hits": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "visible": true,
+        "enabled": true,
+        "usable": true
+      },
+      "popupReopened": null,
+      "persistedConfig": null
+    },
+    {
+      "label": "controlled-visual58-zero",
+      "ok": true,
+      "issues": [],
+      "originalPNGCount": 1,
+      "brand": null,
+      "popupReopened": null,
+      "persistedConfig": null
+    },
+    {
+      "label": "controlled-visual58-offset",
+      "ok": true,
+      "issues": [],
+      "originalPNGCount": 1,
+      "brand": null,
+      "popupReopened": null,
+      "persistedConfig": null
+    },
+    {
+      "label": "touch-dark-390",
+      "ok": true,
+      "issues": [],
+      "originalPNGCount": 1,
+      "brand": {
+        "box": {
+          "left": 16,
+          "top": 10,
+          "right": 62,
+          "bottom": 56,
+          "width": 46,
+          "height": 46
+        },
+        "port": {
+          "left": 0,
+          "top": 0,
+          "right": 320,
+          "bottom": 538
+        },
+        "contained": true,
+        "hits": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "visible": true,
+        "enabled": true,
+        "usable": true
+      },
+      "popupReopened": null,
+      "persistedConfig": null
+    },
+    {
+      "label": "desktop-390-fine-pointer",
+      "ok": true,
+      "issues": [],
+      "originalPNGCount": 2,
+      "brand": {
+        "box": {
+          "left": 16,
+          "top": 11,
+          "right": 48,
+          "bottom": 43,
+          "width": 32,
+          "height": 32
+        },
+        "port": {
+          "left": 0,
+          "top": 0,
+          "right": 320,
+          "bottom": 462
+        },
+        "contained": true,
+        "hits": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "visible": true,
+        "enabled": true,
+        "usable": true
+      },
+      "popupReopened": true,
+      "persistedConfig": {
+        "on": true,
+        "from": "auto",
+        "to": "en",
+        "uiLanguage": "zh-CN",
+        "theme": "light",
+        "interfaceSkin": "default"
+      }
+    }
+  ],
+  "errors": [],
+  "cleanupErrors": [],
+  "configRestored": true,
+  "controlledViewportIsNativeKeyboard": false,
+  "originalPNGCount": 18,
+  "copiedOriginals": [
+    {
+      "file": "target-320.png",
+      "bytes": 53479,
+      "sha256": "27f43292ba9b8b4e381d57227d4208fe733e4776e0cc6b858270d70fec2daefb",
+      "sourceFile": "touch-320-target-open.png"
+    },
+    {
+      "file": "landscape.png",
+      "bytes": 31261,
+      "sha256": "41ea12b29b85bac77ab5b7772badb4f8a8771a6305f90006b9f57cc7674c7fb4",
+      "sourceFile": "touch-landscape-780x220-short-landscape.png"
+    },
+    {
+      "file": "visible-58-offset.png",
+      "bytes": 56483,
+      "sha256": "65108a079f2ee2f563a013a5bae10e065ded9b95df824f9a5ca8e657f2a9d959",
+      "sourceFile": "controlled-visual58-offset-close-priority-58.png"
+    },
+    {
+      "file": "dark.png",
+      "bytes": 76014,
+      "sha256": "2a429f163219b629b072ffb7d59abddebe0be18d9369c47b38f4e8fc224043fe",
+      "sourceFile": "touch-dark-390-dark.png"
+    },
+    {
+      "file": "desktop-keyboard.png",
+      "bytes": 61215,
+      "sha256": "351180eed7d98764e7ecf78bb936f1ee0f394405364083d203714df417a02a2d",
+      "sourceFile": "desktop-390-fine-pointer-keyboard-reopened-persisted.png"
+    }
+  ],
+  "originalReportPins": [
+    {
+      "file": "report.json",
+      "bytes": 276277,
+      "sha256": "9786cf26d87714c6996c69c7cad30d94ce4c2fa1b34fca3e79da01383abefd5d"
+    },
+    {
+      "file": "language-picker-results.json",
+      "bytes": 132794,
+      "sha256": "839585ea596dbb2773dd0e30b9359dc7cd24fcc482ef1f3a2d387db94bd452fb"
+    }
+  ],
+  "nativeRuntimeAcceptance": false,
+  "crossPageSync": "NOT_RUN_UNCHANGED_CONFIG_API",
+  "latestWriteWins": "NOT_RUN_UNCHANGED_CONFIG_API"
+}

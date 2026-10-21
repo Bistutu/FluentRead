@@ -1,11 +1,11 @@
 <!--
  * @file src/features/settings/ui/services/CustomOpenAIProviderDialog.vue
  * 文件职责：作为添加自定义翻译服务的唯一窗口，提供兼容接口和组合翻译两种类型。
- * 主要内容：共用名称，隔离接口凭据与组合成员草稿；提交沿用原接口契约或发送不含凭据的组合草稿，类型切换、关闭重开、停用与配置替换淘汰旧事件。
+ * 主要内容：共用名称，隔离接口凭据与组合成员草稿；提交沿用原接口契约或发送不含凭据的组合草稿，类型切换、关闭重开、停用与配置替换淘汰旧事件；触屏与窄屏按实际可见视口容纳表单，键盘展开后仍可在窗口内滚动到各字段和操作。
  * 模块边界：不生成服务 ID、不修改 Config、不保存凭据或改变默认服务；外层统一创建与持久化，组合复用已有普通服务配置。
  -->
 <template>
-  <el-dialog :model-value="modelValue && active && ownedOpen" width="min(600px, calc(100vw - 28px))" class="custom-openai-provider-dialog" data-testid="custom-service-dialog" :title="t('settings.services.composite.customTitle')" :close-on-click-modal="false" destroy-on-close :onOpened="actions.focus" :onUpdate:modelValue="actions.update">
+  <el-dialog :model-value="modelValue && active && ownedOpen" width="min(600px, calc(100vw - 28px))" class="custom-openai-provider-dialog" :style="dialogViewportStyle" data-testid="custom-service-dialog" :title="t('settings.services.composite.customTitle')" :close-on-click-modal="false" destroy-on-close :onOpened="actions.focus" :onUpdate:modelValue="actions.update">
     <form class="custom-provider-form" novalidate :onSubmit="withModifiers(actions.submit, ['prevent'])">
       <div class="custom-service-types" role="group" :aria-label="t('settings.services.composite.serviceType')">
         <button type="button" data-testid="custom-service-type-interface" :aria-pressed="serviceType === 'interface'" :disabled="!active" :onClick="actions.type.bind(null, 'interface')">{{ t('settings.services.composite.interfaceType') }}</button>
@@ -49,6 +49,7 @@ import {useSettingsActionContext} from '../../model/useSettingsActionContext'
 import {CUSTOM_OPENAI_RESERVED_MODEL_ID, MAX_CUSTOM_OPENAI_MODEL_LENGTH, MAX_CUSTOM_OPENAI_PROVIDER_ENDPOINT_LENGTH, MAX_CUSTOM_OPENAI_PROVIDER_NAME_LENGTH} from '@/src/core/config/customOpenAI'
 import {createCompositeTranslationDraft, getCompositeMemberOptions, validateCompositeTranslationDraft, type CompositeTranslationDraft, type CompositeTranslationDraftErrors} from '@/src/ui/view-model/compositeServiceEditor'
 import CompositeTranslationFields from './CompositeTranslationFields.vue'
+import {getVisualViewportRect, observeVisualViewport} from '@/src/platform/dom/visualViewport'
 
 interface CustomOpenAIProviderDraft {name: string; endpoint: string; apiKey: string; model: string}
 type CustomServiceType = 'interface' | 'composite'
@@ -68,6 +69,24 @@ const ownedOpen = ref(props.modelValue)
 const errors = reactive({name: '', endpoint: '', model: ''})
 const nameError = computed(() => serviceType.value === 'composite' ? compositeErrors.value.name ? t(compositeErrors.value.name) : '' : translateLegacy(errors.name))
 const {active, capture} = useSettingsActionContext(() => props.active !== false, () => [props.context, props.config, props.modelValue, serviceType.value])
+const dialogViewportStyle = ref<Record<string, string>>()
+// 变量只写入本窗口，CSS 决定是否采用触屏布局；订阅随关闭、停用、缓存和卸载释放，不改变表单或焦点归属。
+watch(() => props.modelValue && active.value && ownedOpen.value, (open, _previous, onCleanup) => {
+  dialogViewportStyle.value = undefined
+  if (!open || typeof window === 'undefined') return
+  const update = () => {
+    if (!props.modelValue || !active.value || !ownedOpen.value) return
+    const viewport = getVisualViewportRect()
+    dialogViewportStyle.value = {
+      '--fluentread-custom-provider-viewport-left': `${viewport.left}px`,
+      '--fluentread-custom-provider-viewport-top': `${viewport.top}px`,
+      '--fluentread-custom-provider-viewport-width': `${viewport.width}px`,
+      '--fluentread-custom-provider-viewport-height': `${viewport.height}px`,
+    }
+  }
+  update()
+  onCleanup(observeVisualViewport(update))
+}, {flush: 'sync', immediate: true})
 const actions = computed(() => {
   const current = capture()
   return {
@@ -132,4 +151,44 @@ watch(() => [active.value, props.context, props.config], () => closeDialog(), {f
 .custom-provider-form footer button { min-height: 36px; padding: 7px 14px; border-radius: 8px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
 .secondary-button { border: 1px solid var(--line); color: var(--muted); background: var(--surface); }
 .primary-button { border: 1px solid var(--brand, #ef4776); color: #fff; background: var(--brand, #ef4776); }
+
+/* 专属选择器在 Element Plus 的 portal 中同样有效；整窗滚动，极短横屏不为固定页头或页脚预占编辑高度。 */
+@media (max-width: 700px), (any-pointer: coarse) {
+  :global(.custom-openai-provider-dialog.el-dialog) {
+    --fluentread-custom-provider-gap-left: max(14px, env(safe-area-inset-left, 0px));
+    --fluentread-custom-provider-gap-right: max(14px, env(safe-area-inset-right, 0px));
+    --fluentread-custom-provider-gap-top: max(12px, env(safe-area-inset-top, 0px));
+    --fluentread-custom-provider-gap-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+    position: fixed;
+    top: calc(var(--fluentread-custom-provider-viewport-top, 0px) + var(--fluentread-custom-provider-gap-top));
+    left: calc(var(--fluentread-custom-provider-viewport-left, 0px) + var(--fluentread-custom-provider-gap-left) + (var(--fluentread-custom-provider-viewport-width, 100vw) - var(--fluentread-custom-provider-gap-left) - var(--fluentread-custom-provider-gap-right)) / 2);
+    transform: translateX(-50%);
+    width: min(600px, calc(var(--fluentread-custom-provider-viewport-width, 100vw) - var(--fluentread-custom-provider-gap-left) - var(--fluentread-custom-provider-gap-right)));
+    max-height: calc(100vh - 24px);
+    max-height: max(0px, calc(var(--fluentread-custom-provider-viewport-height, 100dvh) - var(--fluentread-custom-provider-gap-top) - var(--fluentread-custom-provider-gap-bottom)));
+    margin: 0;
+    padding: 12px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-padding-block: 12px;
+  }
+  :global(.custom-openai-provider-dialog .el-dialog__header) { min-height: 32px; padding-bottom: 12px; }
+  :global(.custom-openai-provider-dialog .el-dialog__body) { min-width: 0; }
+  :global(.custom-openai-provider-dialog .el-dialog__headerbtn) { min-width: 44px; min-height: 44px; }
+  .custom-provider-form, .custom-provider-form > label { min-width: 0; }
+  .custom-provider-form > label > small { overflow-wrap: anywhere; }
+  .custom-provider-form input,
+  .custom-provider-form :deep(.composite-fields input),
+  .custom-provider-form :deep(.composite-fields select) { min-width: 0; min-height: 44px; font-size: 16px; }
+  .custom-service-types { width: 100%; box-sizing: border-box; }
+  .custom-service-types button,
+  .custom-provider-form footer button,
+  .custom-provider-form :deep(.composite-fields button),
+  .custom-provider-form :deep(.composite-strategy-control.segmented-control.compact button) { min-width: 44px; min-height: 44px; white-space: normal; overflow-wrap: anywhere; }
+  .custom-provider-form footer { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .custom-provider-form :deep(.composite-setting-row) { grid-template-columns: minmax(0, 1fr); gap: 5px; }
+  .custom-provider-form :deep(.composite-member-list li) { flex-wrap: wrap; }
+  .custom-provider-form :deep(.member-actions) { flex-basis: 100%; justify-content: flex-end; gap: 4px; }
+  .custom-provider-form :deep(.composite-advanced summary) { box-sizing: border-box; min-height: 44px; max-width: 100%; padding-block: 12px; overflow-wrap: anywhere; }
+}
 </style>

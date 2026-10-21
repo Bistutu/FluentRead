@@ -1,0 +1,478 @@
+{
+  "schema": 1,
+  "sourceBaseCommit": "8db29905e2edcf1aa0217d34137f7fabada38219",
+  "sourceFiles": [
+    {
+      "path": "src/features/selection-translation/ui/SelectionTranslator.vue",
+      "bytes": 163466,
+      "sha256": "b6d67557726071b96528379a491ae9c0632063fec9a2a65f1487a5ba940de23c"
+    },
+    {
+      "path": "tests/selectionTranslatorLifecycle.test.ts",
+      "bytes": 255704,
+      "sha256": "245350f01224ab3290a8a4411a860e46051515387edaa2905246cb4ec04b48d2"
+    }
+  ],
+  "scope": "CONTROLLED_PRODUCTION_MV3_EDGE_ACTION_NOTICE_UI_AND_LIFECYCLE_NOT_NATIVE_MOBILE",
+  "focusedTests": {
+    "files": 3,
+    "passed": 424,
+    "failed": 0,
+    "skipped": 0,
+    "byFile": {
+      "selectionTranslatorLifecycle.test.ts": 352,
+      "selectionTranslatorCore.test.ts": 67,
+      "mobileVisualViewport.test.ts": 5
+    }
+  },
+  "webCommands": [
+    "00-focus-before",
+    "01-focused-tests",
+    "02-typecheck",
+    "03-chrome-build",
+    "04-firefox-build",
+    "05-safari-web-build",
+    "06-safari-package-verify",
+    "07-focus-after"
+  ],
+  "buildFocusObservation": "UNAVAILABLE_NULL_BEFORE_AND_AFTER",
+  "webValidationPassed": true,
+  "userscriptCommands": [
+    "01-userscript-build",
+    "02-userscript-verify",
+    "03-test-audit"
+  ],
+  "userscript": {
+    "path": ".output/userscript/fluent-read.user.js",
+    "bytes": 2100811,
+    "sha256": "1e3abb9baf098966db1dde99863c400e8092dc26457e6f6ca0b910b7eac22df1",
+    "byteBudget": 2101100,
+    "budgetChanged": false,
+    "managerRuntimeAcceptance": false
+  },
+  "testRegistryAudit": {
+    "files": 761,
+    "cases": 14254,
+    "meaning": "REGISTERED_NOT_EXECUTED_TEST_COUNT"
+  },
+  "browser": {
+    "attempt": 5,
+    "outerExitCode": 0,
+    "outerExitEvidence": "ROOT_ACTUAL_COMPLETION_MESSAGE",
+    "report": {
+      "path": "selection-action-toast-followup-2/browser-runtime-5/report.json",
+      "bytes": 122810,
+      "sha256": "f084e6fda05be256e8bc5f9371289482985204150bb3b1be2b716f59f4ea1483"
+    },
+    "passed": true,
+    "rowsPassed": 5,
+    "elapsedMs": 17564,
+    "sourceAndBuildUnchanged": true,
+    "productionChromeArtifact": {
+      "path": ".output/chrome-mv3",
+      "files": 478,
+      "bytes": 62442931,
+      "recordSHA256": "fbff221affb36d1916ebd897e31ab8b255972812055d001e2c68010f9c481a62",
+      "beforeAndAfterManifest": {
+        "path": "selection-action-toast-followup-2/browser-runtime-5/artifact-before.json",
+        "bytes": 63763,
+        "sha256": "f5d90b4c4600e4ea6acb74e348d382ebef4c86affa41f53145e0aee262b0a566"
+      }
+    },
+    "runner": {
+      "path": "selection-action-toast-followup-1/run-selection-action-toast.cjs",
+      "bytes": 35152,
+      "sha256": "1ecf4f4d2320f64df26f521088f66c5bb559191c2886e9d3f752d40bcdead4b3"
+    },
+    "sharedActualSettings": {
+      "on": true,
+      "disableSelectionTranslator": false,
+      "selectionTranslatorMode": "bilingual",
+      "selectionTranslatorTrigger": "icon",
+      "selectionTranslatorDelay": 0,
+      "selectionTranslatorAutoDismiss": false,
+      "useCache": false,
+      "service": "microsoft",
+      "from": "auto",
+      "to": "zh-Hans",
+      "hotkey": "none",
+      "floatingBallHotkey": "none",
+      "vocabularyBookEnabled": true,
+      "selectionTtsMode": "local-only",
+      "uiLanguageSetupCompleted": true
+    },
+    "cases": [
+      {
+        "name": "390-light-offset",
+        "layout": [
+          390,
+          844
+        ],
+        "coarse": true,
+        "theme": "light",
+        "uiLanguage": "zh-CN",
+        "visibleViewport": {
+          "width": 366,
+          "height": 280,
+          "offsetLeft": 12,
+          "offsetTop": 80
+        },
+        "passed": true,
+        "hostSourceTextAndScrollUnchanged": true,
+        "trustedProductActions": 5,
+        "noticeActions": [
+          {
+            "section": "settings-vocabulary",
+            "label": "查看",
+            "bounds": [
+              309,
+              295,
+              44,
+              44
+            ],
+            "sameNoticeAtOffsetY200": {
+              "bounds": [
+                309,
+                415,
+                44,
+                44
+              ],
+              "hitPointsPassed": 5
+            }
+          },
+          {
+            "section": "settings-selection",
+            "label": "设置",
+            "bounds": [
+              309,
+              295,
+              44,
+              44
+            ]
+          }
+        ]
+      },
+      {
+        "name": "320-dark",
+        "layout": [
+          320,
+          568
+        ],
+        "coarse": true,
+        "theme": "dark",
+        "uiLanguage": "zh-CN",
+        "visibleViewport": {
+          "width": 320,
+          "height": 568,
+          "offsetLeft": 0,
+          "offsetTop": 0
+        },
+        "passed": true,
+        "hostSourceTextAndScrollUnchanged": true,
+        "trustedProductActions": 5,
+        "noticeActions": [
+          {
+            "section": "settings-vocabulary",
+            "label": "查看",
+            "bounds": [
+              251,
+              503,
+              44,
+              44
+            ]
+          },
+          {
+            "section": "settings-selection",
+            "label": "设置",
+            "bounds": [
+              251,
+              503,
+              44,
+              44
+            ]
+          }
+        ]
+      },
+      {
+        "name": "844-short",
+        "layout": [
+          844,
+          160
+        ],
+        "coarse": true,
+        "theme": "light",
+        "uiLanguage": "zh-CN",
+        "visibleViewport": {
+          "width": 844,
+          "height": 160,
+          "offsetLeft": 0,
+          "offsetTop": 0
+        },
+        "passed": true,
+        "hostSourceTextAndScrollUnchanged": true,
+        "trustedProductActions": 5,
+        "noticeActions": [
+          {
+            "section": "settings-vocabulary",
+            "label": "查看",
+            "bounds": [
+              775,
+              95,
+              44,
+              44
+            ]
+          },
+          {
+            "section": "settings-selection",
+            "label": "设置",
+            "bounds": [
+              775,
+              95,
+              44,
+              44
+            ]
+          }
+        ]
+      },
+      {
+        "name": "844-safe58-english",
+        "layout": [
+          844,
+          160
+        ],
+        "coarse": true,
+        "theme": "light",
+        "uiLanguage": "en-US",
+        "visibleViewport": {
+          "width": 200,
+          "height": 58,
+          "offsetLeft": 50,
+          "offsetTop": 50
+        },
+        "passed": true,
+        "hostSourceTextAndScrollUnchanged": true,
+        "trustedProductActions": 5,
+        "noticeActions": [
+          {
+            "section": "settings-vocabulary",
+            "label": "View",
+            "bounds": [
+              181,
+              57,
+              44,
+              44
+            ],
+            "textClientAndScrollHeight": [
+              44,
+              56
+            ]
+          },
+          {
+            "section": "settings-selection",
+            "label": "Settings",
+            "bounds": [
+              174.203125,
+              57,
+              50.796875,
+              44
+            ],
+            "textClientAndScrollHeight": [
+              44,
+              84
+            ]
+          }
+        ]
+      },
+      {
+        "name": "1280-desktop",
+        "layout": [
+          1280,
+          800
+        ],
+        "coarse": false,
+        "theme": "light",
+        "uiLanguage": "zh-CN",
+        "visibleViewport": {
+          "width": 1280,
+          "height": 800,
+          "offsetLeft": 0,
+          "offsetTop": 0
+        },
+        "passed": true,
+        "hostSourceTextAndScrollUnchanged": true,
+        "trustedProductActions": 5,
+        "noticeActions": [
+          {
+            "section": "settings-vocabulary",
+            "label": "查看",
+            "bounds": [
+              1225,
+              756.5,
+              24,
+              16.5
+            ]
+          },
+          {
+            "section": "settings-selection",
+            "label": "设置",
+            "bounds": [
+              1225,
+              756.5,
+              24,
+              16.5
+            ]
+          }
+        ]
+      }
+    ],
+    "controlledMicrosoftRequests": 5,
+    "settingsNavigationsVerified": 10,
+    "productionNoticeTimeoutChanged": false,
+    "noticeTimeoutMs": 2600,
+    "consoleErrors": [],
+    "blockedRequests": [],
+    "cleanupErrors": [],
+    "cleanup": {
+      "browserClosed": true,
+      "serverClosed": true,
+      "profileDeleted": true,
+      "optionsTabsClosed": true
+    },
+    "focus": {
+      "eventMonitorStopped": true,
+      "observerError": null,
+      "ownedActivationCount": 0,
+      "sameForegroundPID": true,
+      "window": "VISIBLE_SECONDARY_NOT_FRONTMOST"
+    },
+    "selfI18nTransport": "EXACT_GETURL_FROM_VERIFIED_PRODUCTION_ISOLATED_REALM_ONLY",
+    "screenshots": [
+      {
+        "path": "390-light-offset200-same-toast.png",
+        "bytes": 42225,
+        "sha256": "383d09d98a781c543584a00769e70fae66478b259809fbd411a1a4a224c5f234",
+        "copiedIntoReport": true
+      },
+      {
+        "path": "320-dark-settings-selection.png",
+        "bytes": 40384,
+        "sha256": "4dda42fa7d7f4e71248fb43dd5a13c1500b991da5233f7d86a769dc2ba8e8678",
+        "copiedIntoReport": false
+      },
+      {
+        "path": "844-short-settings-selection.png",
+        "bytes": 21579,
+        "sha256": "307fde8b42d3faf0fc034c89a809c4963c4834d47722bd3c60a938c604572336",
+        "copiedIntoReport": false
+      },
+      {
+        "path": "844-safe58-english-settings-selection.png",
+        "bytes": 19637,
+        "sha256": "add5faadde0a7cbf1e90387487b74bd239ce176a228b1e3dfd3881022d997daf",
+        "copiedIntoReport": true
+      },
+      {
+        "path": "1280-desktop-settings-selection.png",
+        "bytes": 43614,
+        "sha256": "6d981e5d37f2de97bfe3b692953281ec727191f9cc8e088a9103d10ec2f2901e",
+        "copiedIntoReport": false
+      }
+    ],
+    "independentOriginalPNGReview": {
+      "viewed": 5,
+      "findings": []
+    },
+    "allNoticeActionsFullyVisibleAndFivePointHittable": true
+  },
+  "priorAttempts": [
+    {
+      "attempt": 1,
+      "passed": false,
+      "observedRowsPassed": 0,
+      "reason": "ROUNDED_ENTRY_CORNER_SAMPLE_FAILED_BEFORE_NOTICE",
+      "cleanupComplete": true,
+      "evidence": {
+        "path": "selection-action-toast-followup-2/browser-runtime-1/report.json",
+        "bytes": 14671,
+        "sha256": "df05d398b10cb1f23bac9c21abbb1ba84f7d439800af78de097b7736e79435bf"
+      }
+    },
+    {
+      "attempt": 2,
+      "passed": false,
+      "observedRowsPassed": 1,
+      "reason": "POINTER_MEDIA_ROW_PRECONDITION_FAILED",
+      "cleanupComplete": true,
+      "evidence": {
+        "path": "selection-action-toast-followup-2/browser-runtime-2/report.json",
+        "bytes": 34290,
+        "sha256": "9dd69a37452511e14ee43a0b6a45b40d672eb1298c68a2dc88239a9530677a2f"
+      }
+    },
+    {
+      "attempt": 3,
+      "passed": false,
+      "observedRowsPassed": 2,
+      "reason": "CONTROLLED_TRANSLATION_RENDER_WAIT_EXPIRED_CAUSE_UNKNOWN",
+      "cleanupComplete": true,
+      "evidence": {
+        "path": "selection-action-toast-followup-2/browser-runtime-3/report.json",
+        "bytes": 56717,
+        "sha256": "3651a688abe729fe60268687fa1c1b13c0074dc966a844909d308223f7777024"
+      }
+    },
+    {
+      "attempt": 4,
+      "passed": false,
+      "observedRowsPassed": 5,
+      "reason": "ALL_FIVE_FUNCTIONAL_ROWS_PASSED_BUT_SELF_I18N_TRANSPORT_REJECTED",
+      "cleanupComplete": true,
+      "evidence": {
+        "path": "selection-action-toast-followup-2/browser-runtime-4/report.json",
+        "bytes": 117824,
+        "sha256": "40683e2b231e8a2ceca5551238d13eca739728cd39b118f344a04b1ef2bf7f08"
+      }
+    }
+  ],
+  "evidence": [
+    {
+      "path": "selection-action-toast-followup-2/validation-result.json",
+      "bytes": 14010,
+      "sha256": "1fb0064a2f556d4898452df7e966d7ed575ed02e140aefa95418da8d3db7753f"
+    },
+    {
+      "path": "selection-action-toast-followup-2/userscript-validation/userscript-validation-result.json",
+      "bytes": 4968,
+      "sha256": "4f0f6308481509fad766f4a2f3b1481d4aafe32aaa8edbd4840918cf3af2bea4"
+    }
+  ],
+  "limits": {
+    "selection": "DOM_RANGE_NOT_NATIVE_LONG_PRESS",
+    "visualViewport": "CONTROLLED_NUMERIC_OVERRIDE_IN_EXTENSION_ISOLATED_REALM_NOT_OS_KEYBOARD",
+    "provider": "CONTROLLED_MICROSOFT_RESPONSE_NOT_LIVE_SERVICE",
+    "shortEnglishNotice": "TEXT_INNER_SCROLL_44_CLIENT_84_CONTENT_NOT_ALL_TEXT_SIMULTANEOUSLY_VISIBLE",
+    "lessThan44Height": "PHYSICAL_ACTION_SIZE_RETAINED_COMPLETE_VISIBILITY_NOT_BROWSER_ACCEPTED",
+    "desktopCTA": "ORIGINAL_COMPACT_SIZE_NOT_44PX",
+    "nativeToastAcceptance": false,
+    "SafariAndFirefoxRuntimeAcceptance": false,
+    "installedSimulatorCommit": "8db29905e2edcf1aa0217d34137f7fabada38219",
+    "installedSimulatorContainsToastFix": false,
+    "parallelNativeArticleA5Result": "UNKNOWN_OUTSIDE_TOAST_SCOPE"
+  },
+  "referenceRepositoriesUsed": false,
+  "fullGoalComplete": false,
+  "webCommandsClosure": {
+    "allExitZero": true,
+    "timedOut": false,
+    "allOwnGroupsAbsent": true,
+    "allLeadersReaped": true,
+    "cleanupErrors": []
+  },
+  "userscriptCommandsClosure": {
+    "allExitZero": true,
+    "timedOut": false,
+    "allOwnGroupsAbsent": true,
+    "allLeadersReaped": true,
+    "cleanupErrors": []
+  }
+}

@@ -1,7 +1,7 @@
 /**
  * @file tests/popupAppLifecycle.test.ts
  * 文件职责：执行实际 Popup 与站点按钮客户端模板，验证生命周期、页面竞态、缓存事件及焦点归属。
- * 主要内容：保持真实 Vue/KeepAlive、缓存和诊断模板，受控浏览器、持久化及展示端口覆盖延迟回复、失活、消息来源、诊断动作失败、状态切换、抽屉和弹窗；网站和显示模式保存执行真实共享 store，验证同 tick 草稿捕获、关闭交接与在途确认的字段归属。
+ * 主要内容：保持真实 Vue/KeepAlive、缓存和诊断模板，受控浏览器、持久化及展示端口覆盖延迟回复、失活、消息来源、诊断动作失败、状态切换、抽屉和弹窗；Safari 授权覆盖焦点复查与首次点击、旧许可重验和迟到读取隔离；真实服务选择子组件以布局端口验证键盘恢复时仅修正所属 scroller 的搜索外框；网站和显示模式保存执行真实共享 store，验证同 tick 草稿捕获、关闭交接与在途确认的字段归属。
  * 模块边界：Linkedom 保留节点/事件树，动画、Element Plus、外部存储和浏览器为受控端口，普通 UI 用例控制保存端口；真实样式与浏览器流程另行验证。
  */
 import {createRequire} from 'node:module'
@@ -132,7 +132,7 @@ beforeEach(async()=>{
     if(id==='\0popup-icons')return 'export const Setting={render:()=>null}'
     // Tooltip 的定位和显示时序由真实浏览器验证；此处只保留链接及父组件的关闭端口。
     if(id==='\0popup-tooltip')return 'export const ElTooltip={inheritAttrs:false,setup(_, {slots,expose}){expose({onClose(){},hide(){}});return()=>slots.default?.()}}'
-    if(id==='\0popup-drawer')return "import {h,Teleport} from 'vue';export default {setup(_, {attrs,slots}){return()=>attrs.modelValue||attrs['model-value']?h(Teleport,{to:'body'},h('div',{class:'popup-drawer-modal'},h('div',{...attrs,class:['drawer-port',attrs.class]},slots.default?.()))):null}}"
+    if(id==='\0popup-drawer')return "import {h,Teleport} from 'vue';export default {setup(_, {attrs,slots}){return()=>attrs.modelValue||attrs['model-value']?h(Teleport,{to:'body'},h('div',{class:'popup-drawer-modal'},h('div',{...attrs,class:['drawer-port',attrs.class]},h('div',{class:'el-drawer__body'},slots.default?.())))):null}}"
     if(id==='\0popup-display')return "import {h} from 'vue';export default {setup(_, {attrs,slots}){return()=>h('div',attrs,slots.default?.())}}"
     return null
   }}]})
@@ -170,7 +170,67 @@ async function mount(){
   // 保留真实模板事件；Transition 的 CSS 动画为展示端口，生产截图验证真实动画。
   app=renderer.createApp({setup:()=>()=>runtime.h(runtime.KeepAlive,null,{default:()=>shown.value?runtime.h(component,{ref:(vm:any)=>{if(vm)state=vm.$.setupState}}):runtime.h({render:()=>null},{key:'other'})})});app.component('OwnedTransition',{setup:(_:unknown,{slots}:any)=>()=>slots.default?.()});app.config.warnHandler=()=>{};app.mount(document.getElementById('app')!);await drain()
 }
+async function focusedServiceSearchAtCompact(scrollTop = 22, naturalTop = 92) {
+  executeServicePicker=true;await mount();eventOf(document.querySelector('.provider-summary')!)()
+  for(let i=0;i<100&&!document.querySelector('[data-feature-service="default"]');i++){await drain();await new Promise(resolve=>setTimeout(resolve,2))}
+  const assignment=document.querySelector<HTMLElement>('[data-feature-service="default"]')!;assignment.focus();eventOf(assignment)();await drain()
+  const input=document.querySelector<HTMLInputElement>('input[type="search"]')!;input.value='micro';eventOf(input,'onInput')({target:input});await drain()
+  Object.assign(viewport,{height:80});viewport.dispatchEvent(new win.Event('resize'));flushViewport();await drain()
+  const border=input.closest<HTMLElement>('.service-picker-search')!,heading=document.querySelector<HTMLElement>('.service-picker-heading')!
+  const scroller=input.closest<HTMLElement>('.el-drawer__body')!;let offset=scrollTop
+  // 布局端口复现生产：body top16、heading bottom72、search top70、真实scrollTop22；setter保留浏览器0边界。
+  Object.defineProperties(scroller,{clientTop:{configurable:true,value:0},clientHeight:{configurable:true,value:229},
+    scrollTop:{configurable:true,get:()=>offset,set:(value:number)=>{offset=Math.max(0,value)}}})
+  const rect=(top:number,bottom:number)=>({top,bottom,left:20,right:284,x:20,y:top,width:264,height:bottom-top,toJSON(){return this}}) as DOMRect
+  scroller.getBoundingClientRect=()=>rect(16,245);heading.getBoundingClientRect=()=>{const top=Math.max(16,naturalTop-56-offset);return rect(top,top+56)}
+  // naturalTop默认92对应生产真实滚动22px后的top70，非正常flow无间距的假设。
+  border.getBoundingClientRect=()=>rect(naturalTop-offset,naturalTop+48-offset)
+  return {input,border,heading,scroller,focusCalls:noticeFocus.mock.calls.length}
+}
+function growServiceViewport(height=263){Object.assign(viewport,{height});viewport.dispatchEvent(new win.Event('resize'));flushViewport()}
 describe('实际 Popup 缓存模板与页面操作',()=>{
+  it('搜索恢复到普通高度仅回退所属抽屉2px，让完整border离开动态吸顶标题',async()=>{
+    const f=await focusedServiceSearchAtCompact();const picker=document.querySelector('[data-service-picker]')
+    const hostScroll=vi.fn();win.scrollTo=hostScroll
+    expect(f.scroller.scrollTop).toBe(22);expect(f.border.getBoundingClientRect().top).toBeLessThan(f.heading.getBoundingClientRect().bottom)
+    growServiceViewport();await drain()
+    expect(f.scroller.scrollTop).toBe(20);expect(f.border.getBoundingClientRect().top).toBe(72);expect(f.heading.getBoundingClientRect().bottom).toBe(72)
+    growServiceViewport(300);await drain();expect(f.scroller.scrollTop).toBe(20)
+    expect(document.querySelector('input[type="search"]')).toBe(f.input);expect(document.querySelector('[data-service-picker]')).toBe(picker)
+    expect(f.input.value).toBe('micro');expect(document.activeElement).toBe(f.input);expect(noticeFocus).toHaveBeenCalledTimes(f.focusCalls);expect(hostScroll).not.toHaveBeenCalled()
+  })
+  it('仅剩2px可回退时按真实容器clamp到0，至少保留完整搜索border且不滚宿主',async()=>{
+    const f=await focusedServiceSearchAtCompact(2,72);growServiceViewport();await drain()
+    expect(f.scroller.scrollTop).toBe(0);expect(f.border.getBoundingClientRect().top).toBe(f.heading.getBoundingClientRect().bottom)
+    // border与header紧邻，focus ring不作为可通过滚动分离的边界。
+    expect(f.border.getBoundingClientRect().top-2).toBeLessThan(f.heading.getBoundingClientRect().bottom)
+    expect(f.input.value).toBe('micro');expect(document.activeElement).toBe(f.input);expect(noticeFocus).toHaveBeenCalledTimes(f.focusCalls)
+  })
+  it('视口同高或缩小时不重置滚动，普通高度扩大也只在搜索确被标题遮住时修正',async()=>{
+    const f=await focusedServiceSearchAtCompact();growServiceViewport(80);await drain();expect(f.scroller.scrollTop).toBe(22)
+    growServiceViewport(58);await drain();expect(f.scroller.scrollTop).toBe(22)
+    f.border.getBoundingClientRect=()=>({top:100,bottom:148,left:20,right:284,width:264,height:48}) as DOMRect
+    growServiceViewport();await drain();expect(f.scroller.scrollTop).toBe(22)
+    f.border.getBoundingClientRect=()=>({top:92-f.scroller.scrollTop,bottom:140-f.scroller.scrollTop,left:20,right:284,width:264,height:48}) as DOMRect
+    growServiceViewport(300);await drain();expect(f.scroller.scrollTop).toBe(20);expect(noticeFocus).toHaveBeenCalledTimes(f.focusCalls)
+  })
+  it('键盘恢复后的异步修正不能抢回用户已移走的焦点或重置未聚焦长列表',async()=>{
+    const f=await focusedServiceSearchAtCompact(),outside=document.createElement('button');document.body.appendChild(outside)
+    // 非 renderer 创建的节点也接入既有焦点端口，Linkedom 的原生 focus 本身不更新 activeElement。
+    outside.focus=()=>{focused=outside}
+    growServiceViewport();outside.focus();await drain();expect(f.scroller.scrollTop).toBe(22);expect(document.activeElement).toBe(outside)
+    growServiceViewport(300);await drain();expect(f.scroller.scrollTop).toBe(22);expect(document.activeElement).toBe(outside)
+  })
+  it.each(['close','back','config','unmount'] as const)('%s使已排队的恢复修正失效，不触碰旧搜索滚动',async reason=>{
+    const f=await focusedServiceSearchAtCompact();growServiceViewport()
+    if(reason==='close')eventOf(document.querySelector('.service-panel-close')!)()
+    else if(reason==='back')eventOf(document.querySelector('.service-picker-back')!)()
+    else if(reason==='config')state.config={...state.config,service:'microsoft'}
+    else app.unmount()
+    // Back 自己的合法视图转场会重置到0；先记下转场完成的所属滚动值，再确保迟到恢复不追加位移。
+    const afterAction=f.scroller.scrollTop;await drain();expect(f.scroller.scrollTop).toBe(afterAction)
+  })
+
   it('译文显示抽屉当前页字体立即切换与还原，关闭重开读取真值且不写配置',async()=>{
     localized=true;let font=false;send.mockImplementation(async(_id,message)=>{
       if(message.type==='getPageTranslationFontState'||message.type==='setPageTranslationFont'){
@@ -228,10 +288,18 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
     Object.assign(viewport,{height:220,offsetTop:40});viewport.dispatchEvent(new win.Event('resize'));viewport.dispatchEvent(new win.Event('scroll'));flushViewport();await drain()
     expect(document.querySelector('input[type="search"]')).toBe(input);expect(input.value).toBe('micro')
     const overlay=document.querySelector<HTMLElement>('.popup-drawer-modal')!;expect(overlay.style.getPropertyValue('--fluent-read-drawer-height')).toBe('220px')
+    const picker=document.querySelector('[data-service-picker]'),focusCalls=noticeFocus.mock.calls.length
+    Object.assign(viewport,{width:592,height:80,offsetTop:0});viewport.dispatchEvent(new win.Event('resize'));flushViewport();await drain()
+    expect(overlay.hasAttribute('data-fluent-read-popup-short')).toBe(true)
+    expect(document.querySelector('[data-service-picker]')).toBe(picker);expect(document.querySelector('input[type="search"]')).toBe(input);expect(input.value).toBe('micro')
+    expect(noticeFocus).toHaveBeenCalledTimes(focusCalls)
+    Object.assign(viewport,{width:360,height:263});viewport.dispatchEvent(new win.Event('resize'));flushViewport();await drain()
+    expect(overlay.hasAttribute('data-fluent-read-popup-short')).toBe(false);expect(input.value).toBe('micro');expect(noticeFocus).toHaveBeenCalledTimes(focusCalls)
     eventOf(document.querySelector('.service-picker-search button')!)();await drain();expect(input.value).toBe('');expect(focused).toBe(input)
     eventOf(document.querySelector('.service-picker-back')!)();await drain();expect(document.querySelector('[data-service-picker]')).toBeNull()
     const current=document.querySelector<HTMLElement>('[data-feature-service="default"]')!;current.focus();eventOf(current)();await drain()
-    eventOf(document.querySelector('.service-panel-close')!)();await drain();expect(state.drawerVisible).toBe(false);expect(overlay.hasAttribute('data-fluent-read-popup-viewport')).toBe(false)
+    Object.assign(viewport,{height:80});viewport.dispatchEvent(new win.Event('resize'));flushViewport();expect(overlay.hasAttribute('data-fluent-read-popup-short')).toBe(true)
+    eventOf(document.querySelector('.service-panel-close')!)();await drain();expect(state.drawerVisible).toBe(false);expect(overlay.hasAttribute('data-fluent-read-popup-viewport')).toBe(false);expect(overlay.hasAttribute('data-fluent-read-popup-short')).toBe(false)
   })
   it('只在打开的实际 teleport 遮罩跟随键盘可见边界，根 popup 固有尺寸不变',async()=>{
     await mount();const rootStyle=document.documentElement.getAttribute('style'),bodyStyle=document.body.getAttribute('style'),add=vi.spyOn(viewport,'addEventListener'),remove=vi.spyOn(viewport,'removeEventListener')
@@ -332,6 +400,50 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
     readAccess.mockResolvedValue({supported:true,grantedIds:['microsoft'],preferredGrant:null});gate.resolve(true);await pending;await drain()
     expect(commands().map(call=>call[1].action)).toEqual(['fullPage']);expect(state.freePoolBusy).toBe(false)
   })
+  it.each([{event:'focus',late:'success'},{event:'visible',late:'reject'}] as const)('Safari ready 按下与点击之间的 $event 重查不吞首次同步授权，旧读取 $late 不回写新上下文',async({event,late})=>{
+    await safariFree();const refresh=deferred<any>(),grant=deferred<boolean>()
+    readAccess.mockReturnValueOnce(refresh.promise);requestAccess.mockReturnValue(grant.promise)
+    const queries=getTab.mock.calls.length,reads=readAccess.mock.calls.length
+    const trigger=button('page-translation');expect(trigger.hasAttribute('disabled')).toBe(false)
+    trigger.dispatchEvent(new win.Event('pointerdown',{bubbles:true}))
+    if(event==='focus')win.dispatchEvent(new win.Event('focus'))
+    else{Object.defineProperty(document,'visibilityState',{configurable:true,value:'visible'});document.dispatchEvent(new win.Event('visibilitychange'))}
+    await drain()
+    expect(readAccess).toHaveBeenCalledTimes(reads+1);expect(requestAccess).not.toHaveBeenCalled();expect(commands()).toHaveLength(0)
+    const enabledAtClick=!button('page-translation').hasAttribute('disabled'),pending=eventOf(button('page-translation'))()
+    // 同时验证真实模板的 disabled 和处理函数；Linkedom 不模拟原生 disabled 对 click 的抑制。
+    expect(requestAccess).toHaveBeenCalledTimes(1);expect(requestAccess).toHaveBeenCalledWith('microsoft');expect(enabledAtClick).toBe(true)
+    expect(readAccess).toHaveBeenCalledTimes(reads+1);expect(getTab).toHaveBeenCalledTimes(queries);expect(commands()).toHaveLength(0)
+    grant.resolve(false);await pending;await drain()
+    expect(commands()).toHaveLength(0);expect(state.freePoolError).toBe('safari.freePool.requestDenied')
+    state.config.service='google';await drain();expect(state.freePoolAccess).toBeNull();expect(state.freePoolError).toBe('')
+    if(late==='success')refresh.resolve({supported:true,grantedIds:['microsoft'],preferredGrant:null});else refresh.reject(Error('old focus read failed'))
+    await drain();expect(state.freePoolAccess).toBeNull();expect(state.freePoolLoading).toBe(false);expect(state.freePoolError).toBe('')
+    expect(requestAccess).toHaveBeenCalledTimes(1);expect(commands()).toHaveLength(0)
+  })
+  it.each(['revoked','rejects'] as const)('Safari 旧 grant 点击后必须 fresh read，%s 不发送翻译也不异步补申请',async result=>{
+    await safariFree(['microsoft']);const background=deferred<any>(),fresh=deferred<any>()
+    const reads=readAccess.mock.calls.length,queries=getTab.mock.calls.length
+    readAccess.mockReturnValueOnce(background.promise).mockReturnValueOnce(fresh.promise)
+    win.dispatchEvent(new win.Event('focus'));await drain()
+    expect(state.freePoolAccess.grantedIds).toEqual(['microsoft']);expect(button('page-translation').hasAttribute('disabled')).toBe(false)
+    const pending=eventOf(button('page-translation'))()
+    expect(readAccess).toHaveBeenCalledTimes(reads+2);expect(getTab).toHaveBeenCalledTimes(queries);expect(requestAccess).not.toHaveBeenCalled();expect(commands()).toHaveLength(0)
+    background.resolve({supported:true,grantedIds:['google'],preferredGrant:null});await drain()
+    expect(state.freePoolAccess).toBeNull();expect(state.freePoolBusy).toBe(true);expect(commands()).toHaveLength(0)
+    if(result==='revoked')fresh.resolve({supported:true,grantedIds:[],preferredGrant:{id:'microsoft',origins:[]}});else fresh.reject(Error('current access read failed'))
+    await pending;await drain()
+    expect(state.freePoolError).toBe(result==='revoked'?'safari.freePool.requestDenied':'safari.freePool.error')
+    expect(state.freePoolAccess?.grantedIds||[]).toEqual([]);expect(state.freePoolBusy).toBe(false);expect(state.freePoolLoading).toBe(false)
+    expect(requestAccess).not.toHaveBeenCalled();expect(commands()).toHaveLength(0)
+  })
+  it('Safari ready 焦点复查失败清空旧许可并明确反馈，不自动申请或翻译',async()=>{
+    await safariFree(['microsoft']);const refresh=deferred<any>();readAccess.mockReturnValueOnce(refresh.promise)
+    win.dispatchEvent(new win.Event('focus'));await drain();expect(state.freePoolAccess.grantedIds).toEqual(['microsoft'])
+    refresh.reject(Error('focus access read failed'));await drain()
+    expect(state.freePoolAccess).toBeNull();expect(state.freePoolLoading).toBe(false);expect(state.freePoolError).toBe('safari.freePool.error')
+    expect(requestAccess).not.toHaveBeenCalled();expect(commands()).toHaveLength(0)
+  })
   it('P2 removal during grant discards late granted result and retains explicit retry',async()=>{
     await safariFree();const gate=deferred<boolean>();requestAccess.mockReturnValue(gate.promise)
     const pending=eventOf(button('page-translation'))();permissionEvent('removed');await drain();readAccess.mockResolvedValue({supported:true,grantedIds:['microsoft'],preferredGrant:null});gate.resolve(true);await pending;await drain()
@@ -377,6 +489,40 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
     readAccess.mockResolvedValue({supported:true,grantedIds:[],preferredGrant:{id:'microsoft',origins:[]}});permissionEvent('removed');await drain();expect(readAccess).toHaveBeenCalledTimes(before)
     shown.value=true;await drain();expect(state.freePoolAccess.grantedIds).toEqual([]);app.unmount();await drain();expect(permissionEvents.size).toBe(0)
     const closed=readAccess.mock.calls.length;permissionEvent('added');win.dispatchEvent(new win.Event('focus'));expect(readAccess).toHaveBeenCalledTimes(closed)
+  })
+  it('Safari persisted pagehide/pageshow 恢复当前按钮但不复活旧回调或在途翻译',async()=>{
+    await safariFree(['microsoft'])
+    const exits=handoff.mock.calls.length
+    const stale=eventOf(button('page-translation')),lookup=deferred<Array<{id:number;windowId:number;url:string}>>()
+    getTab.mockReturnValueOnce(lookup.promise)
+    const lookups=getTab.mock.calls.length,pending=stale();await drain()
+    expect(getTab).toHaveBeenCalledTimes(lookups+1)
+    expect(commands()).toHaveLength(0);expect(requestAccess).not.toHaveBeenCalled()
+    const hide=new win.Event('pagehide');Object.defineProperty(hide,'persisted',{value:true});win.dispatchEvent(hide);await drain()
+    expect(handoff).toHaveBeenCalledTimes(exits+1)
+    readAccess.mockResolvedValue({supported:true,grantedIds:[],preferredGrant:{id:'microsoft',origins:['https://edge.microsoft.com/*']}})
+    const restoredQueries=getTab.mock.calls.length,restoredReads=readAccess.mock.calls.length
+    const show=new win.Event('pageshow');Object.defineProperty(show,'persisted',{value:true});win.dispatchEvent(show);await drain()
+    expect(getTab).toHaveBeenCalledTimes(restoredQueries+1);expect(readAccess.mock.calls.length).toBeGreaterThan(restoredReads)
+    expect(requestAccess).not.toHaveBeenCalled();expect(commands()).toHaveLength(0)
+    lookup.resolve([{id:7,windowId:3,url:'https://example.com/a'}]);await pending;await drain()
+    await stale();await drain()
+    expect(requestAccess).not.toHaveBeenCalled();expect(commands()).toHaveLength(0)
+    requestAccess.mockResolvedValue(false)
+    const reads=readAccess.mock.calls.length,queries=getTab.mock.calls.length
+    const current=eventOf(button('page-translation'))()
+    // 新按钮必须在任何 await、授权复查或标签页查询之前同步申请一次；恢复事件本身不申请或翻译。
+    expect(requestAccess).toHaveBeenCalledTimes(1);expect(requestAccess).toHaveBeenCalledWith('microsoft')
+    expect(readAccess).toHaveBeenCalledTimes(reads);expect(getTab).toHaveBeenCalledTimes(queries)
+    await current;await drain();expect(commands()).toHaveLength(0)
+    win.dispatchEvent(hide);await drain();expect(handoff).toHaveBeenCalledTimes(exits+2)
+    app.unmount();await drain();expect(handoff).toHaveBeenCalledTimes(exits+2)
+    const closedQueries=getTab.mock.calls.length,closedReads=readAccess.mock.calls.length
+    expect(state.pageExited).toBe(true)
+    win.dispatchEvent(show);await drain()
+    expect(state.pageExited).toBe(true)
+    expect(getTab).toHaveBeenCalledTimes(closedQueries);expect(readAccess).toHaveBeenCalledTimes(closedReads)
+    expect(requestAccess).toHaveBeenCalledTimes(1);expect(commands()).toHaveLength(0)
   })
   it('P2 denial updates after language switch and delayed lazy bundle without another request',async()=>{
     localized=true;await safariFree();requestAccess.mockResolvedValue(false);await eventOf(button('page-translation'))();await drain()
@@ -497,7 +643,50 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
     eventOf(repair)();await drain()
     expect(createTab).toHaveBeenCalledWith({url:expect.stringContaining('options.html?service=google')});expect(close).toHaveBeenCalledOnce()
   })
-  it('无正文诊断直达适配目标并携带固定来源，普通导航不附加来源且服务参数不丢失',async()=>{
+  it('普通划词 More Settings 复用当前来源，只携带 returnTabId 和目标 section',async()=>{
+    await mount();await openFeature('selection');const sourceQueries=getTab.mock.calls.length,sourceGets=getSourceTab.mock.calls.length
+    await eventOf(document.querySelector('.drawer-settings-link')!)();await drain()
+    expect(createTab).toHaveBeenCalledOnce();const url=new URL(createTab.mock.calls[0][0].url)
+    expect(url.hash).toBe('#settings-selection');expect([...url.searchParams.entries()]).toEqual([['returnTabId','7']])
+    expect(openOptions).not.toHaveBeenCalled();expect(close).toHaveBeenCalledOnce();expect(commands()).toHaveLength(0);expect(requestAccess).not.toHaveBeenCalled()
+    expect(getTab).toHaveBeenCalledTimes(sourceQueries);expect(getSourceTab).toHaveBeenCalledTimes(sourceGets)
+  })
+  it('普通划词从固定 source 打开，不把其他活动 tab 当作返回来源',async()=>{
+    win.location.search='?sourceTabId=7';getTab.mockResolvedValue([{id:99,windowId:3,url:'https://other.example/'}]);await mount();await openFeature('selection')
+    await eventOf(document.querySelector('.drawer-settings-link')!)();await drain()
+    expect(createTab).toHaveBeenCalledOnce();const url=new URL(createTab.mock.calls[0][0].url)
+    expect(url.hash).toBe('#settings-selection');expect([...url.searchParams.entries()]).toEqual([['returnTabId','7']]);expect(getTab).not.toHaveBeenCalled();expect(getSourceTab).toHaveBeenCalledWith(7)
+    expect(openOptions).not.toHaveBeenCalled();expect(close).toHaveBeenCalledOnce();expect(commands()).toHaveLength(0)
+  })
+  it('普通划词没有来源仍可打开设置，不伪造 returnTabId 或修复参数',async()=>{
+    getTab.mockResolvedValue([]);await mount();await openFeature('selection');expect(state.currentTabId).toBeNull()
+    await eventOf(document.querySelector('.drawer-settings-link')!)();await drain()
+    expect(createTab).toHaveBeenCalledOnce();const url=new URL(createTab.mock.calls[0][0].url)
+    expect(url.hash).toBe('#settings-selection');expect([...url.searchParams.entries()]).toEqual([])
+    expect(openOptions).not.toHaveBeenCalled();expect(close).toHaveBeenCalledOnce();expect(commands()).toHaveLength(0)
+  })
+  it.each(['drawer','cached','pagehide','unmount'] as const)('普通划词旧 More Settings 回调在 %s 后不能借用新会话',async reason=>{
+    await mount();await openFeature('selection');const stale=eventOf(document.querySelector('.drawer-settings-link')!)
+    if(reason==='drawer'){eventOf(document.querySelector('.drawer-header > button')!)();await drain();await openFeature('selection')}
+    if(reason==='cached'){shown.value=false;await drain();shown.value=true;await drain();await openFeature('selection')}
+    if(reason==='pagehide')win.dispatchEvent(new win.Event('pagehide'))
+    if(reason==='unmount')app.unmount()
+    await drain();await stale();await drain();expect(createTab).not.toHaveBeenCalled();expect(openOptions).not.toHaveBeenCalled();expect(close).not.toHaveBeenCalled()
+    if(reason==='drawer'||reason==='cached'){
+      await eventOf(document.querySelector('.drawer-settings-link')!)();await drain();expect(createTab).toHaveBeenCalledOnce();expect(new URL(createTab.mock.calls[0][0].url).searchParams.get('returnTabId')).toBe('7');expect(close).toHaveBeenCalledOnce()
+    }
+  })
+  it('普通划词打开失败保留可恢复错误，迟到成功不能关闭重新激活的 Popup',async()=>{
+    await mount();await openFeature('selection');createTab.mockRejectedValueOnce(new Error('fixture-open-failure'))
+    await eventOf(document.querySelector('.drawer-settings-link')!)();await drain()
+    expect(state.noticeType).toBe('error');expect(close).not.toHaveBeenCalled();expect(state.drawerVisible).toBe(true);expect(createTab).toHaveBeenCalledOnce()
+    const reply=deferred();createTab.mockReturnValueOnce(reply.promise);const cached=eventOf(document.querySelector('.drawer-settings-link')!),pending=cached();await drain()
+    expect(createTab).toHaveBeenCalledTimes(2);shown.value=false;await drain();shown.value=true;await drain();reply.resolve({id:8});await pending;await cached();await drain()
+    expect(createTab).toHaveBeenCalledTimes(2);expect(close).not.toHaveBeenCalled();expect(state.notice).toBe('')
+    await openFeature('selection');await eventOf(document.querySelector('.drawer-settings-link')!)();await drain()
+    expect(createTab).toHaveBeenCalledTimes(3);expect(new URL(createTab.mock.calls[2][0].url).hash).toBe('#settings-selection');expect(close).toHaveBeenCalledOnce();expect(commands()).toHaveLength(0)
+  })
+  it('无正文诊断直达适配目标并携带固定来源，普通网站导航不附加来源且服务参数不丢失',async()=>{
     win.location.search='?sourceTabId=7';getTab.mockResolvedValue([{id:99,url:'https://other.example/'}]);await mount()
     runtimeEvent({type:'fullPageTranslationState',isTranslated:true,toolbarStatus:'error',documentToken:'popup-fixture-document',diagnostic:{code:'no-content'}},{id:'fixture-extension',url:'https://example.com/a',tab:{id:7,url:'https://example.com/a'},frameId:0});await drain()
     expectCollapsedDiagnostic();await openDiagnosticDetails();const inspect=document.querySelector('[data-diagnostic-primary][data-diagnostic-action="site-settings"]')!;await eventOf(inspect)();await drain()

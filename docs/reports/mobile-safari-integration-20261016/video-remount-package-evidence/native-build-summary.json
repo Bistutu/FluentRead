@@ -1,0 +1,171 @@
+{
+  "sourceCommit": "a21bb4e9c6b112ca7757bbe0f1420c0d491b9c84",
+  "scope": "LOCAL_UNSIGNED_BUILD_ONLY_NO_BOOT_INSTALL_TEST_OR_RELEASE",
+  "webVersion": "0.0.39",
+  "nativeVersion": "1.0",
+  "nativeBuild": "1",
+  "minimumOS": {
+    "ios": "26.0",
+    "macos": "14.0"
+  },
+  "targets": [
+    {
+      "name": "FluentRead (iOS)",
+      "configurations": [
+        {
+          "id": "B51493BA3084CC8400512C98",
+          "name": "Debug",
+          "SDKROOT": "iphoneos",
+          "setting": "IPHONEOS_DEPLOYMENT_TARGET",
+          "version": "26.0"
+        },
+        {
+          "id": "B51493BB3084CC8400512C98",
+          "name": "Release",
+          "SDKROOT": "iphoneos",
+          "setting": "IPHONEOS_DEPLOYMENT_TARGET",
+          "version": "26.0"
+        }
+      ]
+    },
+    {
+      "name": "FluentRead (macOS)",
+      "configurations": [
+        {
+          "id": "B51493C13084CC8400512C98",
+          "name": "Debug",
+          "SDKROOT": "macosx",
+          "setting": "MACOSX_DEPLOYMENT_TARGET",
+          "version": "14.0"
+        },
+        {
+          "id": "B51493C23084CC8400512C98",
+          "name": "Release",
+          "SDKROOT": "macosx",
+          "setting": "MACOSX_DEPLOYMENT_TARGET",
+          "version": "14.0"
+        }
+      ]
+    },
+    {
+      "name": "FluentRead Extension (iOS)",
+      "configurations": [
+        {
+          "id": "B51493B63084CC8400512C98",
+          "name": "Debug",
+          "SDKROOT": "iphoneos",
+          "setting": "IPHONEOS_DEPLOYMENT_TARGET",
+          "version": "26.0"
+        },
+        {
+          "id": "B51493B73084CC8400512C98",
+          "name": "Release",
+          "SDKROOT": "iphoneos",
+          "setting": "IPHONEOS_DEPLOYMENT_TARGET",
+          "version": "26.0"
+        }
+      ]
+    },
+    {
+      "name": "FluentRead Extension (macOS)",
+      "configurations": [
+        {
+          "id": "B51493BD3084CC8400512C98",
+          "name": "Debug",
+          "SDKROOT": "macosx",
+          "setting": "MACOSX_DEPLOYMENT_TARGET",
+          "version": "14.0"
+        },
+        {
+          "id": "B51493BE3084CC8400512C98",
+          "name": "Release",
+          "SDKROOT": "macosx",
+          "setting": "MACOSX_DEPLOYMENT_TARGET",
+          "version": "14.0"
+        }
+      ]
+    }
+  ],
+  "buildStages": [
+    {
+      "stage": "package",
+      "exitCode": 0,
+      "log": {
+        "file": "native-followthrough-package.log",
+        "bytes": 9936,
+        "sha256": "c565cf8662811bead426419fef508ff9b305df7b04d719172658e7090a19a502"
+      }
+    },
+    {
+      "stage": "macos",
+      "exitCode": 0,
+      "log": {
+        "file": "native-followthrough-macos.log",
+        "bytes": 428045,
+        "sha256": "e476ff7b220cb71cf5753365567dc7f2ffd4d817fc268569a2c6b3ca5c09f009"
+      }
+    },
+    {
+      "stage": "ios-simulator",
+      "exitCode": 0,
+      "log": {
+        "file": "native-followthrough-ios-simulator.log",
+        "bytes": 438428,
+        "sha256": "8382e6ec129fdf0ab79115c1d1a0f8963da24c4be93dead68a1b4ebcf4309c10"
+      }
+    },
+    {
+      "stage": "iphoneos",
+      "exitCode": 0,
+      "log": {
+        "file": "native-followthrough-iphoneos.log",
+        "bytes": 254129,
+        "sha256": "b258861601fc1b837f91b0e8bef85a2df3e69a4478f2f84a975daa6d8d8c33fb"
+      }
+    }
+  ],
+  "compiledConfigurations": "Release only; eight PBX configuration settings read back, not eight builds",
+  "webFilesPerCopy": 467,
+  "copiedWebTrees": 4,
+  "byteComparisons": 1868,
+  "fullMapsRecomputed": 11,
+  "infoDictionaries": 6,
+  "MachOPlatformAndMinimumOSValidatedSlices": 10,
+  "signing": "Developer signing disabled; saved host-selected observations classify four macOS/Simulator bundles as linker ad hoc with no team and two iPhoneOS bundles as unsigned. No all-slice signature certification.",
+  "runtimeAcceptance": false,
+  "warnings": [
+    "world",
+    "open_in_tab",
+    "match_about_blank"
+  ],
+  "independentFindings": [],
+  "limits": [
+    "Only ordinary file/hash/JSON/plist/PBX and MachO-byte parsing. No SDK/Node/file/codesign/otool/other toolchain, process/resource query, installation, boot, browser, test or candidate execution.",
+    "Source commit attribution uses Root saved before/after clean git/source observations, commit-bound capture checks and10 current source pins. This review did not run Git or establish a complete independent repository-tree attestation. Source web inventory is a single postbuild sample, not an independent before/after pair.",
+    "Eight target/config deployment settings are file readback; actual native compile commands are Release only, not eight distinct builds.",
+    "Saved codesign details are host-selected-slice observations. Independent static10-slice architecture/platform/minOS checks do not authenticate every slice signature, App Store eligibility, distribution signing or physical-device installability.",
+    "This is limited compile/identity evidence only. Safari runtime, permissions, settings/persistence, real-device behavior, long background and full mobile acceptance are not proved."
+  ],
+  "rawEvidencePins": [
+    {
+      "file": "native-followthrough-build-results.json",
+      "bytes": 6457,
+      "sha256": "91e67f333cecd8f0d9d7e2aeae6d52c222dde9323920ec0475b8b90e201cf93d"
+    },
+    {
+      "file": "native-project-followthrough/fluentread-package-report.json",
+      "bytes": 9000,
+      "sha256": "8fd89284738d46b60f9c10869bb1dfc34bbb41edb5406e0b9120861e870fdbc0"
+    },
+    {
+      "file": "native-identity-followthrough/compiled-artifact-identities.json",
+      "bytes": 50171,
+      "sha256": "82229bd40644a88c988a58925344537e21f5be785dd0d27378c26046123e99c3"
+    },
+    {
+      "file": "native-identity-followthrough/independent-compiled-artifact-review.json",
+      "bytes": 33623,
+      "sha256": "5e8da452cc6e5438c8320687a427fb4c9930587c7d5a6889469b2b9c752d7ff9"
+    }
+  ]
+}

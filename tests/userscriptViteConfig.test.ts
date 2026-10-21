@@ -1,7 +1,7 @@
 import {mimoRetirementSource} from '@/src/core/i18n/messages/mimoRetirement';
 import {createUserscriptSettingsDataPlugin} from '@/userscript/settingsDataPlugin';
 import * as originalAppearance from '@/src/core/config/interfaceAppearance';
-import {readFileSync, realpathSync, mkdirSync, mkdtempSync, rmSync, writeFileSync} from 'node:fs';
+import {readFileSync, readdirSync, realpathSync, mkdirSync, mkdtempSync, rmSync, writeFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import {tmpdir} from 'node:os';
 import {createHash, createHmac, createCipheriv} from 'node:crypto';
@@ -11,6 +11,7 @@ import {gunzipSync, gzipSync} from 'node:zlib';
 import {runInNewContext} from 'node:vm';
 import {describe, expect, it, vi} from 'vitest';
 import {ungzip} from 'pako';
+import {gzipUserscriptBuildData} from '@/userscript/buildGzip';
 import {zhCNMessages, UI_LANGUAGE_BUNDLES, userscriptMessages} from '@/userscript/languageBundles';
 import {zhCNMessages as extensionChinese} from '@/src/core/i18n/messages/zh-CN';
 import {UI_LANGUAGE_BUNDLES as extensionBundles} from '@/src/core/i18n/bundles';
@@ -34,6 +35,7 @@ import {data as lockedFrancData} from 'franc-min/data.js';
 import {createUserscriptInlineCssCompressionPlugin} from '@/userscript/inlineCssPlugin';
 import {
     default as userscriptConfig,
+    bundledLibraryNotices,
     executionGuardEnd,
     executionGuardStart,
     createUserscriptCatalogCompressionPlugin,
@@ -161,6 +163,146 @@ describe('userscript bundled CommonJS initialization', () => {
     });
 });
 
+describe('userscript build gzip portability', () => {
+    it('roundtrips every byte and an offset view through independent gzip and existing binary decoders', () => {
+        const storage = Uint8Array.from({length: 4_098}, (_, index) => index % 256);
+        const input = storage.subarray(1, storage.length - 1);
+        const before = input.slice();
+        const encoded = gzipUserscriptBuildData(input);
+        expect(gunzipSync(encoded)).toEqual(Buffer.from(before));
+        expect(inflateBundledTldtsData(encoded)).toEqual(before);
+        expect(input).toEqual(before);
+        expect(gunzipSync(gzipUserscriptBuildData(new Uint8Array()))).toEqual(Buffer.alloc(0));
+    });
+
+    it('preserves complete UTF-8 strings including combining marks, supplementary code points and NUL', () => {
+        const text = '流畅阅读 — café e\u0301 🙂\0\n'.repeat(32);
+        const input = Buffer.from(text, 'utf8');
+        const encoded = gzipUserscriptBuildData(input);
+        expect(gunzipSync(encoded)).toEqual(input);
+        expect(inflateBundledFrancData(encoded)).toBe(text);
+    });
+
+    it('repeats exact bytes across fresh input views and intervening unrelated encodes without mutating input', () => {
+        const input = Buffer.from('中文 CSS/data repeatability 🙂\n'.repeat(96));
+        const before = Buffer.from(input);
+        const first = gzipUserscriptBuildData(input);
+        for (let index = 0; index < 4; index++) {
+            gzipUserscriptBuildData(Uint8Array.of(index, 255, 0));
+            expect(gzipUserscriptBuildData(new Uint8Array(input))).toEqual(first);
+        }
+        expect(input).toEqual(before);
+        expect(gunzipSync(first)).toEqual(before);
+    });
+
+    it('restores complete real catalog plugin data when the host native gzip encoder is unavailable', async () => {
+        const zlib = await import('node:zlib');
+        const {syncBuiltinESMExports} = await import('node:module');
+        const spy = vi.spyOn(zlib.default, 'gzipSync').mockImplementation(() => {
+            throw new Error('Host native gzip encoder is unavailable');
+        });
+        syncBuiltinESMExports();
+        try {
+            const plugin = createUserscriptCatalogCompressionPlugin() as unknown as {
+                resolveId: (source: string, importer: string) => string | null;
+                load: (id: string) => string | null;
+            };
+            const importer = resolve(process.cwd(), 'src/core/site-adaptation/catalog.ts');
+            for (const name of ['established', 'websites', 'profiles']) {
+                const expected = JSON.parse(readFileSync(resolve(process.cwd(), `src/core/site-adaptation/catalog/${name}.json`), 'utf8'));
+                const id = plugin.resolveId(`./catalog/${name}.json`, importer);
+                expect(id).not.toBeNull();
+                const source = plugin.load(id!);
+                const base64 = source?.match(/atob\("([A-Za-z0-9+/=]+)"\)/u)?.[1];
+                expect(base64).toBeTruthy();
+                const encoded = Buffer.from(base64!, 'base64');
+                expect(gunzipSync(encoded)).toEqual(Buffer.from(JSON.stringify(expected)));
+                expect(JSON.parse(inflateBundledFrancData(encoded))).toEqual(expected);
+            }
+            expect(spy).not.toHaveBeenCalled();
+        } finally {
+            spy.mockRestore();
+            syncBuiltinESMExports();
+        }
+    });
+});
+
+describe('userscript bundled library notices', () => {
+    it('retains every installed package heading and every complete license while sharing only exact bodies', () => {
+        const root = process.cwd();
+        const vueRoot = realpathSync(resolve(root, 'node_modules/vue'));
+        const fromVue = createRequire(resolve(vueRoot, 'package.json'));
+        const domRoot = resolve(realpathSync(fromVue.resolve('@vue/runtime-dom/package.json')), '..');
+        const fromDom = createRequire(resolve(domRoot, 'package.json'));
+        const packages = ['@vue/reactivity', '@vue/runtime-core', '@vue/runtime-dom', '@vue/shared']
+            .map(name => ({moduleId: realpathSync(fromDom.resolve(name)),
+                packageRoot: resolve(realpathSync(fromDom.resolve(`${name}/package.json`)), '..')}));
+        for (const name of ['@ctrl/tinycolor', 'pako']) {
+            const packageRoot = realpathSync(resolve(root, 'node_modules', name));
+            packages.push({moduleId: realpathSync(createRequire(resolve(root, 'package.json')).resolve(name)), packageRoot});
+        }
+        const originals = packages.map(({moduleId, packageRoot}) => {
+            const manifest = JSON.parse(readFileSync(resolve(packageRoot, 'package.json'), 'utf8'));
+            const file = readdirSync(packageRoot).find(name => /^LICEN[CS]E(?:[.-].*)?$/iu.test(name))!;
+            return {moduleId, heading: `${manifest.name} ${manifest.version} — ${manifest.license}`,
+                body: readFileSync(resolve(packageRoot, file), 'utf8').trim()};
+        });
+        const shared = originals.slice(0, 4), tinycolor = originals[4], pako = originals[5];
+        expect(shared.every(notice => notice.body === shared[0].body)).toBe(true);
+        // 相同 MIT 授权正文不能掩盖不同的完整版权文本。
+        expect(tinycolor.body).toContain('Permission is hereby granted');
+        expect(shared[0].body).toContain('Permission is hereby granted');
+        expect(tinycolor.body).not.toBe(shared[0].body);
+        const ids = originals.map(notice => notice.moduleId);
+        const result = bundledLibraryNotices([
+            `\0${ids[0]}`, resolve(root, 'src/app/content/runtime.ts'), ...ids, ids[0],
+        ]);
+        expect(result).toBe([
+            `/*\n${tinycolor.heading}\n${tinycolor.body}\n*/`,
+            `/*\n${shared.map(notice => notice.heading).join('\n')}\n${shared[0].body}\n*/`,
+            `/*\n${pako.heading}\n${pako.body}\n*/`,
+        ].join('\n'));
+        for (const notice of originals) expect(result.split(notice.heading)).toHaveLength(2);
+        expect(bundledLibraryNotices([...ids].reverse())).toBe(result);
+        expect(bundledLibraryNotices([`\0${ids[0]}`, resolve(root, 'src/app/content/runtime.ts')])).toBe('');
+    });
+
+    it('does not merge copyright or internal whitespace differences and keeps each first-seen group intact', () => {
+        const fixture = mkdtempSync(resolve(tmpdir(), 'fluentread-library-notices-'));
+        const permission = 'Permission is hereby granted, free of charge.\nTHE SOFTWARE IS PROVIDED "AS IS".';
+        const first = `Copyright (c) First owner\n\n${permission}`;
+        const differentCopyright = `Copyright (c) Second owner\n\n${permission}`;
+        const differentWhitespace = first.replace('\n\n', '\r\n\r\n');
+        const bodies = [first, differentCopyright, `\n ${first}\n`, differentWhitespace];
+        try {
+            const ids = bodies.map((body, index) => {
+                const directory = resolve(fixture, `node_modules/.pnpm/notice-${index}@1.0.0/node_modules/notice-${index}`);
+                mkdirSync(directory, {recursive: true});
+                writeFileSync(resolve(directory, 'package.json'), JSON.stringify({name: `notice-${index}`, version: '1.0.0', license: 'MIT'}));
+                writeFileSync(resolve(directory, 'LICENSE'), body);
+                return resolve(directory, 'index.js');
+            });
+            expect(bundledLibraryNotices(ids)).toBe([
+                `/*\nnotice-0 1.0.0 — MIT\nnotice-2 1.0.0 — MIT\n${first}\n*/`,
+                `/*\nnotice-1 1.0.0 — MIT\n${differentCopyright}\n*/`,
+                `/*\nnotice-3 1.0.0 — MIT\n${differentWhitespace}\n*/`,
+            ].join('\n'));
+        } finally {rmSync(fixture, {recursive: true, force: true});}
+    });
+
+    it('still rejects a complete license containing a closing comment delimiter', () => {
+        const fixture = mkdtempSync(resolve(tmpdir(), 'fluentread-unsafe-notice-'));
+        const directory = resolve(fixture, 'node_modules/.pnpm/unsafe@1.0.0/node_modules/unsafe');
+        try {
+            mkdirSync(directory, {recursive: true});
+            writeFileSync(resolve(directory, 'package.json'), JSON.stringify({name: 'unsafe', version: '1.0.0', license: 'MIT'}));
+            writeFileSync(resolve(directory, 'LICENSE'), 'Copyright (c) Owner\n*/\nUntrusted code');
+            expect(() => bundledLibraryNotices([resolve(directory, 'index.js')]))
+                .toThrow('Unsafe bundled library license comment: unsafe');
+        } finally {rmSync(fixture, {recursive: true, force: true});}
+    });
+});
+
 describe('userscript inline CSS compression', () => {
     const root = process.cwd();
     const id = `${resolve(root, 'src/app/content/page.css')}?inline`;
@@ -273,7 +415,7 @@ describe('userscript browser shim injection', () => {
         for (const [language, bundle] of Object.entries(UI_LANGUAGE_BUNDLES)) {
             const original = extensionBundles[language as keyof typeof extensionBundles];
             const materialSources = Object.keys(learningMaterialLegacyText[language as keyof typeof learningMaterialLegacyText]);
-            expect(Object.keys(original.legacyText).filter(source => !(source in bundle.legacyText)).sort()).toEqual([...materialSources, mimoRetirementSource].sort());
+            expect(Object.keys(original.legacyText).filter(source => !(source in bundle.legacyText)).sort()).toEqual([...materialSources, mimoRetirementSource, '移动端 / X 自动贴底'].sort());
             const materialPatterns = learningMaterialPatterns.map(({pattern}) => pattern);
             for (const phase of ['early', 'late'] as const) {
                 expect(bundle.legacyPatterns[phase]).toEqual(original.legacyPatterns[phase].filter(([source]) => !materialPatterns.includes(source)));
@@ -316,7 +458,7 @@ describe('userscript browser shim injection', () => {
             ? publishedMessages[language]![key] : original.messages[key]);
         // 原文案继续使用root已发布投影，材料扩展界面文本不重新进入脚本固定资源。
         const materialSources = new Set(Object.keys(learningMaterialLegacyText[language as keyof typeof learningMaterialLegacyText]));
-        expect(projected.legacyText).toEqual(Object.fromEntries(Object.entries(original.legacyText).filter(([source]) => !materialSources.has(source) && source !== mimoRetirementSource)));
+        expect(projected.legacyText).toEqual(Object.fromEntries(Object.entries(original.legacyText).filter(([source]) => !materialSources.has(source) && source !== mimoRetirementSource && source !== '移动端 / X 自动贴底')));
         const materialPatterns = learningMaterialPatterns.map(({pattern}) => pattern);
         for (const phase of ['early', 'late'] as const) expect(projected.legacyPatterns[phase]).toEqual(original.legacyPatterns[phase].filter(([source]) => !materialPatterns.includes(source)));
         expect(JSON.stringify(original)).toBe(originalBefore);
@@ -564,6 +706,29 @@ describe('userscript browser shim injection', () => {
         expect(bootstrap).toBeGreaterThan(condition);
         expect(entry).toBeGreaterThan(bootstrap);
         expect(guardEnd).toBeGreaterThan(entry);
+
+        const notices = wrapped.slice(0, guardStart);
+        const iconsLicense = readFileSync(resolve(process.cwd(), 'public/third-party-notices/lobe-icons-MIT.txt'), 'utf8');
+        const tinycolorLicense = readFileSync(resolve(process.cwd(), 'public/third-party-notices/tinycolor-MIT.txt'), 'utf8');
+        const permissionStart = 'Permission is hereby granted';
+        const iconsStart = iconsLicense.indexOf(permissionStart);
+        const tinycolorStart = tinycolorLicense.indexOf(permissionStart);
+        expect(notices).toContain(iconsLicense.slice(0, iconsStart).trimEnd());
+        expect(notices).toContain('@ctrl/tinycolor 3.6.1 — MIT');
+        expect(notices).toContain(tinycolorLicense.slice(0, tinycolorStart).trimEnd());
+        expect(notices).toContain(iconsLicense.slice(iconsStart).trimEnd());
+        const sharedMitStart = notices.indexOf(`/*\n${iconsLicense.slice(0, iconsStart).trimEnd()}`);
+        expect(sharedMitStart).toBeGreaterThanOrEqual(0);
+        const sharedMitEnd = notices.indexOf('\n*/', sharedMitStart);
+        expect(sharedMitEnd).toBeGreaterThan(sharedMitStart);
+        expect(notices.slice(sharedMitStart, sharedMitEnd + 3).split(permissionStart)).toHaveLength(2);
+        const unicodeLicense = readFileSync(resolve(process.cwd(), 'public/third-party-notices/unicode-17.0.0.txt'), 'utf8');
+        expect(notices).toContain(`/*\n${unicodeLicense}\n*/`);
+        expect(wrapped.slice(guardStart)).toBe([
+            executionGuardStart,
+            'if (!globalThis.__fluentReadUserscriptBootstrapped) {',
+            'BOOTSTRAP_SENTINEL', 'ENTRY_SENTINEL', '}', executionGuardEnd,
+        ].join('\n'));
     });
 
     it('在 app 使用的 public contract 边界替换扩展专属 feature 与可信 GM 凭据上下文', () => {

@@ -376,10 +376,11 @@
       "scenario": "实际录制设置、冲突重验与页面停用"
     },
     "src/features/settings/ui/SelectionSettings.vue": {
-      "kind": "frozen-debt",
-      "sourceSha256": "7a5cf69c4e62441aa13e150f9af8bb5c6b09755101163e5d784306d38ddca7b5",
-      "reason": "作为统一划词翻译的设置入口，说明翻译卡片与按需学习，并提供即时预览。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
-      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+      "kind": "behavior",
+      "tests": [
+        "tests/selectionSettingsConsumer.test.ts"
+      ],
+      "scenario": "真实 SelectionSettings SFC 与 FeatureEnableCard 的 DOM 点击：单词/句子预览内容与 ARIA、预览不改配置、启停与原显示模式恢复及兼容字段联动"
     },
     "src/features/settings/ui/SentenceHighlightStyleSettings.vue": {
       "kind": "behavior",
@@ -444,10 +445,11 @@
       "scenario": "实际字幕模型加载、清理和能力变化"
     },
     "src/features/settings/ui/VideoSubtitleAppearanceSettings.vue": {
-      "kind": "frozen-debt",
-      "sourceSha256": "7bea99275ca33c5690ccbdc840bc35b8a0817c6c529b23e1c8a21ad0729d3152",
-      "reason": "提供视频字幕外观设置，并用同一套 CSS 变量展示隔离的实时预览。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
-      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+      "kind": "behavior",
+      "tests": [
+        "tests/videoSubtitleAppearanceSettingsLifecycle.test.ts"
+      ],
+      "scenario": "真实模板自动贴底、手动偏移联动、位置显隐、七语标签/ARIA、字号与皮肤预览、重置及草稿替换"
     },
     "src/features/settings/ui/WebDavBackup.vue": {
       "kind": "frozen-debt",

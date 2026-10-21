@@ -1,0 +1,299 @@
+{
+  "schema": 1,
+  "status": "WEB_AND_UNSIGNED_NATIVE_BUILD_VALIDATED_NATIVE_UI_NOT_ACCEPTED",
+  "sourceBaseCommit": "f6216d1cb29b38b98f6a28ccd37f8624909bb3d9",
+  "sourceFiles": [
+    {
+      "path": "src/app/popup/PopupApp.vue",
+      "bytes": 80734,
+      "sha256": "d478b99ca2d8a5e67d026cb5fc7d3b88bc4d3a4b3fef1835ddea614f44616367"
+    },
+    {
+      "path": "tests/popupAppLifecycle.test.ts",
+      "bytes": 101899,
+      "sha256": "b3f1d40096dc1b2c00c0459adc3d4ecea5f5b78e817f533ed4e44ac306e48112"
+    }
+  ],
+  "sourceUnchangedAcrossValidation": true,
+  "redTest": {
+    "actualOuterExitCode": 1,
+    "passed": 0,
+    "failed": 1,
+    "filteredSkipped": 112,
+    "observedFailure": "expected requestAccess spy to be called 1 times, but got 0 times",
+    "sourceTestSHA256": "25b58a6927ddbf6151da303039bab1c8ef6418015532680596997af86a103f20",
+    "actualToolSession": 76685,
+    "completionToolChunk": "4d6350",
+    "scope": "REAL_VUE_TEMPLATE_PORTS_NOT_ACTUAL_SAFARI_EVENT_ORDER",
+    "evidence": {
+      "path": "root-red-test-observation.json",
+      "bytes": 833,
+      "sha256": "ce7cc5154559612bda61897da4a5148ab517678aedd2fc90b8b44f722dc0bff0"
+    }
+  },
+  "mismatchedFilter": {
+    "passed": 0,
+    "filteredSkipped": 113,
+    "exitCode": 0,
+    "acceptedAsProof": false
+  },
+  "focusedTests": {
+    "files": 5,
+    "passed": 276,
+    "failed": 0,
+    "skipped": 0,
+    "byFile": {
+      "popupAppLifecycle.test.ts": 117,
+      "popupPageActionsOwnership.test.ts": 77,
+      "freeProviderPermissions.test.ts": 48,
+      "popupFeatureVisibility.test.ts": 31,
+      "settingsActionContext.test.ts": 3
+    },
+    "newCases": 5
+  },
+  "webCommands": [
+    {
+      "label": "00-focus-before",
+      "exitCode": 0
+    },
+    {
+      "label": "01-focused-tests",
+      "exitCode": 0
+    },
+    {
+      "label": "02-typecheck",
+      "exitCode": 0
+    },
+    {
+      "label": "03-chrome-build",
+      "exitCode": 0
+    },
+    {
+      "label": "04-firefox-build",
+      "exitCode": 0
+    },
+    {
+      "label": "05-safari-web-build",
+      "exitCode": 0
+    },
+    {
+      "label": "06-safari-package-verify",
+      "exitCode": 0
+    },
+    {
+      "label": "07-focus-after",
+      "exitCode": 0
+    }
+  ],
+  "webCommandClosure": {
+    "timedOut": false,
+    "allOwnGroupsAbsent": true,
+    "allLeadersReaped": true,
+    "cleanupErrors": []
+  },
+  "webFocus": {
+    "before": null,
+    "after": null,
+    "observationAvailable": false,
+    "sameFrontmostApplicationVerified": false
+  },
+  "webEvidence": [
+    {
+      "path": "validation-result.json",
+      "bytes": 14664,
+      "sha256": "5d5e0ea6b01ebde631b3a60c218ba2c249ad27ac749d97297754d298118727f5"
+    },
+    {
+      "path": "01-focused-tests.stdout.log",
+      "bytes": 2413,
+      "sha256": "66389ff2501b04ad97161d2992616e230cd0021cc83c1518ee0002281d57926e"
+    }
+  ],
+  "nativeBuild": {
+    "status": "PASSED",
+    "platforms": [
+      "macOS",
+      "iOS Simulator",
+      "iPhoneOS"
+    ],
+    "codeSigningAllowed": false,
+    "sourceBaseCommit": "f6216d1cb29b38b98f6a28ccd37f8624909bb3d9",
+    "commands": [
+      {
+        "label": "00-git-head",
+        "exitCode": 0,
+        "timedOut": false,
+        "ownGroupAbsent": true,
+        "leaderReaped": true
+      },
+      {
+        "label": "01-git-status",
+        "exitCode": 0,
+        "timedOut": false,
+        "ownGroupAbsent": true,
+        "leaderReaped": true
+      },
+      {
+        "label": "02-package",
+        "exitCode": 0,
+        "timedOut": false,
+        "ownGroupAbsent": true,
+        "leaderReaped": true
+      },
+      {
+        "label": "03-macos",
+        "exitCode": 0,
+        "timedOut": false,
+        "ownGroupAbsent": true,
+        "leaderReaped": true
+      },
+      {
+        "label": "04-ios-simulator",
+        "exitCode": 0,
+        "timedOut": false,
+        "ownGroupAbsent": true,
+        "leaderReaped": true
+      },
+      {
+        "label": "05-iphoneos",
+        "exitCode": 0,
+        "timedOut": false,
+        "ownGroupAbsent": true,
+        "leaderReaped": true
+      }
+    ],
+    "webFiles": 467,
+    "webCopies": [
+      {
+        "matchedWebFiles": 467,
+        "totalFiles": 467
+      },
+      {
+        "matchedWebFiles": 467,
+        "totalFiles": 467
+      },
+      {
+        "matchedWebFiles": 467,
+        "totalFiles": 469
+      },
+      {
+        "matchedWebFiles": 467,
+        "totalFiles": 469
+      }
+    ],
+    "evidence": {
+      "path": "native-build/native-build-result.json",
+      "bytes": 86981,
+      "sha256": "26068feada9189377b38e7746b6d91ca765c186061aea3e5c37bf3907cd36d1a"
+    },
+    "actualRootOuterExitCode": 0,
+    "actualRootToolSession": 11189,
+    "actualRootCompletionChunk": "24a26d",
+    "installPerformed": false,
+    "runtimePerformed": false
+  },
+  "priorNativeA5": {
+    "passed": 0,
+    "skipped": 1,
+    "failed": 0,
+    "actualCause": "UNKNOWN",
+    "templateReproductionProvesSameCause": false,
+    "fixedA5Acceptance": false,
+    "evidence": "../fresh-local-safari-article-5/article5-execution-report.json"
+  },
+  "userscript": {
+    "entrypointOrSharedModuleChanged": false,
+    "builtThisRound": false,
+    "priorToastValidation": "SEPARATE_EVIDENCE_NOT_RELABELED"
+  },
+  "nativeUIAcceptance": false,
+  "configurationRetention": "UNKNOWN",
+  "liveProviderAcceptance": false,
+  "referenceRepositoriesUsed": false,
+  "fullGoalComplete": false,
+  "evidenceLocation": "research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/popup-focus-permission-refresh-followup-1 (outside repository)",
+  "auditAndDocumentation": {
+    "passed": true,
+    "commands": [
+      {
+        "label": "00-test-audit",
+        "exitCode": 0,
+        "timedOut": false,
+        "ownGroupAbsent": true,
+        "leaderReaped": true
+      },
+      {
+        "label": "01-docs-build",
+        "exitCode": 0,
+        "timedOut": false,
+        "ownGroupAbsent": true,
+        "leaderReaped": true
+      },
+      {
+        "label": "02-storybook-build",
+        "exitCode": 0,
+        "timedOut": false,
+        "ownGroupAbsent": true,
+        "leaderReaped": true
+      },
+      {
+        "label": "03-docs-check",
+        "exitCode": 0,
+        "timedOut": false,
+        "ownGroupAbsent": true,
+        "leaderReaped": true
+      }
+    ],
+    "evidence": {
+      "path": "docs-validation/docs-validation-result.json",
+      "bytes": 6549,
+      "sha256": "4ce6664a2d659d1143af7b3a14d037e90ff317fa47beb25a68191b5e3bd0aab5"
+    },
+    "actualRootOuterExitCode": 0,
+    "actualRootToolSession": 21586,
+    "actualRootCompletionChunk": "0f9f3f",
+    "registrationCountIsExecutedTestCount": false,
+    "registrationAudit": {
+      "files": 761,
+      "cases": 14257
+    }
+  },
+  "installed703fNativeFollowup": {
+    "A6": {
+      "rootReview": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-local-safari-article-6/root-execution-review.json",
+        "bytes": 1981,
+        "sha256": "c0eee5377d2cf02f5c482b58905d13de8dcdaf9b3bc8ee97957021575d705c27"
+      },
+      "report": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-local-safari-article-6/article6-execution-report.json",
+        "bytes": 48850,
+        "sha256": "ee24bc41ade656e1c960893838fec02c5562ffbab44c848227a3318b5b4bf8b1"
+      },
+      "Translate": 1,
+      "permissionChoices": 0,
+      "Restore": 0,
+      "formal": "0pass/1skip/0fail",
+      "nativeMicrosoftPromptObservedAndOriginalViewed": true,
+      "grantOrProviderAcceptance": false
+    },
+    "A7": {
+      "rootReview": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-local-safari-article-7/root-execution-review.json",
+        "bytes": 1220,
+        "sha256": "34f732e7088a3da2835dc4878fbe8eece0ed71481f19f3e74c4429a7d3861ec0"
+      },
+      "report": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-local-safari-article-7/article7-execution-report.json",
+        "bytes": 50194,
+        "sha256": "fd2fb7cd00957fc7c1bc452a95797e5e8a237d8520c7a2484e96372909720994"
+      },
+      "Translate": 0,
+      "permissionChoices": 0,
+      "Restore": 0,
+      "formal": "0pass/1skip/0fail",
+      "stop": "Original pending Microsoft exact-host prompt absent/unknown; no Translate/navigation/permission fallback"
+    },
+    "completeSafariTranslationRestoreAccepted": false
+  }
+}

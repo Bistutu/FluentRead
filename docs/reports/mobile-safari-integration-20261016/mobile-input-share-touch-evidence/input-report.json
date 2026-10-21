@@ -1,0 +1,2472 @@
+{
+  "schemaVersion": 1,
+  "kind": "controlled-production-input-tooltip-responsive-ui",
+  "ok": true,
+  "sourceLabel": "current-input-safe-viewport-production-build",
+  "limits": [
+    "Controlled Edge production extension and local Microsoft protocol response; not a live provider, Safari, native mobile, OS keyboard, or browser zoom test.",
+    "VisualViewport numeric getters are controlled in the fixture main world and uniquely verified production isolated world."
+  ],
+  "rows": [
+    {
+      "name": "coarse390-safe280",
+      "wheels": [
+        {
+          "kind": "preview",
+          "deltaY": 400,
+          "before": 0,
+          "after": 400,
+          "events": [
+            {
+              "trusted": true,
+              "deltaY": 800,
+              "kind": "preview"
+            }
+          ],
+          "hostUnchanged": true
+        }
+      ],
+      "viewport": {
+        "main": {
+          "width": 366,
+          "height": 280,
+          "offsetLeft": 12,
+          "offsetTop": 80
+        },
+        "production": {
+          "width": 366,
+          "height": 280,
+          "offsetLeft": 12,
+          "offsetTop": 80
+        },
+        "actualOSKeyboard": false
+      },
+      "state": {
+        "measuredAt": 1792376103020,
+        "rect": {
+          "left": 35,
+          "top": 116.68860626220703,
+          "right": 355,
+          "bottom": 264.68860626220703,
+          "width": 320,
+          "height": 148
+        },
+        "clip": {
+          "left": 35,
+          "top": 116.68860626220703,
+          "right": 355,
+          "bottom": 264.68860626220703
+        },
+        "port": {
+          "left": 12,
+          "top": 80,
+          "right": 378,
+          "bottom": 360
+        },
+        "withinPort": true,
+        "font": 14,
+        "display": "block",
+        "opacity": "1",
+        "scroll": {
+          "top": 0,
+          "height": 148,
+          "client": 148,
+          "width": 320,
+          "clientWidth": 320
+        },
+        "buttons": [
+          {
+            "rect": {
+              "left": 231.09375,
+              "top": 124.68860626220703,
+              "right": 275.09375,
+              "bottom": 168.6885986328125,
+              "width": 44,
+              "height": 43.99999237060547
+            },
+            "font": 14,
+            "label": "关闭",
+            "disabled": false,
+            "withinTooltip": true,
+            "withinPort": true,
+            "hits": [
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              }
+            ]
+          }
+        ],
+        "previews": [
+          {
+            "rect": {
+              "left": 47,
+              "top": 176.6885986328125,
+              "right": 343,
+              "bottom": 256.6885986328125,
+              "width": 296,
+              "height": 80
+            },
+            "font": 16,
+            "label": "译文",
+            "disabled": false,
+            "withinTooltip": true,
+            "withinPort": true,
+            "hits": [
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              }
+            ],
+            "readonly": true,
+            "value": "Line 1: translated fixture content stays in its own preview.\nLine 2: translated fixture content stays in its own preview.\nLine 3: translated fixture content stays in its own preview.\nLine 4: translated fixture content stays in its own preview.\nLine 5: translated fixture content stays in its own preview.\nLine 6: translated fixture content stays in its own preview.\nLine 7: translated fixture content stays in its own preview.\nLine 8: translated fixture content stays in its own preview.\nLine 9: translated fixture content stays in its own preview.\nLine 10: translated fixture content stays in its own preview.\nLine 11: translated fixture content stays in its own preview.\nLine 12: translated fixture content stays in its own preview.\nLine 13: translated fixture content stays in its own preview.\nLine 14: translated fixture content stays in its own preview.\nLine 15: translated fixture content stays in its own preview.\nLine 16: translated fixture content stays in its own preview.\nLine 17: translated fixture content stays in its own preview.\nLine 18: translated fixture content stays in its own preview.\nLine 19: translated fixture content stays in its own preview.\nLine 20: translated fixture content stays in its own preview.\nLine 21: translated fixture content stays in its own preview.\nLine 22: translated fixture content stays in its own preview.\nLine 23: translated fixture content stays in its own preview.\nLine 24: translated fixture content stays in its own preview.\nLine 25: translated fixture content stays in its own preview.\nLine 26: translated fixture content stays in its own preview.\nLine 27: translated fixture content stays in its own preview.\nLine 28: translated fixture content stays in its own preview.\nLine 29: translated fixture content stays in its own preview.\nLine 30: translated fixture content stays in its own preview.\nLine 31: translated fixture content stays in its own preview.\nLine 32: translated fixture content stays in its own preview.\nLine 33: translated fixture content stays in its own preview.\nLine 34: translated fixture content stays in its own preview.\nLine 35: translated fixture content stays in its own preview.\nLine 36: translated fixture content stays in its own preview.\nLine 37: translated fixture content stays in its own preview.\nLine 38: translated fixture content stays in its own preview.\nLine 39: translated fixture content stays in its own preview.\nLine 40: translated fixture content stays in its own preview.\nLine 41: translated fixture content stays in its own preview.\nLine 42: translated fixture content stays in its own preview.\nLine 43: translated fixture content stays in its own preview.\nLine 44: translated fixture content stays in its own preview.\nLine 45: translated fixture content stays in its own preview.\nLine 46: translated fixture content stays in its own preview.\nLine 47: translated fixture content stays in its own preview.\nLine 48: translated fixture content stays in its own preview.",
+            "scrollTop": 0,
+            "scrollHeight": 2162,
+            "clientHeight": 78
+          }
+        ],
+        "sameTooltip": true,
+        "samePreview": true,
+        "coarse": true,
+        "host": {
+          "x": 0,
+          "y": 0,
+          "overflow": false
+        },
+        "layout": {
+          "width": 390,
+          "height": 760
+        }
+      }
+    },
+    {
+      "name": "same-tooltip-dynamic-safe-port",
+      "wheels": [
+        {
+          "kind": "preview",
+          "deltaY": -400,
+          "before": 400,
+          "after": 0,
+          "events": [
+            {
+              "trusted": true,
+              "deltaY": -800,
+              "kind": "preview"
+            }
+          ],
+          "hostUnchanged": true
+        }
+      ],
+      "before": {
+        "measuredAt": 1792376103331,
+        "rect": {
+          "left": 35,
+          "top": 115.796875,
+          "right": 355,
+          "bottom": 263.796875,
+          "width": 320,
+          "height": 148
+        },
+        "clip": {
+          "left": 35,
+          "top": 115.796875,
+          "right": 355,
+          "bottom": 263.796875
+        },
+        "port": {
+          "left": 12,
+          "top": 80,
+          "right": 378,
+          "bottom": 360
+        },
+        "withinPort": true,
+        "font": 14,
+        "display": "block",
+        "opacity": "1",
+        "scroll": {
+          "top": 0,
+          "height": 148,
+          "client": 148,
+          "width": 320,
+          "clientWidth": 320
+        },
+        "buttons": [
+          {
+            "rect": {
+              "left": 231.09375,
+              "top": 123.796875,
+              "right": 275.09375,
+              "bottom": 167.796875,
+              "width": 44,
+              "height": 44
+            },
+            "font": 14,
+            "label": "关闭",
+            "disabled": false,
+            "withinTooltip": true,
+            "withinPort": true,
+            "hits": [
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              }
+            ]
+          }
+        ],
+        "previews": [
+          {
+            "rect": {
+              "left": 47,
+              "top": 175.796875,
+              "right": 343,
+              "bottom": 255.796875,
+              "width": 296,
+              "height": 80
+            },
+            "font": 16,
+            "label": "译文",
+            "disabled": false,
+            "withinTooltip": true,
+            "withinPort": true,
+            "hits": [
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              }
+            ],
+            "readonly": true,
+            "value": "Line 1: translated fixture content stays in its own preview.\nLine 2: translated fixture content stays in its own preview.\nLine 3: translated fixture content stays in its own preview.\nLine 4: translated fixture content stays in its own preview.\nLine 5: translated fixture content stays in its own preview.\nLine 6: translated fixture content stays in its own preview.\nLine 7: translated fixture content stays in its own preview.\nLine 8: translated fixture content stays in its own preview.\nLine 9: translated fixture content stays in its own preview.\nLine 10: translated fixture content stays in its own preview.\nLine 11: translated fixture content stays in its own preview.\nLine 12: translated fixture content stays in its own preview.\nLine 13: translated fixture content stays in its own preview.\nLine 14: translated fixture content stays in its own preview.\nLine 15: translated fixture content stays in its own preview.\nLine 16: translated fixture content stays in its own preview.\nLine 17: translated fixture content stays in its own preview.\nLine 18: translated fixture content stays in its own preview.\nLine 19: translated fixture content stays in its own preview.\nLine 20: translated fixture content stays in its own preview.\nLine 21: translated fixture content stays in its own preview.\nLine 22: translated fixture content stays in its own preview.\nLine 23: translated fixture content stays in its own preview.\nLine 24: translated fixture content stays in its own preview.\nLine 25: translated fixture content stays in its own preview.\nLine 26: translated fixture content stays in its own preview.\nLine 27: translated fixture content stays in its own preview.\nLine 28: translated fixture content stays in its own preview.\nLine 29: translated fixture content stays in its own preview.\nLine 30: translated fixture content stays in its own preview.\nLine 31: translated fixture content stays in its own preview.\nLine 32: translated fixture content stays in its own preview.\nLine 33: translated fixture content stays in its own preview.\nLine 34: translated fixture content stays in its own preview.\nLine 35: translated fixture content stays in its own preview.\nLine 36: translated fixture content stays in its own preview.\nLine 37: translated fixture content stays in its own preview.\nLine 38: translated fixture content stays in its own preview.\nLine 39: translated fixture content stays in its own preview.\nLine 40: translated fixture content stays in its own preview.\nLine 41: translated fixture content stays in its own preview.\nLine 42: translated fixture content stays in its own preview.\nLine 43: translated fixture content stays in its own preview.\nLine 44: translated fixture content stays in its own preview.\nLine 45: translated fixture content stays in its own preview.\nLine 46: translated fixture content stays in its own preview.\nLine 47: translated fixture content stays in its own preview.\nLine 48: translated fixture content stays in its own preview.",
+            "scrollTop": 400,
+            "scrollHeight": 2162,
+            "clientHeight": 78
+          }
+        ],
+        "sameTooltip": true,
+        "samePreview": true,
+        "coarse": true,
+        "host": {
+          "x": 0,
+          "y": 0,
+          "overflow": false
+        },
+        "layout": {
+          "width": 390,
+          "height": 760
+        }
+      },
+      "viewport": {
+        "main": {
+          "width": 342,
+          "height": 260,
+          "offsetLeft": 24,
+          "offsetTop": 130
+        },
+        "production": {
+          "width": 342,
+          "height": 260,
+          "offsetLeft": 24,
+          "offsetTop": 130
+        },
+        "actualOSKeyboard": false
+      },
+      "state": {
+        "measuredAt": 1792376103451,
+        "rect": {
+          "left": 36,
+          "top": 142,
+          "right": 354,
+          "bottom": 290,
+          "width": 318,
+          "height": 148
+        },
+        "clip": {
+          "left": 36,
+          "top": 142,
+          "right": 354,
+          "bottom": 290
+        },
+        "port": {
+          "left": 24,
+          "top": 130,
+          "right": 366,
+          "bottom": 390
+        },
+        "withinPort": true,
+        "font": 14,
+        "display": "block",
+        "opacity": "1",
+        "scroll": {
+          "top": 0,
+          "height": 148,
+          "client": 148,
+          "width": 318,
+          "clientWidth": 318
+        },
+        "buttons": [
+          {
+            "rect": {
+              "left": 232.09375,
+              "top": 150,
+              "right": 276.09375,
+              "bottom": 194,
+              "width": 44,
+              "height": 44
+            },
+            "font": 14,
+            "label": "关闭",
+            "disabled": false,
+            "withinTooltip": true,
+            "withinPort": true,
+            "hits": [
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              }
+            ]
+          }
+        ],
+        "previews": [
+          {
+            "rect": {
+              "left": 48,
+              "top": 202,
+              "right": 342,
+              "bottom": 282,
+              "width": 294,
+              "height": 80
+            },
+            "font": 16,
+            "label": "译文",
+            "disabled": false,
+            "withinTooltip": true,
+            "withinPort": true,
+            "hits": [
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              }
+            ],
+            "readonly": true,
+            "value": "Line 1: translated fixture content stays in its own preview.\nLine 2: translated fixture content stays in its own preview.\nLine 3: translated fixture content stays in its own preview.\nLine 4: translated fixture content stays in its own preview.\nLine 5: translated fixture content stays in its own preview.\nLine 6: translated fixture content stays in its own preview.\nLine 7: translated fixture content stays in its own preview.\nLine 8: translated fixture content stays in its own preview.\nLine 9: translated fixture content stays in its own preview.\nLine 10: translated fixture content stays in its own preview.\nLine 11: translated fixture content stays in its own preview.\nLine 12: translated fixture content stays in its own preview.\nLine 13: translated fixture content stays in its own preview.\nLine 14: translated fixture content stays in its own preview.\nLine 15: translated fixture content stays in its own preview.\nLine 16: translated fixture content stays in its own preview.\nLine 17: translated fixture content stays in its own preview.\nLine 18: translated fixture content stays in its own preview.\nLine 19: translated fixture content stays in its own preview.\nLine 20: translated fixture content stays in its own preview.\nLine 21: translated fixture content stays in its own preview.\nLine 22: translated fixture content stays in its own preview.\nLine 23: translated fixture content stays in its own preview.\nLine 24: translated fixture content stays in its own preview.\nLine 25: translated fixture content stays in its own preview.\nLine 26: translated fixture content stays in its own preview.\nLine 27: translated fixture content stays in its own preview.\nLine 28: translated fixture content stays in its own preview.\nLine 29: translated fixture content stays in its own preview.\nLine 30: translated fixture content stays in its own preview.\nLine 31: translated fixture content stays in its own preview.\nLine 32: translated fixture content stays in its own preview.\nLine 33: translated fixture content stays in its own preview.\nLine 34: translated fixture content stays in its own preview.\nLine 35: translated fixture content stays in its own preview.\nLine 36: translated fixture content stays in its own preview.\nLine 37: translated fixture content stays in its own preview.\nLine 38: translated fixture content stays in its own preview.\nLine 39: translated fixture content stays in its own preview.\nLine 40: translated fixture content stays in its own preview.\nLine 41: translated fixture content stays in its own preview.\nLine 42: translated fixture content stays in its own preview.\nLine 43: translated fixture content stays in its own preview.\nLine 44: translated fixture content stays in its own preview.\nLine 45: translated fixture content stays in its own preview.\nLine 46: translated fixture content stays in its own preview.\nLine 47: translated fixture content stays in its own preview.\nLine 48: translated fixture content stays in its own preview.",
+            "scrollTop": 400,
+            "scrollHeight": 2162,
+            "clientHeight": 78
+          }
+        ],
+        "sameTooltip": true,
+        "samePreview": true,
+        "coarse": true,
+        "host": {
+          "x": 0,
+          "y": 0,
+          "overflow": false
+        },
+        "layout": {
+          "width": 390,
+          "height": 760
+        }
+      },
+      "closeDeferredToMinimumViewport": true
+    },
+    {
+      "name": "same-tooltip-minimum-safe58",
+      "wheels": [],
+      "before": {
+        "measuredAt": 1792376103802,
+        "rect": {
+          "left": 36,
+          "top": 142,
+          "right": 354,
+          "bottom": 290,
+          "width": 318,
+          "height": 148
+        },
+        "clip": {
+          "left": 36,
+          "top": 142,
+          "right": 354,
+          "bottom": 290
+        },
+        "port": {
+          "left": 24,
+          "top": 130,
+          "right": 366,
+          "bottom": 390
+        },
+        "withinPort": true,
+        "font": 14,
+        "display": "block",
+        "opacity": "1",
+        "scroll": {
+          "top": 0,
+          "height": 148,
+          "client": 148,
+          "width": 318,
+          "clientWidth": 318
+        },
+        "buttons": [
+          {
+            "rect": {
+              "left": 232.09375,
+              "top": 150,
+              "right": 276.09375,
+              "bottom": 194,
+              "width": 44,
+              "height": 44
+            },
+            "font": 14,
+            "label": "关闭",
+            "disabled": false,
+            "withinTooltip": true,
+            "withinPort": true,
+            "hits": [
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              }
+            ]
+          }
+        ],
+        "previews": [
+          {
+            "rect": {
+              "left": 48,
+              "top": 202,
+              "right": 342,
+              "bottom": 282,
+              "width": 294,
+              "height": 80
+            },
+            "font": 16,
+            "label": "译文",
+            "disabled": false,
+            "withinTooltip": true,
+            "withinPort": true,
+            "hits": [
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              }
+            ],
+            "readonly": true,
+            "value": "Line 1: translated fixture content stays in its own preview.\nLine 2: translated fixture content stays in its own preview.\nLine 3: translated fixture content stays in its own preview.\nLine 4: translated fixture content stays in its own preview.\nLine 5: translated fixture content stays in its own preview.\nLine 6: translated fixture content stays in its own preview.\nLine 7: translated fixture content stays in its own preview.\nLine 8: translated fixture content stays in its own preview.\nLine 9: translated fixture content stays in its own preview.\nLine 10: translated fixture content stays in its own preview.\nLine 11: translated fixture content stays in its own preview.\nLine 12: translated fixture content stays in its own preview.\nLine 13: translated fixture content stays in its own preview.\nLine 14: translated fixture content stays in its own preview.\nLine 15: translated fixture content stays in its own preview.\nLine 16: translated fixture content stays in its own preview.\nLine 17: translated fixture content stays in its own preview.\nLine 18: translated fixture content stays in its own preview.\nLine 19: translated fixture content stays in its own preview.\nLine 20: translated fixture content stays in its own preview.\nLine 21: translated fixture content stays in its own preview.\nLine 22: translated fixture content stays in its own preview.\nLine 23: translated fixture content stays in its own preview.\nLine 24: translated fixture content stays in its own preview.\nLine 25: translated fixture content stays in its own preview.\nLine 26: translated fixture content stays in its own preview.\nLine 27: translated fixture content stays in its own preview.\nLine 28: translated fixture content stays in its own preview.\nLine 29: translated fixture content stays in its own preview.\nLine 30: translated fixture content stays in its own preview.\nLine 31: translated fixture content stays in its own preview.\nLine 32: translated fixture content stays in its own preview.\nLine 33: translated fixture content stays in its own preview.\nLine 34: translated fixture content stays in its own preview.\nLine 35: translated fixture content stays in its own preview.\nLine 36: translated fixture content stays in its own preview.\nLine 37: translated fixture content stays in its own preview.\nLine 38: translated fixture content stays in its own preview.\nLine 39: translated fixture content stays in its own preview.\nLine 40: translated fixture content stays in its own preview.\nLine 41: translated fixture content stays in its own preview.\nLine 42: translated fixture content stays in its own preview.\nLine 43: translated fixture content stays in its own preview.\nLine 44: translated fixture content stays in its own preview.\nLine 45: translated fixture content stays in its own preview.\nLine 46: translated fixture content stays in its own preview.\nLine 47: translated fixture content stays in its own preview.\nLine 48: translated fixture content stays in its own preview.",
+            "scrollTop": 0,
+            "scrollHeight": 2162,
+            "clientHeight": 78
+          }
+        ],
+        "sameTooltip": true,
+        "samePreview": true,
+        "coarse": true,
+        "host": {
+          "x": 0,
+          "y": 0,
+          "overflow": false
+        },
+        "layout": {
+          "width": 390,
+          "height": 760
+        }
+      },
+      "viewport": {
+        "main": {
+          "width": 342,
+          "height": 58,
+          "offsetLeft": 24,
+          "offsetTop": 130
+        },
+        "production": {
+          "width": 342,
+          "height": 58,
+          "offsetLeft": 24,
+          "offsetTop": 130
+        },
+        "actualOSKeyboard": false
+      },
+      "state": {
+        "measuredAt": 1792376103918,
+        "rect": {
+          "left": 36,
+          "top": 130,
+          "right": 354,
+          "bottom": 188,
+          "width": 318,
+          "height": 58
+        },
+        "clip": {
+          "left": 36,
+          "top": 130,
+          "right": 354,
+          "bottom": 188
+        },
+        "port": {
+          "left": 24,
+          "top": 130,
+          "right": 366,
+          "bottom": 188
+        },
+        "withinPort": true,
+        "font": 14,
+        "display": "block",
+        "opacity": "1",
+        "scroll": {
+          "top": 0,
+          "height": 146,
+          "client": 58,
+          "width": 318,
+          "clientWidth": 318
+        },
+        "buttons": [
+          {
+            "rect": {
+              "left": 232.09375,
+              "top": 137,
+              "right": 276.09375,
+              "bottom": 181,
+              "width": 44,
+              "height": 44
+            },
+            "font": 14,
+            "label": "关闭",
+            "disabled": false,
+            "withinTooltip": true,
+            "withinPort": true,
+            "hits": [
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              }
+            ]
+          }
+        ],
+        "previews": [
+          {
+            "rect": {
+              "left": 48,
+              "top": 189,
+              "right": 342,
+              "bottom": 269,
+              "width": 294,
+              "height": 80
+            },
+            "font": 16,
+            "label": "译文",
+            "disabled": false,
+            "withinTooltip": false,
+            "withinPort": false,
+            "hits": [
+              {
+                "owned": false,
+                "tag": "MAIN",
+                "className": "",
+                "outerHost": false
+              },
+              {
+                "owned": false,
+                "tag": "MAIN",
+                "className": "",
+                "outerHost": false
+              },
+              {
+                "owned": false,
+                "tag": "MAIN",
+                "className": "",
+                "outerHost": false
+              },
+              {
+                "owned": false,
+                "tag": "MAIN",
+                "className": "",
+                "outerHost": false
+              },
+              {
+                "owned": false,
+                "tag": "MAIN",
+                "className": "",
+                "outerHost": false
+              }
+            ],
+            "readonly": true,
+            "value": "Line 1: translated fixture content stays in its own preview.\nLine 2: translated fixture content stays in its own preview.\nLine 3: translated fixture content stays in its own preview.\nLine 4: translated fixture content stays in its own preview.\nLine 5: translated fixture content stays in its own preview.\nLine 6: translated fixture content stays in its own preview.\nLine 7: translated fixture content stays in its own preview.\nLine 8: translated fixture content stays in its own preview.\nLine 9: translated fixture content stays in its own preview.\nLine 10: translated fixture content stays in its own preview.\nLine 11: translated fixture content stays in its own preview.\nLine 12: translated fixture content stays in its own preview.\nLine 13: translated fixture content stays in its own preview.\nLine 14: translated fixture content stays in its own preview.\nLine 15: translated fixture content stays in its own preview.\nLine 16: translated fixture content stays in its own preview.\nLine 17: translated fixture content stays in its own preview.\nLine 18: translated fixture content stays in its own preview.\nLine 19: translated fixture content stays in its own preview.\nLine 20: translated fixture content stays in its own preview.\nLine 21: translated fixture content stays in its own preview.\nLine 22: translated fixture content stays in its own preview.\nLine 23: translated fixture content stays in its own preview.\nLine 24: translated fixture content stays in its own preview.\nLine 25: translated fixture content stays in its own preview.\nLine 26: translated fixture content stays in its own preview.\nLine 27: translated fixture content stays in its own preview.\nLine 28: translated fixture content stays in its own preview.\nLine 29: translated fixture content stays in its own preview.\nLine 30: translated fixture content stays in its own preview.\nLine 31: translated fixture content stays in its own preview.\nLine 32: translated fixture content stays in its own preview.\nLine 33: translated fixture content stays in its own preview.\nLine 34: translated fixture content stays in its own preview.\nLine 35: translated fixture content stays in its own preview.\nLine 36: translated fixture content stays in its own preview.\nLine 37: translated fixture content stays in its own preview.\nLine 38: translated fixture content stays in its own preview.\nLine 39: translated fixture content stays in its own preview.\nLine 40: translated fixture content stays in its own preview.\nLine 41: translated fixture content stays in its own preview.\nLine 42: translated fixture content stays in its own preview.\nLine 43: translated fixture content stays in its own preview.\nLine 44: translated fixture content stays in its own preview.\nLine 45: translated fixture content stays in its own preview.\nLine 46: translated fixture content stays in its own preview.\nLine 47: translated fixture content stays in its own preview.\nLine 48: translated fixture content stays in its own preview.",
+            "scrollTop": 0,
+            "scrollHeight": 2162,
+            "clientHeight": 78
+          }
+        ],
+        "sameTooltip": true,
+        "samePreview": true,
+        "coarse": true,
+        "host": {
+          "x": 0,
+          "y": 0,
+          "overflow": false
+        },
+        "layout": {
+          "width": 390,
+          "height": 760
+        }
+      },
+      "close": {
+        "before": {
+          "measuredAt": 1792376104146,
+          "rect": {
+            "left": 36,
+            "top": 130,
+            "right": 354,
+            "bottom": 188,
+            "width": 318,
+            "height": 58
+          },
+          "clip": {
+            "left": 36,
+            "top": 130,
+            "right": 354,
+            "bottom": 188
+          },
+          "port": {
+            "left": 24,
+            "top": 130,
+            "right": 366,
+            "bottom": 188
+          },
+          "withinPort": true,
+          "font": 14,
+          "display": "block",
+          "opacity": "1",
+          "scroll": {
+            "top": 0,
+            "height": 146,
+            "client": 58,
+            "width": 318,
+            "clientWidth": 318
+          },
+          "buttons": [
+            {
+              "rect": {
+                "left": 232.09375,
+                "top": 137,
+                "right": 276.09375,
+                "bottom": 181,
+                "width": 44,
+                "height": 44
+              },
+              "font": 14,
+              "label": "关闭",
+              "disabled": false,
+              "withinTooltip": true,
+              "withinPort": true,
+              "hits": [
+                {
+                  "owned": true,
+                  "tag": "BUTTON",
+                  "className": "",
+                  "outerHost": true
+                },
+                {
+                  "owned": true,
+                  "tag": "BUTTON",
+                  "className": "",
+                  "outerHost": true
+                },
+                {
+                  "owned": true,
+                  "tag": "BUTTON",
+                  "className": "",
+                  "outerHost": true
+                },
+                {
+                  "owned": true,
+                  "tag": "BUTTON",
+                  "className": "",
+                  "outerHost": true
+                },
+                {
+                  "owned": true,
+                  "tag": "BUTTON",
+                  "className": "",
+                  "outerHost": true
+                }
+              ]
+            }
+          ],
+          "previews": [
+            {
+              "rect": {
+                "left": 48,
+                "top": 189,
+                "right": 342,
+                "bottom": 269,
+                "width": 294,
+                "height": 80
+              },
+              "font": 16,
+              "label": "译文",
+              "disabled": false,
+              "withinTooltip": false,
+              "withinPort": false,
+              "hits": [
+                {
+                  "owned": false,
+                  "tag": "MAIN",
+                  "className": "",
+                  "outerHost": false
+                },
+                {
+                  "owned": false,
+                  "tag": "MAIN",
+                  "className": "",
+                  "outerHost": false
+                },
+                {
+                  "owned": false,
+                  "tag": "MAIN",
+                  "className": "",
+                  "outerHost": false
+                },
+                {
+                  "owned": false,
+                  "tag": "MAIN",
+                  "className": "",
+                  "outerHost": false
+                },
+                {
+                  "owned": false,
+                  "tag": "MAIN",
+                  "className": "",
+                  "outerHost": false
+                }
+              ],
+              "readonly": true,
+              "value": "Line 1: translated fixture content stays in its own preview.\nLine 2: translated fixture content stays in its own preview.\nLine 3: translated fixture content stays in its own preview.\nLine 4: translated fixture content stays in its own preview.\nLine 5: translated fixture content stays in its own preview.\nLine 6: translated fixture content stays in its own preview.\nLine 7: translated fixture content stays in its own preview.\nLine 8: translated fixture content stays in its own preview.\nLine 9: translated fixture content stays in its own preview.\nLine 10: translated fixture content stays in its own preview.\nLine 11: translated fixture content stays in its own preview.\nLine 12: translated fixture content stays in its own preview.\nLine 13: translated fixture content stays in its own preview.\nLine 14: translated fixture content stays in its own preview.\nLine 15: translated fixture content stays in its own preview.\nLine 16: translated fixture content stays in its own preview.\nLine 17: translated fixture content stays in its own preview.\nLine 18: translated fixture content stays in its own preview.\nLine 19: translated fixture content stays in its own preview.\nLine 20: translated fixture content stays in its own preview.\nLine 21: translated fixture content stays in its own preview.\nLine 22: translated fixture content stays in its own preview.\nLine 23: translated fixture content stays in its own preview.\nLine 24: translated fixture content stays in its own preview.\nLine 25: translated fixture content stays in its own preview.\nLine 26: translated fixture content stays in its own preview.\nLine 27: translated fixture content stays in its own preview.\nLine 28: translated fixture content stays in its own preview.\nLine 29: translated fixture content stays in its own preview.\nLine 30: translated fixture content stays in its own preview.\nLine 31: translated fixture content stays in its own preview.\nLine 32: translated fixture content stays in its own preview.\nLine 33: translated fixture content stays in its own preview.\nLine 34: translated fixture content stays in its own preview.\nLine 35: translated fixture content stays in its own preview.\nLine 36: translated fixture content stays in its own preview.\nLine 37: translated fixture content stays in its own preview.\nLine 38: translated fixture content stays in its own preview.\nLine 39: translated fixture content stays in its own preview.\nLine 40: translated fixture content stays in its own preview.\nLine 41: translated fixture content stays in its own preview.\nLine 42: translated fixture content stays in its own preview.\nLine 43: translated fixture content stays in its own preview.\nLine 44: translated fixture content stays in its own preview.\nLine 45: translated fixture content stays in its own preview.\nLine 46: translated fixture content stays in its own preview.\nLine 47: translated fixture content stays in its own preview.\nLine 48: translated fixture content stays in its own preview.",
+              "scrollTop": 0,
+              "scrollHeight": 2162,
+              "clientHeight": 78
+            }
+          ],
+          "sameTooltip": true,
+          "samePreview": true,
+          "coarse": true,
+          "host": {
+            "x": 0,
+            "y": 0,
+            "overflow": false
+          },
+          "layout": {
+            "width": 390,
+            "height": 760
+          }
+        },
+        "trustedClicks": [
+          {
+            "label": "关闭",
+            "trusted": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "coarse320-short180",
+      "wheels": [
+        {
+          "kind": "preview",
+          "deltaY": 1200,
+          "before": 0,
+          "after": 1200,
+          "events": [
+            {
+              "trusted": true,
+              "deltaY": 2400,
+              "kind": "preview"
+            }
+          ],
+          "hostUnchanged": true
+        },
+        {
+          "kind": "preview",
+          "deltaY": -1200,
+          "before": 1200,
+          "after": 0,
+          "events": [
+            {
+              "trusted": true,
+              "deltaY": -2400,
+              "kind": "preview"
+            }
+          ],
+          "hostUnchanged": true
+        }
+      ],
+      "viewport": {
+        "main": {
+          "width": 320,
+          "height": 180,
+          "offsetLeft": 0,
+          "offsetTop": 0
+        },
+        "production": {
+          "width": 320,
+          "height": 180,
+          "offsetLeft": 0,
+          "offsetTop": 0
+        },
+        "actualOSKeyboard": false
+      },
+      "state": {
+        "measuredAt": 1792376104647,
+        "rect": {
+          "left": 12,
+          "top": 22.786409378051758,
+          "right": 308,
+          "bottom": 170.78640937805176,
+          "width": 296,
+          "height": 148
+        },
+        "clip": {
+          "left": 12,
+          "top": 22.786409378051758,
+          "right": 308,
+          "bottom": 170.78640937805176
+        },
+        "port": {
+          "left": 0,
+          "top": 0,
+          "right": 320,
+          "bottom": 180
+        },
+        "withinPort": true,
+        "font": 14,
+        "display": "block",
+        "opacity": "1",
+        "scroll": {
+          "top": 0,
+          "height": 148,
+          "client": 148,
+          "width": 296,
+          "clientWidth": 296
+        },
+        "buttons": [
+          {
+            "rect": {
+              "left": 208.09375,
+              "top": 30.786409378051758,
+              "right": 252.09375,
+              "bottom": 74.78640937805176,
+              "width": 44,
+              "height": 44
+            },
+            "font": 14,
+            "label": "关闭",
+            "disabled": false,
+            "withinTooltip": true,
+            "withinPort": true,
+            "hits": [
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              }
+            ]
+          }
+        ],
+        "previews": [
+          {
+            "rect": {
+              "left": 24,
+              "top": 82.78640747070312,
+              "right": 296,
+              "bottom": 162.78640747070312,
+              "width": 272,
+              "height": 80
+            },
+            "font": 16,
+            "label": "译文",
+            "disabled": false,
+            "withinTooltip": true,
+            "withinPort": true,
+            "hits": [
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              }
+            ],
+            "readonly": true,
+            "value": "Line 1: translated fixture content stays in its own preview.\nLine 2: translated fixture content stays in its own preview.\nLine 3: translated fixture content stays in its own preview.\nLine 4: translated fixture content stays in its own preview.\nLine 5: translated fixture content stays in its own preview.\nLine 6: translated fixture content stays in its own preview.\nLine 7: translated fixture content stays in its own preview.\nLine 8: translated fixture content stays in its own preview.\nLine 9: translated fixture content stays in its own preview.\nLine 10: translated fixture content stays in its own preview.\nLine 11: translated fixture content stays in its own preview.\nLine 12: translated fixture content stays in its own preview.\nLine 13: translated fixture content stays in its own preview.\nLine 14: translated fixture content stays in its own preview.\nLine 15: translated fixture content stays in its own preview.\nLine 16: translated fixture content stays in its own preview.\nLine 17: translated fixture content stays in its own preview.\nLine 18: translated fixture content stays in its own preview.\nLine 19: translated fixture content stays in its own preview.\nLine 20: translated fixture content stays in its own preview.\nLine 21: translated fixture content stays in its own preview.\nLine 22: translated fixture content stays in its own preview.\nLine 23: translated fixture content stays in its own preview.\nLine 24: translated fixture content stays in its own preview.\nLine 25: translated fixture content stays in its own preview.\nLine 26: translated fixture content stays in its own preview.\nLine 27: translated fixture content stays in its own preview.\nLine 28: translated fixture content stays in its own preview.\nLine 29: translated fixture content stays in its own preview.\nLine 30: translated fixture content stays in its own preview.\nLine 31: translated fixture content stays in its own preview.\nLine 32: translated fixture content stays in its own preview.\nLine 33: translated fixture content stays in its own preview.\nLine 34: translated fixture content stays in its own preview.\nLine 35: translated fixture content stays in its own preview.\nLine 36: translated fixture content stays in its own preview.\nLine 37: translated fixture content stays in its own preview.\nLine 38: translated fixture content stays in its own preview.\nLine 39: translated fixture content stays in its own preview.\nLine 40: translated fixture content stays in its own preview.\nLine 41: translated fixture content stays in its own preview.\nLine 42: translated fixture content stays in its own preview.\nLine 43: translated fixture content stays in its own preview.\nLine 44: translated fixture content stays in its own preview.\nLine 45: translated fixture content stays in its own preview.\nLine 46: translated fixture content stays in its own preview.\nLine 47: translated fixture content stays in its own preview.\nLine 48: translated fixture content stays in its own preview.",
+            "scrollTop": 0,
+            "scrollHeight": 2162,
+            "clientHeight": 78
+          }
+        ],
+        "sameTooltip": true,
+        "samePreview": true,
+        "coarse": true,
+        "host": {
+          "x": 0,
+          "y": 0,
+          "overflow": false
+        },
+        "layout": {
+          "width": 320,
+          "height": 180
+        }
+      },
+      "triggeredHostBaseline": {
+        "x": 0,
+        "y": 0,
+        "overflow": false
+      },
+      "scrollOwner": "preview",
+      "outerScrollNeeded": false,
+      "bottom": {
+        "measuredAt": 1792376104977,
+        "rect": {
+          "left": 12,
+          "top": 20,
+          "right": 308,
+          "bottom": 168,
+          "width": 296,
+          "height": 148
+        },
+        "clip": {
+          "left": 12,
+          "top": 20,
+          "right": 308,
+          "bottom": 168
+        },
+        "port": {
+          "left": 0,
+          "top": 0,
+          "right": 320,
+          "bottom": 180
+        },
+        "withinPort": true,
+        "font": 14,
+        "display": "block",
+        "opacity": "1",
+        "scroll": {
+          "top": 0,
+          "height": 148,
+          "client": 148,
+          "width": 296,
+          "clientWidth": 296
+        },
+        "buttons": [
+          {
+            "rect": {
+              "left": 208.09375,
+              "top": 28,
+              "right": 252.09375,
+              "bottom": 72,
+              "width": 44,
+              "height": 44
+            },
+            "font": 14,
+            "label": "关闭",
+            "disabled": false,
+            "withinTooltip": true,
+            "withinPort": true,
+            "hits": [
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              }
+            ]
+          }
+        ],
+        "previews": [
+          {
+            "rect": {
+              "left": 24,
+              "top": 80,
+              "right": 296,
+              "bottom": 160,
+              "width": 272,
+              "height": 80
+            },
+            "font": 16,
+            "label": "译文",
+            "disabled": false,
+            "withinTooltip": true,
+            "withinPort": true,
+            "hits": [
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              }
+            ],
+            "readonly": true,
+            "value": "Line 1: translated fixture content stays in its own preview.\nLine 2: translated fixture content stays in its own preview.\nLine 3: translated fixture content stays in its own preview.\nLine 4: translated fixture content stays in its own preview.\nLine 5: translated fixture content stays in its own preview.\nLine 6: translated fixture content stays in its own preview.\nLine 7: translated fixture content stays in its own preview.\nLine 8: translated fixture content stays in its own preview.\nLine 9: translated fixture content stays in its own preview.\nLine 10: translated fixture content stays in its own preview.\nLine 11: translated fixture content stays in its own preview.\nLine 12: translated fixture content stays in its own preview.\nLine 13: translated fixture content stays in its own preview.\nLine 14: translated fixture content stays in its own preview.\nLine 15: translated fixture content stays in its own preview.\nLine 16: translated fixture content stays in its own preview.\nLine 17: translated fixture content stays in its own preview.\nLine 18: translated fixture content stays in its own preview.\nLine 19: translated fixture content stays in its own preview.\nLine 20: translated fixture content stays in its own preview.\nLine 21: translated fixture content stays in its own preview.\nLine 22: translated fixture content stays in its own preview.\nLine 23: translated fixture content stays in its own preview.\nLine 24: translated fixture content stays in its own preview.\nLine 25: translated fixture content stays in its own preview.\nLine 26: translated fixture content stays in its own preview.\nLine 27: translated fixture content stays in its own preview.\nLine 28: translated fixture content stays in its own preview.\nLine 29: translated fixture content stays in its own preview.\nLine 30: translated fixture content stays in its own preview.\nLine 31: translated fixture content stays in its own preview.\nLine 32: translated fixture content stays in its own preview.\nLine 33: translated fixture content stays in its own preview.\nLine 34: translated fixture content stays in its own preview.\nLine 35: translated fixture content stays in its own preview.\nLine 36: translated fixture content stays in its own preview.\nLine 37: translated fixture content stays in its own preview.\nLine 38: translated fixture content stays in its own preview.\nLine 39: translated fixture content stays in its own preview.\nLine 40: translated fixture content stays in its own preview.\nLine 41: translated fixture content stays in its own preview.\nLine 42: translated fixture content stays in its own preview.\nLine 43: translated fixture content stays in its own preview.\nLine 44: translated fixture content stays in its own preview.\nLine 45: translated fixture content stays in its own preview.\nLine 46: translated fixture content stays in its own preview.\nLine 47: translated fixture content stays in its own preview.\nLine 48: translated fixture content stays in its own preview.",
+            "scrollTop": 1200,
+            "scrollHeight": 2162,
+            "clientHeight": 78
+          }
+        ],
+        "sameTooltip": true,
+        "samePreview": true,
+        "coarse": true,
+        "host": {
+          "x": 0,
+          "y": 0,
+          "overflow": false
+        },
+        "layout": {
+          "width": 320,
+          "height": 180
+        }
+      },
+      "top": {
+        "measuredAt": 1792376105080,
+        "rect": {
+          "left": 12,
+          "top": 20,
+          "right": 308,
+          "bottom": 168,
+          "width": 296,
+          "height": 148
+        },
+        "clip": {
+          "left": 12,
+          "top": 20,
+          "right": 308,
+          "bottom": 168
+        },
+        "port": {
+          "left": 0,
+          "top": 0,
+          "right": 320,
+          "bottom": 180
+        },
+        "withinPort": true,
+        "font": 14,
+        "display": "block",
+        "opacity": "1",
+        "scroll": {
+          "top": 0,
+          "height": 148,
+          "client": 148,
+          "width": 296,
+          "clientWidth": 296
+        },
+        "buttons": [
+          {
+            "rect": {
+              "left": 208.09375,
+              "top": 28,
+              "right": 252.09375,
+              "bottom": 72,
+              "width": 44,
+              "height": 44
+            },
+            "font": 14,
+            "label": "关闭",
+            "disabled": false,
+            "withinTooltip": true,
+            "withinPort": true,
+            "hits": [
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              }
+            ]
+          }
+        ],
+        "previews": [
+          {
+            "rect": {
+              "left": 24,
+              "top": 80,
+              "right": 296,
+              "bottom": 160,
+              "width": 272,
+              "height": 80
+            },
+            "font": 16,
+            "label": "译文",
+            "disabled": false,
+            "withinTooltip": true,
+            "withinPort": true,
+            "hits": [
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              }
+            ],
+            "readonly": true,
+            "value": "Line 1: translated fixture content stays in its own preview.\nLine 2: translated fixture content stays in its own preview.\nLine 3: translated fixture content stays in its own preview.\nLine 4: translated fixture content stays in its own preview.\nLine 5: translated fixture content stays in its own preview.\nLine 6: translated fixture content stays in its own preview.\nLine 7: translated fixture content stays in its own preview.\nLine 8: translated fixture content stays in its own preview.\nLine 9: translated fixture content stays in its own preview.\nLine 10: translated fixture content stays in its own preview.\nLine 11: translated fixture content stays in its own preview.\nLine 12: translated fixture content stays in its own preview.\nLine 13: translated fixture content stays in its own preview.\nLine 14: translated fixture content stays in its own preview.\nLine 15: translated fixture content stays in its own preview.\nLine 16: translated fixture content stays in its own preview.\nLine 17: translated fixture content stays in its own preview.\nLine 18: translated fixture content stays in its own preview.\nLine 19: translated fixture content stays in its own preview.\nLine 20: translated fixture content stays in its own preview.\nLine 21: translated fixture content stays in its own preview.\nLine 22: translated fixture content stays in its own preview.\nLine 23: translated fixture content stays in its own preview.\nLine 24: translated fixture content stays in its own preview.\nLine 25: translated fixture content stays in its own preview.\nLine 26: translated fixture content stays in its own preview.\nLine 27: translated fixture content stays in its own preview.\nLine 28: translated fixture content stays in its own preview.\nLine 29: translated fixture content stays in its own preview.\nLine 30: translated fixture content stays in its own preview.\nLine 31: translated fixture content stays in its own preview.\nLine 32: translated fixture content stays in its own preview.\nLine 33: translated fixture content stays in its own preview.\nLine 34: translated fixture content stays in its own preview.\nLine 35: translated fixture content stays in its own preview.\nLine 36: translated fixture content stays in its own preview.\nLine 37: translated fixture content stays in its own preview.\nLine 38: translated fixture content stays in its own preview.\nLine 39: translated fixture content stays in its own preview.\nLine 40: translated fixture content stays in its own preview.\nLine 41: translated fixture content stays in its own preview.\nLine 42: translated fixture content stays in its own preview.\nLine 43: translated fixture content stays in its own preview.\nLine 44: translated fixture content stays in its own preview.\nLine 45: translated fixture content stays in its own preview.\nLine 46: translated fixture content stays in its own preview.\nLine 47: translated fixture content stays in its own preview.\nLine 48: translated fixture content stays in its own preview.",
+            "scrollTop": 0,
+            "scrollHeight": 2162,
+            "clientHeight": 78
+          }
+        ],
+        "sameTooltip": true,
+        "samePreview": true,
+        "coarse": true,
+        "host": {
+          "x": 0,
+          "y": 0,
+          "overflow": false
+        },
+        "layout": {
+          "width": 320,
+          "height": 180
+        }
+      },
+      "close": {
+        "before": {
+          "measuredAt": 1792376105091,
+          "rect": {
+            "left": 12,
+            "top": 20,
+            "right": 308,
+            "bottom": 168,
+            "width": 296,
+            "height": 148
+          },
+          "clip": {
+            "left": 12,
+            "top": 20,
+            "right": 308,
+            "bottom": 168
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 320,
+            "bottom": 180
+          },
+          "withinPort": true,
+          "font": 14,
+          "display": "block",
+          "opacity": "1",
+          "scroll": {
+            "top": 0,
+            "height": 148,
+            "client": 148,
+            "width": 296,
+            "clientWidth": 296
+          },
+          "buttons": [
+            {
+              "rect": {
+                "left": 208.09375,
+                "top": 28,
+                "right": 252.09375,
+                "bottom": 72,
+                "width": 44,
+                "height": 44
+              },
+              "font": 14,
+              "label": "关闭",
+              "disabled": false,
+              "withinTooltip": true,
+              "withinPort": true,
+              "hits": [
+                {
+                  "owned": true,
+                  "tag": "BUTTON",
+                  "className": "",
+                  "outerHost": true
+                },
+                {
+                  "owned": true,
+                  "tag": "BUTTON",
+                  "className": "",
+                  "outerHost": true
+                },
+                {
+                  "owned": true,
+                  "tag": "BUTTON",
+                  "className": "",
+                  "outerHost": true
+                },
+                {
+                  "owned": true,
+                  "tag": "BUTTON",
+                  "className": "",
+                  "outerHost": true
+                },
+                {
+                  "owned": true,
+                  "tag": "BUTTON",
+                  "className": "",
+                  "outerHost": true
+                }
+              ]
+            }
+          ],
+          "previews": [
+            {
+              "rect": {
+                "left": 24,
+                "top": 80,
+                "right": 296,
+                "bottom": 160,
+                "width": 272,
+                "height": 80
+              },
+              "font": 16,
+              "label": "译文",
+              "disabled": false,
+              "withinTooltip": true,
+              "withinPort": true,
+              "hits": [
+                {
+                  "owned": true,
+                  "tag": "TEXTAREA",
+                  "className": "",
+                  "outerHost": true
+                },
+                {
+                  "owned": true,
+                  "tag": "TEXTAREA",
+                  "className": "",
+                  "outerHost": true
+                },
+                {
+                  "owned": true,
+                  "tag": "TEXTAREA",
+                  "className": "",
+                  "outerHost": true
+                },
+                {
+                  "owned": true,
+                  "tag": "TEXTAREA",
+                  "className": "",
+                  "outerHost": true
+                },
+                {
+                  "owned": true,
+                  "tag": "TEXTAREA",
+                  "className": "",
+                  "outerHost": true
+                }
+              ],
+              "readonly": true,
+              "value": "Line 1: translated fixture content stays in its own preview.\nLine 2: translated fixture content stays in its own preview.\nLine 3: translated fixture content stays in its own preview.\nLine 4: translated fixture content stays in its own preview.\nLine 5: translated fixture content stays in its own preview.\nLine 6: translated fixture content stays in its own preview.\nLine 7: translated fixture content stays in its own preview.\nLine 8: translated fixture content stays in its own preview.\nLine 9: translated fixture content stays in its own preview.\nLine 10: translated fixture content stays in its own preview.\nLine 11: translated fixture content stays in its own preview.\nLine 12: translated fixture content stays in its own preview.\nLine 13: translated fixture content stays in its own preview.\nLine 14: translated fixture content stays in its own preview.\nLine 15: translated fixture content stays in its own preview.\nLine 16: translated fixture content stays in its own preview.\nLine 17: translated fixture content stays in its own preview.\nLine 18: translated fixture content stays in its own preview.\nLine 19: translated fixture content stays in its own preview.\nLine 20: translated fixture content stays in its own preview.\nLine 21: translated fixture content stays in its own preview.\nLine 22: translated fixture content stays in its own preview.\nLine 23: translated fixture content stays in its own preview.\nLine 24: translated fixture content stays in its own preview.\nLine 25: translated fixture content stays in its own preview.\nLine 26: translated fixture content stays in its own preview.\nLine 27: translated fixture content stays in its own preview.\nLine 28: translated fixture content stays in its own preview.\nLine 29: translated fixture content stays in its own preview.\nLine 30: translated fixture content stays in its own preview.\nLine 31: translated fixture content stays in its own preview.\nLine 32: translated fixture content stays in its own preview.\nLine 33: translated fixture content stays in its own preview.\nLine 34: translated fixture content stays in its own preview.\nLine 35: translated fixture content stays in its own preview.\nLine 36: translated fixture content stays in its own preview.\nLine 37: translated fixture content stays in its own preview.\nLine 38: translated fixture content stays in its own preview.\nLine 39: translated fixture content stays in its own preview.\nLine 40: translated fixture content stays in its own preview.\nLine 41: translated fixture content stays in its own preview.\nLine 42: translated fixture content stays in its own preview.\nLine 43: translated fixture content stays in its own preview.\nLine 44: translated fixture content stays in its own preview.\nLine 45: translated fixture content stays in its own preview.\nLine 46: translated fixture content stays in its own preview.\nLine 47: translated fixture content stays in its own preview.\nLine 48: translated fixture content stays in its own preview.",
+              "scrollTop": 0,
+              "scrollHeight": 2162,
+              "clientHeight": 78
+            }
+          ],
+          "sameTooltip": true,
+          "samePreview": true,
+          "coarse": true,
+          "host": {
+            "x": 0,
+            "y": 0,
+            "overflow": false
+          },
+          "layout": {
+            "width": 320,
+            "height": 180
+          }
+        },
+        "trustedClicks": [
+          {
+            "label": "关闭",
+            "trusted": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "fine1280-desktop",
+      "wheels": [],
+      "viewport": {
+        "main": {
+          "width": 1280,
+          "height": 900,
+          "offsetLeft": 0,
+          "offsetTop": 0
+        },
+        "production": {
+          "width": 1280,
+          "height": 900,
+          "offsetLeft": 0,
+          "offsetTop": 0
+        },
+        "actualOSKeyboard": false
+      },
+      "state": {
+        "measuredAt": 1792376105617,
+        "rect": {
+          "left": 480,
+          "top": 338.0952453613281,
+          "right": 800,
+          "bottom": 438.8921203613281,
+          "width": 320,
+          "height": 100.796875
+        },
+        "clip": {
+          "left": 480,
+          "top": 338.0952453613281,
+          "right": 800,
+          "bottom": 439.0952453613281
+        },
+        "port": {
+          "left": 0,
+          "top": 0,
+          "right": 1280,
+          "bottom": 900
+        },
+        "withinPort": true,
+        "font": 12,
+        "display": "block",
+        "opacity": "1",
+        "scroll": {
+          "top": 0,
+          "height": 101,
+          "client": 101,
+          "width": 320,
+          "clientWidth": 320
+        },
+        "buttons": [
+          {
+            "rect": {
+              "left": 651.1953125,
+              "top": 346.0952453613281,
+              "right": 675.1953125,
+              "bottom": 362.8921203613281,
+              "width": 24,
+              "height": 16.796875
+            },
+            "font": 12,
+            "label": "关闭",
+            "disabled": false,
+            "withinTooltip": true,
+            "withinPort": true,
+            "hits": [
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              }
+            ]
+          }
+        ],
+        "previews": [
+          {
+            "rect": {
+              "left": 492,
+              "top": 370.8921203613281,
+              "right": 788,
+              "bottom": 430.8921203613281,
+              "width": 296,
+              "height": 60
+            },
+            "font": 12,
+            "label": "译文",
+            "disabled": false,
+            "withinTooltip": true,
+            "withinPort": true,
+            "hits": [
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "TEXTAREA",
+                "className": "",
+                "outerHost": true
+              }
+            ],
+            "readonly": true,
+            "value": "Line 1: translated fixture content stays in its own preview.\nLine 2: translated fixture content stays in its own preview.\nLine 3: translated fixture content stays in its own preview.\nLine 4: translated fixture content stays in its own preview.\nLine 5: translated fixture content stays in its own preview.\nLine 6: translated fixture content stays in its own preview.\nLine 7: translated fixture content stays in its own preview.\nLine 8: translated fixture content stays in its own preview.\nLine 9: translated fixture content stays in its own preview.\nLine 10: translated fixture content stays in its own preview.\nLine 11: translated fixture content stays in its own preview.\nLine 12: translated fixture content stays in its own preview.\nLine 13: translated fixture content stays in its own preview.\nLine 14: translated fixture content stays in its own preview.\nLine 15: translated fixture content stays in its own preview.\nLine 16: translated fixture content stays in its own preview.\nLine 17: translated fixture content stays in its own preview.\nLine 18: translated fixture content stays in its own preview.\nLine 19: translated fixture content stays in its own preview.\nLine 20: translated fixture content stays in its own preview.\nLine 21: translated fixture content stays in its own preview.\nLine 22: translated fixture content stays in its own preview.\nLine 23: translated fixture content stays in its own preview.\nLine 24: translated fixture content stays in its own preview.\nLine 25: translated fixture content stays in its own preview.\nLine 26: translated fixture content stays in its own preview.\nLine 27: translated fixture content stays in its own preview.\nLine 28: translated fixture content stays in its own preview.\nLine 29: translated fixture content stays in its own preview.\nLine 30: translated fixture content stays in its own preview.\nLine 31: translated fixture content stays in its own preview.\nLine 32: translated fixture content stays in its own preview.\nLine 33: translated fixture content stays in its own preview.\nLine 34: translated fixture content stays in its own preview.\nLine 35: translated fixture content stays in its own preview.\nLine 36: translated fixture content stays in its own preview.\nLine 37: translated fixture content stays in its own preview.\nLine 38: translated fixture content stays in its own preview.\nLine 39: translated fixture content stays in its own preview.\nLine 40: translated fixture content stays in its own preview.\nLine 41: translated fixture content stays in its own preview.\nLine 42: translated fixture content stays in its own preview.\nLine 43: translated fixture content stays in its own preview.\nLine 44: translated fixture content stays in its own preview.\nLine 45: translated fixture content stays in its own preview.\nLine 46: translated fixture content stays in its own preview.\nLine 47: translated fixture content stays in its own preview.\nLine 48: translated fixture content stays in its own preview.",
+            "scrollTop": 0,
+            "scrollHeight": 1625,
+            "clientHeight": 58
+          }
+        ],
+        "sameTooltip": true,
+        "samePreview": true,
+        "coarse": false,
+        "host": {
+          "x": 0,
+          "y": 0,
+          "overflow": false
+        },
+        "layout": {
+          "width": 1280,
+          "height": 900
+        }
+      },
+      "close": {
+        "before": {
+          "measuredAt": 1792376105869,
+          "rect": {
+            "left": 480,
+            "top": 335.796875,
+            "right": 800,
+            "bottom": 436.59375,
+            "width": 320,
+            "height": 100.796875
+          },
+          "clip": {
+            "left": 480,
+            "top": 335.796875,
+            "right": 800,
+            "bottom": 436.796875
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 1280,
+            "bottom": 900
+          },
+          "withinPort": true,
+          "font": 12,
+          "display": "block",
+          "opacity": "1",
+          "scroll": {
+            "top": 0,
+            "height": 101,
+            "client": 101,
+            "width": 320,
+            "clientWidth": 320
+          },
+          "buttons": [
+            {
+              "rect": {
+                "left": 651.1953125,
+                "top": 343.796875,
+                "right": 675.1953125,
+                "bottom": 360.59375,
+                "width": 24,
+                "height": 16.796875
+              },
+              "font": 12,
+              "label": "关闭",
+              "disabled": false,
+              "withinTooltip": true,
+              "withinPort": true,
+              "hits": [
+                {
+                  "owned": true,
+                  "tag": "BUTTON",
+                  "className": "",
+                  "outerHost": true
+                },
+                {
+                  "owned": true,
+                  "tag": "BUTTON",
+                  "className": "",
+                  "outerHost": true
+                },
+                {
+                  "owned": true,
+                  "tag": "BUTTON",
+                  "className": "",
+                  "outerHost": true
+                },
+                {
+                  "owned": true,
+                  "tag": "BUTTON",
+                  "className": "",
+                  "outerHost": true
+                },
+                {
+                  "owned": true,
+                  "tag": "BUTTON",
+                  "className": "",
+                  "outerHost": true
+                }
+              ]
+            }
+          ],
+          "previews": [
+            {
+              "rect": {
+                "left": 492,
+                "top": 368.59375,
+                "right": 788,
+                "bottom": 428.59375,
+                "width": 296,
+                "height": 60
+              },
+              "font": 12,
+              "label": "译文",
+              "disabled": false,
+              "withinTooltip": true,
+              "withinPort": true,
+              "hits": [
+                {
+                  "owned": true,
+                  "tag": "TEXTAREA",
+                  "className": "",
+                  "outerHost": true
+                },
+                {
+                  "owned": true,
+                  "tag": "TEXTAREA",
+                  "className": "",
+                  "outerHost": true
+                },
+                {
+                  "owned": true,
+                  "tag": "TEXTAREA",
+                  "className": "",
+                  "outerHost": true
+                },
+                {
+                  "owned": true,
+                  "tag": "TEXTAREA",
+                  "className": "",
+                  "outerHost": true
+                },
+                {
+                  "owned": true,
+                  "tag": "TEXTAREA",
+                  "className": "",
+                  "outerHost": true
+                }
+              ],
+              "readonly": true,
+              "value": "Line 1: translated fixture content stays in its own preview.\nLine 2: translated fixture content stays in its own preview.\nLine 3: translated fixture content stays in its own preview.\nLine 4: translated fixture content stays in its own preview.\nLine 5: translated fixture content stays in its own preview.\nLine 6: translated fixture content stays in its own preview.\nLine 7: translated fixture content stays in its own preview.\nLine 8: translated fixture content stays in its own preview.\nLine 9: translated fixture content stays in its own preview.\nLine 10: translated fixture content stays in its own preview.\nLine 11: translated fixture content stays in its own preview.\nLine 12: translated fixture content stays in its own preview.\nLine 13: translated fixture content stays in its own preview.\nLine 14: translated fixture content stays in its own preview.\nLine 15: translated fixture content stays in its own preview.\nLine 16: translated fixture content stays in its own preview.\nLine 17: translated fixture content stays in its own preview.\nLine 18: translated fixture content stays in its own preview.\nLine 19: translated fixture content stays in its own preview.\nLine 20: translated fixture content stays in its own preview.\nLine 21: translated fixture content stays in its own preview.\nLine 22: translated fixture content stays in its own preview.\nLine 23: translated fixture content stays in its own preview.\nLine 24: translated fixture content stays in its own preview.\nLine 25: translated fixture content stays in its own preview.\nLine 26: translated fixture content stays in its own preview.\nLine 27: translated fixture content stays in its own preview.\nLine 28: translated fixture content stays in its own preview.\nLine 29: translated fixture content stays in its own preview.\nLine 30: translated fixture content stays in its own preview.\nLine 31: translated fixture content stays in its own preview.\nLine 32: translated fixture content stays in its own preview.\nLine 33: translated fixture content stays in its own preview.\nLine 34: translated fixture content stays in its own preview.\nLine 35: translated fixture content stays in its own preview.\nLine 36: translated fixture content stays in its own preview.\nLine 37: translated fixture content stays in its own preview.\nLine 38: translated fixture content stays in its own preview.\nLine 39: translated fixture content stays in its own preview.\nLine 40: translated fixture content stays in its own preview.\nLine 41: translated fixture content stays in its own preview.\nLine 42: translated fixture content stays in its own preview.\nLine 43: translated fixture content stays in its own preview.\nLine 44: translated fixture content stays in its own preview.\nLine 45: translated fixture content stays in its own preview.\nLine 46: translated fixture content stays in its own preview.\nLine 47: translated fixture content stays in its own preview.\nLine 48: translated fixture content stays in its own preview.",
+              "scrollTop": 0,
+              "scrollHeight": 1625,
+              "clientHeight": 58
+            }
+          ],
+          "sameTooltip": true,
+          "samePreview": true,
+          "coarse": false,
+          "host": {
+            "x": 0,
+            "y": 0,
+            "overflow": false
+          },
+          "layout": {
+            "width": 1280,
+            "height": 900
+          }
+        },
+        "trustedClicks": [
+          {
+            "label": "关闭",
+            "trusted": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "ordinary-textarea-restore",
+      "state": {
+        "measuredAt": 1792376105959,
+        "rect": {
+          "left": 569.0703125,
+          "top": 393.5713195800781,
+          "right": 710.9296875,
+          "bottom": 426.3681945800781,
+          "width": 141.859375,
+          "height": 32.796875
+        },
+        "clip": {
+          "left": 569.0703125,
+          "top": 393.5713195800781,
+          "right": 711.0703125,
+          "bottom": 426.5713195800781
+        },
+        "port": {
+          "left": 0,
+          "top": 0,
+          "right": 1280,
+          "bottom": 900
+        },
+        "withinPort": true,
+        "font": 12,
+        "display": "block",
+        "opacity": "1",
+        "scroll": {
+          "top": 0,
+          "height": 33,
+          "client": 33,
+          "width": 142,
+          "clientWidth": 142
+        },
+        "buttons": [
+          {
+            "rect": {
+              "left": 650.9296875,
+              "top": 401.5713195800781,
+              "right": 698.9296875,
+              "bottom": 418.3681945800781,
+              "width": 48,
+              "height": 16.796875
+            },
+            "font": 12,
+            "label": "恢复原文",
+            "disabled": false,
+            "withinTooltip": true,
+            "withinPort": true,
+            "hits": [
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              },
+              {
+                "owned": true,
+                "tag": "BUTTON",
+                "className": "",
+                "outerHost": true
+              }
+            ]
+          }
+        ],
+        "previews": [],
+        "sameTooltip": true,
+        "samePreview": true,
+        "coarse": false,
+        "host": {
+          "x": 0,
+          "y": 0,
+          "overflow": false
+        },
+        "layout": {
+          "width": 1280,
+          "height": 900
+        }
+      },
+      "restore": {
+        "before": {
+          "measuredAt": 1792376106187,
+          "rect": {
+            "left": 569.0703125,
+            "top": 391.796875,
+            "right": 710.9296875,
+            "bottom": 424.59375,
+            "width": 141.859375,
+            "height": 32.796875
+          },
+          "clip": {
+            "left": 569.0703125,
+            "top": 391.796875,
+            "right": 711.0703125,
+            "bottom": 424.796875
+          },
+          "port": {
+            "left": 0,
+            "top": 0,
+            "right": 1280,
+            "bottom": 900
+          },
+          "withinPort": true,
+          "font": 12,
+          "display": "block",
+          "opacity": "1",
+          "scroll": {
+            "top": 0,
+            "height": 33,
+            "client": 33,
+            "width": 142,
+            "clientWidth": 142
+          },
+          "buttons": [
+            {
+              "rect": {
+                "left": 650.9296875,
+                "top": 399.796875,
+                "right": 698.9296875,
+                "bottom": 416.59375,
+                "width": 48,
+                "height": 16.796875
+              },
+              "font": 12,
+              "label": "恢复原文",
+              "disabled": false,
+              "withinTooltip": true,
+              "withinPort": true,
+              "hits": [
+                {
+                  "owned": true,
+                  "tag": "BUTTON",
+                  "className": "",
+                  "outerHost": true
+                },
+                {
+                  "owned": true,
+                  "tag": "BUTTON",
+                  "className": "",
+                  "outerHost": true
+                },
+                {
+                  "owned": true,
+                  "tag": "BUTTON",
+                  "className": "",
+                  "outerHost": true
+                },
+                {
+                  "owned": true,
+                  "tag": "BUTTON",
+                  "className": "",
+                  "outerHost": true
+                },
+                {
+                  "owned": true,
+                  "tag": "BUTTON",
+                  "className": "",
+                  "outerHost": true
+                }
+              ]
+            }
+          ],
+          "previews": [],
+          "sameTooltip": true,
+          "samePreview": true,
+          "coarse": false,
+          "host": {
+            "x": 0,
+            "y": 0,
+            "overflow": false
+          },
+          "layout": {
+            "width": 1280,
+            "height": 900
+          }
+        },
+        "trustedClicks": [
+          {
+            "label": "恢复原文",
+            "trusted": true
+          }
+        ]
+      },
+      "originalRestored": true
+    }
+  ],
+  "screenshots": [
+    {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/input-tooltip-followup/input-current-root-attempt3/artifacts/coarse390-safe280.png",
+      "bytes": 32718,
+      "sha256": "ad358b7bd1771773ce4dd9a05c7764202ad44d5c23bd613c937338566a6a981f"
+    },
+    {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/input-tooltip-followup/input-current-root-attempt3/artifacts/same-tooltip-dynamic-safe-port.png",
+      "bytes": 34514,
+      "sha256": "a01c5deff33db226379328cbd8aa5b4077d03ff44b5d7a78a5eccb364bca6112"
+    },
+    {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/input-tooltip-followup/input-current-root-attempt3/artifacts/same-tooltip-minimum-safe58.png",
+      "bytes": 22497,
+      "sha256": "5f1218f171c7a7847956690f130466c980924c7140d313d0b3230d43db9bfd27"
+    },
+    {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/input-tooltip-followup/input-current-root-attempt3/artifacts/coarse320-short180.png",
+      "bytes": 21579,
+      "sha256": "d8c7566486e25c74f173d8cdf31d24d9d7ce79121fc0614c3cfc722f096a7376"
+    },
+    {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/input-tooltip-followup/input-current-root-attempt3/artifacts/fine1280-desktop.png",
+      "bytes": 38869,
+      "sha256": "118d05150a35f80c56118a274ae0988766bab39f917e62cc8f41e972ce4c64e3"
+    },
+    {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/input-tooltip-followup/input-current-root-attempt3/artifacts/ordinary-textarea-restore.png",
+      "bytes": 33438,
+      "sha256": "de97ac251babbf02068d02941f3eac3115eb77de4b9ea8681947acf8148be876"
+    }
+  ],
+  "focusSamples": [
+    {
+      "label": "before launch",
+      "pid": 97878,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "before:coarse390-safe280",
+      "pid": 97878,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "after:coarse390-safe280",
+      "pid": 97878,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "before:same-tooltip-dynamic-safe-port",
+      "pid": 97878,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "after:same-tooltip-dynamic-safe-port",
+      "pid": 97878,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "before:same-tooltip-minimum-safe58",
+      "pid": 97878,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "after:same-tooltip-minimum-safe58",
+      "pid": 97878,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "before:coarse320-short180",
+      "pid": 97878,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "after:coarse320-short180",
+      "pid": 97878,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "before:fine1280-desktop",
+      "pid": 97878,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "after:fine1280-desktop",
+      "pid": 97878,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "before:ordinary-textarea-restore",
+      "pid": 97878,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "after:ordinary-textarea-restore",
+      "pid": 97878,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "after all rows",
+      "pid": 97878,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "after cleanup",
+      "pid": 97878,
+      "name": "ChatGPT"
+    }
+  ],
+  "consoleErrors": [],
+  "pageErrors": [],
+  "blockedRequests": [],
+  "cleanupErrors": [],
+  "profileDir": "/var/folders/2v/qd62bpkx51scgbvv2nrclsxm0000gn/T/fr-input-responsive-cxHSLu",
+  "inputs": {
+    "script": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/input-tooltip-followup/run-input-tooltip-responsive-production.cjs",
+      "bytes": 30767,
+      "sha256": "2d1384f6ba19e4697f235fa67a1aa7140e8a4a6b35d7ad792f9df074dfd26a59"
+    },
+    "focusHelper": {
+      "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/scripts/testing/focus-safe-browser.cjs",
+      "bytes": 25787,
+      "sha256": "a181f9d68ba4d6942afeb78bf43aa89139ab3f7743396edceda139bd92cf05af"
+    },
+    "ownedClose": {
+      "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/scripts/testing/owned-browser-close.cjs",
+      "bytes": 13724,
+      "sha256": "7afb92009af0fbbba8ecb8bfbb8f0486a56f96cfab72edb60d6bc8f36dc4ee9d"
+    },
+    "source": {
+      "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/src/features/input-translation/content/index.ts",
+      "bytes": 54257,
+      "sha256": "177c23603836233d65cae92c365c601f6dc47719a3fbee21c15a317024b63ddb"
+    },
+    "manifest": {
+      "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/manifest.json",
+      "bytes": 3250,
+      "sha256": "d84f2ae185318d9f0add60b335e45056b476d2cce62f2dedc39a15fc9bd7ce1b"
+    },
+    "buildReceipt": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/extra-touch-verification-4/result.json",
+      "bytes": 6308,
+      "sha256": "4eb35c8dd2af3dc68e1f3572eb38f0ed1549ac5bb757eda1f5bacf37ecfc5f1c"
+    },
+    "compiledFiles": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/input-tooltip-followup/input-current-root-attempt3/artifacts/compiled-files.json",
+      "bytes": 80147,
+      "sha256": "0c4da563dcefc3eb1840898a66cbb70cc73d9fff513656efadb63da05d745ff2"
+    }
+  },
+  "productionBefore": {
+    "count": 478,
+    "bytes": 62438427,
+    "recordHash": "5fb5219235552ef87bb9f5537d2ac7f4ae0734d70ef388ff66dde81eeab8377f"
+  },
+  "focusMonitorReady": {
+    "monitorPid": 60030,
+    "time": 1792376099229.218,
+    "monotonicMs": 3801390559.1918335
+  },
+  "browserPid": 60033,
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "centered": true,
+    "windowState": "normal",
+    "bounds": {
+      "left": 657,
+      "top": -920,
+      "width": 500,
+      "height": 760
+    },
+    "displayTarget": "secondary",
+    "source": "macos-nsscreen",
+    "screenIndex": 1,
+    "browserFrontmost": false,
+    "frontmostBefore": {
+      "pid": 97878,
+      "name": "ChatGPT"
+    },
+    "frontmostAfter": {
+      "pid": 97878,
+      "name": "ChatGPT"
+    }
+  },
+  "extensionId": "djnlaiohfaaifbibleebjggkghlmcpcj",
+  "controlledConfig": {
+    "normalPersistConfig": true,
+    "keys": [
+      "on",
+      "uiLanguage",
+      "uiLanguageSetupCompleted",
+      "useCache",
+      "inputBoxTranslationTrigger",
+      "inputBoxTranslationTarget",
+      "inputBoxTranslationService",
+      "inputBoxTranslationOutputMode",
+      "hotkey",
+      "selectionTranslatorMode",
+      "floatingBallPosition",
+      "translationMaxRetries",
+      "animations"
+    ]
+  },
+  "productionWorld": {
+    "frameId": "FC8E8EF22A79DE38CFE33F60FEE336FB",
+    "isolatedId": 5,
+    "extensionId": "djnlaiohfaaifbibleebjggkghlmcpcj"
+  },
+  "fixture": {
+    "paste": [
+      {
+        "type": "paste"
+      },
+      {
+        "type": "paste"
+      },
+      {
+        "type": "paste"
+      }
+    ],
+    "keys": [
+      {
+        "trusted": true
+      },
+      {
+        "trusted": true
+      },
+      {
+        "trusted": true
+      },
+      {
+        "trusted": true
+      }
+    ],
+    "bubbled": 0
+  },
+  "provider": {
+    "requests": [
+      {
+        "origin": "https://edge.microsoft.com",
+        "path": "/translate/translatetext",
+        "method": "POST",
+        "count": 1
+      },
+      {
+        "origin": "https://edge.microsoft.com",
+        "path": "/translate/translatetext",
+        "method": "POST",
+        "count": 1
+      },
+      {
+        "origin": "https://edge.microsoft.com",
+        "path": "/translate/translatetext",
+        "method": "POST",
+        "count": 1
+      },
+      {
+        "origin": "https://edge.microsoft.com",
+        "path": "/translate/translatetext",
+        "method": "POST",
+        "count": 1
+      }
+    ],
+    "rejected": []
+  },
+  "observationsComplete": true,
+  "configRestored": true,
+  "browserClosed": true,
+  "focusEvents": [],
+  "focusObserverError": null,
+  "profileRemoved": true,
+  "productionAfter": {
+    "count": 478,
+    "bytes": 62438427,
+    "recordHash": "5fb5219235552ef87bb9f5537d2ac7f4ae0734d70ef388ff66dde81eeab8377f"
+  },
+  "focusFailure": null
+}

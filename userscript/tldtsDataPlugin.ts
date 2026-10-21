@@ -8,7 +8,7 @@ import {createHash} from 'node:crypto';
 import {readFileSync, realpathSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import {dirname, resolve} from 'node:path';
-import {gzipSync} from 'node:zlib';
+import {gzipUserscriptBuildData} from './buildGzip';
 import ts from 'typescript';
 import {normalizePath, type Plugin} from 'vite';
 
@@ -92,7 +92,7 @@ export function createUserscriptTldtsDataCompressionPlugin(root: string, enabled
                 offsets.push(offset);
             }
             payload.set(labels, tableByteLength);
-            const compressed = gzipSync(payload, {level: 9}).toString('base64');
+            const compressed = gzipUserscriptBuildData(payload).toString('base64');
             const digest = createHash('sha256').update(code).digest('hex');
             return {
                 code: [

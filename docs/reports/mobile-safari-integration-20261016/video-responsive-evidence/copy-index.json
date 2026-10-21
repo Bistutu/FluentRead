@@ -1,0 +1,82 @@
+[
+  {
+    "original": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/browser-attempt2/portrait-320-menu-first-screen.png",
+    "copy": "portrait-320.png",
+    "bytes": 71883,
+    "sha256": "684cd38c32c1c62781f25bb494fa73586f6fa373038a9bde1feb21dde41bbc63"
+  },
+  {
+    "original": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/browser-attempt2/landscape-844-menu-first-screen.png",
+    "copy": "landscape-844.png",
+    "bytes": 41397,
+    "sha256": "d3373fdac144698180999c456ffebb6114f612e03578751f7cd0c9ee2f108644"
+  },
+  {
+    "original": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/browser-details-attempt2/details-zh-CN-watch.png",
+    "copy": "x-compact-watch.png",
+    "bytes": 52137,
+    "sha256": "04d2a4c78c01792012378da6115af3a2deabdecd15f4b054c967d9a08b8923ce"
+  },
+  {
+    "original": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/browser-details-attempt2/details-model.png",
+    "copy": "model-prompt.png",
+    "bytes": 70438,
+    "sha256": "0101c7e7f8fea120583180c870cba2ad1d5ac8cb5ba2563bb198c39276db3c9c"
+  },
+  {
+    "original": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/native-first-screen-attempt2/runtime-attachments/65D15201-2ADC-4F9F-8B6A-4BA8FB55EBD0.png",
+    "copy": "native-ios-first-screen.png",
+    "bytes": 1018484,
+    "sha256": "d7cffa24c6ac30e5a64fd1a89ae208a4f395e2fce213e599fb129462372ad6d9",
+    "scope": "iOS Simulator26.2 Safari first-screen native UI; not physical-device or subtitle-paint acceptance"
+  },
+  {
+    "original": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/native-background-return-attempt1/runtime-attachments/DC1E7E91-285B-42D1-9E7A-6AAD608E673A.png",
+    "copy": "native-ios-background-before.png",
+    "bytes": 1567244,
+    "sha256": "1111cfc847cf8847fa8669ecc72de4d153427c2f342fd8c39e4a61eed6bf5a02",
+    "scope": "Before normal Home; no menu visual acceptance"
+  },
+  {
+    "original": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/native-background-return-attempt1/runtime-attachments/5381DCE5-6D99-42F4-BD31-D0B0D60C2054.png",
+    "copy": "native-ios-background-return.png",
+    "bytes": 1652925,
+    "sha256": "a92705dd0b312e613cd5dfa16d8fc565f673683bfc670baa56aeb1b6d11fc02f",
+    "scope": "Return system animation before FR entry tap; not settled safe-area or menu visual acceptance"
+  },
+  {
+    "original": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/native-player-touch-fullscreen-return-attempt1/runtime-attachments/077258A0-65C7-472D-8ED6-E3B921DAF4FD.png",
+    "copy": "native-ios-fullscreen-touch-before.png",
+    "bytes": 1580582,
+    "sha256": "a5b525f83e87f910bfb5efe69d48f122a663424a0ded6576a51ba7f7d21dd3ee",
+    "scope": "Before sole player touch; normal fullscreen control prerequisite test SKIP, post-touch playback UNKNOWN"
+  },
+  {
+    "original": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/native-background-return-attempt1/official-summary.json",
+    "copy": "native-ios-background-summary.json",
+    "bytes": 1005,
+    "sha256": "e108795f2c035bfb52cd5fe2d545585903b0e63cf0cf8ada5a810e66cec5ee63",
+    "scope": "Official XCTest summary, limited short-background entry/menu AX PASS"
+  },
+  {
+    "original": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/native-background-return-attempt1/official-test-details.json",
+    "copy": "native-ios-background-test-details.json",
+    "bytes": 1765,
+    "sha256": "a930a37319ca187a34a56a4e2e845a6df3746217b81c0b0ae50cab0a00640232",
+    "scope": "Official XCTest test details; limited short background"
+  },
+  {
+    "original": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/native-player-touch-fullscreen-return-attempt1/official-summary.json",
+    "copy": "native-ios-fullscreen-touch-summary.json",
+    "bytes": 1007,
+    "sha256": "282f11d8ccd3bf4b275e47ecf242a275392fd6692c3fae9697eb6f38ebc5ee8c",
+    "scope": "Official XCTest summary, normal fullscreen fixed-control prerequisite SKIP"
+  },
+  {
+    "original": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/native-player-touch-fullscreen-return-attempt1/official-test-details.json",
+    "copy": "native-ios-fullscreen-touch-test-details.json",
+    "bytes": 2065,
+    "sha256": "7912d6b2aaddcee7aa65f2d18e65fcc1732b955496f5128dd2e3a3491106ea21",
+    "scope": "Official XCTest test details; SKIP not UI pass or product failure"
+  }
+]

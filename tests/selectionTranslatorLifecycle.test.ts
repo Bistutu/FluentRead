@@ -1,7 +1,7 @@
 /**
  * @file tests/selectionTranslatorLifecycle.test.ts
- * 文件职责：执行划词组件的实际挂载与卸载回调，验证扩展消息端口撤销不会留下宿主页面资源。
- * 主要内容：覆盖注销清理、原生右键菜单选区恢复与重复翻译复用、免费讲解明确启用及保存确认、用户 AI 偏好保护、关闭/换区/卸载后的迟到保存隔离、朗读生成与降级、取消、迟到响应、进度隔离和富文本 trim 后的 UTF-16 跟读偏移、顶栏菜单外点/焦点关闭边界、导航空白拖动、按配置与显式反向请求确定翻译语言和窗口尺寸变化清理、鉴权配置动作归属；可选真实 SFC 模板模式验证两处错误入口，并组合实际 selection runtime 验证 Safari 已消费选区的 host 恢复、正文失效及离开清理。
+ * 文件职责：执行划词组件的实际挂载与卸载回调，验证扩展消息端口撤销、Safari 自有追问焦点的有限键盘/旋转平移窗口与主动滚动收卡边界。
+ * 主要内容：覆盖注销清理、原生右键菜单选区恢复与重复翻译复用、免费讲解明确启用及保存确认、用户 AI 偏好保护、关闭/换区/卸载后的迟到保存隔离、朗读生成与降级、取消、迟到响应、进度隔离和富文本 trim 后的 UTF-16 跟读偏移、顶栏菜单外点/焦点关闭边界、导航空白拖动、按配置与显式反向请求确定翻译语言和窗口尺寸变化清理、鉴权配置动作归属；可选真实 SFC 模板模式验证两处错误入口与极矮视口下同一卡片的滚动退化及关闭，并组合实际 selection runtime 验证 Safari 已消费选区的 host 恢复、正文失效及离开清理。
  * 模块边界：默认编译真实 Vue setup 并使用原有空渲染；材料捕获使用真实代次冻结与完成逻辑，只替换来源提取和后台客户端；新增入口可选官方模板和独立 Linkedom 节点树；组合模式将真实组件交给原始 runtime 的平台挂载端口，浏览器、子组件与语言是受控 ports，不声称 CSS、原生焦点或真实浏览器验证。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
@@ -885,6 +885,68 @@ describe('explicit selection sentence collection', () => {
     });
 });
 
+describe('selection action notice viewport ownership', () => {
+    it.each([
+        ['open-vocabulary', '查看', 'settings-vocabulary'],
+        ['open-local-tts', '设置', 'settings-selection'],
+    ] as const)('reserves the %s action in short visible viewports and dispatches only its existing action', async (action, label, section) => {
+        const fixture = mountSelection(false, undefined, 'safari', true);
+        const port = fixture.renderPort!;
+        const notice = 'A long notice that may wrap in the narrow visible viewport. '.repeat(100);
+        fixture.state.showNotice(notice, action);
+        await Vue.nextTick();
+        let toast = port.root.querySelector('.fr-action-toast') as HTMLElement;
+        expect(toast.style.getPropertyValue('left')).toBe('982px');
+        expect(toast.style.getPropertyValue('top')).toBe('782px');
+        const viewport = {width: 296, height: 200, offsetLeft: 80, offsetTop: 240};
+        // innerHeight may already shrink while VisualViewport retains a nonzero layout offset.
+        Object.assign(fixture.window, {innerWidth: 390, innerHeight: 200, visualViewport: viewport});
+        fixture.state.touchInteraction = true;
+        const resize = [...fixture.listeners.get('window:resize')!];
+        expect(resize).toHaveLength(1); // reuse the component's existing viewport observer
+        resize.forEach(listener => listener({}));
+        await vi.advanceTimersByTimeAsync(16); await Vue.nextTick();
+        toast = port.root.querySelector('.fr-action-toast') as HTMLElement;
+        expect(toast.style.getPropertyValue('left')).toBe('364px');
+        expect(toast.style.getPropertyValue('top')).toBe('428px');
+        expect(toast.style.getPropertyValue('max-width')).toBe('272px');
+        expect(toast.style.getPropertyValue('max-height')).toBe('176px');
+        expect(toast.style.getPropertyValue('padding-block')).toBe('9px');
+        expect(toast.style.getPropertyValue('--fr-notice-content-height')).toBe('158px');
+        for (const [height, padding, contentHeight, alignment] of [
+            [32, 0, 32, 'flex-start'], [44, 0, 44, 'center'], [58, 7, 44, 'center'],
+        ] as const) {
+            Object.assign(viewport, {height, offsetTop: 320});
+            resize.forEach(listener => listener({}));
+            await vi.advanceTimersByTimeAsync(16); await Vue.nextTick();
+            expect(toast.style.getPropertyValue('top')).toBe(`${320 + height}px`);
+            expect(toast.style.getPropertyValue('max-height')).toBe(`${height}px`);
+            expect(toast.style.getPropertyValue('padding-block')).toBe(`${padding}px`);
+            expect(toast.style.getPropertyValue('--fr-notice-content-height')).toBe(`${contentHeight}px`);
+            expect(toast.style.getPropertyValue('align-items')).toBe(alignment);
+            expect(toast.querySelector('span')!.textContent).toBe(notice);
+        }
+        expect(fixture.browser.runtime.sendMessage.mock.calls.filter(([message]) => message.type === 'openOptionsPage')).toHaveLength(0);
+        const button = toast.querySelector('button')!;
+        expect(button.textContent).toBe(label);
+        await port.click(button); await Vue.nextTick();
+        expect(fixture.browser.runtime.sendMessage.mock.calls.filter(([message]) => message.type === 'openOptionsPage'))
+            .toEqual([[{type: 'openOptionsPage', section}]]);
+        expect(port.root.querySelector('.fr-action-toast')).toBeNull();
+        expect(fixture.translateText).not.toHaveBeenCalled();
+        fixture.state.showNotice('Another notice.', action); await Vue.nextTick();
+        const lastViewport = fixture.state.viewportSize;
+        fixture.unmount();
+        expect([...fixture.listeners.values()].every(listeners => listeners.size === 0)).toBe(true);
+        Object.assign(viewport, {height: 100, offsetTop: 300});
+        resize.forEach(listener => listener({}));
+        await vi.advanceTimersByTimeAsync(2601);
+        expect(fixture.state.viewportSize).toBe(lastViewport);
+        expect(vi.getTimerCount()).toBe(0);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+});
+
 describe('SelectionTranslator lifecycle after extension reload', () => {
     it.each(['normal', 'runtime removed', 'event removed', 'removeListener throws'] as const)(
         'cleans up all selection resources when %s', async failure => {
@@ -1562,6 +1624,76 @@ it('keeps an existing ordinary translation running when opening the learning vie
 
 
 describe('selection card geometry across content changes', () => {
+    it('keeps the same card scrollable and its close action owned in a 58px visible viewport', async () => {
+        const fixture = mountSelection(false, undefined, 'safari', true);
+        const port = fixture.renderPort!;
+        vi.stubGlobal('Element', port.domWindow.Element);
+        const text = 'Keep the selected source and its answer while the keyboard reduces the viewport.';
+        const selected = Vue.markRaw({text, range: {getClientRects: () => []}, parts: [{kind: 'text', text}],
+            anchor: {left: 40, right: 280, top: 400, bottom: 424}, isForward: true});
+        const controller = new AbortController();
+        Object.assign(fixture.state, {snapshot: selected, selectedText: text, showTooltip: true, touchInteraction: true,
+            translationResult: '保留已有译文。'.repeat(40), translationAbortController: controller});
+        fixture.config.selectionTranslatorAutoDismiss = false;
+        await Vue.nextTick();
+        const card = port.root.querySelector('.fr-translation-tooltip') as HTMLElement;
+        const close = card.querySelector('[aria-label="关闭翻译结果"]')!;
+        card.getBoundingClientRect = () => ({left: 12, top: 400, right: 390, bottom: 640, width: 378, height: 240}) as DOMRect;
+        fixture.state.tooltipRef = Vue.markRaw(card);
+        fixture.state.manualPopupPosition = {left: 12, top: 400};
+        Object.assign(fixture.window, {visualViewport: {width: 402, height: 58, offsetLeft: 0, offsetTop: 320}});
+        const resize = [...fixture.listeners.get('window:resize')!];
+        resize.forEach(listener => listener({}));
+        await vi.advanceTimersByTimeAsync(32); await Vue.nextTick();
+        // Linkedom proves the bounded same-card fallback and actual close action.
+        // CSS scrolling and 44px hit geometry require production-browser evidence.
+        expect(card.style.getPropertyValue('max-height')).toBe('58px');
+        expect(card.classList.contains('fr-short-viewport')).toBe(true);
+        expect(card.style.getPropertyValue('top')).toBe('320px');
+        expect(port.root.querySelector('.fr-translation-tooltip')).toBe(card);
+        expect(card.querySelector('[aria-label="关闭翻译结果"]')).toBe(close);
+        expect(card.textContent).toContain(text);
+        expect(fixture.state.snapshot).toBe(selected);
+        expect(controller.signal.aborted).toBe(false);
+        await port.click(close); await Vue.nextTick();
+        expect(fixture.state.showTooltip).toBe(false);
+        expect(controller.signal.aborted).toBe(true);
+        expect(port.root.querySelector('.fr-translation-tooltip')).toBeNull();
+        fixture.unmount();
+        expect([...fixture.listeners.values()].every(listeners => listeners.size === 0)).toBe(true);
+        expect(vi.getTimerCount()).toBe(0);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it.each([{height: 32, zoom: 1}, {height: 44, zoom: 1}, {height: 58, zoom: 2}])(
+        'temporarily bounds a user card without consuming its size or position: %j', async ({height, zoom}) => {
+            const fixture = mountSelection();
+            await Vue.nextTick();
+            const {state, window} = fixture;
+            state.tooltipRef = {getBoundingClientRect: () => ({width: 450, height: 240})};
+            state.manualPopupPosition = {left: 510, top: 490};
+            state.manualPopupSize = {width: 450, height: 240};
+            state.pageZoom = zoom;
+            Object.assign(window, {visualViewport: {width: 402, height, offsetLeft: 80, offsetTop: 320}});
+            state.viewportSize = visualViewport.getSafeVisualViewportRect(window as unknown as Window);
+            state.applyManualPopupGeometry();
+            expect(state.isShortViewport()).toBe(true);
+            expect(parseFloat(state.tooltipStyle.top)).toBe(320);
+            expect(parseFloat(state.tooltipStyle.height) * state.popupScale).toBe(height);
+            expect(parseFloat(state.tooltipStyle.maxHeight) * state.popupScale).toBe(height);
+            // A 32px viewport remains a physical limitation; the action is not reduced to fit.
+            expect(state.manualPopupPosition).toEqual({left: 510, top: 490});
+            expect(state.manualPopupSize).toEqual({width: 450, height: 240});
+            Object.assign(window, {visualViewport: undefined});
+            state.viewportSize = visualViewport.getSafeVisualViewportRect(window as unknown as Window);
+            state.applyManualPopupGeometry(); await Vue.nextTick();
+            expect(state.isShortViewport()).toBe(false);
+            expect(state.tooltipStyle).toMatchObject({left: '510px', top: '490px', width: `${450 * zoom}px`, height: `${240 * zoom}px`});
+            fixture.unmount();
+            expect(vi.getTimerCount()).toBe(0);
+        },
+    );
+
     it.each([
         {isForward: true, left: 100, right: 150, expected: 222},
         {isForward: false, left: 100, right: 150, expected: 28},
@@ -2315,6 +2447,31 @@ describe('automatic card audio height ownership', () => {
         fixture.state.stopAudio();
         expect(fixture.state.tooltipStyle.height).toBeUndefined();
     });
+
+    it.each([false, true])('does not adopt a short viewport as the natural audio height (starts short: %s)', async startsShort => {
+        const fixture = await audioCard();
+        const {state, window} = fixture;
+        const short = () => {
+            Object.assign(window, {visualViewport: {width: 402, height: 58, offsetLeft: 0, offsetTop: 320}});
+            state.handleViewportResize();
+        };
+        if (startsShort) short();
+        prepareTts(fixture, [Promise.resolve({success: true, transport: 'offscreen'})]);
+        await state.toggleAudio('Practice helps.', 'source');
+        if (!startsShort) short();
+        await vi.advanceTimersByTimeAsync(32);
+        expect(state.isPlaying).toBe(true);
+        expect(state.audioPopupHeight).toBe(startsShort ? null : 180);
+        expect(state.manualPopupSize).toBeNull();
+        expect(state.tooltipStyle).toMatchObject({top: '320px', maxHeight: '58px'});
+        Object.assign(window, {visualViewport: undefined});
+        state.handleViewportResize(); await vi.advanceTimersByTimeAsync(32);
+        expect(state.manualPopupPosition).toEqual({left: 200, top: 100});
+        expect(state.tooltipStyle.height).toBe(startsShort ? undefined : '180px');
+        state.stopAudio(); fixture.unmount();
+        expect(state.audioPopupHeight).toBeNull();
+        expect(vi.getTimerCount()).toBe(0);
+    });
 });
 
 describe('context menu selection ownership', () => {
@@ -2795,6 +2952,27 @@ describe('selection card bounded layout work', () => {
         const flush = () => {const pending = [...frames.values()];frames.clear();pending.forEach(callback => callback(0));};
         return {...fixture, element, frames, pointer, flush};
     }
+
+    it('leaves short-card touch pans native instead of capturing a title drag, then restores normal dragging', async () => {
+        const {state, window, element, pointer, frames} = await gestureFixture();
+        state.stopPopupGesture();
+        window.innerHeight = 58;
+        state.handleViewportResize();
+        const down = {...pointer('pointerdown', 205, 110), pointerType: 'touch'};
+        state.beginPopupGesture(down);
+        state.movePopupGesture({...pointer('pointermove', 205, 70), pointerType: 'touch'});
+        expect(down.preventDefault).not.toHaveBeenCalled();
+        expect(element.captured).toBe(false);
+        expect(state.popupManipulating).toBe(false);
+        expect(frames.size).toBe(1); // the viewport update, not a captured gesture
+        window.innerHeight = 800;
+        state.handleViewportResize();
+        const normal = {...pointer('pointerdown', 205, 110), pointerType: 'touch'};
+        state.beginPopupGesture(normal);
+        expect(normal.preventDefault).toHaveBeenCalledOnce();
+        expect(element.captured).toBe(true);
+        expect(state.popupManipulating).toBe(true);
+    });
 
     it.each([
         ['horizontal tab scrollbar', 'fr-study-toolbar', 300, 132],
@@ -3942,7 +4120,7 @@ describe('Safari reading input keyboard transition', () => {
         const ui = port.root.firstElementChild!;
         shadow.append(ui); port.root.append(host);
         const viewport = {width: 402, height: 754, scale: 1, offsetLeft: 0, offsetTop: 0};
-        Object.assign(fixture.window, {visualViewport: viewport});
+        Object.assign(fixture.window, {innerWidth: 402, innerHeight: 874, visualViewport: viewport});
         let active: Element | null = null;
         Object.defineProperty(shadow, 'activeElement', {get: () => active});
         Object.assign(fixture.document, {activeElement: host,
@@ -3964,7 +4142,7 @@ describe('Safari reading input keyboard transition', () => {
         form.append(input); card.append(form);
         const controller = new AbortController(); fixture.state.translationAbortController = controller;
         const send = (where: 'window' | 'document', type: string, fields: Record<string, unknown> = {}) => {
-            const event = {isTrusted: true, target: fixture.document, ...fields};
+            const event = {type, isTrusted: true, target: fixture.document, ...fields};
             for (const fn of [...(fixture.listeners.get(`${where}:${type}`) ?? [])]) fn(event);
         };
         const domEvent = (type: string, trusted = true) => {
@@ -3984,6 +4162,205 @@ describe('Safari reading input keyboard transition', () => {
             keyboardScroll, setActive: (element: Element | null) => {active = element;}};
     }
 
+    async function shortReadingCardFixture() {
+        const f = await keyboardTransitionFixture();
+        f.focus(); f.keyboardScroll(); await vi.advanceTimersByTimeAsync(801);
+        Object.assign(f.window, {innerWidth: 874, innerHeight: 402, scrollY: 557,
+            screen: {orientation: {type: 'landscape-primary'}}});
+        Object.assign(f.viewport, {width: 874, height: 98, offsetTop: 304});
+        f.send('window', 'resize'); await vi.advanceTimersByTimeAsync(832); await Vue.nextTick();
+        expect(f.state.readingKeyboardFocus.expiresAt).toBe(0);
+        expect(f.card.classList.contains('fr-short-viewport')).toBe(true);
+        Object.defineProperties(f.card, {clientHeight: {value: 78, configurable: true},
+            scrollHeight: {value: 392, configurable: true}});
+        f.card.getBoundingClientRect = () => ({left: 12, top: 304, right: 390, bottom: 382, width: 378, height: 78}) as DOMRect;
+        f.card.setPointerCapture = vi.fn();
+        const events: Event[] = [];
+        const touch = (type: string, fields: Record<string, unknown> = {}, deliverToCard = true) => {
+            const values = {isTrusted: true, pointerType: 'touch', isPrimary: true, button: 0,
+                pointerId: 7, clientX: 120, clientY: 360, ...fields};
+            // Model document capture's closed-shadow retarget, then deliver the real card's SFC listener.
+            f.send('document', type, {target: f.host, ...values});
+            if (deliverToCard) {
+                const event = new f.renderPort!.domWindow.Event(type, {bubbles: true, cancelable: true});
+                for (const [key, value] of Object.entries(values)) Object.defineProperty(event, key, {value});
+                f.card.dispatchEvent(event); events.push(event);
+            }
+        };
+        const scrollHost = (y: number) => { Object.assign(f.window, {scrollY: y}); f.send('window', 'scroll'); };
+        return {...f, touch, scrollHost, events};
+    }
+
+    async function readingRevealFixture(scale = 1) {
+        const f = await keyboardTransitionFixture();
+        f.focus(); f.keyboardScroll(); await vi.advanceTimersByTimeAsync(801);
+        f.state.pageZoom = 1 / scale;
+        f.browser.runtime.sendMessage.mockResolvedValue(undefined);
+        Object.assign(f.window, {innerWidth: 874, innerHeight: 402, scrollY: 557,
+            screen: {orientation: {type: 'landscape-primary'}}, scroll: vi.fn(), scrollTo: vi.fn(), scrollBy: vi.fn()});
+        // This DOM port has no safe-area CSS probe: model the actual78px safe port directly.
+        Object.assign(f.viewport, {width: 874, height: 78, offsetTop: 304});
+        Object.defineProperties(f.card, {clientTop: {value: 0, configurable: true},
+            clientHeight: {value: 78 / scale, configurable: true}, scrollHeight: {value: 392 / scale, configurable: true}});
+        f.card.scrollTop = 252 / scale;
+        // Actual Safari uses visual-origin BCR here even though VV.offsetTop is304.
+        f.card.getBoundingClientRect = () => ({left: 74, top: 0, right: 462, bottom: 78, width: 388, height: 78}) as DOMRect;
+        const inputRect = vi.fn(() => {
+            const top = 334 - f.card.scrollTop * scale;
+            return {left: 100, right: 393, top, bottom: top + 44 * scale, width: 293, height: 44 * scale} as DOMRect;
+        });
+        f.input.getBoundingClientRect = inputRect;
+        f.input.focus = vi.fn(); f.input.scrollIntoView = vi.fn();
+        f.input.value = 'draft remains in the original input';
+        return {...f, inputRect};
+    }
+
+    it.each([1, 0.5])('reveals only the same focused input in its own short-card client port at popup scale%s and nonzero VV offset', async scale => {
+        const f = await readingRevealFixture(scale);
+        f.send('window', 'orientationchange'); await vi.advanceTimersByTimeAsync(32); await Vue.nextTick();
+        expect(f.card.classList.contains('fr-short-viewport')).toBe(true);
+        expect(f.card.scrollTop).toBeCloseTo(260 / scale + 44);
+        expect(f.inputRect).toHaveBeenCalledTimes(1);
+        expect(f.shadow.querySelector('.fr-translation-tooltip')).toBe(f.card);
+        expect(f.card.querySelector('.fr-reading-followup input')).toBe(f.input);
+        expect(f.shadow.activeElement).toBe(f.input);
+        expect(f.input.value).toBe('draft remains in the original input');
+        expect(f.state.snapshot).toBe(f.selected);
+        expect(f.controller.signal.aborted).toBe(false);
+        expect((f.window as typeof f.window & {scrollY: number}).scrollY).toBe(557);
+        expect(f.input.focus).not.toHaveBeenCalled(); expect(f.input.scrollIntoView).not.toHaveBeenCalled();
+        const win = f.window as typeof f.window & {scroll: ReturnType<typeof vi.fn>; scrollTo: ReturnType<typeof vi.fn>; scrollBy: ReturnType<typeof vi.fn>};
+        expect(win.scroll).not.toHaveBeenCalled(); expect(win.scrollTo).not.toHaveBeenCalled(); expect(win.scrollBy).not.toHaveBeenCalled();
+        // A later own scroll/content positioning/unchanged viewport must not pull the reader back.
+        f.card.scrollTop = 252 / scale; f.send('window', 'scroll', {target: f.host});
+        f.state.schedulePositionUpdate(); f.send('window', 'resize');
+        await vi.advanceTimersByTimeAsync(32); await Vue.nextTick();
+        expect(f.card.scrollTop).toBe(252 / scale);
+        expect(f.inputRect).toHaveBeenCalledTimes(1);
+        expect(f.shadow.activeElement).toBe(f.input);
+    });
+
+    it.each(['owned pointer', 'wheel', 'editing key', 'source replaced', 'expired', 'unmount'] as const)(
+        'does not execute a cancelled or stale focused reveal: %s', async reason => {
+            const f = await readingRevealFixture();
+            f.send('window', 'orientationchange'); await vi.advanceTimersByTimeAsync(16);
+            expect(f.state.readingKeyboardFocus.reveal).toBe(true);
+            if (reason === 'owned pointer') f.send('document', 'pointerdown', {target: f.host, pointerType: 'touch', button: 0});
+            if (reason === 'wheel') f.send('window', 'wheel');
+            if (reason === 'editing key') f.send('document', 'keydown', {target: f.host, key: ' ', composedPath: () => [f.host], preventDefault: vi.fn(), stopPropagation: vi.fn()});
+            if (reason === 'source replaced') f.state.snapshot = {...f.selected, text: 'new source'};
+            if (reason === 'expired') vi.setSystemTime(Date.now() + 801);
+            if (reason === 'unmount') f.unmount();
+            await vi.advanceTimersByTimeAsync(32); await Vue.nextTick();
+            expect(f.inputRect).not.toHaveBeenCalled();
+            expect(f.card.scrollTop).toBe(252);
+            expect((f.window as typeof f.window & {scrollY: number}).scrollY).toBe(557);
+            expect(f.lifecycleErrors).not.toHaveBeenCalled();
+        },
+    );
+
+    it.each(['insufficient port', 'source disconnected'] as const)('does not claim or force complete input visibility for %s', async reason => {
+        const f = await readingRevealFixture();
+        if (reason === 'insufficient port') Object.defineProperty(f.card, 'clientHeight', {value: 32});
+        else f.source.isConnected = false;
+        f.send('window', 'orientationchange'); await vi.advanceTimersByTimeAsync(32); await Vue.nextTick();
+        expect(f.card.scrollTop).toBe(252);
+        expect((f.window as typeof f.window & {scrollY: number}).scrollY).toBe(557);
+        expect(f.input.focus).not.toHaveBeenCalled(); expect(f.input.scrollIntoView).not.toHaveBeenCalled();
+        if (reason === 'source disconnected') expect(f.state.showTooltip).toBe(false);
+        else {
+            expect(f.card.querySelector('.fr-reading-followup input')).toBe(f.input);
+            expect(f.shadow.activeElement).toBe(f.input);
+            expect(f.controller.signal.aborted).toBe(false);
+        }
+    });
+
+    it.each(['pointerup', 'pointercancel'] as const)('keeps an internal short-card pan and its tiny host tail until its fixed deadline after %s', async end => {
+        const f = await shortReadingCardFixture();
+        f.input.value = '未提交的追问';
+        f.touch('pointerdown'); f.touch('pointermove', {clientY: 340});
+        const deadline = f.state.readingCardPan.expiresAt;
+        expect(deadline).toBe(Date.now() + 400);
+        await vi.advanceTimersByTimeAsync(85);
+        f.touch('pointermove', {clientY: 320}); f.touch(end, {clientY: 320});
+        await vi.advanceTimersByTimeAsync(15);
+        f.scrollHost(558); await Vue.nextTick();
+        // The unit port models real card scroll progress; native/browser proof must observe it independently.
+        f.card.scrollTop = 72; f.send('window', 'scroll', {target: f.host});
+        expect(f.card.scrollTop).toBe(72);
+        expect(f.state.readingCardPan.expiresAt).toBe(deadline);
+        expect(f.shadow.querySelector('.fr-translation-tooltip')).toBe(f.card);
+        expect(f.card.querySelector('.fr-reading-followup input')).toBe(f.input);
+        expect(f.shadow.activeElement).toBe(f.input);
+        expect(f.input.value).toBe('未提交的追问');
+        expect(f.state.snapshot).toBe(f.selected);
+        expect(f.controller.signal.aborted).toBe(false);
+        expect(f.events.every(event => !event.defaultPrevented)).toBe(true);
+        expect(f.card.setPointerCapture).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(deadline - Date.now() + 1);
+        expect(f.state.readingCardPan).toBeUndefined();
+        // A later reverse gesture needs a new local trusted down and movement, never the expired allowance.
+        f.touch('pointerdown', {clientY: 320}); f.touch('pointermove', {clientY: 350}); f.touch(end, {clientY: 350});
+        const reverseDeadline = f.state.readingCardPan.expiresAt;
+        expect(reverseDeadline).toBeGreaterThan(deadline);
+        f.card.scrollTop = 0; f.send('window', 'scroll', {target: f.host}); f.scrollHost(557);
+        expect(f.card.scrollTop).toBe(0);
+        expect(f.shadow.activeElement).toBe(f.input);
+        expect(f.controller.signal.aborted).toBe(false);
+        await vi.advanceTimersByTimeAsync(reverseDeadline - Date.now() + 1);
+        f.scrollHost(557); await Vue.nextTick();
+        expect(f.state.showTooltip).toBe(false);
+        expect(f.controller.signal.aborted).toBe(true);
+        expect(f.listeners.get('window:wheel')?.size).toBe(0);
+    });
+
+    it.each(['no local card event', 'no vertical move', 'normal height', 'not overflow', 'mouse', 'untrusted', 'foreign pointer', 'outside card'] as const)(
+        'does not exempt host scrolling without a proven short-card touch pan: %s', async reason => {
+            const f = await shortReadingCardFixture();
+            if (reason === 'normal height') {
+                f.viewport.height = 376; f.send('window', 'resize'); await vi.advanceTimersByTimeAsync(32);
+            }
+            if (reason === 'not overflow') Object.defineProperty(f.card, 'scrollHeight', {value: 78});
+            const fields = reason === 'mouse' ? {pointerType: 'mouse'} : reason === 'untrusted' ? {isTrusted: false} : {};
+            f.touch('pointerdown', fields, reason !== 'no local card event');
+            if (reason !== 'no vertical move') f.touch('pointermove', {...fields,
+                clientY: reason === 'outside card' ? 250 : 340, ...(reason === 'foreign pointer' ? {pointerId: 9} : {})});
+            f.scrollHost(558); await Vue.nextTick();
+            expect(f.state.showTooltip).toBe(false);
+            expect(f.controller.signal.aborted).toBe(true);
+            expect(f.listeners.get('window:wheel')?.size).toBe(0);
+        },
+    );
+
+    it.each(['outside touch', 'wheel', 'page key', 'input edit', 'focusout', 'window blur', 'pagehide', 'source changed', 'scale changed', 'width changed', 'nested scroll', 'large host pan', 'cumulative host travel', 'unmount'] as const)(
+        'revokes the internal pan for intent, identity loss, excessive host motion or teardown: %s', async reason => {
+            const f = await shortReadingCardFixture();
+            f.touch('pointerdown'); f.touch('pointermove', {clientY: 340}); f.touch('pointercancel', {clientY: 340});
+            expect(f.state.readingCardPan.expiresAt).toBeGreaterThan(Date.now());
+            if (reason === 'outside touch') f.send('document', 'pointerdown', {target: f.renderPort!.document.createElement('p'), pointerType: 'touch', button: 0});
+            if (reason === 'wheel') f.send('window', 'wheel');
+            if (reason === 'page key') f.send('document', 'keydown', {target: f.host, key: 'PageDown'});
+            if (reason === 'input edit') f.domEvent('input');
+            if (reason === 'focusout') f.domEvent('focusout');
+            if (reason === 'window blur') f.send('window', 'blur');
+            if (reason === 'pagehide') f.send('window', 'pagehide');
+            if (reason === 'source changed') f.source.isConnected = false;
+            if (reason === 'scale changed') f.viewport.scale = 1.2;
+            if (reason === 'width changed') f.viewport.width = 402;
+            if (reason === 'nested scroll') f.send('window', 'scroll', {target: f.renderPort!.document.createElement('div')});
+            if (reason === 'large host pan') Object.assign(f.window, {scrollY: 560});
+            if (reason === 'cumulative host travel') { f.scrollHost(558); f.scrollHost(557); Object.assign(f.window, {scrollY: 558}); }
+            if (reason === 'unmount') f.unmount();
+            f.send('window', 'scroll'); await Vue.nextTick();
+            expect(f.state.readingCardPan).toBeUndefined();
+            if (reason !== 'unmount') expect(f.state.showTooltip).toBe(false);
+            else expect(f.shadow.querySelector('.fr-translation-tooltip')).toBeNull();
+            expect(f.controller.signal.aborted).toBe(true);
+            expect(f.listeners.get('window:wheel')?.size).toBe(0);
+            expect(f.lifecycleErrors).not.toHaveBeenCalled();
+        },
+    );
+
     it('keeps the rendered owned card and request during the actual stable-scale keyboard document pan', async () => {
         const f = await keyboardTransitionFixture();
         f.focus(); await vi.advanceTimersByTimeAsync(231); f.keyboardScroll(); await Vue.nextTick();
@@ -3996,17 +4373,207 @@ describe('Safari reading input keyboard transition', () => {
         expect(f.lifecycleErrors).not.toHaveBeenCalled();
     });
 
+    it('keeps the same focused reading input and request through short-card fallback and viewport recovery', async () => {
+        const f = await keyboardTransitionFixture();
+        f.focus();
+        Object.assign(f.viewport, {height: 58, offsetTop: 320});
+        f.send('window', 'resize');
+        await vi.advanceTimersByTimeAsync(32); await Vue.nextTick();
+        expect(f.card.classList.contains('fr-short-viewport')).toBe(true);
+        expect(f.shadow.querySelector('.fr-translation-tooltip')).toBe(f.card);
+        expect(f.card.querySelector('.fr-reading-followup input')).toBe(f.input);
+        expect(f.shadow.activeElement).toBe(f.input);
+        expect(f.state.readingKeyboardFocus.input).toBe(f.input);
+        expect(f.state.snapshot).toBe(f.selected);
+        expect(f.controller.signal.aborted).toBe(false);
+        Object.assign(f.viewport, {height: 754, offsetTop: 0});
+        f.send('window', 'resize');
+        await vi.advanceTimersByTimeAsync(32); await Vue.nextTick();
+        expect(f.card.classList.contains('fr-short-viewport')).toBe(false);
+        expect(f.card.querySelector('.fr-reading-followup input')).toBe(f.input);
+        expect(f.shadow.activeElement).toBe(f.input);
+        expect(f.controller.signal.aborted).toBe(false);
+        f.unmount();
+        expect(f.controller.signal.aborted).toBe(true);
+        expect(f.listeners.get('window:wheel')?.size).toBe(0);
+        expect(vi.getTimerCount()).toBe(0);
+        expect(f.lifecycleErrors).not.toHaveBeenCalled();
+    });
 
-    it('does not renew the focus window on repeated keyboard pans and releases its wheel observer at expiry', async () => {
+
+    it('expires the initial pan window without renewing on scroll and retains only the owned focus identity', async () => {
         const f = await keyboardTransitionFixture(); f.focus();
         expect(f.listeners.get('window:wheel')?.size).toBe(1);
         await vi.advanceTimersByTimeAsync(700); f.keyboardScroll();
         expect(f.state.showTooltip).toBe(true);
         await vi.advanceTimersByTimeAsync(101);
-        expect(f.listeners.get('window:wheel')?.size).toBe(0);
+        expect(f.state.readingKeyboardFocus.expiresAt).toBe(0);
+        expect(f.listeners.get('window:wheel')?.size).toBe(1);
         f.keyboardScroll(); await Vue.nextTick();
         expect(f.state.showTooltip).toBe(false);
         expect(f.shadow.querySelector('.fr-translation-tooltip')).toBeNull();
+        expect(f.controller.signal.aborted).toBe(true);
+        expect(f.listeners.get('window:wheel')?.size).toBe(0);
+    });
+
+    it.each(['viewport first', 'scroll first'] as const)('preserves the same edited input during one later rotation pan (%s) without renewing its deadline', async order => {
+        const f = await keyboardTransitionFixture(); f.focus();
+        await vi.advanceTimersByTimeAsync(231); f.keyboardScroll();
+        await vi.advanceTimersByTimeAsync(1000);
+        f.input.value = '未提交的追问'; f.domEvent('input');
+        expect(f.state.readingKeyboardFocus.input).toBe(f.input);
+        expect(f.state.readingKeyboardFocus.expiresAt).toBe(0);
+        Object.assign(f.window, {innerWidth: 874, innerHeight: 402});
+        Object.assign(f.viewport, {width: 874, height: 58, offsetTop: 338});
+        f.send('window', 'orientationchange');
+        if (order === 'viewport first') await vi.advanceTimersByTimeAsync(16);
+        f.send('window', 'scroll'); await Vue.nextTick();
+        const deadline = f.state.readingKeyboardFocus.expiresAt;
+        expect(deadline).toBeGreaterThan(Date.now());
+        expect(f.shadow.querySelector('.fr-translation-tooltip')).toBe(f.card);
+        expect(f.card.querySelector('.fr-reading-followup input')).toBe(f.input);
+        expect(f.shadow.activeElement).toBe(f.input);
+        expect(f.input.value).toBe('未提交的追问');
+        expect(f.state.snapshot).toBe(f.selected);
+        expect(f.controller.signal.aborted).toBe(false);
+        await vi.advanceTimersByTimeAsync(700);
+        f.send('window', 'resize'); f.send('window', 'scroll');
+        await vi.advanceTimersByTimeAsync(16);
+        expect(f.state.readingKeyboardFocus.expiresAt).toBe(deadline);
+        expect(f.state.showTooltip).toBe(true);
+        await vi.advanceTimersByTimeAsync(101);
+        f.send('window', 'scroll'); await Vue.nextTick();
+        expect(f.state.showTooltip).toBe(false);
+        expect(f.controller.signal.aborted).toBe(true);
+        expect(f.listeners.get('window:wheel')?.size).toBe(0);
+    });
+
+    it.each(['screen', 'legacy'] as const)('preserves the same focused input when explicit %s rotation precedes visual viewport width without extending the deadline', async api => {
+        const f = await keyboardTransitionFixture();
+        const orient = (landscape: boolean) => Object.assign(f.window, api === 'screen'
+            ? {screen: {orientation: {type: landscape ? 'landscape-primary' : 'portrait-primary'}}}
+            : {orientation: landscape ? 90 : 0});
+        orient(false);
+        Object.assign(f.window, {innerWidth: 402, innerHeight: 714});
+        f.viewport.height = 714;
+        f.focus();
+        await vi.advanceTimersByTimeAsync(311);
+        Object.assign(f.viewport, {height: 376, offsetTop: 338});
+        f.send('window', 'scroll');
+        await vi.advanceTimersByTimeAsync(2106);
+        f.input.value = '未提交的追问'; f.domEvent('input');
+        // Actual Safari order: orientation changes first; VV is still the portrait keyboard viewport.
+        orient(true); f.send('window', 'orientationchange');
+        await vi.advanceTimersByTimeAsync(66);
+        Object.assign(f.window, {innerWidth: 874, innerHeight: 402});
+        f.viewport.offsetTop = 0;
+        f.send('window', 'resize'); f.send('window', 'scroll'); await Vue.nextTick();
+        const deadline = f.state.readingKeyboardFocus.expiresAt;
+        expect(deadline).toBeGreaterThan(Date.now());
+        expect(f.viewport.width).toBe(402);
+        expect(f.shadow.querySelector('.fr-translation-tooltip')).toBe(f.card);
+        expect(f.card.querySelector('.fr-reading-followup input')).toBe(f.input);
+        expect(f.shadow.activeElement).toBe(f.input);
+        expect(f.input.value).toBe('未提交的追问');
+        expect(f.state.snapshot).toBe(f.selected);
+        expect(f.controller.signal.aborted).toBe(false);
+        // Later VV catch-up and repeated resize/scroll refresh geometry, never the 800ms deadline.
+        await vi.advanceTimersByTimeAsync(100);
+        Object.assign(f.viewport, {width: 874, height: 58});
+        f.send('window', 'resize'); f.send('window', 'scroll');
+        await vi.advanceTimersByTimeAsync(16); await Vue.nextTick();
+        expect(f.state.readingKeyboardFocus).toMatchObject({width: 874, height: 58, expiresAt: deadline});
+        expect(f.card.querySelector('.fr-reading-followup input')).toBe(f.input);
+        expect(f.shadow.activeElement).toBe(f.input);
+        expect(f.controller.signal.aborted).toBe(false);
+        await vi.advanceTimersByTimeAsync(deadline - Date.now() - 1);
+        f.send('window', 'resize'); f.send('window', 'scroll');
+        expect(f.state.readingKeyboardFocus.expiresAt).toBe(deadline);
+        expect(f.state.showTooltip).toBe(true);
+        await vi.advanceTimersByTimeAsync(2);
+        f.send('window', 'scroll'); await Vue.nextTick();
+        expect(f.state.showTooltip).toBe(false);
+        expect(f.controller.signal.aborted).toBe(true);
+        expect(f.listeners.get('window:wheel')?.size).toBe(0);
+    });
+
+    it.each(['screen', 'legacy'] as const)('uses explicit %s orientation for a return to portrait while the keyboard keeps layout height short', async api => {
+        const f = await keyboardTransitionFixture();
+        const orient = (landscape: boolean) => Object.assign(f.window, api === 'screen'
+            ? {screen: {orientation: {type: landscape ? 'landscape-primary' : 'portrait-primary'}}}
+            : {orientation: landscape ? 90 : 0});
+        orient(false); f.focus(); f.keyboardScroll();
+        await vi.advanceTimersByTimeAsync(801);
+        orient(true); Object.assign(f.window, {innerWidth: 874, innerHeight: 58});
+        Object.assign(f.viewport, {width: 874, height: 58});
+        f.send('window', 'scroll');
+        expect(f.state.showTooltip).toBe(true);
+        await vi.advanceTimersByTimeAsync(801);
+        orient(false); Object.assign(f.window, {innerWidth: 402, innerHeight: 376});
+        Object.assign(f.viewport, {width: 402, height: 376});
+        f.send('window', 'scroll'); await Vue.nextTick();
+        expect(f.state.showTooltip).toBe(true);
+        expect(f.shadow.activeElement).toBe(f.input);
+        expect(f.card.querySelector('.fr-reading-followup input')).toBe(f.input);
+        expect(f.controller.signal.aborted).toBe(false);
+        f.unmount();
+        expect(f.listeners.get('window:wheel')?.size).toBe(0);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('ends the current keyboard pan on input without exempting a later ordinary document scroll', async () => {
+        const f = await keyboardTransitionFixture(); f.focus(); f.keyboardScroll();
+        expect(f.state.showTooltip).toBe(true);
+        f.domEvent('input');
+        expect(f.state.readingKeyboardFocus.input).toBe(f.input);
+        expect(f.state.readingKeyboardFocus.expiresAt).toBe(0);
+        f.keyboardScroll(); await Vue.nextTick();
+        expect(f.state.showTooltip).toBe(false);
+        expect(f.controller.signal.aborted).toBe(true);
+    });
+
+    it.each(['direct input', 'closed-shadow retarget'] as const)('keeps edited input rotation eligibility after captured editing keys (%s)', async targetMode => {
+        const f = await keyboardTransitionFixture(); f.focus(); f.keyboardScroll();
+        expect(f.document.addEventListener).toHaveBeenCalledWith('keydown', expect.any(Function), true);
+        const preventDefault = vi.fn(), stopPropagation = vi.fn();
+        const inputStop = vi.fn((event: Event) => {
+            // The registered document capture port has already ended this pan before the input's bubble stop.
+            expect(f.state.readingKeyboardFocus.expiresAt).toBe(0); event.stopPropagation();
+        });
+        f.input.addEventListener('keydown', inputStop);
+        for (const key of [' ', 'Home', 'ArrowDown']) {
+            const target = targetMode === 'direct input' ? f.input : f.host;
+            const path = targetMode === 'direct input' ? [f.input, f.card, f.shadow, f.host] : [f.host];
+            f.send('document', 'keydown', {target, key, composedPath: () => path, preventDefault, stopPropagation});
+            f.domEvent('keydown');
+            expect(f.state.readingKeyboardFocus.input).toBe(f.input);
+        }
+        f.input.value = 'draft with spaces'; f.domEvent('input');
+        expect(inputStop).toHaveBeenCalledTimes(3);
+        expect(preventDefault).not.toHaveBeenCalled(); expect(stopPropagation).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(801);
+        Object.assign(f.window, {innerWidth: 874, innerHeight: 402});
+        Object.assign(f.viewport, {width: 874, height: 58});
+        f.send('window', 'scroll'); await Vue.nextTick();
+        expect(f.state.showTooltip).toBe(true);
+        expect(f.shadow.activeElement).toBe(f.input);
+        expect(f.card.querySelector('.fr-reading-followup input')).toBe(f.input);
+        expect(f.input.value).toBe('draft with spaces');
+        expect(f.state.snapshot).toBe(f.selected);
+        expect(f.controller.signal.aborted).toBe(false);
+    });
+
+    it.each(['outside target', 'foreign focus'] as const)('does not retain editing-key eligibility for %s', async reason => {
+        const f = await keyboardTransitionFixture(); f.focus();
+        const foreign = f.renderPort!.document.createElement('input');
+        if (reason === 'foreign focus') f.setActive(foreign);
+        const target = reason === 'outside target' ? foreign : f.input;
+        f.send('document', 'keydown', {target, key: ' ', composedPath: () => [target]});
+        expect(f.state.readingKeyboardFocus).toBeUndefined();
+        Object.assign(f.window, {innerWidth: 874, innerHeight: 402});
+        Object.assign(f.viewport, {width: 874, height: 58});
+        f.send('window', 'scroll'); await Vue.nextTick();
+        expect(f.state.showTooltip).toBe(false);
         expect(f.controller.signal.aborted).toBe(true);
     });
 
@@ -4028,7 +4595,7 @@ describe('Safari reading input keyboard transition', () => {
         },
     );
 
-    it.each(['ordinary document scroll', 'nested scroll', 'pinch zoom', 'width change', 'focus lost', 'detached input', 'changed source', 'disconnected source'] as const)(
+    it.each(['ordinary document scroll', 'nested scroll', 'pinch zoom', 'width change', 'layout rotation without viewport width change', 'focus lost', 'readonly after focus', 'detached input', 'changed source', 'disconnected source'] as const)(
         'keeps normal dismissal for %s during the short focus window', async reason => {
             const f = await keyboardTransitionFixture(); f.focus();
             Object.assign(f.viewport, {height: 376, offsetTop: 284});
@@ -4037,7 +4604,9 @@ describe('Safari reading input keyboard transition', () => {
             if (reason === 'nested scroll') target = f.renderPort!.document.createElement('div');
             if (reason === 'pinch zoom') f.viewport.scale = 1.2;
             if (reason === 'width change') f.viewport.width = 300;
+            if (reason === 'layout rotation without viewport width change') { Object.assign(f.window, {innerWidth: 874, innerHeight: 402}); f.viewport.height = 754; }
             if (reason === 'focus lost') f.setActive(null);
+            if (reason === 'readonly after focus') f.input.setAttribute('readonly', '');
             if (reason === 'detached input') f.input.remove();
             if (reason === 'changed source') f.state.snapshot = {...f.selected, text: 'A different source.'};
             if (reason === 'disconnected source') f.source.isConnected = false;
@@ -4048,15 +4617,20 @@ describe('Safari reading input keyboard transition', () => {
         },
     );
 
-    it.each(['wheel', 'touch move', 'outside pointer', 'scroll key', 'input', 'focusout', 'window blur', 'pagehide'] as const)(
-        'revokes only the temporary protection for deliberate intent or teardown: %s', async reason => {
+    it.each(['wheel', 'touch move', 'outside pointer', 'scroll key', 'focusout', 'window blur', 'pagehide'] as const)(
+        'revokes the owned rotation identity and temporary window for deliberate intent or teardown: %s', async reason => {
             const f = await keyboardTransitionFixture(); f.focus();
+            await vi.advanceTimersByTimeAsync(801);
+            Object.assign(f.window, {innerWidth: 874, innerHeight: 402});
+            Object.assign(f.viewport, {width: 874, height: 58});
+            f.send('window', 'resize'); await vi.advanceTimersByTimeAsync(16);
+            expect(f.state.readingKeyboardFocus.rotating).toBe(true);
             const preventDefault = vi.fn(), stopPropagation = vi.fn();
             if (reason === 'wheel') f.send('window', 'wheel', {preventDefault, stopPropagation});
             if (reason === 'touch move') f.send('document', 'pointermove', {pointerType: 'touch'});
             if (reason === 'outside pointer') f.send('document', 'pointerdown', {target: f.renderPort!.document.createElement('p'), pointerType: 'touch', button: 0});
             if (reason === 'scroll key') f.send('document', 'keydown', {target: f.host, key: 'PageDown', preventDefault, stopPropagation});
-            if (reason === 'input' || reason === 'focusout') f.domEvent(reason);
+            if (reason === 'focusout') f.domEvent(reason);
             if (reason === 'window blur') f.send('window', 'blur');
             if (reason === 'pagehide') f.send('window', 'pagehide');
             expect(preventDefault).not.toHaveBeenCalled(); expect(stopPropagation).not.toHaveBeenCalled();

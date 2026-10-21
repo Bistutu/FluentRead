@@ -1,0 +1,218 @@
+{
+  "sourceCommit": "1bae0a2a5d564d232c8cb694cfbcfa93c042f922",
+  "scope": "LOCAL_COMPILE_AND_WEB_MATCH_ONLY",
+  "webVersion": "0.0.39",
+  "ok": true,
+  "steps": [
+    {
+      "stage": "package",
+      "exitCode": 0,
+      "seconds": 18.539325952529907,
+      "log": {
+        "file": "language-native-1bae-attempt2-package.log",
+        "bytes": 6013,
+        "sha256": "beca9eb26b9abadc9084c39c8c34a1eb5a0060414cb36b82edfd1ac6646ab3c8"
+      }
+    },
+    {
+      "stage": "macos",
+      "exitCode": 0,
+      "seconds": 36.692540884017944,
+      "log": {
+        "file": "language-native-1bae-attempt2-macos.log",
+        "bytes": 400597,
+        "sha256": "87f615b0dbf63f05124e05cac400b113ec513d424f772fcd65d014c25dd26f04"
+      }
+    },
+    {
+      "stage": "ios-simulator",
+      "exitCode": 0,
+      "seconds": 36.00023102760315,
+      "log": {
+        "file": "language-native-1bae-attempt2-ios-simulator.log",
+        "bytes": 411985,
+        "sha256": "f1ea136c5aa433c5c35889da2b84442f8a20729519904c068bccb566cf13818a"
+      }
+    },
+    {
+      "stage": "iphoneos",
+      "exitCode": 0,
+      "seconds": 20.876040935516357,
+      "log": {
+        "file": "language-native-1bae-attempt2-iphoneos.log",
+        "bytes": 237793,
+        "sha256": "45d9d7b1678a3e6d8653d19b4cb5bb50226c4e15310bebc55b973fb6379d6638"
+      }
+    }
+  ],
+  "sourceWeb": {
+    "files": 467,
+    "bytes": 62254759,
+    "rawByteHash": "8ae537d4c2768abc4728cfad3fa72135ffb137c5ec2c10f475dc019d1434e246",
+    "recordHash": "29a7e7935ec3ff8ece409059b86a844e0320109e4714e0a4864de4e5462380ff",
+    "rawAlgorithm": "Recursive directory UTF8-name sort; SHA256(path+NUL+decimalByteLength+NUL+rawbytes)",
+    "recordAlgorithm": "Global UTF8 path sort; SHA256(path+NUL+fileSHA256+NUL+decimalByteLength+LF)"
+  },
+  "sourceInventoryTiming": "Single postbuild sample; not an independent before/after pair",
+  "products": {
+    "macOS": {
+      "webFilesMatched": 467,
+      "webRawSHA256": "8ae537d4c2768abc4728cfad3fa72135ffb137c5ec2c10f475dc019d1434e246",
+      "bundles": {
+        "app": {
+          "identifier": "org.example.FluentReadDevelopment",
+          "nativeVersion": "1.0",
+          "nativeBuild": "1",
+          "platforms": [
+            "MacOSX"
+          ],
+          "files": 482,
+          "inventory": {
+            "files": 482,
+            "bytes": 63273883,
+            "rawByteHash": "c1e518698e9936f645e3ab8d62a848d8d58fec3b20d3635db035e2c843b29fb0",
+            "recordHash": "855a3b787574f61513847f97a57316a420634d48f9fa9fbdd5667ac8435b194f",
+            "rawAlgorithm": "Recursive directory UTF8-name sort; SHA256(path+NUL+decimalByteLength+NUL+rawbytes)",
+            "recordAlgorithm": "Global UTF8 path sort; SHA256(path+NUL+fileSHA256+NUL+decimalByteLength+LF)"
+          },
+          "executable": {
+            "bytes": 207992,
+            "sha256": "4753e22ef8d6bbf3bdf8e4501f480350c75427c25b89dcc05f555dfae1a3a35c"
+          },
+          "signingClassification": "LINKER_ADHOC_NO_TEAM"
+        },
+        "extension": {
+          "identifier": "org.example.FluentReadDevelopment.Extension",
+          "nativeVersion": "1.0",
+          "nativeBuild": "1",
+          "platforms": [
+            "MacOSX"
+          ],
+          "files": 469,
+          "inventory": {
+            "files": 469,
+            "bytes": 62378237,
+            "rawByteHash": "26f2cd023a6711f79dd36543a4b07ac2915a6ecd68c3b19f91a09a32fdb54334",
+            "recordHash": "875bc02e21fb69b5455cf695c87269aa55ae999f98fb304de16a020de2e22b8d",
+            "rawAlgorithm": "Recursive directory UTF8-name sort; SHA256(path+NUL+decimalByteLength+NUL+rawbytes)",
+            "recordAlgorithm": "Global UTF8 path sort; SHA256(path+NUL+fileSHA256+NUL+decimalByteLength+LF)"
+          },
+          "executable": {
+            "bytes": 121848,
+            "sha256": "7825e1af510b0f517383dc5cc4db26568496fa1e68471a90336b2c63909b39c7"
+          },
+          "signingClassification": "LINKER_ADHOC_NO_TEAM"
+        }
+      }
+    },
+    "iosSimulator": {
+      "webFilesMatched": 467,
+      "webRawSHA256": "8ae537d4c2768abc4728cfad3fa72135ffb137c5ec2c10f475dc019d1434e246",
+      "bundles": {
+        "app": {
+          "identifier": "org.example.FluentReadDevelopment",
+          "nativeVersion": "1.0",
+          "nativeBuild": "1",
+          "platforms": [
+            "iPhoneSimulator"
+          ],
+          "files": 485,
+          "inventory": {
+            "files": 485,
+            "bytes": 64249109,
+            "rawByteHash": "47b660809f0bf83746d10e5e7666cb595cf052845fafe7a5875f4a0ccda7f748",
+            "recordHash": "1cad32a60a8df6b48775d6fa9fca83320c641e53b9d44fb0bdc959d317295f6f",
+            "rawAlgorithm": "Recursive directory UTF8-name sort; SHA256(path+NUL+decimalByteLength+NUL+rawbytes)",
+            "recordAlgorithm": "Global UTF8 path sort; SHA256(path+NUL+fileSHA256+NUL+decimalByteLength+LF)"
+          },
+          "executable": {
+            "bytes": 188824,
+            "sha256": "f4fafee4fa8b3f4f21b31b8d09d9cf72b9ea6270398fa5fd52b653f865895d69"
+          },
+          "signingClassification": "LINKER_ADHOC_NO_TEAM"
+        },
+        "extension": {
+          "identifier": "org.example.FluentReadDevelopment.Extension",
+          "nativeVersion": "1.0",
+          "nativeBuild": "1",
+          "platforms": [
+            "iPhoneSimulator"
+          ],
+          "files": 469,
+          "inventory": {
+            "files": 469,
+            "bytes": 62378481,
+            "rawByteHash": "252f5a089acfc32f64c3cc89e2e94ef750c450124b7818609da241bafd1dbfa1",
+            "recordHash": "91fa3c3f0bed434b636e67f95f38aea8ac15012a3948a1ffcbfcc4e3794f41b2",
+            "rawAlgorithm": "Recursive directory UTF8-name sort; SHA256(path+NUL+decimalByteLength+NUL+rawbytes)",
+            "recordAlgorithm": "Global UTF8 path sort; SHA256(path+NUL+fileSHA256+NUL+decimalByteLength+LF)"
+          },
+          "executable": {
+            "bytes": 122760,
+            "sha256": "0870f88b214d879d90249aad9fd9c8a9ad2cc2d9b14c068008b95392b015ed94"
+          },
+          "signingClassification": "LINKER_ADHOC_NO_TEAM"
+        }
+      }
+    },
+    "iPhoneOS": {
+      "webFilesMatched": 467,
+      "webRawSHA256": "8ae537d4c2768abc4728cfad3fa72135ffb137c5ec2c10f475dc019d1434e246",
+      "bundles": {
+        "app": {
+          "identifier": "org.example.FluentReadDevelopment",
+          "nativeVersion": "1.0",
+          "nativeBuild": "1",
+          "platforms": [
+            "iPhoneOS"
+          ],
+          "files": 485,
+          "inventory": {
+            "files": 485,
+            "bytes": 64145771,
+            "rawByteHash": "8428b1ed4683f80e7e6916717dd4381193a1fe22aed676a619c54dfa8fed381a",
+            "recordHash": "4af88ae8100650853f6e583f705942c27f24251be68aa215866160e11f0e804c",
+            "rawAlgorithm": "Recursive directory UTF8-name sort; SHA256(path+NUL+decimalByteLength+NUL+rawbytes)",
+            "recordAlgorithm": "Global UTF8 path sort; SHA256(path+NUL+fileSHA256+NUL+decimalByteLength+LF)"
+          },
+          "executable": {
+            "bytes": 125232,
+            "sha256": "68bbf39d7250c4719a5e8f2bc30b5bf72e491b46174ef669c39515464d0aef70"
+          },
+          "signingClassification": "UNSIGNED"
+        },
+        "extension": {
+          "identifier": "org.example.FluentReadDevelopment.Extension",
+          "nativeVersion": "1.0",
+          "nativeBuild": "1",
+          "platforms": [
+            "iPhoneOS"
+          ],
+          "files": 469,
+          "inventory": {
+            "files": 469,
+            "bytes": 62344405,
+            "rawByteHash": "1a7a43d16d8ecceac0f00b708966645be81aa24283632cf70ad98c6721c62da5",
+            "recordHash": "b8f6468a58b63662426465a1cad0593899d63573c75846380845269f25d3a14b",
+            "rawAlgorithm": "Recursive directory UTF8-name sort; SHA256(path+NUL+decimalByteLength+NUL+rawbytes)",
+            "recordAlgorithm": "Global UTF8 path sort; SHA256(path+NUL+fileSHA256+NUL+decimalByteLength+LF)"
+          },
+          "executable": {
+            "bytes": 88664,
+            "sha256": "bc2ac76a349eae95f677c3df5a2b59b447693c841480a84e14349aa2f7e4ec30"
+          },
+          "signingClassification": "UNSIGNED"
+        }
+      }
+    }
+  },
+  "firstPackagingAttempt": {
+    "exitCode": 1,
+    "reason": "Apple converter could not access supplied path within sandbox; retained, then new output directories used with existing local build authorization"
+  },
+  "developerSigningPerformed": false,
+  "installed": false,
+  "runtimeAcceptance": false,
+  "physicalDeviceOperation": false,
+  "publication": false
+}

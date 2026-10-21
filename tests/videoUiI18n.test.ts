@@ -15,6 +15,7 @@ import {
   renderVideoSubtitleTiming,
   setVideoMenuDownloadStatus,
   syncVideoPlayerMenuLayout,
+  revealVideoMenuBodyControl,
   type VideoAiMenuState,
 } from '@/src/features/video-subtitle/content/playerMenu';
 import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
@@ -356,6 +357,7 @@ describe('video player menu composition', () => {
       expect(menu.querySelector('[data-export-prompt]')).toBe(panel);
       expect(menu.dataset.view).toBe('export-prompt');
       expect(menu.querySelector<HTMLElement>('.fluent-read-video-menu-main')!.hidden).toBe(true);
+      expect(menu.querySelector('[data-action="close-menu"]')!.closest('[hidden]')).toBeNull();
       controller.abort();
       await expect(choice).resolves.toBe('cancel');
       expect(menu.querySelector('[data-export-prompt]')).toBeNull();
@@ -480,6 +482,26 @@ describe('video player menu composition', () => {
     expect(dispatch('ArrowDown', menu).preventDefault).not.toHaveBeenCalled();
   });
 
+  it.each(['main', 'model-prompt', 'export-prompt'])('keeps keyboard navigation away from the hidden tools Back in %s', view => {
+    const {document, HTMLElement} = parseHTML('<!doctype html><body></body>');
+    vi.stubGlobal('document', document);
+    vi.stubGlobal('HTMLElement', HTMLElement);
+    const menu = createVideoPlayerMenu('en-US', true);
+    menu.hidden = false;
+    setVideoMenuToolsOpen(menu, true);
+    menu.dataset.view = view;
+    menu.querySelector<HTMLElement>('.fluent-read-video-menu-main')!.hidden = view !== 'main';
+    const back = menu.querySelector<HTMLButtonElement>('[data-action="close-subtitle-tools"]')!;
+    const settings = menu.querySelector<HTMLButtonElement>('[data-action="open-settings"]')!;
+    const close = menu.querySelector<HTMLButtonElement>('[data-action="close-menu"]')!;
+    const backFocus = vi.spyOn(back, 'focus');
+    const settingsFocus = vi.spyOn(settings, 'focus');
+    handleVideoMenuNavigation({key: 'Home', target: close, currentTarget: menu, isTrusted: true,
+      stopPropagation: vi.fn(), preventDefault: vi.fn()} as unknown as KeyboardEvent);
+    expect(backFocus).toHaveBeenCalledTimes(view === 'main' ? 1 : 0);
+    expect(settingsFocus).toHaveBeenCalledTimes(view === 'main' ? 0 : 1);
+  });
+
   it('opens a model confirmation view with recommendation, sizes and downloaded state, then returns to the menu', () => {
     const {document} = parseHTML('<!doctype html><body></body>');
     vi.stubGlobal('document', document);
@@ -490,6 +512,8 @@ describe('video player menu composition', () => {
     renderVideoModelPrompt(menu, {options: VIDEO_LOCAL_TRANSCRIPTION_MODELS, downloaded: [], recommended: 'base', selected: 'base'}, 'zh-CN');
     expect(isVideoModelPromptOpen(menu)).toBe(true);
     expect(main.hidden).toBe(true);
+    expect(menu.querySelector('[data-action="close-menu"]')!.closest('[hidden]')).toBe(menu);
+    expect(main.contains(menu.querySelector('[data-action="close-menu"]'))).toBe(false);
     expect(prompt.hidden).toBe(false);
     expect(prompt.dataset.selectedModel).toBe('base');
     const options = [...prompt.querySelectorAll<HTMLElement>('[data-model-choice]')];
@@ -544,6 +568,30 @@ describe('video player menu composition', () => {
     }
   });
 
+  it('keeps primary controls before learning in DOM order and sizes the viewport menu without measuring the short player', () => {
+    const {document} = parseHTML('<!doctype html><body><div id="host"></div></body>');
+    vi.stubGlobal('document', document);
+    const host = document.getElementById('host')!;
+    const menu = createVideoPlayerMenu('en-US', false);
+    menu.hidden = false;
+    menu.dataset.presentation = 'viewport';
+    host.appendChild(menu);
+    const body = menu.querySelector<HTMLElement>('.fluent-read-video-menu-body')!;
+    expect([...body.querySelectorAll('button')].map(button => button.dataset.mode || button.dataset.action).slice(0, 4))
+      .toEqual(['bilingual', 'translation-only', 'original-only', 'off']);
+    const actions = [...body.querySelectorAll('button')].map(button => button.dataset.action);
+    expect(actions.indexOf('subtitle-later')).toBeLessThan(actions.indexOf('open-sentence-learning'));
+    expect(menu.querySelector('.fluent-read-video-menu-title')!.parentElement).toBe(menu);
+    Object.defineProperty(menu, 'scrollHeight', {get() {throw new Error('viewport layout must not measure player overflow');}});
+    Object.defineProperty(host, 'clientHeight', {value: 180});
+    for (const [width, layout] of [[320, 'stack'], [402, 'wide'], [844, 'wide']] as const) {
+      Object.defineProperty(host, 'clientWidth', {configurable: true, value: width});
+      syncVideoPlayerMenuLayout(menu);
+      expect(menu.dataset.layout).toBe(layout);
+      expect(menu.dataset.measuring).toBeUndefined();
+    }
+  });
+
   it('switches to the short layout only when a wide player cannot fit the single column comfortably', () => {
     const {document} = parseHTML('<!doctype html><body><div id="player"></div></body>');
     vi.stubGlobal('document', document);
@@ -577,6 +625,228 @@ describe('video player menu composition', () => {
     expect(menu.dataset.layout).toBe('wide');
     player.removeChild(menu);
     syncVideoPlayerMenuLayout(menu);
+  });
+
+  it('isolates collapsed controls below128, moves only their owned focus and restores nodes without restoring focus', () => {
+    const {document, HTMLElement} = parseHTML('<!doctype html><body><div id="host"></div><button id="outside">Host control</button></body>');
+    vi.stubGlobal('document', document);
+    vi.stubGlobal('HTMLElement', HTMLElement);
+    const host = document.getElementById('host')!;
+    const menu = createVideoPlayerMenu('en-US', false);
+    menu.hidden = false;
+    menu.dataset.presentation = 'viewport';
+    host.appendChild(menu);
+    const body = menu.querySelector<HTMLElement>('.fluent-read-video-menu-body')!;
+    const main = body.parentElement!;
+    const mode = menu.querySelector<HTMLButtonElement>('[data-mode="translation-only"]')!;
+    const close = menu.querySelector<HTMLButtonElement>('[data-action="close-menu"]')!;
+    const settings = menu.querySelector<HTMLButtonElement>('[data-action="open-settings"]')!;
+    const outside = document.getElementById('outside')!;
+    renderVideoMenuMode(menu, 'translation-only', false, '');
+    body.scrollTop = 19;
+    // A pre-existing inert attribute belongs to its caller, not this temporary viewport state.
+    settings.setAttribute('inert', 'existing');
+    let active: Element = mode;
+    Object.defineProperty(document, 'activeElement', {configurable: true, get: () => active});
+    const closeFocus = vi.spyOn(close, 'focus').mockImplementation(() => {active = close;});
+    const modeFocus = vi.spyOn(mode, 'focus');
+    let height = 58;
+    Object.defineProperties(host, {clientWidth: {value: 378}, clientHeight: {get: () => height}});
+
+    syncVideoPlayerMenuLayout(menu);
+    expect(menu.dataset.viewportState).toBe('close-only');
+    expect(main.hasAttribute('inert')).toBe(true);
+    expect(mode.closest('[inert]')).toBe(main);
+    expect(close.closest('[inert]')).toBeNull();
+    expect(closeFocus).toHaveBeenCalledOnce();
+    expect(closeFocus).toHaveBeenCalledWith({preventScroll: true});
+    for (const key of ['Home', 'End', 'ArrowDown']) {
+      handleVideoMenuNavigation({key, target: close, currentTarget: menu, isTrusted: true,
+        stopPropagation: vi.fn(), preventDefault: vi.fn()} as unknown as KeyboardEvent);
+      expect(active).toBe(close);
+    }
+    expect(modeFocus).not.toHaveBeenCalled();
+    const before = closeFocus.mock.calls.length;
+    syncVideoPlayerMenuLayout(menu); // Repeated frame synchronization does not steal focus.
+    expect(closeFocus).toHaveBeenCalledTimes(before);
+    active = outside;
+    for (height of [80, 83, 84, 127]) {
+      syncVideoPlayerMenuLayout(menu);
+      expect(menu.dataset.viewportState).toBe('close-only');
+      expect(active).toBe(outside);
+      expect(closeFocus).toHaveBeenCalledTimes(before);
+    }
+    for (height of [128, 280]) {
+      syncVideoPlayerMenuLayout(menu);
+      expect(menu.dataset.viewportState).toBeUndefined();
+      expect(main.hasAttribute('inert')).toBe(false);
+      expect(main.dataset.viewportInert).toBeUndefined();
+      expect(settings.getAttribute('inert')).toBe('existing');
+      expect(menu.querySelector('.fluent-read-video-menu-body')).toBe(body);
+      expect(menu.querySelector('[data-mode="translation-only"]')).toBe(mode);
+      expect(mode.getAttribute('aria-checked')).toBe('true');
+      expect(body.scrollTop).toBe(19);
+      expect(active).toBe(outside);
+    }
+    height = 58;
+    syncVideoPlayerMenuLayout(menu);
+    menu.dataset.presentation = 'player';
+    syncVideoPlayerMenuLayout(menu);
+    expect(menu.dataset.viewportState).toBeUndefined();
+    expect(main.hasAttribute('inert')).toBe(false);
+    expect(active).toBe(outside);
+  });
+
+  it('reveals only the owned body target in either direction and only resizes once without stealing page scroll', () => {
+    const {document, HTMLElement} = parseHTML('<!doctype html><body><div id="host"></div><button id="outside">Page</button></body>');
+    vi.stubGlobal('document', document);
+    vi.stubGlobal('HTMLElement', HTMLElement);
+    const host = document.getElementById('host')!;
+    const outside = document.getElementById('outside')!;
+    const menu = createVideoPlayerMenu('en-US', false);
+    menu.hidden = false;
+    menu.dataset.presentation = 'viewport';
+    host.appendChild(menu);
+    const body = menu.querySelector<HTMLElement>('.fluent-read-video-menu-body')!;
+    const control = menu.querySelector<HTMLButtonElement>('[data-mode="bilingual"]')!;
+    const close = menu.querySelector<HTMLButtonElement>('[data-action="close-menu"]')!;
+    let width = 378, height = 128, scrollTop = 0, controlTop = 108;
+    let active: Element = control;
+    const writes: number[] = [];
+    Object.defineProperty(document, 'activeElement', {get: () => active});
+    Object.defineProperties(host, {clientWidth: {get: () => width}, clientHeight: {get: () => height}});
+    // A 2x transformed body with a 1px border: its 44px client window is y102..190, not the outer y100..192.
+    Object.defineProperties(body, {clientTop: {value: 1}, clientHeight: {value: 44}, offsetHeight: {value: 46},
+      getBoundingClientRect: {value: () => ({top: 100, bottom: 192, height: 92})},
+      scrollTop: {get: () => scrollTop, set: (value: number) => {writes.push(value); scrollTop = value;}}});
+    Object.defineProperty(control, 'getBoundingClientRect', {value: () => ({top: controlTop - scrollTop * 2, bottom: controlTop - scrollTop * 2 + 88, height: 88})});
+    host.scrollTop = 23;
+    document.body.scrollTop = 41;
+    syncVideoPlayerMenuLayout(menu);
+    expect(writes).toEqual([3]); // Bottom reveal accounts for border and converts transformed pixels to scrollTop.
+    writes.length = 0;
+    revealVideoMenuBodyControl(menu, control);
+    expect(writes).toEqual([]); // Already completely visible: no setter write.
+    scrollTop = 20;
+    controlTop = 132;
+    revealVideoMenuBodyControl(menu, control);
+    expect(writes).toEqual([15]); // Top reveal, without scrolling another ancestor.
+    expect(host.scrollTop).toBe(23);
+    expect(document.body.scrollTop).toBe(41);
+    writes.length = 0;
+    scrollTop = 25;
+    syncVideoPlayerMenuLayout(menu);
+    expect(writes).toEqual([]); // Same-size periodic updates preserve deliberate manual scrolling.
+    width++;
+    syncVideoPlayerMenuLayout(menu);
+    expect(writes).toEqual([15]);
+    writes.length = 0;
+    active = outside;
+    height++;
+    syncVideoPlayerMenuLayout(menu);
+    revealVideoMenuBodyControl(menu, outside);
+    revealVideoMenuBodyControl(menu, null);
+    expect(writes).toEqual([]);
+    controlTop = Infinity;
+    revealVideoMenuBodyControl(menu, control);
+    expect(writes).toEqual([]);
+    controlTop = 132;
+    const focus = vi.spyOn(control, 'focus').mockImplementation(() => {active = control;});
+    scrollTop = 0;
+    handleVideoMenuNavigation({key: 'ArrowDown', target: close, currentTarget: menu, isTrusted: true,
+      stopPropagation: vi.fn(), preventDefault: vi.fn()} as unknown as KeyboardEvent);
+    expect(focus).toHaveBeenCalledWith({preventScroll: true});
+    expect(writes).toEqual([15]);
+    writes.length = 0;
+    const settings = menu.querySelector<HTMLButtonElement>('[data-action="open-settings"]')!;
+    const settingsFocus = vi.spyOn(settings, 'focus');
+    handleVideoMenuNavigation({key: 'Home', target: control, currentTarget: menu, isTrusted: true,
+      stopPropagation: vi.fn(), preventDefault: vi.fn()} as unknown as KeyboardEvent);
+    expect(settingsFocus).toHaveBeenCalledOnce();
+    expect(settingsFocus).toHaveBeenCalledWith(); // Non-body viewport controls retain the original native focus/scroll behavior.
+    expect(writes).toEqual([]);
+    menu.dataset.presentation = 'player';
+    revealVideoMenuBodyControl(menu, control);
+    expect(writes).toEqual([]);
+    focus.mockClear();
+    handleVideoMenuNavigation({key: 'ArrowDown', target: close, currentTarget: menu, isTrusted: true,
+      stopPropagation: vi.fn(), preventDefault: vi.fn()} as unknown as KeyboardEvent);
+    expect(focus).toHaveBeenCalledOnce();
+    expect(focus).toHaveBeenCalledWith();
+    expect(writes).toEqual([]);
+  });
+
+  it('reveals the owned body control when the layout height measurement is unavailable', () => {
+    const {document} = parseHTML('<!doctype html><body><div id="host"></div><button id="outside">Page</button></body>');
+    vi.stubGlobal('document', document);
+    const host = document.getElementById('host')!;
+    const outside = document.getElementById('outside')!;
+    const menu = createVideoPlayerMenu('en-US', false);
+    host.appendChild(menu);
+    menu.hidden = false;
+    menu.dataset.presentation = 'viewport';
+    const body = menu.querySelector<HTMLElement>('.fluent-read-video-menu-body')!;
+    const control = menu.querySelector<HTMLButtonElement>('[data-mode="bilingual"]')!;
+    let scrollTop = 0, controlTop = 108, controlHeight = 44;
+    const writes: number[] = [];
+    // Defensive measurement fixture: a missing layout height falls back to a 1x rectangle scale.
+    Object.defineProperties(body, {clientTop: {value: 1}, clientHeight: {value: 44}, offsetHeight: {value: 0},
+      getBoundingClientRect: {value: () => ({top: 100, bottom: 146, height: 46})},
+      scrollTop: {get: () => scrollTop, set: (value: number) => {writes.push(value); scrollTop = value;}}});
+    Object.defineProperty(control, 'getBoundingClientRect', {value: () => ({top: controlTop - scrollTop, bottom: controlTop - scrollTop + controlHeight, height: controlHeight})});
+    Object.defineProperty(document, 'activeElement', {get: () => outside});
+    const focus = vi.spyOn(control, 'focus');
+    host.scrollTop = 23;
+    document.body.scrollTop = 41;
+    revealVideoMenuBodyControl(menu, control);
+    expect(writes).toEqual([7]); // The bordered client window is y101..145; the target ends at y152.
+    expect(control.getBoundingClientRect()).toMatchObject({top: 101, bottom: 145});
+    writes.length = 0;
+    revealVideoMenuBodyControl(menu, control);
+    expect(writes).toEqual([]);
+    controlTop = 200;
+    controlHeight = 0;
+    revealVideoMenuBodyControl(menu, control);
+    expect(writes).toEqual([]); // A target without measurable height must not move the body toward its empty rectangle.
+    expect(scrollTop).toBe(7);
+    expect(host.scrollTop).toBe(23);
+    expect(document.body.scrollTop).toBe(41);
+    expect(document.activeElement).toBe(outside);
+    expect(focus).not.toHaveBeenCalled();
+  });
+
+  it('keeps an open prompt and its original hidden state while the viewport temporarily offers only Close', () => {
+    const {document} = parseHTML('<!doctype html><body><div id="host"></div></body>');
+    vi.stubGlobal('document', document);
+    const host = document.getElementById('host')!;
+    const menu = createVideoPlayerMenu('en-US', true);
+    host.appendChild(menu);
+    menu.hidden = false;
+    menu.dataset.presentation = 'viewport';
+    menu.dataset.view = 'model-prompt';
+    const main = menu.querySelector<HTMLElement>('.fluent-read-video-menu-main')!;
+    const prompt = menu.querySelector<HTMLElement>('[data-model-prompt]')!;
+    main.hidden = true;
+    prompt.hidden = false;
+    const confirm = prompt.querySelector<HTMLButtonElement>('[data-action="model-prompt-confirm"]')!;
+    let active: Element = confirm;
+    Object.defineProperty(document, 'activeElement', {configurable: true, get: () => active});
+    const close = menu.querySelector<HTMLButtonElement>('[data-action="close-menu"]')!;
+    const closeFocus = vi.spyOn(close, 'focus').mockImplementation(() => {active = close;});
+    let height = 58;
+    Object.defineProperties(host, {clientWidth: {value: 378}, clientHeight: {get: () => height}});
+    syncVideoPlayerMenuLayout(menu);
+    expect(prompt.hasAttribute('inert')).toBe(true);
+    expect(closeFocus).toHaveBeenCalledOnce();
+    expect(closeFocus).toHaveBeenCalledWith({preventScroll: true});
+    height = 280;
+    syncVideoPlayerMenuLayout(menu);
+    expect(prompt.hasAttribute('inert')).toBe(false);
+    expect(menu.dataset.view).toBe('model-prompt');
+    expect(main.hidden).toBe(true);
+    expect(prompt.hidden).toBe(false);
+    expect(active).toBe(close);
+    expect(closeFocus).toHaveBeenCalledTimes(1);
   });
 
   it('renders idle, checking, running, waiting, error, and unsupported states accessibly', () => {

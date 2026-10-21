@@ -1,0 +1,117 @@
+{
+  "schema": 1,
+  "scope": "controlled-current-shared-Vue-components-real-iOS-Simulator-keyboard-rotation-card-scroll-close",
+  "frozenProductSnapshotCommit": "c54e0b505c90e08a4a13b7a6d4d7ad43cb10ba0a",
+  "testsOnlyDescendantContext": "05fba3849fb8c44fdc93ef80dac53c5eb4d6c3ea",
+  "builtFromExactCleanDescendant": false,
+  "fixture": {
+    "programmaticRangeSeed": true,
+    "originalSharedComponentsAndStyles": true,
+    "fullSrcFiles": 1130,
+    "actualGraphInputs": 200,
+    "entryBytes": 1262835,
+    "entrySHA256": "c0fb0ae868966475cec70bb948332dd12e759e76c5052d3414e441375e5d9665",
+    "fixedLocalTranslationReadingAndMemoryDenyPorts": true,
+    "installedExtensionNormalChain": false
+  },
+  "formal": {
+    "PASS": 1,
+    "SKIP": 0,
+    "FAIL": 0,
+    "durationSeconds": 18.387108087539673
+  },
+  "actualOuterExit": 0,
+  "helperElapsedMs": 77192.294458,
+  "actual": {
+    "AX": 12,
+    "UI": 8,
+    "finallyPortraitSetter": 1,
+    "PNG": 4,
+    "shortSafeHeight": 78,
+    "cardClient": 78,
+    "cardScroll": 392,
+    "cardTop": [
+      252,
+      314,
+      0
+    ],
+    "pageGestureScroll": [
+      0,
+      557
+    ],
+    "CloseObserved": true,
+    "portraitCleanupObserved": true,
+    "typedText": 0,
+    "Send": 0
+  },
+  "visual": {
+    "RootAll4Viewed": true,
+    "independentAll4Viewed": true,
+    "portraitInputAndCloseVisible": true,
+    "landscapeInputAndCloseSeparatelyReachableViaScroll": true,
+    "landscapeBothSimultaneouslyPinned": false
+  },
+  "closure": {
+    "commands": 21,
+    "streams": 42,
+    "allZeroUnderCapClosedLeaderReapedOwnedGroupAbsent": true,
+    "allFiveMapPairsEqualU3": true,
+    "15BeforeAfterShutdownOther14WholeSame": true,
+    "threeFocusPointsEqualChatGPT97878": true,
+    "continuousFocus": false,
+    "fixture": {
+      "pid": 41348,
+      "leaderReaped": true,
+      "groupAbsent": true,
+      "exitCode": 0
+    },
+    "errors": [],
+    "cleanupErrors": [],
+    "preservationErrors": []
+  },
+  "originalImages": {
+    "landscape-after-reverse.png": {
+      "bytes": 217438,
+      "sha256": "dc284eaec353df73103ed8e9268c6372325f4e3df25a4069aa9b22f580946aa1"
+    },
+    "landscape-after-forward.png": {
+      "bytes": 212789,
+      "sha256": "864013841e64413954d58e9892f72ea4b00d59c487ceef272567870a17fecd2a"
+    },
+    "landscape-keyboard.png": {
+      "bytes": 231474,
+      "sha256": "ad7c38c9e3a21cc63bb6211cf1b0c625245a6a63c94f8496b6ee999266d5198f"
+    },
+    "portrait-keyboard.png": {
+      "bytes": 430054,
+      "sha256": "712eacb7288fd51c1d85724131df095ff89e3a3cdbe7eee4ef59cf53713b89a0"
+    }
+  },
+  "machineEvidence": {
+    "report": {
+      "bytes": 60533,
+      "sha256": "25c804093d1bd33a4841057674ce6c14a8b3be82065ef87e6b8ea39dfdcb12c1"
+    },
+    "RootReceipt": {
+      "bytes": 14640,
+      "sha256": "70f1380f0a4c2995510ec32de2a1a5223e7b00f980e32983f666d5bcd43a64e6"
+    },
+    "independentReview": {
+      "bytes": 5857,
+      "sha256": "9f019a9688f74b47cc48580f01268f49a2409f37f95a26f0fbd2a787f29247fb"
+    }
+  },
+  "accepted": "controlled-shared-component-native-keyboard-rotation-card-scroll-close-only",
+  "remaining": [
+    "installed normal-selection chain",
+    "native longpress",
+    "actual text/IME composition or Send",
+    "provider",
+    "configuration or permission retention",
+    "physical device",
+    "fullGoal4",
+    "real hidden/restore and long-background eviction"
+  ],
+  "referenceProjectsUsed": false,
+  "GO": false
+}

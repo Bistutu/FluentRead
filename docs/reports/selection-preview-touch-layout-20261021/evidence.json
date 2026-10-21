@@ -1,0 +1,416 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "scope": "Controlled production Chromium Options selection-preview; no native/Safari/IME/provider acceptance",
+  "beforeProduction": {
+    "files": 483,
+    "bytes": 62587356,
+    "rawByteHash": "1a9e958b468138df17df5f5f47a7ff5f36f033f9ae51606246c3b7316679e8e3",
+    "recordHash": "c8f36aaf8258754dcdca8abb7f7b66b8b977dc72be87f68c94264b3ce14837dd"
+  },
+  "afterProduction": {
+    "files": 483,
+    "bytes": 62587450,
+    "rawByteHash": "838dbc10ee3e21959273cc92cd1ab75a91ff80b6fe4114b9629717f41393973b",
+    "recordHash": "561a9a3d6d338b3e22efdf47e8b7c30cb98eafa636f31e456f003d3d0eb6ebf3"
+  },
+  "fourCoarseRows": [
+    {
+      "id": "coarse-320x700-light",
+      "staticSmallOutline": {
+        "outlineStyle": "none",
+        "outlineWidth": "0px",
+        "outlineColor": "rgb(23, 32, 51)",
+        "outlineOffset": "0px",
+        "fontSize": "10px",
+        "lineHeight": "normal",
+        "whiteSpace": "normal",
+        "overflowWrap": "normal"
+      },
+      "tabs": [
+        {
+          "code": "WORD",
+          "style": {
+            "outlineStyle": "none",
+            "outlineWidth": "0px",
+            "outlineColor": "rgb(239, 71, 118)",
+            "outlineOffset": "0px",
+            "fontSize": "13px",
+            "lineHeight": "normal",
+            "whiteSpace": "normal",
+            "overflowWrap": "normal"
+          },
+          "frame": {
+            "x": 42,
+            "y": 411.6875,
+            "width": 52,
+            "height": 44,
+            "right": 94,
+            "bottom": 455.6875
+          },
+          "pressed": "true",
+          "focused": false,
+          "focusVisible": false
+        },
+        {
+          "code": "SENTENCE",
+          "style": {
+            "outlineStyle": "none",
+            "outlineWidth": "0px",
+            "outlineColor": "rgb(115, 124, 143)",
+            "outlineOffset": "0px",
+            "fontSize": "13px",
+            "lineHeight": "normal",
+            "whiteSpace": "normal",
+            "overflowWrap": "normal"
+          },
+          "frame": {
+            "x": 100,
+            "y": 411.6875,
+            "width": 52,
+            "height": 44,
+            "right": 152,
+            "bottom": 455.6875
+          },
+          "pressed": "false",
+          "focused": false,
+          "focusVisible": false
+        }
+      ],
+      "previewTextInside": true,
+      "previewNoHorizontalOverflow": true
+    },
+    {
+      "id": "coarse-320x700-dark",
+      "staticSmallOutline": {
+        "outlineStyle": "none",
+        "outlineWidth": "0px",
+        "outlineColor": "rgb(244, 245, 248)",
+        "outlineOffset": "0px",
+        "fontSize": "10px",
+        "lineHeight": "normal",
+        "whiteSpace": "normal",
+        "overflowWrap": "normal"
+      },
+      "tabs": [
+        {
+          "code": "WORD",
+          "style": {
+            "outlineStyle": "none",
+            "outlineWidth": "0px",
+            "outlineColor": "rgb(255, 111, 154)",
+            "outlineOffset": "0px",
+            "fontSize": "13px",
+            "lineHeight": "normal",
+            "whiteSpace": "normal",
+            "overflowWrap": "normal"
+          },
+          "frame": {
+            "x": 42,
+            "y": 411.6875,
+            "width": 52,
+            "height": 44,
+            "right": 94,
+            "bottom": 455.6875
+          },
+          "pressed": "true",
+          "focused": false,
+          "focusVisible": false
+        },
+        {
+          "code": "SENTENCE",
+          "style": {
+            "outlineStyle": "none",
+            "outlineWidth": "0px",
+            "outlineColor": "rgb(183, 189, 201)",
+            "outlineOffset": "0px",
+            "fontSize": "13px",
+            "lineHeight": "normal",
+            "whiteSpace": "normal",
+            "overflowWrap": "normal"
+          },
+          "frame": {
+            "x": 100,
+            "y": 411.6875,
+            "width": 52,
+            "height": 44,
+            "right": 152,
+            "bottom": 455.6875
+          },
+          "pressed": "false",
+          "focused": false,
+          "focusVisible": false
+        }
+      ],
+      "previewTextInside": true,
+      "previewNoHorizontalOverflow": true
+    },
+    {
+      "id": "coarse-844x500-light",
+      "staticSmallOutline": {
+        "outlineStyle": "none",
+        "outlineWidth": "0px",
+        "outlineColor": "rgb(23, 32, 51)",
+        "outlineOffset": "0px",
+        "fontSize": "10px",
+        "lineHeight": "normal",
+        "whiteSpace": "normal",
+        "overflowWrap": "normal"
+      },
+      "tabs": [
+        {
+          "code": "WORD",
+          "style": {
+            "outlineStyle": "none",
+            "outlineWidth": "0px",
+            "outlineColor": "rgb(239, 71, 118)",
+            "outlineOffset": "0px",
+            "fontSize": "13px",
+            "lineHeight": "normal",
+            "whiteSpace": "normal",
+            "overflowWrap": "normal"
+          },
+          "frame": {
+            "x": 258,
+            "y": 241.890625,
+            "width": 52,
+            "height": 44,
+            "right": 310,
+            "bottom": 285.890625
+          },
+          "pressed": "true",
+          "focused": false,
+          "focusVisible": false
+        },
+        {
+          "code": "SENTENCE",
+          "style": {
+            "outlineStyle": "none",
+            "outlineWidth": "0px",
+            "outlineColor": "rgb(115, 124, 143)",
+            "outlineOffset": "0px",
+            "fontSize": "13px",
+            "lineHeight": "normal",
+            "whiteSpace": "normal",
+            "overflowWrap": "normal"
+          },
+          "frame": {
+            "x": 316,
+            "y": 241.890625,
+            "width": 52,
+            "height": 44,
+            "right": 368,
+            "bottom": 285.890625
+          },
+          "pressed": "false",
+          "focused": false,
+          "focusVisible": false
+        }
+      ],
+      "previewTextInside": true,
+      "previewNoHorizontalOverflow": true
+    },
+    {
+      "id": "coarse-844x500-dark",
+      "staticSmallOutline": {
+        "outlineStyle": "none",
+        "outlineWidth": "0px",
+        "outlineColor": "rgb(244, 245, 248)",
+        "outlineOffset": "0px",
+        "fontSize": "10px",
+        "lineHeight": "normal",
+        "whiteSpace": "normal",
+        "overflowWrap": "normal"
+      },
+      "tabs": [
+        {
+          "code": "WORD",
+          "style": {
+            "outlineStyle": "none",
+            "outlineWidth": "0px",
+            "outlineColor": "rgb(255, 111, 154)",
+            "outlineOffset": "0px",
+            "fontSize": "13px",
+            "lineHeight": "normal",
+            "whiteSpace": "normal",
+            "overflowWrap": "normal"
+          },
+          "frame": {
+            "x": 258,
+            "y": 241.890625,
+            "width": 52,
+            "height": 44,
+            "right": 310,
+            "bottom": 285.890625
+          },
+          "pressed": "true",
+          "focused": false,
+          "focusVisible": false
+        },
+        {
+          "code": "SENTENCE",
+          "style": {
+            "outlineStyle": "none",
+            "outlineWidth": "0px",
+            "outlineColor": "rgb(183, 189, 201)",
+            "outlineOffset": "0px",
+            "fontSize": "13px",
+            "lineHeight": "normal",
+            "whiteSpace": "normal",
+            "overflowWrap": "normal"
+          },
+          "frame": {
+            "x": 316,
+            "y": 241.890625,
+            "width": 52,
+            "height": 44,
+            "right": 368,
+            "bottom": 285.890625
+          },
+          "pressed": "false",
+          "focused": false,
+          "focusVisible": false
+        }
+      ],
+      "previewTextInside": true,
+      "previewNoHorizontalOverflow": true
+    }
+  ],
+  "beforeCoarseTabSize": {
+    "width": 44,
+    "height": 25,
+    "fontSize": "11px"
+  },
+  "beforeStaticSmallOutline": {
+    "outlineStyle": "solid",
+    "outlineWidth": "2px",
+    "outlineColor": "rgb(239, 71, 118)",
+    "outlineOffset": "3px",
+    "fontSize": "10px",
+    "lineHeight": "normal",
+    "whiteSpace": "normal",
+    "overflowWrap": "normal"
+  },
+  "fineReadOnlyControl": [
+    {
+      "code": "WORD",
+      "style": {
+        "outlineStyle": "none",
+        "outlineWidth": "0px",
+        "outlineColor": "rgb(255, 111, 154)",
+        "outlineOffset": "0px",
+        "fontSize": "11px",
+        "lineHeight": "normal",
+        "whiteSpace": "normal",
+        "overflowWrap": "normal"
+      },
+      "frame": {
+        "x": 258,
+        "y": 241.890625,
+        "width": 44,
+        "height": 25,
+        "right": 302,
+        "bottom": 266.890625
+      },
+      "pressed": "true",
+      "focused": false,
+      "focusVisible": false
+    },
+    {
+      "code": "SENTENCE",
+      "style": {
+        "outlineStyle": "solid",
+        "outlineWidth": "2px",
+        "outlineColor": "rgb(255, 111, 154)",
+        "outlineOffset": "3px",
+        "fontSize": "11px",
+        "lineHeight": "normal",
+        "whiteSpace": "normal",
+        "overflowWrap": "normal"
+      },
+      "frame": {
+        "x": 308,
+        "y": 241.890625,
+        "width": 44,
+        "height": 25,
+        "right": 352,
+        "bottom": 266.890625
+      },
+      "pressed": "false",
+      "focused": true,
+      "focusVisible": true
+    }
+  ],
+  "trustedTabFocus": {
+    "code": "SENTENCE",
+    "style": {
+      "outlineStyle": "solid",
+      "outlineWidth": "2px",
+      "outlineColor": "rgb(255, 111, 154)",
+      "outlineOffset": "3px",
+      "fontSize": "13px",
+      "lineHeight": "normal",
+      "whiteSpace": "normal",
+      "overflowWrap": "normal"
+    },
+    "frame": {
+      "x": 316,
+      "y": 241.890625,
+      "width": 52,
+      "height": 44,
+      "right": 368,
+      "bottom": 285.890625
+    },
+    "pressed": "false",
+    "focused": true,
+    "focusVisible": true
+  },
+  "actions": {
+    "normalLanguageConfigurationUIActions": 2,
+    "programmaticPreviewFocusAttempts": 1,
+    "trustedTabAttempts": 1,
+    "previewClickActions": 0,
+    "providerSelectionActions": 0,
+    "translationActions": 0,
+    "typedTextActions": 0
+  },
+  "allSixBeforeAndSixAfterOriginalsReviewedByRoot": true,
+  "ownedBrowserActivations": 0,
+  "pageErrors": [],
+  "cleanupErrors": [],
+  "resourceReleased": true,
+  "images": [
+    {
+      "path": "before-dark320.png",
+      "bytes": 15845,
+      "sha256": "b8ab308399d933e24b8e3c7adca7c1d2a3beaba7497aeccc6692f6cf4d05d943"
+    },
+    {
+      "path": "after-dark320.png",
+      "bytes": 16384,
+      "sha256": "d52af7edfe06bc1d979da8160b273cfaa721c2041cc825fe41c736f224b738dd"
+    },
+    {
+      "path": "after-keyboard-focus.png",
+      "bytes": 17909,
+      "sha256": "0814d4510971d7b3a4b2f9764638c7fb7cf8b1965e084665657800e3c7a2a9c1"
+    }
+  ],
+  "componentBehaviorRegression": {
+    "test": "tests/selectionSettingsConsumer.test.ts",
+    "actualSFCMounted": true,
+    "actualFeatureEnableCardMounted": true,
+    "DOMEventEnvironment": "linkedom; no trusted browser event claim",
+    "componentCasesPassed": 4,
+    "verificationOwnershipCasesPassed": 21,
+    "previewRoundTripARIAAndConfigUnchanged": true,
+    "enableDisableRestoresDisplayModeAndCompatibilityFlag": true,
+    "isolatedPublicPropBoundaries": [
+      "ReadingAnswer",
+      "HarnessSettings"
+    ],
+    "frozenDebtOwnerRemoved": true,
+    "productSourceChangedByOwnershipFollowup": false,
+    "storageOrProviderAcceptance": false
+  }
+}

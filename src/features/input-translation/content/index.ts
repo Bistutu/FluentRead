@@ -14,6 +14,7 @@ import {normalizeAiRequestTimeoutMs} from '@/src/core/config/aiRequestTimeout';
 import {parseApiKeyRequirementKey} from '@/src/core/config/validation';
 import {getCompositeTranslationConfigFingerprint} from '@/src/core/config/compositeTranslation';
 import {normalizeUiLanguage, translateLegacyText} from '@/src/core/i18n';
+import {clampToVisualViewport, getSafeVisualViewportRect} from '@/src/platform/dom/visualViewport';
 import {normalizeInputBoxTranslationOutputMode, type InputBoxTranslationOutputMode} from '@/src/core/config/inputTranslation';
 import {
     canCommitInputBoxTranslation,
@@ -418,49 +419,58 @@ export function createInputTranslationContentFeature(
             mode: 'closed',
             inheritStyles: false,
             css: `
-                :host {
-                    all: initial !important;
-                    display: block !important;
-                    position: relative !important;
-                    width: 0 !important;
-                    height: 0 !important;
-                    overflow: visible !important;
-                }
-                html, body {
-                    width: 0 !important;
-                    height: 0 !important;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    overflow: visible !important;
-                }
-                .fluent-input-tooltip {
-                    position: fixed;
-                    opacity: 0;
-                    transform: translateY(3px);
-                    box-sizing: border-box;
-                    background: rgba(17, 24, 39, 0.88);
-                    color: #fff;
-                    padding: 8px 12px;
-                    border: 0;
-                    border-radius: 8px;
-                    font: 500 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-                    white-space: normal;
-                    max-width: min(360px, calc(100vw - 24px));
-                    z-index: 2147483647;
-                    pointer-events: ${restore || previewText ? 'auto' : 'none'};
-                    transition: opacity 0.2s ease, transform 0.2s ease;
-                    backdrop-filter: blur(8px);
-                    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.2);
-                }
-                .fluent-input-tooltip.show { opacity: 1; transform: translateY(0); }
-                .fluent-input-tooltip.hide { opacity: 0; transform: translateY(-5px); }
-                .fluent-input-tooltip.translating { background: rgba(29, 78, 216, 0.96); }
-                .fluent-input-tooltip.success { background: rgba(22, 101, 52, 0.96); }
-                .fluent-input-tooltip.error { background: rgba(185, 28, 28, 0.96); }
+    :host {
+        all: initial !important;
+        display: block !important;
+        position: relative !important;
+        width: 0 !important;
+        height: 0 !important;
+        overflow: visible !important;
+    }
+    html, body {
+        width: 0 !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+    }
+    .fluent-input-tooltip {
+        position: fixed;
+        opacity: 0;
+        transform: translateY(3px);
+        box-sizing: border-box;
+        background: rgba(17, 24, 39, 0.88);
+        color: #fff;
+        padding: 8px 12px;
+        border: 0;
+        border-radius: 8px;
+        font: 500 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        white-space: normal;
+        max-width: min(360px, calc(100vw - 24px));
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        overflow-wrap: anywhere;
+        z-index: 2147483647;
+        pointer-events: ${restore || previewText ? 'auto' : 'none'};
+        transition: opacity 0.2s ease, transform 0.2s ease;
+        backdrop-filter: blur(8px);
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.2);
+    }
+    .fluent-input-tooltip.show { opacity: 1; transform: translateY(0); }
+    .fluent-input-tooltip.hide { opacity: 0; transform: translateY(-5px); }
+    .fluent-input-tooltip.translating { background: rgba(29, 78, 216, 0.96); }
+    .fluent-input-tooltip.success { background: rgba(22, 101, 52, 0.96); }
+    .fluent-input-tooltip.error { background: rgba(185, 28, 28, 0.96); }
+    .fluent-input-tooltip textarea { font: inherit; }
+    @media (any-pointer: coarse) {
+        .fluent-input-tooltip.has-actions { font-size: 14px; }
+        .fluent-input-tooltip button { min-width: 44px; min-height: 44px; touch-action: manipulation; }
+        .fluent-input-tooltip textarea { font-size: 16px; }
+    }
             `,
             onMount(container) {
                 const tooltip = rootDocument.createElement('div');
-                tooltip.className = `fluent-input-tooltip ${type}`;
+                tooltip.className = `fluent-input-tooltip ${type}${restore ? ' has-actions' : ''}`;
                 tooltip.id = 'fluent-input-translation-tooltip';
                 tooltip.setAttribute('role', 'status');
                 tooltip.setAttribute('aria-live', 'polite');
@@ -492,11 +502,12 @@ export function createInputTranslationContentFeature(
                     tooltip.appendChild(restoreButton);
                 }
                 if (previewText) {
+                    tooltip.style.width = '320px';
                     const preview = rootDocument.createElement('textarea');
                     preview.readOnly = true;
                     preview.value = previewText;
                     preview.setAttribute('aria-label', translateLegacyText('译文', normalizeUiLanguage(deps.config.uiLanguage)));
-                    preview.style.cssText = 'display:block;box-sizing:border-box;width:100%;min-width:220px;max-width:100%;height:5em;margin-top:8px;padding:6px;border:1px solid rgba(255,255,255,.4);border-radius:4px;background:transparent;color:inherit;font:inherit;resize:vertical;';
+                    preview.style.cssText = 'display:block;box-sizing:border-box;width:100%;min-width:0;max-width:100%;height:5em;margin-top:8px;padding:6px;border:1px solid rgba(255,255,255,.4);border-radius:4px;background:transparent;color:inherit;resize:vertical;';
                     tooltip.appendChild(preview);
                 }
                 return tooltip;
@@ -523,22 +534,41 @@ export function createInputTranslationContentFeature(
         const position = () => {
             const view = rootDocument.defaultView;
             const rect = element.getBoundingClientRect();
-            const viewportWidth = view?.innerWidth || 1024;
-            const viewportHeight = view?.innerHeight || 768;
+            const viewport = view ? getSafeVisualViewportRect(view)
+                : {left: 0, top: 0, right: 1024, bottom: 768, width: 1024, height: 768};
+            // 高度不足84时先回收留白；可用高度至少44时仍给完整44按钮留出内容空间。
+            // 长状态文案与预览继续只滚动自己的提示，不推动宿主页或编辑器。
+            const verticalGap = Math.max(0, Math.min(12, (viewport.height - 60) / 2));
+            const paddingBlock = Math.max(0, Math.min(8, (viewport.height - 44) / 2));
+            tooltip.style.paddingBlock = `${paddingBlock}px`;
+            tooltip.style.maxWidth = `${Math.max(1, Math.min(360, viewport.width - 24))}px`;
+            tooltip.style.maxHeight = `${Math.max(1, viewport.height - verticalGap * 2)}px`;
             const bounds = tooltip.getBoundingClientRect();
             const width = bounds.width || 120;
             const height = bounds.height || 44;
-            tooltip.style.left = `${Math.max(12, Math.min(viewportWidth - width - 12, rect.left + (rect.width - width) / 2))}px`;
-            tooltip.style.top = `${Math.max(12, Math.min(viewportHeight - height - 12,
-                rect.bottom + height + 12 <= viewportHeight ? rect.bottom + 12 : (rect.top || 0) - height - 12))}px`;
+            const point = {
+                left: rect.left + (rect.width - width) / 2,
+                top: rect.bottom + height + verticalGap <= viewport.bottom
+                    ? rect.bottom + verticalGap : (rect.top || 0) - height - verticalGap,
+            };
+            const placement = clampToVisualViewport(point, {width, height}, viewport);
+            // 通用夹边的gap同时影响两轴；横向仍保留原12px，仅纵向使用回收后的留白。
+            const verticalPlacement = clampToVisualViewport(point, {width, height}, viewport, verticalGap);
+            tooltip.style.left = `${placement.left}px`;
+            tooltip.style.top = `${verticalPlacement.top}px`;
         };
         position();
         const view = rootDocument.defaultView;
         view?.addEventListener?.('scroll', position, {capture: true, passive: true});
         view?.addEventListener?.('resize', position, {passive: true});
+        const visualViewport = view?.visualViewport;
+        visualViewport?.addEventListener('resize', position);
+        visualViewport?.addEventListener('scroll', position, {passive: true});
         removeTooltipPositionListeners = () => {
             view?.removeEventListener?.('scroll', position, true);
             view?.removeEventListener?.('resize', position);
+            visualViewport?.removeEventListener('resize', position);
+            visualViewport?.removeEventListener('scroll', position);
         };
         if (!deps.config.animations) {
             tooltip.style.opacity = '1';

@@ -1,0 +1,245 @@
+{
+  "sourceCommit": "95cac87cb1777c7c7824a3f158033a557f7acda8",
+  "status": "COMPILE_AND_WEB_RESOURCE_MATCH_PASS_NOT_RUNTIME",
+  "scope": "Local package and compilation only; no boot, install, native UI test, developer signing, publication or physical device.",
+  "webVersion": "0.0.39",
+  "nativeVersionSeparate": true,
+  "sourceInventoryTiming": "Single postbuild sample; not an independent before/after pair",
+  "sourceWebInventory": {
+    "files": 467,
+    "bytes": 62261287,
+    "rawByteHash": "c5baf633b0c9d937c6c598367d5caec36fbbda5bc00cffb3f37e7f71ace591df",
+    "recordHash": "22538044a4786eafcafdd1ff0ad5d388a648cb4f948157cc6f73be54066aee59",
+    "rawAlgorithm": "Recursive directory UTF8-name sort; SHA256(path+NUL+decimalByteLength+NUL+rawbytes)",
+    "recordAlgorithm": "Global UTF8 path sort; SHA256(path+NUL+fileSHA256+NUL+decimalByteLength+LF)"
+  },
+  "copiedWebInventory": {
+    "files": 467,
+    "bytes": 62261287,
+    "rawByteHash": "c5baf633b0c9d937c6c598367d5caec36fbbda5bc00cffb3f37e7f71ace591df",
+    "recordHash": "22538044a4786eafcafdd1ff0ad5d388a648cb4f948157cc6f73be54066aee59",
+    "rawAlgorithm": "Recursive directory UTF8-name sort; SHA256(path+NUL+decimalByteLength+NUL+rawbytes)",
+    "recordAlgorithm": "Global UTF8 path sort; SHA256(path+NUL+fileSHA256+NUL+decimalByteLength+LF)"
+  },
+  "stages": [
+    {
+      "stage": "package",
+      "exitCode": 0,
+      "seconds": 5.446094036102295,
+      "log": {
+        "path": "language-native-main9d6-package.log",
+        "bytes": 5671,
+        "sha256": "e123bf765c2ef3195fd0384a19cdf85e5bc200c16b52ea36c4c274ffee3d7e56"
+      }
+    },
+    {
+      "stage": "macos",
+      "exitCode": 0,
+      "seconds": 34.39525508880615,
+      "log": {
+        "path": "language-native-main9d6-macos.log",
+        "bytes": 378943,
+        "sha256": "8d3d2f08e121e495afe52c49ab92fde81978375be686643d55a460d9aa1d53cc"
+      }
+    },
+    {
+      "stage": "ios-simulator",
+      "exitCode": 0,
+      "seconds": 35.74938130378723,
+      "log": {
+        "path": "language-native-main9d6-ios-simulator.log",
+        "bytes": 391091,
+        "sha256": "dd271121e5fc73fc167afec793ba439ce0443548c23c95b37c51817bd9452b93"
+      }
+    },
+    {
+      "stage": "iphoneos",
+      "exitCode": 0,
+      "seconds": 20.472888708114624,
+      "log": {
+        "path": "language-native-main9d6-iphoneos.log",
+        "bytes": 224877,
+        "sha256": "6aa07d913544aedffbd5578c685295101b07fb5bf2939e6f85ace0cfe75ca895"
+      }
+    }
+  ],
+  "targets": {
+    "macOS": {
+      "webFilesMatched": 467,
+      "webInventory": {
+        "files": 467,
+        "bytes": 62261287,
+        "rawByteHash": "c5baf633b0c9d937c6c598367d5caec36fbbda5bc00cffb3f37e7f71ace591df",
+        "recordHash": "22538044a4786eafcafdd1ff0ad5d388a648cb4f948157cc6f73be54066aee59",
+        "rawAlgorithm": "Recursive directory UTF8-name sort; SHA256(path+NUL+decimalByteLength+NUL+rawbytes)",
+        "recordAlgorithm": "Global UTF8 path sort; SHA256(path+NUL+fileSHA256+NUL+decimalByteLength+LF)"
+      },
+      "bundles": {
+        "app": {
+          "bundleIdentifier": "org.example.FluentReadDevelopment",
+          "nativeVersion": "1.0",
+          "nativeBuild": "1",
+          "architectures": [
+            "x86_64",
+            "arm64"
+          ],
+          "signingClassification": "LINKER_ADHOC_NO_TEAM",
+          "inventory": {
+            "files": 482,
+            "bytes": 63280251,
+            "rawByteHash": "6d368fc0a3e051b4cb5b08671f65538e374cabed553015709d507408f6734674",
+            "recordHash": "8010dc32c12cb224fde130874bb7d5bece618f38a31191d302ba009d74b7f11b",
+            "rawAlgorithm": "Recursive directory UTF8-name sort; SHA256(path+NUL+decimalByteLength+NUL+rawbytes)",
+            "recordAlgorithm": "Global UTF8 path sort; SHA256(path+NUL+fileSHA256+NUL+decimalByteLength+LF)"
+          },
+          "executable": {
+            "bytes": 207880,
+            "sha256": "09490179c0d2ef7fa4cfd4956d1821af81d0a00fffe568bc4d10962ce7fcd0e2"
+          }
+        },
+        "extension": {
+          "bundleIdentifier": "org.example.FluentReadDevelopment.Extension",
+          "nativeVersion": "1.0",
+          "nativeBuild": "1",
+          "architectures": [
+            "x86_64",
+            "arm64"
+          ],
+          "signingClassification": "LINKER_ADHOC_NO_TEAM",
+          "inventory": {
+            "files": 469,
+            "bytes": 62384717,
+            "rawByteHash": "e715b1cefc39449ee3efbee98fab30aa60b21463ac2cc6600c5f3872266cbc90",
+            "recordHash": "526f53681e4795d87f639f76e6a799570cf30cd712b4da8f63616360c837c25f",
+            "rawAlgorithm": "Recursive directory UTF8-name sort; SHA256(path+NUL+decimalByteLength+NUL+rawbytes)",
+            "recordAlgorithm": "Global UTF8 path sort; SHA256(path+NUL+fileSHA256+NUL+decimalByteLength+LF)"
+          },
+          "executable": {
+            "bytes": 121800,
+            "sha256": "666bb3ba317d2fa883392c7068f6d18737274c29b227ed4747776eb177fcfefc"
+          }
+        }
+      }
+    },
+    "iosSimulator": {
+      "webFilesMatched": 467,
+      "webInventory": {
+        "files": 467,
+        "bytes": 62261287,
+        "rawByteHash": "c5baf633b0c9d937c6c598367d5caec36fbbda5bc00cffb3f37e7f71ace591df",
+        "recordHash": "22538044a4786eafcafdd1ff0ad5d388a648cb4f948157cc6f73be54066aee59",
+        "rawAlgorithm": "Recursive directory UTF8-name sort; SHA256(path+NUL+decimalByteLength+NUL+rawbytes)",
+        "recordAlgorithm": "Global UTF8 path sort; SHA256(path+NUL+fileSHA256+NUL+decimalByteLength+LF)"
+      },
+      "bundles": {
+        "app": {
+          "bundleIdentifier": "org.example.FluentReadDevelopment",
+          "nativeVersion": "1.0",
+          "nativeBuild": "1",
+          "architectures": [
+            "x86_64",
+            "arm64"
+          ],
+          "signingClassification": "LINKER_ADHOC_NO_TEAM",
+          "inventory": {
+            "files": 485,
+            "bytes": 64255445,
+            "rawByteHash": "194c9c675e15cdda475db8c7528cb9a40d87eabae2abe62d709b4a2e4635897a",
+            "recordHash": "cd198345009c4097e1a69c2574c485e8777cb8a5544a54b3ff10ee0fe3f4cb16",
+            "rawAlgorithm": "Recursive directory UTF8-name sort; SHA256(path+NUL+decimalByteLength+NUL+rawbytes)",
+            "recordAlgorithm": "Global UTF8 path sort; SHA256(path+NUL+fileSHA256+NUL+decimalByteLength+LF)"
+          },
+          "executable": {
+            "bytes": 188680,
+            "sha256": "ef72d3c2390babb9bd3f116ed72570b4d0a3e2b5f476735b23cc8c0b9fab4258"
+          }
+        },
+        "extension": {
+          "bundleIdentifier": "org.example.FluentReadDevelopment.Extension",
+          "nativeVersion": "1.0",
+          "nativeBuild": "1",
+          "architectures": [
+            "x86_64",
+            "arm64"
+          ],
+          "signingClassification": "LINKER_ADHOC_NO_TEAM",
+          "inventory": {
+            "files": 469,
+            "bytes": 62384961,
+            "rawByteHash": "e3f22d08cde74a89d0c6081064cf58b103b7825f9d4662ce88fcf804969159dc",
+            "recordHash": "26b2c1715f773e9ba524bc5b0679080ee9de6927a9cac81475227a609dc54f65",
+            "rawAlgorithm": "Recursive directory UTF8-name sort; SHA256(path+NUL+decimalByteLength+NUL+rawbytes)",
+            "recordAlgorithm": "Global UTF8 path sort; SHA256(path+NUL+fileSHA256+NUL+decimalByteLength+LF)"
+          },
+          "executable": {
+            "bytes": 122712,
+            "sha256": "09d12caaf933864054213fcfedbcd36896d95c7e680976714b2a4d50426cf500"
+          }
+        }
+      }
+    },
+    "iPhoneOS": {
+      "webFilesMatched": 467,
+      "webInventory": {
+        "files": 467,
+        "bytes": 62261287,
+        "rawByteHash": "c5baf633b0c9d937c6c598367d5caec36fbbda5bc00cffb3f37e7f71ace591df",
+        "recordHash": "22538044a4786eafcafdd1ff0ad5d388a648cb4f948157cc6f73be54066aee59",
+        "rawAlgorithm": "Recursive directory UTF8-name sort; SHA256(path+NUL+decimalByteLength+NUL+rawbytes)",
+        "recordAlgorithm": "Global UTF8 path sort; SHA256(path+NUL+fileSHA256+NUL+decimalByteLength+LF)"
+      },
+      "bundles": {
+        "app": {
+          "bundleIdentifier": "org.example.FluentReadDevelopment",
+          "nativeVersion": "1.0",
+          "nativeBuild": "1",
+          "architectures": [
+            "arm64"
+          ],
+          "signingClassification": "UNSIGNED",
+          "inventory": {
+            "files": 485,
+            "bytes": 64152123,
+            "rawByteHash": "143f6381701a454fca2b9fac2a129caf321c635f1ea6ca36b18b6422a00ec59d",
+            "recordHash": "e0f07addf7609db1c4d44d51b0334a0d54f48cb3d0dc40e2bb28e8cb67eede1f",
+            "rawAlgorithm": "Recursive directory UTF8-name sort; SHA256(path+NUL+decimalByteLength+NUL+rawbytes)",
+            "recordAlgorithm": "Global UTF8 path sort; SHA256(path+NUL+fileSHA256+NUL+decimalByteLength+LF)"
+          },
+          "executable": {
+            "bytes": 125096,
+            "sha256": "6f32b93431eb23aa8560c0bd3c5299199dd510d850cd94fa927519dc07e60ae5"
+          }
+        },
+        "extension": {
+          "bundleIdentifier": "org.example.FluentReadDevelopment.Extension",
+          "nativeVersion": "1.0",
+          "nativeBuild": "1",
+          "architectures": [
+            "arm64"
+          ],
+          "signingClassification": "UNSIGNED",
+          "inventory": {
+            "files": 469,
+            "bytes": 62350893,
+            "rawByteHash": "5a7ff6e2aebae0640622c34d31440cb936d015a0214401cdaf2e667b9ed170ae",
+            "recordHash": "1bc341938c094de9f07e6c91d325250ddb6f30dd8e7c8008486d23f1be78e85d",
+            "rawAlgorithm": "Recursive directory UTF8-name sort; SHA256(path+NUL+decimalByteLength+NUL+rawbytes)",
+            "recordAlgorithm": "Global UTF8 path sort; SHA256(path+NUL+fileSHA256+NUL+decimalByteLength+LF)"
+          },
+          "executable": {
+            "bytes": 88624,
+            "sha256": "d57f13f185b79de6d24f78b858e3cdf5c22a08ffadd19f7496d523bbaf3a2236"
+          }
+        }
+      }
+    }
+  },
+  "identityReceipt": {
+    "file": "compiled-artifact-identities.json",
+    "bytes": 42651,
+    "sha256": "7a5e45b37f55c2b9ae084e4936c582adfb1c502462e146b70e3ddad37e19fec3"
+  },
+  "runtimeAcceptance": false,
+  "runtimeGoIssued": false,
+  "signingClassificationScope": "Existing codesign -dvvv default-architecture readback per bundle; not a claim that every universal Mach-O slice contains a signature."
+}

@@ -1,0 +1,483 @@
+{
+  "sourceCommit": "a21bb4e9c6b112ca7757bbe0f1420c0d491b9c84",
+  "scope": "Focused tests and controlled desktop production-extension UI, not full mobile acceptance",
+  "focusedTests": {
+    "files": 5,
+    "passed": 189,
+    "failed": 0,
+    "pending": 0,
+    "todo": 0,
+    "filesAndCounts": {
+      "contentRuntimeLifecycle.test.ts": 46,
+      "extensionManifestContract.test.ts": 58,
+      "videoSentenceLearningHost.test.ts": 22,
+      "videoSubtitleTrackPriorityRuntime.test.ts": 54,
+      "vocabularyVideoSource.test.ts": 9
+    },
+    "executionBaseCommit": "ac9015dc3cc71d3287e2de32e5ff6990efbe5c83",
+    "binding": "Run on the four uncommitted changed files; all four before/after SHA256 pins match their subsequently committed a21bb4e9 bytes. Production builds and UI ran after that commit with a clean worktree.",
+    "inputPins": {
+      "src/features/video-subtitle/content/sentenceLearningHost.ts": "329f00495dbf7021f39b4cc39dae7ed4659632fe6c4d889af244fbace94690e2",
+      "tests/videoSentenceLearningHost.test.ts": "f0d2f12e9b2515c82ec604071133ef2183375108f3896f898f80e8c9d6c0f522",
+      "scripts/safari/package.mjs": "0930330424f3adc1bcf3392b37f3547336dbd7eb644c7c57d3a6206eaecf3eb4",
+      "tests/extensionManifestContract.test.ts": "c814ad77adcbf3506d976ce9108284be43d02e2cb249b88b4541592261f7dcb7"
+    }
+  },
+  "coverage": {
+    "testFile": "videoSentenceLearningHost.test.ts",
+    "passed": 22,
+    "target": "src/features/video-subtitle/content/sentenceLearningHost.ts",
+    "metrics": {
+      "lines": {
+        "total": 92,
+        "covered": 92,
+        "skipped": 0,
+        "pct": 100
+      },
+      "statements": {
+        "total": 92,
+        "covered": 92,
+        "skipped": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 10,
+        "covered": 10,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 79,
+        "covered": 79,
+        "skipped": 0,
+        "pct": 100
+      }
+    }
+  },
+  "audit": {
+    "exitCode": 0,
+    "staticInventoryFiles": 757,
+    "staticInventoryCases": 14163,
+    "allInventoryCasesExecuted": false
+  },
+  "builds": [
+    {
+      "stage": "compile",
+      "exitCode": 0,
+      "log": {
+        "file": "build-compile.log",
+        "bytes": 184,
+        "sha256": "0b7b746e9379b465c72c2925b71b4ca034fe52eb8c0fa52bb4d9dd7de48d0aef"
+      }
+    },
+    {
+      "stage": "chrome",
+      "exitCode": 0,
+      "log": {
+        "file": "build-chrome.log",
+        "bytes": 84329,
+        "sha256": "c253e5e9d1d4fc29617a0af4002ccd7c2312560e271f88533a67a8784ed07ed5"
+      }
+    },
+    {
+      "stage": "firefox",
+      "exitCode": 0,
+      "log": {
+        "file": "build-firefox.log",
+        "bytes": 84852,
+        "sha256": "cf9d556a36e79bcd8efbcbe212b5b15e7b02c802ab8712eec1e2f5cc90bd9156"
+      }
+    },
+    {
+      "stage": "safari",
+      "exitCode": 0,
+      "log": {
+        "file": "build-safari.log",
+        "bytes": 83081,
+        "sha256": "6cd9e98299d85bc361f99e2b0c92f8334e49b4d41ef37d994e62b6ea4ed894b1"
+      }
+    },
+    {
+      "stage": "userscript",
+      "exitCode": 0,
+      "log": {
+        "file": "build-userscript.log",
+        "bytes": 345,
+        "sha256": "18df6d8da968c6002d6a7eba266d634588519c20ccbb23854eaf13bc50aa3ac9"
+      }
+    },
+    {
+      "stage": "userscript-verify",
+      "exitCode": 0,
+      "log": {
+        "file": "build-userscript-verify.log",
+        "bytes": 207,
+        "sha256": "ba3ba6e6c452d210ff2aa0a3394ca1683db47199004e4a0a19bfebcdde420fba"
+      }
+    },
+    {
+      "stage": "manifests",
+      "exitCode": 0,
+      "log": {
+        "file": "build-manifests.log",
+        "bytes": 1001,
+        "sha256": "ff5b3bf734b70e90b7636b191551335cff4566fd50108563112a196466818a7a"
+      }
+    },
+    {
+      "stage": "safari-verify",
+      "exitCode": 0,
+      "log": {
+        "file": "build-safari-verify.log",
+        "bytes": 509,
+        "sha256": "1d5c60b5522e6f38e48bce99e4c3312e44023b65804caf355a10a0120141a3e9"
+      }
+    }
+  ],
+  "browser": {
+    "attempt": 4,
+    "ok": true,
+    "cases": 1,
+    "phases": 6,
+    "actions": {
+      "manualSeekAndPlay": 1,
+      "masterOff": 1,
+      "masterOn": 1,
+      "newHash": 1
+    },
+    "states": [
+      {
+        "stage": "initial-fragment-restored3",
+        "capturedAt": "2026-10-18T10:03:40.134Z",
+        "time": 3,
+        "paused": true,
+        "duration": 30,
+        "readyState": 4,
+        "seeking": false,
+        "ended": false,
+        "playbackRate": 1,
+        "errorCode": null,
+        "videoCount": 1,
+        "sameVideo": true,
+        "entryCount": 1,
+        "sameEntry": true,
+        "oldEntryConnected": true,
+        "menuCount": 1,
+        "visibility": "visible",
+        "articleSource": true,
+        "nativeTextTracks": 1,
+        "width": 390,
+        "height": 760,
+        "documentWidth": 390,
+        "rootOverflow": false
+      },
+      {
+        "stage": "manual20-playing",
+        "capturedAt": "2026-10-18T10:03:40.360Z",
+        "time": 20.012027,
+        "paused": false,
+        "duration": 30,
+        "readyState": 4,
+        "seeking": false,
+        "ended": false,
+        "playbackRate": 1,
+        "errorCode": null,
+        "videoCount": 1,
+        "sameVideo": true,
+        "entryCount": 1,
+        "sameEntry": true,
+        "oldEntryConnected": true,
+        "menuCount": 1,
+        "visibility": "visible",
+        "articleSource": true,
+        "nativeTextTracks": 1,
+        "width": 390,
+        "height": 760,
+        "documentWidth": 390,
+        "rootOverflow": false
+      },
+      {
+        "stage": "master-off-entry-disposed",
+        "capturedAt": "2026-10-18T10:03:40.407Z",
+        "time": 20.058579,
+        "paused": false,
+        "duration": 30,
+        "readyState": 4,
+        "seeking": false,
+        "ended": false,
+        "playbackRate": 1,
+        "errorCode": null,
+        "videoCount": 1,
+        "sameVideo": true,
+        "entryCount": 0,
+        "sameEntry": false,
+        "oldEntryConnected": false,
+        "menuCount": 0,
+        "visibility": "visible",
+        "articleSource": true,
+        "nativeTextTracks": 1,
+        "width": 390,
+        "height": 760,
+        "documentWidth": 390,
+        "rootOverflow": false
+      },
+      {
+        "stage": "master-on-new-entry-same-video",
+        "capturedAt": "2026-10-18T10:03:40.504Z",
+        "time": 20.153,
+        "paused": false,
+        "duration": 30,
+        "readyState": 4,
+        "seeking": false,
+        "ended": false,
+        "playbackRate": 1,
+        "errorCode": null,
+        "videoCount": 1,
+        "sameVideo": true,
+        "entryCount": 1,
+        "sameEntry": false,
+        "oldEntryConnected": false,
+        "menuCount": 1,
+        "visibility": "visible",
+        "articleSource": true,
+        "nativeTextTracks": 1,
+        "width": 390,
+        "height": 760,
+        "documentWidth": 390,
+        "rootOverflow": false
+      },
+      {
+        "stage": "remounted-real-clock-progressed",
+        "capturedAt": "2026-10-18T10:03:40.636Z",
+        "time": 20.288133,
+        "paused": false,
+        "duration": 30,
+        "readyState": 4,
+        "seeking": false,
+        "ended": false,
+        "playbackRate": 1,
+        "errorCode": null,
+        "videoCount": 1,
+        "sameVideo": true,
+        "entryCount": 1,
+        "sameEntry": false,
+        "oldEntryConnected": false,
+        "menuCount": 1,
+        "visibility": "visible",
+        "articleSource": true,
+        "nativeTextTracks": 1,
+        "width": 390,
+        "height": 760,
+        "documentWidth": 390,
+        "rootOverflow": false
+      },
+      {
+        "stage": "new-fragment-restored6",
+        "capturedAt": "2026-10-18T10:03:41.523Z",
+        "time": 6,
+        "paused": true,
+        "duration": 30,
+        "readyState": 4,
+        "seeking": false,
+        "ended": false,
+        "playbackRate": 1,
+        "errorCode": null,
+        "videoCount": 1,
+        "sameVideo": true,
+        "entryCount": 1,
+        "sameEntry": false,
+        "oldEntryConnected": false,
+        "menuCount": 1,
+        "visibility": "visible",
+        "articleSource": true,
+        "nativeTextTracks": 1,
+        "width": 390,
+        "height": 760,
+        "documentWidth": 390,
+        "rootOverflow": false
+      }
+    ],
+    "viewport": {
+      "width": 390,
+      "height": 760,
+      "touchEmulation": false,
+      "nativeDevice": false
+    },
+    "launchMode": "macos-background-cdp",
+    "focusPolicy": "launchservices-no-foreground",
+    "windowPlacement": {
+      "mode": "background-visible-no-focus",
+      "visible": true,
+      "hidden": false,
+      "centered": true,
+      "windowState": "normal",
+      "bounds": {
+        "left": 212,
+        "top": -990,
+        "width": 1280,
+        "height": 900
+      },
+      "displayTarget": "secondary",
+      "source": "macos-nsscreen",
+      "screenIndex": 1,
+      "browserFrontmost": false
+    },
+    "focusSamplesCount": 3,
+    "continuousFocusVerification": false,
+    "allSamplesOwnedBrowserFrontmost": false,
+    "configRestored": true,
+    "ownedPageClosed": true,
+    "errors": {
+      "page": 0,
+      "console": 0,
+      "blockedRequests": 0,
+      "cleanup": 0
+    },
+    "icon": {
+      "decodedScreens": 3,
+      "responseBodiesMatched": 2,
+      "expectedBytes": 16432,
+      "expectedSHA256": "61e692cb26510e0edff8e6367c3b3c849b9f4656c35ceb04055b074d715fac08",
+      "dynamicSessionHostIsSourceIdentity": false
+    },
+    "media": {
+      "bytes": 2611,
+      "sha256": "e2986b59c9d027d46465cbc44bce8b31d1b73f40299de941f3014490ffd3caad"
+    },
+    "boundary": "Controlled390x760 CSS viewport (desktop Chromium, no touch/native-device emulation), X HTML with a real decoded local MP4 and native TextTrack. One fixture-page click seeks20s and plays; real persistConfig on=false/true drives production feature disposal/remount. No mocked media/restorer, provider call, playback restoration claim across documents, BFCache, native Safari/mobile, long background or eviction acceptance.",
+    "executionExitCode": 0,
+    "inputPinsEqual": true,
+    "screenshots": [
+      {
+        "file": "saved-position-initial3.png",
+        "bytes": 29003,
+        "sha256": "e9bd115d0c7817de724f3a25448c0efa8a260db12769c2a359e533587fb007ee"
+      },
+      {
+        "file": "saved-position-remounted-playing20.png",
+        "bytes": 29011,
+        "sha256": "1e9787b1aaea4cd458186a58c284ef13f3a3ba984dc0fa2ffa9c0e7ca5e2091a"
+      },
+      {
+        "file": "saved-position-new-hash6.png",
+        "bytes": 29011,
+        "sha256": "1e9787b1aaea4cd458186a58c284ef13f3a3ba984dc0fa2ffa9c0e7ca5e2091a"
+      }
+    ],
+    "lastTwoScreenshotsByteIdentical": true,
+    "pixelsAloneProveMediaTimeOrPlaying": false
+  },
+  "production": {
+    "version": "0.0.39",
+    "manifest": {
+      "bytes": 3250,
+      "sha256": "d84f2ae185318d9f0add60b335e45056b476d2cce62f2dedc39a15fc9bd7ce1b"
+    },
+    "contentScripts": [
+      {
+        "file": "content.js",
+        "bytes": 2770043,
+        "sha256": "95145faa5341667f716b7fc685b7cae62d952c9062d5a8449e9eb4c2ceb591d4"
+      },
+      {
+        "file": "neteaseMailFrame.js",
+        "bytes": 1962096,
+        "sha256": "3706b9a63fd4aaadec6d7966abde570d0a68af8b032b0cc96ef0c4b597152a3e"
+      },
+      {
+        "file": "shadowBridge.js",
+        "bytes": 3351,
+        "sha256": "ac4cd36fa2f66d591c031c44f3d0b7bc58a39888aee263037b71be2fad686e39"
+      },
+      {
+        "file": "supportedFrame.js",
+        "bytes": 1735250,
+        "sha256": "9d32b87c42f809f589d31270993cb0f744176c9f2f382f5967179d23d0154221"
+      },
+      {
+        "file": "xVideoBridge.js",
+        "bytes": 8036,
+        "sha256": "f22318b71931cfc573c8aae63086438e4d186f4f654616a85ebd0c6178c50331"
+      },
+      {
+        "file": "youtubeBridge.js",
+        "bytes": 5497,
+        "sha256": "f5304857608090e874b144266f0def19809b0ba228765f3c7d14ef22faa57af3"
+      }
+    ],
+    "manifestAloneIsUniqueSourceBinding": false
+  },
+  "rawEvidencePins": [
+    {
+      "file": "focused-receipt.json",
+      "bytes": 3378,
+      "sha256": "79ede189d5e11d5780bfb8b91f8674b2d683a29806c71bdbe61daf8704f0eea8"
+    },
+    {
+      "file": "focused-results.json",
+      "bytes": 73598,
+      "sha256": "ecfea5911b177f4ed57cd88858eaf1ca66e80d8a0f334c48c9b76e342dbf1cf7"
+    },
+    {
+      "file": "build-receipt.json",
+      "bytes": 7228,
+      "sha256": "507d8967ebc3f2739b3ed568073e26ad13976c46e0c5cbe6bd6ca63077f68553"
+    },
+    {
+      "file": "position-coverage/coverage-summary.json",
+      "bytes": 700,
+      "sha256": "8d9ab558d04847b4509cd1c96bc1742ea150fe4c1bd3e8ce21e81fc5533e875f"
+    },
+    {
+      "file": "browser-remount-attempt4/root-inputs.json",
+      "bytes": 3705,
+      "sha256": "50711f2c12b1f79f143683bcfd710a2e1cff3dab6d927cfc518ddab6b5eeb968"
+    },
+    {
+      "file": "browser-remount-attempt4/root-execution-receipt.json",
+      "bytes": 537,
+      "sha256": "a632732de0c3d3ba7f10a2e209eb7d55f363bc55a99282b738ff2c3e1156d6e4"
+    },
+    {
+      "file": "browser-remount-attempt4/cases-source.cjs",
+      "bytes": 28023,
+      "sha256": "b5fb82e952fbd64f30e772ecd7f9d009fe57c48f16ef5e0d2e61cb739df9d93d"
+    },
+    {
+      "file": "browser-remount-attempt4/runtime/report.json",
+      "bytes": 17840,
+      "sha256": "d5a77d742efb05a9d71cc86a9b7f4394ef26ad50ed74b806695ad5d61146df6d"
+    },
+    {
+      "file": "browser-remount-attempt4/runtime/saved-video-position-remount-results.json",
+      "bytes": 15254,
+      "sha256": "d6fa24d426eb7bd30f715c9cda835db4ce5add73a365d47e3f5926596b98131f"
+    },
+    {
+      "file": "independent-position-remount-review.json",
+      "bytes": 7765,
+      "sha256": "ca2776edececa1d63effefbcfdfbe58feccd97b24c2a2e6e65e850f871a98fc9"
+    },
+    {
+      "file": "independent-safari-deployment-report-review.json",
+      "bytes": 5944,
+      "sha256": "4969218cf816759fad479ade54acfb06b2fe2909cca59cc13ca6a4ac734e02c0"
+    },
+    {
+      "file": "independent-remount-case-final-review.json",
+      "bytes": 14137,
+      "sha256": "a0f839b2500feea6183cbb68adc50c2d9af3b79a98f06c662cf7e0e38d3944c4"
+    },
+    {
+      "file": "browser-remount-attempt4/independent-ui-operation-review.json",
+      "bytes": 11950,
+      "sha256": "6c01f4a6e3b9f3759ade4932eb893e0903eac3d05129199ffdc5d756d288d74b"
+    }
+  ],
+  "notCovered": [
+    "Actual X website or live translation provider",
+    "BFCache entry/restore, document replacement or long background eviction runtime",
+    "Touch/native Safari, native AVKit/fullscreen captions or physical-device interaction",
+    "New native IME/orientation or installation/update runtime"
+  ]
+}

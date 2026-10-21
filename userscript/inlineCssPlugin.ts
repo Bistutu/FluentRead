@@ -5,7 +5,7 @@
  * 模块边界：不压缩可执行源码、不改动共享 CSS 或扩展构建，不添加解压依赖与异步加载边界。
  */
 import {resolve} from 'node:path';
-import {gzipSync} from 'node:zlib';
+import {gzipUserscriptBuildData} from './buildGzip';
 import ts from 'typescript';
 import {normalizePath, type Plugin} from 'vite';
 
@@ -26,7 +26,7 @@ export function createUserscriptInlineCssCompressionPlugin(root: string, enabled
                 if (!ts.isExportAssignment(statement) || statement.isExportEquals
                     || !(ts.isStringLiteral(statement.expression) || ts.isNoSubstitutionTemplateLiteral(statement.expression))) return null;
                 const css = statement.expression.text;
-                const compressed = gzipSync(Buffer.from(css, 'utf8'), {level: 9}).toString('base64');
+                const compressed = gzipUserscriptBuildData(Buffer.from(css, 'utf8')).toString('base64');
                 const restored = "import {inflateWithPako} from '@/userscript/pakoRuntime';\n"
                     + `export default inflateWithPako(Uint8Array.from(atob(${JSON.stringify(compressed)}), character => character.charCodeAt(0)));`;
                 return Buffer.byteLength(restored) < Buffer.byteLength(code) ? {code: restored, map: null} : null;

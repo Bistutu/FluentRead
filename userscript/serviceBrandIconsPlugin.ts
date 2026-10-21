@@ -7,7 +7,7 @@
 import {createHash} from 'node:crypto';
 import {readFileSync, realpathSync} from 'node:fs';
 import {resolve} from 'node:path';
-import {gzipSync} from 'node:zlib';
+import {gzipUserscriptBuildData} from './buildGzip';
 import {normalizePath, type Plugin} from 'vite';
 
 const allowedAttributes = new Set(['d', 'clip-rule', 'fill-rule', 'opacity', 'fill-opacity']);
@@ -48,7 +48,7 @@ export function createUserscriptServiceBrandIconsCompressionPlugin(root: string,
             const paths: unknown = JSON.parse(source.toString('utf8'));
             validateBrandPaths(paths);
             const serialized = JSON.stringify(paths);
-            const compressed = gzipSync(Buffer.from(serialized, 'utf8'), {level: 9}).toString('base64');
+            const compressed = gzipUserscriptBuildData(Buffer.from(serialized, 'utf8')).toString('base64');
             const sourceSha256 = createHash('sha256').update(source).digest('hex');
             return [
                 `/* Non-code Lobe Icons paths; original JSON sha256 ${sourceSha256}; existing MIT notice retained. */`,

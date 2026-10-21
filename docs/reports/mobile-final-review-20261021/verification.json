@@ -1,0 +1,411 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "scope": "Finite final review of existing mobile/Safari changes; no new device matrix or driver",
+  "worktree": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016",
+  "branch": "codex/mobile-video-menu-accessibility-20261016",
+  "pr": "https://github.com/FluentRead/FluentRead/pull/1009",
+  "preFixHead": "4a5cc7514e54fae24caf98daa19ee2fedfc708d3",
+  "installedProductSnapshotCommit": "0ea3b708e372321e3cdd3da7497584398e4d266e",
+  "installedPackage": "N5/U6 unsigned dedicated iPhone 16 Pro iOS 26.2 Simulator",
+  "sourceInputs": [
+    {
+      "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/src/app/popup/PopupLanguageSelect.vue",
+      "bytes": 6776,
+      "sha256": "843645ee927d8234fe7d8fd2e96e32944e02c733e43d902514c0ed923087c8f0"
+    },
+    {
+      "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/tests/popupChildOwnership.test.ts",
+      "bytes": 34719,
+      "sha256": "cc4ac5b9bbdf5c93aa68818dd9d2de09a5f73b85c00146b233d45e4ec4acb336"
+    }
+  ],
+  "newFix": "Paired persisted language-selector recovery starts a fresh action context; normal exit/unmount remains terminal and stale callbacks stay rejected",
+  "newCases": 4,
+  "tests": {
+    "targetedFiles": 8,
+    "targetedPassed": 391,
+    "failed": 0,
+    "groups": [
+      {
+        "files": 4,
+        "pass": 159,
+        "log": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/final-round-20261021/focused-tests.log",
+          "bytes": 13267,
+          "sha256": "2cb9cd9bcdfc8e98646a8aaba01bfd6fcfbf816a773b5e4f9c56504f025648a7"
+        }
+      },
+      {
+        "files": 4,
+        "pass": 232,
+        "log": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/final-round-20261021/popup-recovery-tests.log",
+          "bytes": 3287,
+          "sha256": "580fec824d1b41473b4e43bb36d945d0e7ea71c450b0db65dd94a03fb6d603d6"
+        }
+      }
+    ],
+    "fullSuiteExecuted": false
+  },
+  "typecheck": {
+    "command": "pnpm exec vue-tsc --noEmit",
+    "exitCode": 0,
+    "log": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/final-round-20261021/typecheck.log",
+      "bytes": 97,
+      "sha256": "bdac79ad2b79ddaea447b6ce09c8dec2f814f322eb048d432093404ea218ab6f"
+    }
+  },
+  "testAudit": {
+    "command": "node scripts/testing/audit-test-suite.mjs",
+    "exitCode": 0,
+    "status": "ok",
+    "inventoryFiles": 764,
+    "inventoryCases": 14477,
+    "inventoryIsNotExecutedTestCount": true
+  },
+  "builds": [
+    {
+      "target": "chrome-mv3",
+      "command": "pnpm exec wxt build",
+      "exitCode": 0,
+      "log": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/final-round-20261021/chrome-build.log",
+        "bytes": 85974,
+        "sha256": "ccfddf5ed5c2dc26603a3a75b47947b4cf31eaf45ad6bbfc65aac5acdb8f287c"
+      },
+      "manifest": {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/manifest.json",
+        "bytes": 3296,
+        "sha256": "9a2e5b13a7f89a258e15c20f921c3523125eec7951a5785cfdc4c40aef79df08"
+      },
+      "nativeWrapperRebuilt": false
+    },
+    {
+      "target": "firefox-mv2",
+      "command": "pnpm exec wxt build -b firefox",
+      "exitCode": 0,
+      "log": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/final-round-20261021/firefox-build.log",
+        "bytes": 86504,
+        "sha256": "72d50aa3311a90e1cca1eee3feb84562066e9e0ebf3c47a84bf469d56ac1efdc"
+      },
+      "manifest": {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/firefox-mv2/manifest.json",
+        "bytes": 2439,
+        "sha256": "a1279bbdb3a1f3331d3188c2c0fecdcbe5a042a87e2ac9802a06f4b67c93c085"
+      },
+      "nativeWrapperRebuilt": false
+    },
+    {
+      "target": "safari-mv2",
+      "command": "pnpm exec wxt build -b safari --mv2",
+      "exitCode": 0,
+      "log": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/final-round-20261021/safari-build.log",
+        "bytes": 84726,
+        "sha256": "f1c7747c708775b677907c4f3e2af77e338482de4cd74b48088babebfa1854b0"
+      },
+      "manifest": {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/safari-mv2/manifest.json",
+        "bytes": 3022,
+        "sha256": "5ff069cfa9a0e8254c555e9fb707927076dd3336745e07e21d456553fec736ca"
+      },
+      "nativeWrapperRebuilt": false
+    }
+  ],
+  "nativeFinalCases": [
+    {
+      "case": 66,
+      "officialResult": "Passed",
+      "pass": 1,
+      "skip": 0,
+      "fail": 0,
+      "durationSeconds": 42.02837908267975,
+      "rootReceipt": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-installed84a-native-touch-selection-66/root-final-round-receipt.json",
+        "bytes": 2772,
+        "sha256": "3a7db3a28e8df5c685edd174dcfa76b427ff3c88430ad9475565653f2bb90146"
+      },
+      "executionReport": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-installed84a-native-touch-selection-66/reading-options-readonly-execution-report.json",
+        "bytes": 61809,
+        "sha256": "64c25c68460bb3db39393954e2ebe96cbb31b11fb7b8380156f91e8cc6f4fdc7"
+      },
+      "latestLanguageBFCacheFixIncludedInInstalledPackage": false
+    },
+    {
+      "case": 67,
+      "officialResult": "Passed",
+      "pass": 1,
+      "skip": 0,
+      "fail": 0,
+      "durationSeconds": 14.960969924926758,
+      "rootReceipt": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-installed84a-native-touch-selection-67/root-final-round-receipt.json",
+        "bytes": 1953,
+        "sha256": "f5cd2ed90ed4a8031c635883895560742f9d05c4bd7aaaee34990ffaecff1505"
+      },
+      "executionReport": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/fresh-installed84a-native-touch-selection-67/reading-options-readonly-execution-report.json",
+        "bytes": 61868,
+        "sha256": "a94e33fc339d6cff29cf8c37f2f694906c585a5350a1aae6c413bdfc5b66e3f0"
+      },
+      "latestLanguageBFCacheFixIncludedInInstalledPackage": false
+    }
+  ],
+  "independentNativeReview": {
+    "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/final-round-20261021/native-final-review.json",
+    "bytes": 9673,
+    "sha256": "6d847aff7ad853114ef625bdac607883d58636abbf3d51b5c8d6a880f15633aa"
+  },
+  "screenshots": [
+    {
+      "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/docs/reports/mobile-final-review-20261021/native-popup-selection-drawer.png",
+      "bytes": 321574,
+      "sha256": "4511370b4ed42dcf17a1de917ffcd4e0cebc539ce07eefe2c656b176b386d126"
+    },
+    {
+      "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/docs/reports/mobile-final-review-20261021/native-service-model-cancel-keyboard.png",
+      "bytes": 409831,
+      "sha256": "64a73bb2e2f5b1e952a3536b4228cd1f938b40b17779be5f73c7d6c23a749a3f"
+    },
+    {
+      "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/docs/reports/mobile-final-review-20261021/native-service-name-keyboard.png",
+      "bytes": 422353,
+      "sha256": "167a2190983a0449188362eb3132b7e6b80d2c88f0a26ec89798219cb445cc0f"
+    }
+  ],
+  "allFourOriginalNativePNGsViewedByRootAndIndependentReviewer": true,
+  "savedMapIdentityVersusPhysicalReadDistinguished": true,
+  "newLanguageFixNativeSafariBFCacheAcceptance": false,
+  "docsValidation": {
+    "vitepress": {
+      "exitCode": 0,
+      "log": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/final-round-20261021/docs-build.log",
+        "bytes": 346,
+        "sha256": "21b5eeebccca36c905e72f1216ff255c956c93851ea0c0ce8da56359d8da71d6"
+      }
+    },
+    "storybook": {
+      "exitCode": 0,
+      "log": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/final-round-20261021/storybook-build.log",
+        "bytes": 7070,
+        "sha256": "76df10e9e8b700807cc433884a941c378bcdbe78808fe36776846b8dc567abac"
+      }
+    },
+    "docsCheck": {
+      "exitCode": 0,
+      "log": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/final-round-20261021/docs-check.log",
+        "bytes": 63,
+        "sha256": "7ea6e41b7c2e4f7f99b2d7be56e0008be37c8aa8aaa97e4cc83a001ce713d582"
+      }
+    },
+    "internalReportsExcludedFromPublishedSite": true,
+    "reportLocalLinksChecked": true
+  },
+  "ci": "Refresh after final push; never equate local checks with CI",
+  "automaticMerge": false,
+  "referenceProjectsUsedOrModified": false,
+  "remainingNotAccepted": [
+    "Physical devices and signed installation",
+    "Normal installed selection-reading IME and Send",
+    "Long background residence or process eviction",
+    "Update configuration and permission retention",
+    "Live YouTube playback and AVKit fullscreen captions",
+    "Current installed Android Edge version and userscript manager execution"
+  ],
+  "wholeOriginalGoalAccepted": false,
+  "finalIntegration": {
+    "mainCommit": "f87b9d2c131b703e54cfb675f32893e48d2b217c",
+    "conflictsResolved": [
+      "src/app/popup/PopupApp.vue",
+      "src/app/popup/popup.css",
+      "tests/popupAppLifecycle.test.ts",
+      "userscript/languageBundles.ts"
+    ],
+    "bothSidesPreserved": true,
+    "preIntegrationPRStatus": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/final-round-20261021/pr-before-integration-status.json",
+      "bytes": 208,
+      "sha256": "ae276fc5ae5abccbb276a64ed9127a486f293732c7944c6073f47225695f6866"
+    },
+    "tests": {
+      "files": 6,
+      "pass": 502,
+      "fail": 0,
+      "overlapsEarlier391": true,
+      "log": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/final-round-20261021/merged-focused-tests.log",
+        "bytes": 7355,
+        "sha256": "11d2d917b2279f54b7823696279ecebdba72dd66ae0ad3e44abe982656c8d899"
+      }
+    },
+    "typecheck": {
+      "exitCode": 0,
+      "log": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/final-round-20261021/merged-typecheck.log",
+        "bytes": 97,
+        "sha256": "bdac79ad2b79ddaea447b6ce09c8dec2f814f322eb048d432093404ea218ab6f"
+      }
+    },
+    "testAudit": {
+      "exitCode": 0,
+      "log": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/final-round-20261021/merged-test-audit.log",
+        "bytes": 159,
+        "sha256": "6ab67d10bc089d779ed2d65d5589f580f4fbe7e1a02d9da4115c7eed111ee3df"
+      }
+    },
+    "touchToolFix": "Touch and explicit Android dual-button slot at least94px; both46px buttons cannot shrink",
+    "layoutExperiment": {
+      "result": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/final-round-20261021/touch-tools-layout.json",
+        "bytes": 1806,
+        "sha256": "753e2c98b88df73242024d29d7db075a763e758697e4877586beb0b40659db95"
+      },
+      "script": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/final-round-20261021/touch-tools-layout.cjs",
+        "bytes": 3085,
+        "sha256": "73074bc72c0b2e6404eed0b691ff176ad3a825d2e08093b87a355d37b74cecae"
+      },
+      "log": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/final-round-20261021/touch-tools-layout.log",
+        "bytes": 296,
+        "sha256": "9cd2155eb98d85a928c8a6b3c9b1ab94a2ffc012d12a79d80ec4c3a33404297b"
+      },
+      "screenshots": [
+        {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/final-round-20261021/touch-tools-coarse.png",
+          "bytes": 9800,
+          "sha256": "26a2cc63a57d8a36b367d4af4d571e20de050c080f37071b371c59a3447748b7"
+        },
+        {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/final-round-20261021/touch-tools-android-fine.png",
+          "bytes": 9800,
+          "sha256": "26a2cc63a57d8a36b367d4af4d571e20de050c080f37071b371c59a3447748b7"
+        },
+        {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/final-round-20261021/touch-tools-desktop.png",
+          "bytes": 11553,
+          "sha256": "020f34c5d032f9239aaec20be743b2d05e55be6d3bc292cedaacd75d77e31ed3"
+        }
+      ],
+      "all3OriginalPNGsViewedByRoot": true,
+      "extensionLoaded": false,
+      "nativeAcceptance": false
+    },
+    "inputs": [
+      {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/src/app/popup/PopupApp.vue",
+        "bytes": 84503,
+        "sha256": "8631bed91e073fc535ec7fbf24db94d83cef3bf2d0ef7e9bc2d22fe13c1ef818"
+      },
+      {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/src/app/popup/popup.css",
+        "bytes": 78935,
+        "sha256": "5b228745fa249e6fb5efe75d64935b420ab88e7c6ede12af98a1394edd008080"
+      },
+      {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/tests/popupAppLifecycle.test.ts",
+        "bytes": 112456,
+        "sha256": "5255ed3e5258c1a26b45eee7bdb4d87f8c00f9386f9aa37402ca5d08199df342"
+      },
+      {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/userscript/languageBundles.ts",
+        "bytes": 11172,
+        "sha256": "f7b605c1b3c65ea1531e350537dff9df3308f6382baa4d4e537f147911c6af31"
+      }
+    ],
+    "builds": [
+      {
+        "target": "chrome-mv3",
+        "exitCode": 0,
+        "log": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/final-round-20261021/merged-chrome-build.log",
+          "bytes": 85974,
+          "sha256": "61826eef657d6a5acb0c0f6fbb7efe05e30fa6ee7ac0a4c110c3082be334e7c9"
+        },
+        "manifest": {
+          "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/chrome-mv3/manifest.json",
+          "bytes": 3296,
+          "sha256": "9a2e5b13a7f89a258e15c20f921c3523125eec7951a5785cfdc4c40aef79df08"
+        }
+      },
+      {
+        "target": "firefox-mv2",
+        "exitCode": 0,
+        "log": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/final-round-20261021/merged-firefox-build.log",
+          "bytes": 86504,
+          "sha256": "6858123a1d8561222900caea61721563f0aff393b888f26fe1b8ed04ec7dc25e"
+        },
+        "manifest": {
+          "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/firefox-mv2/manifest.json",
+          "bytes": 2439,
+          "sha256": "a1279bbdb3a1f3331d3188c2c0fecdcbe5a042a87e2ac9802a06f4b67c93c085"
+        }
+      },
+      {
+        "target": "safari-mv2",
+        "exitCode": 0,
+        "log": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/final-round-20261021/merged-safari-build.log",
+          "bytes": 84726,
+          "sha256": "aa7fea2bcf9c1435ce3806cb252c999229ebf8d0d0a988f623427996a8564158"
+        },
+        "manifest": {
+          "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-video-menu-accessibility-20261016/.output/safari-mv2/manifest.json",
+          "bytes": 3022,
+          "sha256": "5ff069cfa9a0e8254c555e9fb707927076dd3336745e07e21d456553fec736ca"
+        }
+      }
+    ],
+    "userscript": {
+      "buildExitCode": 0,
+      "verifyExitCode": 0,
+      "buildLog": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/final-round-20261021/merged-userscript-build.log",
+        "bytes": 345,
+        "sha256": "080c34efb262274c3b96595088b3fda062094037bd63ebb287316936c9d8f200"
+      },
+      "verifyLog": {
+        "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/final-round-20261021/merged-userscript-verify.log",
+        "bytes": 66,
+        "sha256": "28fb8d52091d0344fff47029c9cbbabcabc48cfc7c58f0e8461b8b95438e469a"
+      },
+      "languageGeneratorExitCode": 0,
+      "remoteLanguageDigestsUnchanged": true
+    },
+    "docs": {
+      "docs-build": {
+        "exitCode": 0,
+        "log": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/final-round-20261021/merged-docs-build.log",
+          "bytes": 346,
+          "sha256": "6870dc51d43af6eb69e55cdb1efccbff163e1bccc73c5f696abd8c4c99f34bb8"
+        }
+      },
+      "storybook-build": {
+        "exitCode": 0,
+        "log": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/final-round-20261021/merged-storybook-build.log",
+          "bytes": 7070,
+          "sha256": "85695090d9d61084aeb4601e6e7d7c85f22c61f959d16976d586067d04b9f7c8"
+        }
+      },
+      "docs-check": {
+        "exitCode": 0,
+        "log": {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/final-round-20261021/merged-docs-check.log",
+          "bytes": 63,
+          "sha256": "7ea6e41b7c2e4f7f99b2d7be56e0008be37c8aa8aaa97e4cc83a001ce713d582"
+        }
+      }
+    }
+  }
+}

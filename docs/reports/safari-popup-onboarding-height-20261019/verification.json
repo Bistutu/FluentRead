@@ -1,0 +1,591 @@
+{
+  "scope": "CONTROLLED_CHROMIUM_SAFARI_MARKER_PRODUCTION_CSS_NOT_NATIVE_SAFARI",
+  "baseCommit": "7867fbf6e1752156fc8be40f885ab8ef3e6ef297",
+  "nativeSafariLatestFixAcceptance": "PENDING",
+  "sourcePins": {
+    "src/app/popup/popup.css": {
+      "bytes": 72804,
+      "sha256": "fdad55d34103545328439cb9083e700156443e309bb6d0e825d0f9716cf0ddf1"
+    },
+    "src/ui/components/UiLanguageOnboarding.vue": {
+      "bytes": 12170,
+      "sha256": "7c3d815c62df3cb5da77ebfb234b55f8b464f6ee972e7e70a39c4cbda87dcca5"
+    },
+    "tests/uiLanguageOnboardingLifecycle.test.ts": {
+      "bytes": 29932,
+      "sha256": "8c88d7c40a1daabeead3c4129c7cf70a377d73aa61acffa4e5629acb1e51f1c6"
+    }
+  },
+  "tests": {
+    "passed": 144,
+    "skipped": 0,
+    "files": 3,
+    "log": {
+      "bytes": 678,
+      "sha256": "d121638f60384e9fe479f8628b6bd2d67c699325c5c70c2dce71323012abbd9e"
+    }
+  },
+  "typecheck": {
+    "exitCode": 0,
+    "log": {
+      "bytes": 115,
+      "sha256": "4777b0ada0e57b06f67469c60499531fa24e15931ebb0734c52aca7c6c41b81e"
+    }
+  },
+  "userscript": {
+    "bytes": 2100290,
+    "sha256": "20b0430abdf336db271e90cc0e50fbf245be78c847153b75058c0ab79f0b342c",
+    "limitBytes": 2101100,
+    "baselineBytesEqual": true,
+    "baselineSHA256Equal": true,
+    "verifierExitCode": 0,
+    "buildRuntime": "explicit Node22, direct Vite entry"
+  },
+  "browser": {
+    "passed": true,
+    "launchMode": "macos-background-cdp",
+    "focusPolicy": "launchservices-no-foreground",
+    "matrix": [
+      {
+        "id": "safari-402x430",
+        "width": 402,
+        "height": 430
+      },
+      {
+        "id": "safari-402x360",
+        "width": 402,
+        "height": 360
+      },
+      {
+        "id": "safari-320x300",
+        "width": 320,
+        "height": 300
+      },
+      {
+        "id": "safari-320x360-dark",
+        "width": 320,
+        "height": 360,
+        "dark": true
+      },
+      {
+        "id": "safari-844x280-fallback",
+        "width": 844,
+        "height": 280
+      },
+      {
+        "id": "safari-390x180-fallback",
+        "width": 390,
+        "height": 180
+      },
+      {
+        "id": "desktop-400x130",
+        "width": 400,
+        "height": 130,
+        "desktop": true
+      }
+    ],
+    "limits": {
+      "wholeMs": 120000,
+      "actionsMs": 100000,
+      "waitMs": 10000,
+      "rowMs": 10000,
+      "inputPerRow": 20,
+      "wheelPerRow": 8,
+      "PNGs": 14
+    },
+    "buildBefore": {
+      "files": 478,
+      "bytes": 62440026,
+      "rawByteHash": "54d078a86116cf82399b9754cf691d2771b17cd2820a160fb5a246dd761044d6",
+      "recordHash": "7bf5e1749a12618be444f386fd07418aedad4ca084f772927c37764e74f1af76"
+    },
+    "buildAfter": {
+      "files": 478,
+      "bytes": 62440026,
+      "rawByteHash": "54d078a86116cf82399b9754cf691d2771b17cd2820a160fb5a246dd761044d6",
+      "recordHash": "7bf5e1749a12618be444f386fd07418aedad4ca084f772927c37764e74f1af76"
+    },
+    "buildUnchanged": true,
+    "sourceUnchanged": true,
+    "consoleErrors": [],
+    "errors": [],
+    "cleanupErrors": [],
+    "configurationSaveAttempts": 0,
+    "configurationWriteCompletion": "NOT_ATTEMPTED",
+    "nativeSafariAcceptance": false,
+    "focusObserver": {
+      "ready": {
+        "monitorPid": 82785,
+        "time": 1792388572022.511,
+        "monotonicMs": 3813862956.5934587
+      },
+      "stopped": true,
+      "activationCount": 0,
+      "ownedBrowserActivationCount": 0,
+      "error": null
+    },
+    "cleanup": {
+      "focusMonitorStopped": true,
+      "guardedBrowserClosed": true,
+      "launchSettled": true,
+      "profileRemoved": true,
+      "profileRetained": false
+    },
+    "screenshotCount": 14,
+    "elapsedMs": 10580,
+    "windowPlacement": {
+      "mode": "background-visible-no-focus",
+      "visible": true,
+      "hidden": false,
+      "windowState": "normal",
+      "displayTarget": "secondary",
+      "browserFrontmost": false
+    },
+    "cases": [
+      {
+        "id": "safari-402x430",
+        "passed": true,
+        "reachableLanguages": [
+          "zh-CN",
+          "en-US",
+          "ja-JP",
+          "ko-KR",
+          "fr-FR",
+          "ru-RU",
+          "es-ES"
+        ],
+        "inputCount": 10,
+        "focusObservations": [
+          {
+            "key": "End",
+            "language": "es-ES",
+            "listScroll": 0
+          },
+          {
+            "key": "Home",
+            "language": "zh-CN",
+            "listScroll": 0
+          },
+          {
+            "key": "ArrowDown",
+            "language": "en-US",
+            "listScroll": 0
+          },
+          {
+            "key": "ArrowDown",
+            "language": "ja-JP",
+            "listScroll": 0
+          },
+          {
+            "key": "ArrowDown",
+            "language": "ko-KR",
+            "listScroll": 0
+          },
+          {
+            "key": "ArrowDown",
+            "language": "fr-FR",
+            "listScroll": 0
+          },
+          {
+            "key": "ArrowDown",
+            "language": "ru-RU",
+            "listScroll": 0
+          },
+          {
+            "key": "ArrowDown",
+            "language": "es-ES",
+            "listScroll": 0
+          },
+          {
+            "key": "Home",
+            "language": "zh-CN",
+            "listScroll": 0
+          }
+        ],
+        "initialConfirmFullyVisible": true,
+        "finalConfirmFullyVisible": true,
+        "documentScroll": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": "safari-402x360",
+        "passed": true,
+        "reachableLanguages": [
+          "zh-CN",
+          "en-US",
+          "ja-JP",
+          "ko-KR",
+          "fr-FR",
+          "ru-RU",
+          "es-ES"
+        ],
+        "inputCount": 10,
+        "focusObservations": [
+          {
+            "key": "End",
+            "language": "es-ES",
+            "listScroll": 38.5
+          },
+          {
+            "key": "Home",
+            "language": "zh-CN",
+            "listScroll": 0
+          },
+          {
+            "key": "ArrowDown",
+            "language": "en-US",
+            "listScroll": 0
+          },
+          {
+            "key": "ArrowDown",
+            "language": "ja-JP",
+            "listScroll": 0
+          },
+          {
+            "key": "ArrowDown",
+            "language": "ko-KR",
+            "listScroll": 0
+          },
+          {
+            "key": "ArrowDown",
+            "language": "fr-FR",
+            "listScroll": 0
+          },
+          {
+            "key": "ArrowDown",
+            "language": "ru-RU",
+            "listScroll": 0
+          },
+          {
+            "key": "ArrowDown",
+            "language": "es-ES",
+            "listScroll": 38.5
+          },
+          {
+            "key": "Home",
+            "language": "zh-CN",
+            "listScroll": 0
+          }
+        ],
+        "initialConfirmFullyVisible": true,
+        "finalConfirmFullyVisible": true,
+        "documentScroll": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": "safari-320x300",
+        "passed": true,
+        "reachableLanguages": [
+          "zh-CN",
+          "en-US",
+          "ja-JP",
+          "ko-KR",
+          "fr-FR",
+          "ru-RU",
+          "es-ES"
+        ],
+        "inputCount": 10,
+        "focusObservations": [
+          {
+            "key": "End",
+            "language": "es-ES",
+            "listScroll": 98.5
+          },
+          {
+            "key": "Home",
+            "language": "zh-CN",
+            "listScroll": 0
+          },
+          {
+            "key": "ArrowDown",
+            "language": "en-US",
+            "listScroll": 0
+          },
+          {
+            "key": "ArrowDown",
+            "language": "ja-JP",
+            "listScroll": 0
+          },
+          {
+            "key": "ArrowDown",
+            "language": "ko-KR",
+            "listScroll": 0
+          },
+          {
+            "key": "ArrowDown",
+            "language": "fr-FR",
+            "listScroll": 45
+          },
+          {
+            "key": "ArrowDown",
+            "language": "ru-RU",
+            "listScroll": 45
+          },
+          {
+            "key": "ArrowDown",
+            "language": "es-ES",
+            "listScroll": 98.5
+          },
+          {
+            "key": "Home",
+            "language": "zh-CN",
+            "listScroll": 0
+          }
+        ],
+        "initialConfirmFullyVisible": true,
+        "finalConfirmFullyVisible": true,
+        "documentScroll": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": "safari-320x360-dark",
+        "passed": true,
+        "reachableLanguages": [
+          "zh-CN",
+          "en-US",
+          "ja-JP",
+          "ko-KR",
+          "fr-FR",
+          "ru-RU",
+          "es-ES"
+        ],
+        "inputCount": 10,
+        "focusObservations": [
+          {
+            "key": "End",
+            "language": "es-ES",
+            "listScroll": 38.5
+          },
+          {
+            "key": "Home",
+            "language": "zh-CN",
+            "listScroll": 0
+          },
+          {
+            "key": "ArrowDown",
+            "language": "en-US",
+            "listScroll": 0
+          },
+          {
+            "key": "ArrowDown",
+            "language": "ja-JP",
+            "listScroll": 0
+          },
+          {
+            "key": "ArrowDown",
+            "language": "ko-KR",
+            "listScroll": 0
+          },
+          {
+            "key": "ArrowDown",
+            "language": "fr-FR",
+            "listScroll": 0
+          },
+          {
+            "key": "ArrowDown",
+            "language": "ru-RU",
+            "listScroll": 0
+          },
+          {
+            "key": "ArrowDown",
+            "language": "es-ES",
+            "listScroll": 38.5
+          },
+          {
+            "key": "Home",
+            "language": "zh-CN",
+            "listScroll": 0
+          }
+        ],
+        "initialConfirmFullyVisible": true,
+        "finalConfirmFullyVisible": true,
+        "documentScroll": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": "safari-844x280-fallback",
+        "passed": true,
+        "reachableLanguages": [
+          "zh-CN",
+          "en-US",
+          "ja-JP",
+          "ko-KR",
+          "fr-FR",
+          "ru-RU",
+          "es-ES"
+        ],
+        "inputCount": 4,
+        "focusObservations": [
+          {
+            "key": "End",
+            "language": "es-ES",
+            "shellScroll": 42.5
+          },
+          {
+            "key": "Home",
+            "language": "zh-CN",
+            "shellScroll": 42.5
+          }
+        ],
+        "initialConfirmFullyVisible": false,
+        "finalConfirmFullyVisible": true,
+        "documentScroll": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": "safari-390x180-fallback",
+        "passed": true,
+        "reachableLanguages": [
+          "zh-CN",
+          "en-US",
+          "ja-JP",
+          "ko-KR",
+          "fr-FR",
+          "ru-RU",
+          "es-ES"
+        ],
+        "inputCount": 5,
+        "focusObservations": [
+          {
+            "key": "End",
+            "language": "es-ES",
+            "shellScroll": 142.5
+          },
+          {
+            "key": "Home",
+            "language": "zh-CN",
+            "shellScroll": 114.5
+          }
+        ],
+        "initialConfirmFullyVisible": false,
+        "finalConfirmFullyVisible": true,
+        "documentScroll": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": "desktop-400x130",
+        "passed": true,
+        "reachableLanguages": [],
+        "inputCount": 0,
+        "focusObservations": [],
+        "initialConfirmFullyVisible": false,
+        "finalConfirmFullyVisible": false,
+        "documentScroll": {
+          "x": 0,
+          "y": 0
+        }
+      }
+    ]
+  },
+  "browserOriginalReport": {
+    "bytes": 90180,
+    "sha256": "d91cb61bbee5fbec9350cb6c0408cd8615459ba4406b3ea6fcaf96cb9540b239"
+  },
+  "preservedFailures": [
+    {
+      "attempt": 1,
+      "report": {
+        "bytes": 44402,
+        "sha256": "af415ba8e98601021d6090146d5bfd2eafe34043a583310f99e35b624e5f7d59"
+      },
+      "errors": [
+        "ERR_ASSERTION: Language reachability incomplete\n\n4 !== 7\n"
+      ],
+      "cleanup": {
+        "focusMonitorStopped": true,
+        "guardedBrowserClosed": true,
+        "launchSettled": true,
+        "profileRemoved": true,
+        "profileRetained": false
+      }
+    },
+    {
+      "attempt": 2,
+      "report": {
+        "bytes": 44402,
+        "sha256": "3a3ca845ec6a4ba11c09a289517b9c6127cda6bbb74f9118edb1059ed86723f2"
+      },
+      "errors": [
+        "ERR_ASSERTION: Language reachability incomplete\n\n4 !== 7\n"
+      ],
+      "cleanup": {
+        "focusMonitorStopped": true,
+        "guardedBrowserClosed": true,
+        "launchSettled": true,
+        "profileRemoved": true,
+        "profileRetained": false
+      }
+    }
+  ],
+  "buildLogs": {
+    "chrome-build-node22-final.log": {
+      "bytes": 84379,
+      "sha256": "a8fe0c60bce794b91ca3d47d922d27288199418cd73fc238d5f0005f0d7b2cc5",
+      "exitCode": 0
+    },
+    "firefox-build-node22-final.log": {
+      "bytes": 84902,
+      "sha256": "d4755865c8d790af43bff5ed5e6cf30fdf260b41544ef32652fe8421bae2806e",
+      "exitCode": 0
+    },
+    "safari-web-build-node22-final.log": {
+      "bytes": 83131,
+      "sha256": "33811612e83572d20ee3c9edc83c036d46faed3150b6b204b8c5326825ea1877",
+      "exitCode": 0
+    },
+    "safari-web-verify.log": {
+      "bytes": 509,
+      "sha256": "6ee9481d4003c958f7b100ae45cc2d2f4f9db9eb9cdb827164602c685e60d4ec",
+      "exitCode": 0
+    },
+    "userscript-build-node22.log": {
+      "bytes": 395,
+      "sha256": "c342637cc0d8d3b5fc83b0b757fa14322f6630bbe41f86091466ed2771dd1575",
+      "exitCode": 0
+    },
+    "userscript-verify-node22.log": {
+      "bytes": 66,
+      "sha256": "12c1bac3c74cfae473c1282cdda8485cc59290cc356daba5c2717498dcf4b638",
+      "exitCode": 0
+    }
+  },
+  "nativeBefore": {
+    "formalResult": {
+      "passed": 0,
+      "skipped": 1,
+      "failed": 0
+    },
+    "configuration": "UNKNOWN",
+    "originalImage": {
+      "bytes": 233431,
+      "sha256": "cef383fc37ae3583a2eea8462668df5f649c5ecb69cf8ef3d52b8d3e0a76749d"
+    },
+    "meaning": "First-screen confirmation clipped; not proof of permanent unreachability or AX failure cause"
+  },
+  "testAudit": {
+    "exitCode": 0,
+    "log": {
+      "bytes": 301,
+      "sha256": "4711158301cd7a6390a4d8403a512e720deab74cc355c799afa7deabf8122eb0"
+    }
+  },
+  "docsBuild": {
+    "exitCode": 0,
+    "log": {
+      "bytes": 401,
+      "sha256": "5338743b0279c4f02c70bff47446bf3107b2d72b92bcfa452b49200b2bca100b"
+    }
+  }
+}

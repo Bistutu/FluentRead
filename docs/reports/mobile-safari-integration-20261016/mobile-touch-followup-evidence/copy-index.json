@@ -1,0 +1,74 @@
+[
+  {
+    "source": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/reading-production-attempt2/optimized-reading-keyboard-offset-first.png",
+      "bytes": 57991,
+      "sha256": "699433784647654b4071a8e546b77d3409957783263485bc8e3ecd5e2cbe9419"
+    },
+    "copy": {
+      "file": "optimized-reading-keyboard-offset-first.png",
+      "bytes": 57991,
+      "sha256": "699433784647654b4071a8e546b77d3409957783263485bc8e3ecd5e2cbe9419"
+    }
+  },
+  {
+    "source": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/reading-production-attempt2/optimized-reading-keyboard-offset-scaled-last.png",
+      "bytes": 61081,
+      "sha256": "730840be0decbd630de4295bf6934013c5b43aa2ab3b6aa2f611e1775185c912"
+    },
+    "copy": {
+      "file": "optimized-reading-keyboard-offset-scaled-last.png",
+      "bytes": 61081,
+      "sha256": "730840be0decbd630de4295bf6934013c5b43aa2ab3b6aa2f611e1775185c912"
+    }
+  },
+  {
+    "source": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/learning-production-attempt4/mobile-learning-320x180-bottom.png",
+      "bytes": 21296,
+      "sha256": "f46b63fa6df410e01100f354ee46c4fc270837601c736b1ca438f1d623bb1f4b"
+    },
+    "copy": {
+      "file": "mobile-learning-320x180-bottom.png",
+      "bytes": 21296,
+      "sha256": "f46b63fa6df410e01100f354ee46c4fc270837601c736b1ca438f1d623bb1f4b"
+    }
+  },
+  {
+    "source": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/learning-production-attempt4/mobile-learning-390x260-bottom.png",
+      "bytes": 23774,
+      "sha256": "0a2c19216cf5b40bd871c2f1e21d5465fcd399974b4d45251f11319d23c58714"
+    },
+    "copy": {
+      "file": "mobile-learning-390x260-bottom.png",
+      "bytes": 23774,
+      "sha256": "0a2c19216cf5b40bd871c2f1e21d5465fcd399974b4d45251f11319d23c58714"
+    }
+  },
+  {
+    "source": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/donation-production-attempt2/coarse-390x280-donation-close.png",
+      "bytes": 39764,
+      "sha256": "40379e52b6aab5ac3ca4872c99296516a7f175f986aedff9487b6cf564530350"
+    },
+    "copy": {
+      "file": "coarse-390x280-donation-close.png",
+      "bytes": 39764,
+      "sha256": "40379e52b6aab5ac3ca4872c99296516a7f175f986aedff9487b6cf564530350"
+    }
+  },
+  {
+    "source": {
+      "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018/mobile-responsive-followup-4497/donation-production-attempt2/desktop-fine-1280x900-donation-close.png",
+      "bytes": 114221,
+      "sha256": "5b264c17727ac31f0238ee99bc77a0f628e6fd0363633b84843f3050233909ec"
+    },
+    "copy": {
+      "file": "desktop-fine-1280x900-donation-close.png",
+      "bytes": 114221,
+      "sha256": "5b264c17727ac31f0238ee99bc77a0f628e6fd0363633b84843f3050233909ec"
+    }
+  }
+]

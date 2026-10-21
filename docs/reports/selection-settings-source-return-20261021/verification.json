@@ -1,0 +1,473 @@
+{
+  "schema": 1,
+  "scope": "controlled-production-chromium-viewport-media; unsigned-Safari-compilation; controlled-installed-native-source-return; installed-native-local-fixed-text-and-control-observation",
+  "productPins": {
+    "src/app/popup/PopupApp.vue": {
+      "bytes": 80845,
+      "sha256": "e2724ed7cbaa8eabcdc5dd13ec66617cebc7f2284a8f819acdbcdfcaacf1cec2"
+    },
+    "src/features/settings/ui/SettingsSections.vue": {
+      "bytes": 83884,
+      "sha256": "43086f9b50bb9e639230a763da7cd83a8241ee287962e20417bfb6c8ee9164f1"
+    },
+    "src/features/settings/ui/services/ServiceRepairReturn.vue": {
+      "bytes": 5910,
+      "sha256": "ec2f27dd81e6f70865b40c86b6802b7f03fb70624e421e422458b63f8cafed41"
+    },
+    "tests/popupAppLifecycle.test.ts": {
+      "bytes": 106479,
+      "sha256": "fb3f383c5883442ce8096b80169a848ca90e775e1858ae3ada8ea4820d64fb3f"
+    },
+    "tests/settingsSectionsLifecycle.test.ts": {
+      "bytes": 86417,
+      "sha256": "983f95af8aafbe0b499915eeb58f17fa2368479f9a98d78f9b44704a79f15924"
+    },
+    "tests/serviceRepairReturn.test.ts": {
+      "bytes": 20135,
+      "sha256": "021b72e43805052c423621c8d492e9f199755eca5037b6acf2b9dc119a98a4b0"
+    }
+  },
+  "tests": {
+    "initialFocused": {
+      "total": 247,
+      "passed": 245,
+      "failed": 2,
+      "cause": "New tests incorrectly rejected existing parent pagehide/unmount draft handoff."
+    },
+    "correctedSettingsSections": {
+      "passed": 65,
+      "failed": 0
+    },
+    "otherTwoFilesOnInitialRun": {
+      "passed": 182,
+      "failed": 0
+    },
+    "ownership": {
+      "passed": 21,
+      "failed": 0
+    },
+    "correctedTypecheckExit": 0,
+    "testInventoryAuditExit": 0,
+    "auditIsExecutedTestCount": false,
+    "followupFixtureCorrection": {
+      "commit": "05fba3849fb8c44fdc93ef80dac53c5eb4d6c3ea",
+      "changedFiles": [
+        "tests/browserFocusSafety.test.ts",
+        "tests/serviceConfigurationLifecycle.test.ts"
+      ],
+      "completeFilesPassed": 317,
+      "typecheckExit": 0,
+      "qualityCISuccess": true,
+      "docsCISuccess": true,
+      "productFilesChanged": false
+    }
+  },
+  "builds": {
+    "chrome": 0,
+    "firefox": 0,
+    "safariWeb": 0,
+    "userscript": 0,
+    "userscriptVerifier": 0,
+    "userscriptBytes": 2100236
+  },
+  "browser": {
+    "passed": true,
+    "rows": [
+      {
+        "id": "coarse-320x700-light",
+        "passed": true,
+        "returnHeight": 44,
+        "previewHeights": [
+          44,
+          44
+        ]
+      },
+      {
+        "id": "coarse-320x700-dark",
+        "passed": true,
+        "returnHeight": 44,
+        "previewHeights": [
+          44,
+          44
+        ]
+      },
+      {
+        "id": "coarse-844x500-light",
+        "passed": true,
+        "returnHeight": 44,
+        "previewHeights": [
+          44,
+          44
+        ]
+      },
+      {
+        "id": "coarse-844x500-dark",
+        "passed": true,
+        "returnHeight": 44,
+        "previewHeights": [
+          44,
+          44
+        ]
+      },
+      {
+        "id": "fine-844x500-light-readonly",
+        "passed": true,
+        "returnHeight": 32,
+        "previewHeights": [
+          25,
+          25
+        ]
+      },
+      {
+        "id": "fine-320x700-dark",
+        "passed": true,
+        "returnHeight": 44,
+        "previewHeights": [
+          25,
+          25
+        ]
+      }
+    ],
+    "trustedActions": [
+      {
+        "scope": "popup",
+        "code": "chinese",
+        "trusted": true
+      },
+      {
+        "scope": "popup",
+        "code": "confirm",
+        "trusted": true
+      },
+      {
+        "scope": "popup",
+        "code": "tile",
+        "trusted": true
+      },
+      {
+        "scope": "popup",
+        "code": "more",
+        "trusted": true
+      },
+      {
+        "scope": "options",
+        "code": "return",
+        "trusted": true
+      }
+    ],
+    "sourceContentScrollViewportAndDocumentUnchanged": true,
+    "retainedOptions": true,
+    "actualOptionsVisibility": "visible",
+    "actualVisibilityLifecycleAcceptance": false,
+    "focusObserver": {
+      "stopped": true,
+      "eventCount": 0,
+      "ownedActivationCount": 0,
+      "error": null
+    },
+    "cleanup": {
+      "browserClosed": true,
+      "monitorStopped": true,
+      "launchAttempted": true,
+      "launchSettled": true,
+      "closeRequested": true,
+      "closeSettled": true,
+      "cleanupTimedOut": false,
+      "pendingAcquire": false,
+      "pendingClose": false,
+      "profileRemoved": true,
+      "fixtureStopped": true,
+      "fixtureStartSettled": true,
+      "fixtureConnectionsRemaining": 0,
+      "resourceReleased": true,
+      "manualRecoveryRequired": false
+    },
+    "production": {
+      "files": 483,
+      "bytes": 62588449,
+      "rawByteHash": "081e1da41f82279bd41b777d49795f24ab5260bf456f676de968ae1bc723b9c1",
+      "recordHash": "19ab2a471bb9f4e9d9d5bac031db7bd857e8a27438e55568f62de5d3c60375a6"
+    },
+    "report": {
+      "bytes": 47067,
+      "sha256": "4faea3c860b80f5a4da62638b90c578d8693e1701e4ce60fc86981bb240567c3"
+    },
+    "independentReview": {
+      "bytes": 9092,
+      "sha256": "f17ffc08b5636d1f747d5091dfbec2bb988c5dcad061f984b318a9a1b34de2c2"
+    }
+  },
+  "native": {
+    "passed": true,
+    "elapsedMs": 96500.94179200001,
+    "commands": 8,
+    "streams": 16,
+    "allCommandsClosedReapedAndGroupsAbsent": true,
+    "webFilesPerCopy": 472,
+    "webCopies": 4,
+    "nativeAppFiles": [
+      487,
+      490,
+      490
+    ],
+    "signed": false,
+    "installed": false,
+    "nativeAcceptance": false,
+    "report": {
+      "bytes": 30476,
+      "sha256": "5c644eac78d2aa93b54cbc3d9a6ef6a3e72bab9e87f87f425ee66213cd36b13d"
+    }
+  },
+  "originalImages": {
+    "options-320-light.png": {
+      "bytes": 48906,
+      "sha256": "854c380841d22a457c8f3f78daf87dd07ae990e70d34909d301189ea146c204a"
+    },
+    "options-320-dark.png": {
+      "bytes": 50626,
+      "sha256": "b29d451c96f02906725e417b8ae575503ec4781fe1a0f0efce985ab422579b17"
+    },
+    "options-844-light.png": {
+      "bytes": 59797,
+      "sha256": "0056255457f48179230bc34c7f4b11588bc96d4646c045da8847e5afa8123791"
+    },
+    "ios-native-word-sentence-controls-original.png": {
+      "bytes": 8245,
+      "sha256": "007902fb86bfe3e41e4aecf539a18bc99dbdc6dcf946793981506f6e278ef710"
+    }
+  },
+  "remaining": [
+    "whole installed native preview and syntax-table scrolling beyond the accepted visible local text/control group",
+    "installed normal-selection reading-question IME and Send",
+    "actual hidden/show and BFCache behavior on new package",
+    "new-package configuration and permission retention",
+    "physical devices, long background and eviction",
+    "YouTube authenticated playback and AVKit system fullscreen bridge"
+  ],
+  "referenceProjectsUsed": false,
+  "installedNativeReturn": {
+    "frozenSnapshotCommit": "c54e0b505c90e08a4a13b7a6d4d7ad43cb10ba0a",
+    "builtFromExactClean05fba": false,
+    "dedicatedUpdate": {
+      "AppFiles": 490,
+      "WebFiles": 472,
+      "unsigned": true,
+      "physicalDevice": false
+    },
+    "formal": {
+      "passed": 1,
+      "skipped": 0,
+      "failed": 0,
+      "durationSeconds": 19.620184063911438
+    },
+    "outerExit": 0,
+    "runtime": {
+      "payloadsRead": 8,
+      "publicSnapshots": 8,
+      "UIActions": 6,
+      "PNG": 0,
+      "actions": {
+        "extensionPopup": 1,
+        "moreSettings": 1,
+        "pageMenu": 1,
+        "SafariActivate": 1,
+        "selectionTile": 1,
+        "sourceReturn": 1
+      },
+      "readiness": {
+        "callbacksCappedAt32": 1,
+        "elapsedSeconds": 1.4143959283828735,
+        "lastKnownExactDisabledCountCappedAt2": 1,
+        "ready": true,
+        "result": "COMPLETED",
+        "terminalInvalid": false,
+        "timeoutSeconds": 5
+      },
+      "witnesses": {
+        "completeTabSetAcceptance": false,
+        "configurationOrPermissionRetentionAcceptance": false,
+        "distinctOptionsOwnerObserved": true,
+        "documentTimeOriginOrNoReloadAcceptance": false,
+        "exactKnownFixtureMarkerObserved": true,
+        "hostCount": 0,
+        "numericTabIdMappingAcceptance": false,
+        "originalSameRunNativeOwnerObserved": true,
+        "ownedCount": 0,
+        "productionAcceptance": false,
+        "providerRequestsByDriver": 0,
+        "providerRequestsByProduct": "UNKNOWN_NOT_INTERCEPTED",
+        "returnButtonFull44EnabledHittableFresh": true,
+        "scope": "CONTROLLED_FIXTURE_SINGLE_NATIVE_SOURCE_RETURN_OBSERVED",
+        "scrollMatchesInitial": true,
+        "sourceReturnTapAttempts": 1,
+        "sourceTextUnchanged": true,
+        "strictReadoutSchemaParsed": true,
+        "unknownLabelIdentifierValueOrOwnerUUIDExported": false
+      },
+      "sourceReturnAccepted": true
+    },
+    "commands": 21,
+    "streams": 42,
+    "allCommandsClosedReapedAndGroupsAbsent": true,
+    "all15StartedEndedShutdown": true,
+    "other14WholeRecordsIdentical": true,
+    "threeFocusPointsSame": true,
+    "continuousFocusMonitoring": false,
+    "report": {
+      "bytes": 60188,
+      "sha256": "9c29d40eca7801516fd4377772c5f213ea36cd13cd0a900cb61b8ec3af8e4074"
+    },
+    "RootReceipt": {
+      "bytes": 5135,
+      "sha256": "62205ddcb37ee6cfcb062fac4b0e28c7fa9c92982a5878b0aa310152aeea3a63"
+    },
+    "independentReview": {
+      "bytes": 12375,
+      "sha256": "91d19733f72890367824dc066c2b93da741e56f1db20bda9e8f19be0cd76b6a2"
+    },
+    "controlledSourceReturnAcceptance": true,
+    "configurationRetention": "UNKNOWN",
+    "permissionPersistence": "UNKNOWN",
+    "completeTabSetOrDocumentTimeOriginNoReloadAcceptance": false,
+    "productionAcceptance": false,
+    "GO": false
+  },
+  "relatedControlledKeyboardReport": "../current-shared-reading-keyboard-20261021/verification.json",
+  "latestNativePreviewDiagnostic": {
+    "case": 53,
+    "formal": {
+      "PASS": 1,
+      "SKIP": 0,
+      "FAIL": 0,
+      "durationSeconds": 22.915549993515015
+    },
+    "outerExit": 0,
+    "AX": 9,
+    "UI": 7,
+    "PNG": 1,
+    "readiness": {
+      "callbacksCappedAt32": 1,
+      "elapsedSeconds": 1.3835039138793945,
+      "lastKnownExactDisabledCountCappedAt2": 1,
+      "ready": true,
+      "result": "COMPLETED",
+      "terminalInvalid": false,
+      "timeoutSeconds": 5
+    },
+    "scope": "POST_CLICK_LOCAL_FIXED_TEXT_AND_VISIBLE_CONTROL_OBSERVATION_ONLY",
+    "postClickLocalFixedTextObserved": true,
+    "sentencePreviewAccepted": false,
+    "entirePreviewVisibleAccepted": false,
+    "wholeSyntaxTableVisibleAccepted": false,
+    "all28CachedLocalPredicatesTrue": true,
+    "localKnownAnchorCounts": [
+      0,
+      0,
+      1,
+      1
+    ],
+    "PFrame": {
+      "height": 516,
+      "width": 348,
+      "x": 27,
+      "y": 406
+    },
+    "bottomOverflowPoints": 48,
+    "wordFrame": {
+      "height": 44,
+      "width": 52,
+      "x": 42,
+      "y": 452
+    },
+    "sentenceFrame": {
+      "height": 44,
+      "width": 53,
+      "x": 99,
+      "y": 452
+    },
+    "sourceFrame": {
+      "height": 45,
+      "width": 314,
+      "x": 42,
+      "y": 512
+    },
+    "translationFrame": {
+      "height": 17,
+      "width": 246,
+      "x": 42,
+      "y": 572
+    },
+    "sourceTranslationPixelsAccepted": false,
+    "normalPopupUpGestures": 1,
+    "MoreSettings": 1,
+    "SentencePreview": 1,
+    "configurationWrites": 0,
+    "returnActions": 0,
+    "commands": 21,
+    "streams": 42,
+    "allClosedReapedGroupsAbsent": true,
+    "all15ShutdownOther14Same": true,
+    "threeFocusPointsSame": true,
+    "report": {
+      "bytes": 60344,
+      "sha256": "bfcc0a6032d6aed08b7bcae516cbe19a4e5f1451ceea9f05fd1831c7e0e8fc40"
+    },
+    "RootReceipt": {
+      "bytes": 50068,
+      "sha256": "a502791c9b12e133f3900ad0ee0f6f5ce14db193c4bfab1a641149da97f7cea7"
+    },
+    "independentReview": {
+      "bytes": 15272,
+      "sha256": "e7818b4fc05ea26b25cf8e654c9f7314367db38e02e43736d9faddc2e67ce357",
+      "result": "NO_BLOCKING_FINDING_WITHIN_RECORDED_LIMITED_SCOPE"
+    },
+    "originalControlGroupImage": {
+      "bytes": 8245,
+      "sha256": "007902fb86bfe3e41e4aecf539a18bc99dbdc6dcf946793981506f6e278ef710"
+    },
+    "RootViewedOriginal": true,
+    "wholeOptionsImage": false,
+    "historical52SpecificFailure": "UNKNOWN_NOT_BACK_ATTRIBUTED",
+    "conclusion": "Formal PASS accepts visible local fixed text in native AX and full44 controls after the one real Sentence click. Only control-group pixels reviewed; no whole preview/table/return/IME/provider claim.",
+    "IndependentViewedOriginal": true
+  },
+  "priorNativePreviewDiagnostic51": {
+    "case": 51,
+    "formal": {
+      "PASS": 0,
+      "SKIP": 1,
+      "FAIL": 0,
+      "durationSeconds": 13.504475951194763
+    },
+    "outerExit": 0,
+    "AX": 3,
+    "UI": 3,
+    "PNG": 0,
+    "readinessSeconds": 5.010149955749512,
+    "readinessCallbacks": 5,
+    "exactKnownLabelCount": 1,
+    "ready": false,
+    "terminalInvalid": true,
+    "selectionTile": 0,
+    "MoreSettings": 0,
+    "SentencePreview": 0,
+    "POnlyGuardReached": false,
+    "previewAcceptance": false,
+    "conclusion": "Stopped at bounded pre-tile readiness. Exact label count does not prove all other readiness gates; no preview or product-regression inference and no unchanged retry.",
+    "commands": 21,
+    "streams": 42,
+    "allClosedReapedGroupsAbsent": true,
+    "report": {
+      "bytes": 60080,
+      "sha256": "cb496e959fe64672cf593321dd1f0e9411d576d71b5c4f66e2b4e6d65f479242"
+    },
+    "RootReceipt": {
+      "bytes": 33730,
+      "sha256": "80d6af7cc23bb6d38cd216e4024602e957e6c3d2f45279530050ac71fc8c28af"
+    },
+    "independentReview": {
+      "bytes": 5647,
+      "sha256": "af462d50de39584609192a1f00e769bc6b4027e21e4ab636d2418163eb2292dd"
+    }
+  }
+}

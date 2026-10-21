@@ -1,0 +1,123 @@
+{
+  "schema": 1,
+  "scope": "current-installed-c54-native1-U3-controlled-English-article-FREE-pool-Translate-Restore-visible-region",
+  "frozenProductSnapshotCommit": "c54e0b505c90e08a4a13b7a6d4d7ad43cb10ba0a",
+  "testsOnlyDescendantContext": "05fba3849fb8c44fdc93ef80dac53c5eb4d6c3ea",
+  "builtFromExactCleanDescendant": false,
+  "actualOuterExit": 0,
+  "helperElapsedMs": 99263.82708300001,
+  "formal": {
+    "PASS": 0,
+    "SKIP": 1,
+    "FAIL": 0,
+    "durationSeconds": 32.98821496963501,
+    "reason": "predefined collection SKIP; original visual review separate"
+  },
+  "actual": {
+    "publicSnapshots": 12,
+    "UIIncludingSafariActivate": 9,
+    "PNG": 3,
+    "Translate": 1,
+    "Restore": 1,
+    "Done": 2,
+    "permissionChoices": 0,
+    "lockedBranch": "POOL_READY_ZERO_PERMISSION",
+    "availablePool": 1,
+    "enabledPool": 17,
+    "providerIdentity": "UNKNOWN",
+    "DOMBilingualCounts": [
+      0,
+      6,
+      0
+    ],
+    "singleSlots": 0,
+    "sourceSubstringObservedAllStages": true,
+    "scrollX": 0,
+    "scrollY": 0,
+    "normalControlStatesTranslateRestoreTranslate": [
+      0,
+      1,
+      0
+    ]
+  },
+  "visual": {
+    "RootAll3OriginalsViewed": true,
+    "visibleChineseBilingualTextAfterTranslate": true,
+    "visibleRestoreControl": true,
+    "visibleEnglishAfterRestore": true,
+    "wholeArticleCompletionOrPixelEquality": false,
+    "nativeAndPNGSequentialNotAtomic": true,
+    "independentAll3OriginalsViewed": true
+  },
+  "closure": {
+    "commands": 21,
+    "streams": 42,
+    "allExit0UnderCapClosedReapedGroupsAbsent": true,
+    "helperElapsedMs": 99263.82708300001,
+    "fixture": {
+      "pid": 45804,
+      "leaderReaped": true,
+      "groupAbsent": true,
+      "exitCode": 0
+    },
+    "fiveMapPairsEqualU3": true,
+    "appFiles": 490,
+    "webFiles": 472,
+    "devicesBothShutdown": 15,
+    "other14WholeUnchanged": true,
+    "threePointFocusSameChatGPT97878": true,
+    "continuousMonitoring": false,
+    "fixtureResult": {
+      "kind": "local-production-safari-article-finite-loopback-v1",
+      "requestsByFixedRoute": {
+        "/": 1,
+        "/entry.js": 1,
+        "favicon": 0,
+        "other": 0
+      },
+      "readOnly": true,
+      "externalRequests": 0,
+      "serverClosed": true
+    }
+  },
+  "originalImages": {
+    "translated.png": {
+      "bytes": 418745,
+      "sha256": "0c00060d8f6ea411c355e4558ba32933ef26f3eac322506ec682939d1c589213"
+    },
+    "restore-control.png": {
+      "bytes": 509723,
+      "sha256": "b7c67556ebdec0fddf403ea212480d2a3de78569bd882f1e5e0df132aa7d757b"
+    },
+    "restored.png": {
+      "bytes": 368640,
+      "sha256": "4e8adee02dd032608e5f503b3ffe9e4865a9df4e013d4da76be07973c89b7d22"
+    }
+  },
+  "machineEvidence": {
+    "report": {
+      "bytes": 59516,
+      "sha256": "f186ed3bf16a4b578ccd1be5b491af87a8b90a3e6c4a1d2436abf3388f1bf362"
+    },
+    "RootReceipt": {
+      "bytes": 22529,
+      "sha256": "3ecd2e86976bc556854404f1614527c085dd7f6d33082883279b5ba9ea62bd40"
+    },
+    "independentReview": {
+      "bytes": 7300,
+      "sha256": "4a7ea9c1a8716eb37f2e845739c6e501dd991762acf05e05705440f593858a8d"
+    }
+  },
+  "scopeGaps": [
+    "provider identity/request/cache miss",
+    "whole article completion or restoration equality",
+    "Microsoft permission branch not exercised",
+    "configuration/permission retention",
+    "complete tab set/timeOrigin/no reload",
+    "physical device",
+    "Goal4"
+  ],
+  "referenceProjectsUsed": false,
+  "GO": false,
+  "accepted": "controlled-current-installed-article-visible-region-and-DOM-Translate-Restore-only"
+}
