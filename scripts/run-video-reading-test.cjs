@@ -125,6 +125,13 @@ async function main() {
       assert.equal((await targets()).length,1);
       report.cases.push({name:`real-${language}-pipeline`,passed:true,text:await readLine(),displayMs:Math.round(performance.now()-started)});
     }
+    await persist(popup,{from:'en'});await setSource('This sentence already uses Latin letters.');
+    await page.waitForFunction(()=>!document.querySelector('#fluent-read-video-subtitle-reading')?.textContent);
+    await page.locator('#fluent-read-video-subtitle-button').click();
+    await page.waitForFunction(()=>document.querySelector('[data-reading-status]')?.textContent==='当前原文无需或不支持读音标注');
+    assert.equal(await toggle.getAttribute('aria-checked'),'true');
+    await page.locator('#fluent-read-video-subtitle-button').click();
+    report.cases.push({name:'unsupported-source-explains-without-losing-preference',passed:true});
     await persist(popup,{from:'ja'});await setSource('私は学校へ行きます。');
     await page.waitForFunction(()=>document.querySelector('#fluent-read-video-subtitle-reading')?.textContent==='watashi wa gakkō e ikimasu.');
     await persist(popup,{videoSubtitleDisplayMode:'translation-only'});
@@ -141,6 +148,7 @@ async function main() {
     const layout=await page.locator('#fluent-read-video-subtitle-panel').evaluate(el=>({client:el.clientHeight,scroll:el.scrollHeight,width:el.clientWidth,scrollWidth:el.scrollWidth,font:getComputedStyle(el).fontSize,overflow:getComputedStyle(el).overflowY}));
     assert.ok(layout.scrollWidth<=layout.width+2,JSON.stringify(layout));
     assert.ok(layout.scroll<=layout.client+2||layout.overflow==='auto',JSON.stringify(layout));
+    assert.ok(parseFloat(layout.font)>=16,JSON.stringify(layout));
     report.cases.push({name:'long-narrow-reading',passed:true,layout});
     await page.setViewportSize({width:1280,height:900});
     const options=await newPageWithoutForeground(context);await options.goto(`chrome-extension://${extensionId}/options.html#settings-video`);

@@ -972,6 +972,7 @@ export const frFRMessages = {
     "video.readingAnnotation.previewTranslation": "Il fait très beau aujourd’hui.",
     "video.readingAnnotation.loading": "Préparation de la lecture…",
     "video.readingAnnotation.error": "Lecture indisponible",
+    "video.readingAnnotation.noReading": "Lecture non nécessaire ou non prise en charge pour ce texte",
     "video.readingAnnotation.retry": "Réessayer les aides à la lecture",
     'video.modeBilingual': 'Les deux',
     'video.modeTranslation': 'Traduction',

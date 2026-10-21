@@ -42,6 +42,7 @@
 #fluent-read-video-learning-panel .fr-video-learning-badge { border: 1px solid #ffffff20; border-radius: 5px; padding: 1px 5px; font-size: 10px; }
 #fluent-read-video-learning-panel .fr-video-learning-original { margin: 8px 0; font-size: var(--fluent-read-video-learning-original-font-size, 19px); font-weight: 500; line-height: var(--fluent-read-video-learning-line-height, 1.55); letter-spacing: -.15px; white-space: pre-wrap; }
 #fluent-read-video-learning-panel .fr-video-learning-reading { margin: 0 0 8px; color:var(--fr-learning-text); font-size:max(12px, var(--fluent-read-video-learning-font-size, 13px)); line-height:1.45; white-space:pre-wrap; overflow-wrap:anywhere; }
+#fluent-read-video-learning-panel .fr-video-learning-reading-error { display:flex; align-items:center; flex-wrap:wrap; gap:2px 8px; margin:0 0 6px; color:var(--fr-learning-muted); font-size:11px; line-height:1.45; }
 #fluent-read-video-learning-panel .fr-video-learning-follow { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 23px; margin-bottom: 12px; font-size: 10px; color: var(--fr-learning-muted); }
 #fluent-read-video-learning-panel .fr-video-learning-follow > span { display: inline-flex; align-items: center; gap: 5px; }
 #fluent-read-video-learning-panel .fr-video-learning-follow i { width: 4px; height: 4px; background: #92baad; border-radius: 50%; }

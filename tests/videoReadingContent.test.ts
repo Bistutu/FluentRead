@@ -83,10 +83,15 @@ describe('内容脚本读音传输', () => {
 describe('当前原句读音控制器', () => {
   it('默认关闭、不支持语言和纯汉字auto均无后台工作，peek也不猜语言', () => {
     const annotate = vi.fn(), changed = vi.fn(); const controller = createVideoReadingController(annotate, changed);
-    controller.sync('こんにちは', 'ja', false); controller.sync('Hello', 'en', true); controller.sync('日本', 'auto', true);
+    controller.sync('こんにちは', 'ja', false);
     expect(controller.state).toEqual({status: 'idle', result: null, source: '', language: ''});
+    expect(changed).not.toHaveBeenCalled();
+    controller.sync('Hello', 'en', true); expect(controller.state).toMatchObject({status: 'no-reading', source: 'Hello', language: ''});
+    controller.sync('日本', 'auto', true); expect(controller.state).toMatchObject({status: 'no-reading', source: '日本', language: ''});
+    controller.sync('日本', 'auto', true); expect(changed).toHaveBeenCalledTimes(2);
     expect(controller.peek('Hello', 'en')).toBeNull(); expect(controller.peek('こんにちは', 'ja')).toBeUndefined();
-    expect(annotate).not.toHaveBeenCalled(); expect(changed).not.toHaveBeenCalled(); controller.destroy();
+    controller.sync('', 'ja', true); expect(controller.state).toEqual({status: 'idle', result: null, source: '', language: ''});
+    expect(annotate).not.toHaveBeenCalled(); controller.destroy();
   });
 
   it('合并当前句更新且只发布状态变化，关闭后重新显示直接命中缓存', async () => {
@@ -128,7 +133,7 @@ describe('当前原句读音控制器', () => {
   it('空结果缓存为无需标注，重置清缓存，关闭卸载取消在途任务且之后不再同步', async () => {
     const annotate = vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(reading);
     const controller = createVideoReadingController(annotate, vi.fn());
-    controller.sync('こんにちは', 'ja', true); await flush(); expect(controller.state).toMatchObject({status: 'idle', source: 'こんにちは'});
+    controller.sync('こんにちは', 'ja', true); await flush(); expect(controller.state).toMatchObject({status: 'no-reading', source: 'こんにちは'});
     controller.clear(); controller.sync('こんにちは', 'ja', true); await flush(); expect(annotate).toHaveBeenCalledOnce();
     controller.reset(); expect(controller.peek('こんにちは', 'ja')).toBeUndefined();
     controller.sync('こんにちは', 'ja', true); await flush(); expect(controller.state.status).toBe('ready');

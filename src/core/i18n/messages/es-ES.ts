@@ -972,6 +972,7 @@ export const esESMessages = {
     "video.readingAnnotation.previewTranslation": "Hoy hace un día precioso.",
     "video.readingAnnotation.loading": "Preparando lectura…",
     "video.readingAnnotation.error": "Lectura no disponible",
+    "video.readingAnnotation.noReading": "Este texto no requiere guía de lectura o no es compatible",
     "video.readingAnnotation.retry": "Reintentar guías de lectura",
     'video.modeBilingual': 'Ambos',
     'video.modeTranslation': 'Traducción',

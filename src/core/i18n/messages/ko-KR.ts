@@ -972,6 +972,7 @@ export const koKRMessages = {
     "video.readingAnnotation.previewTranslation": "오늘 날씨가 참 좋네요.",
     "video.readingAnnotation.loading": "읽기 표기 준비 중…",
     "video.readingAnnotation.error": "읽기 표기를 사용할 수 없습니다",
+    "video.readingAnnotation.noReading": "이 원문은 읽기 표기가 필요 없거나 지원되지 않습니다",
     "video.readingAnnotation.retry": "읽기 표기 다시 시도",
     'video.modeBilingual': '둘 다',
     'video.modeTranslation': '번역',

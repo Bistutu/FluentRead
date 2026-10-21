@@ -972,6 +972,7 @@ export const ruRUMessages = {
     "video.readingAnnotation.previewTranslation": "Сегодня прекрасная погода.",
     "video.readingAnnotation.loading": "Подготовка чтения…",
     "video.readingAnnotation.error": "Чтение недоступно",
+    "video.readingAnnotation.noReading": "Подсказки для этого текста не нужны или не поддерживаются",
     "video.readingAnnotation.retry": "Повторить подсказки чтения",
     'video.modeBilingual': 'Оба',
     'video.modeTranslation': 'Перевод',

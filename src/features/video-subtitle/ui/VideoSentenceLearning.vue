@@ -1,7 +1,7 @@
 <!--
  * @file src/features/video-subtitle/ui/VideoSentenceLearning.vue
  * 文件职责：在现有播放器上提供可关闭的完整句学习面板，连接原始字幕、主动播放控制和现有收藏。
- * 主要内容：以双语阅读卡呈现原句、可选本地读音、译文和按需讲解；索引跟随播放、合并快速换句的翻译请求，读音独立跟随固定句或历史句、收起时取消且不新增请求；短高换句只归顶自有整卡滚动区，按配置身份管理自动译文、人工草稿与准确的异步收藏状态。
+ * 主要内容：以双语阅读卡呈现原句、可选本地读音、译文和按需讲解；索引跟随播放、合并快速换句的翻译请求，读音独立跟随固定句或历史句、失败可单独重试、收起时取消且不新增请求；短高换句只归顶自有整卡滚动区，按配置身份管理自动译文、人工草稿与准确的异步收藏状态。
  * 材料关联：完整句收藏与问答引用归于可靠视频来源与原始时间，关闭、更换句子和隐私状态禁止迟到关联。
  * 模块边界：不创建或定位播放器，学习键只接受包含当前视频的显式逻辑播放器及面板自身，菜单让位限定已验证同视频范围；不采集音频或计算掌握状态，翻译沿用注入服务，卸载取消控制与迟到回写。
  -->
@@ -24,6 +24,7 @@
         <div class="fr-video-learning-position"><span>{{ index + 1 }} <span class="fr-video-learning-dim">/ {{ sentences.length }}</span> · {{ timeLabel }}</span><span v-if="!sentence.complete" class="fr-video-learning-badge">{{ t('video.learning.fragment') }}</span></div>
         <p class="fr-video-learning-original" data-learning-original>{{ sentence.text }}</p>
         <p v-if="readingText" class="fr-video-learning-reading" :lang="`${readingLanguage}-Latn`" :aria-label="t(`video.readingAnnotation.${readingLanguage}`)" data-learning-reading>{{ readingText }}</p>
+        <div v-if="readingError" class="fr-video-learning-reading-error" role="status" data-learning-reading-error><span>{{ t('video.readingAnnotation.error') }}</span><button type="button" class="fr-video-learning-text-button" data-learning-action="retry-reading" @click="loadReadingAnnotation">{{ t('video.readingAnnotation.retry') }}</button></div>
         <div class="fr-video-learning-follow"><span :class="{'is-pinned': pinned}"><i aria-hidden="true"></i>{{ t(pinned ? 'video.learning.pinned' : 'video.learning.follow') }}</span><button v-if="pinned" type="button" class="fr-video-learning-text-button" data-learning-action="follow" @click="returnToCurrent">{{ t('video.learning.returnCurrent') }}</button></div>
         <div class="fr-video-learning-card" :aria-busy="translating && !translationEdited">
           <div class="fr-video-learning-card-heading"><span>{{ t('video.learning.translationTitle') }}</span><button type="button" class="fr-video-learning-text-button" :data-learning-action="editingTranslation ? 'done-translation' : 'edit-translation'" @click="editTranslation">{{ t(editingTranslation ? 'video.learning.done' : 'video.learning.edit') }}</button></div>
@@ -107,7 +108,7 @@ const pinned = ref(false); const expanded = ref(true); const editingTranslation 
 const translationEditor = ref<HTMLTextAreaElement>(); const explanationEditor = ref<HTMLTextAreaElement>();
 const body = ref<HTMLElement>();
 const panel = ref<HTMLElement>();
-const readingText = ref(''); const readingLanguage = ref('');
+const readingText = ref(''); const readingLanguage = ref(''); const readingError = ref(false);
 const readingEnabled = ref(browserCapabilities.extensionDom && config.videoSubtitleAppearance.readingAnnotation === true && config.on && config.videoTranslationEnabled && config.videoSubtitleVisible);
 const readingSession = new VideoReadingAnnotationSession(annotateVideoReading);
 let readingGeneration = 0;
@@ -147,17 +148,23 @@ function editExplanation(): void { editingExplanation.value = !editingExplanatio
 function onContextToggle(event: Event): void { if ((event.target as HTMLDetailsElement).open) pinCurrent(); }
 function returnToCurrent(): void { controller?.stop(); pinned.value = false; editingTranslation.value = false; editingExplanation.value = false; followPlayback(); }
 function stopExplanation(): void { cancelExplanation(); explanationStopped.value = true; notice.value = t('video.learning.stopped'); }
-watch([() => sentence.value?.id, () => props.sourceLanguage, expanded, readingEnabled, () => props.video, () => props.sourceUrl], (next, previous) => {
+function loadReadingAnnotation(): void {
   const current = ++readingGeneration;
-  if (previous && (next[4] !== previous[4] || next[5] !== previous[5])) readingSession.clear();
-  else readingSession.cancelPending();
-  readingText.value = ''; readingLanguage.value = '';
+  readingSession.cancelPending();
+  readingText.value = ''; readingLanguage.value = ''; readingError.value = false;
   if (!active || !expanded.value || !readingEnabled.value || !sentence.value) return;
   const source = sentence.value.text;
   void readingSession.request(source, props.sourceLanguage || config.from || 'auto').then(result => {
     if (!active || current !== readingGeneration || !expanded.value || !readingEnabled.value || !result?.text) return;
     readingText.value = result.text; readingLanguage.value = result.language.split('-')[0];
-  }).catch(() => { /* 读音失败独立降级，不能清空人工译文、停止循环或修改收藏。 */ });
+  }).catch(() => {
+    // 只提示仍属于当前句的失败；换句、收起和卸载导致的旧代次 AbortError 不得误报。
+    if (active && current === readingGeneration && expanded.value && readingEnabled.value) readingError.value = true;
+  });
+}
+watch([() => sentence.value?.id, () => props.sourceLanguage, expanded, readingEnabled, () => props.video, () => props.sourceUrl], (next, previous) => {
+  if (previous && (next[4] !== previous[4] || next[5] !== previous[5])) readingSession.clear();
+  loadReadingAnnotation();
 }, {immediate: true});
 watch(() => props.video, (video, previous) => {
   previous?.removeEventListener('timeupdate', followPlayback); previous?.removeEventListener('seeking', onSeeking);
@@ -331,7 +338,7 @@ const unsubscribe = subscribeConfig(() => {
   if (wasExplaining) explanationStopped.value = true;
   scheduleTranslation(); notice.value = t('video.learning.settingsChanged');
 });
-onBeforeUnmount(() => { active = false; readingGeneration++; readingSession.destroy(); cancelPending(); controller?.destroy(); unsubscribe();
+onBeforeUnmount(() => { active = false; readingGeneration++; readingError.value = false; readingSession.destroy(); cancelPending(); controller?.destroy(); unsubscribe();
   (props.video.ownerDocument?.defaultView ?? props.video.ownerDocument)?.removeEventListener('keydown', onPlayerKeydown, true);
   props.video.removeEventListener('timeupdate', followPlayback); props.video.removeEventListener('seeking', onSeeking); });
 </script>

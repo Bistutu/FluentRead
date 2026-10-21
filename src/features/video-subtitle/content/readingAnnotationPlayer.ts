@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/readingAnnotationPlayer.ts
  * 文件职责：拥有播放器当前原句的读音显示、菜单交互与配置切换生命周期。
- * 主要内容：装配独立读音控制器和本地请求端，关闭时跳过语言解析，按原句及轨道上下文缓存语言元数据；为完整句学习提供始终可用的原轨上下文，更新稳定读音节点和菜单状态，保留仅译文语义，并在显示模式切换时请求宿主重置当前句翻译资格，隐藏及销毁时清理自有任务与监听。
+ * 主要内容：装配独立读音控制器和本地请求端，关闭时跳过语言解析，按原句及轨道上下文缓存语言元数据；为完整句学习提供始终可用的原轨上下文，更新稳定读音节点和菜单状态，无适用读音时给出简短原因且不显示重试，保留仅译文语义，并在显示模式切换时请求宿主重置当前句翻译资格，隐藏及销毁时清理自有任务与监听。
  * 模块边界：只操作视频 feature 自有 UI 并通过既有入口读写共享配置；播放器定位、翻译状态与字幕布局由宿主注入，原轨上下文不依赖读音开关，不访问词典、创建 Worker 或管理视频采集。
  */
 import type {Config} from '@/src/core/config/model';
@@ -77,7 +77,8 @@ export function createVideoReadingPlayer(ports: ReadingPlayerPorts) {
         status.textContent = !browserCapabilities.extensionDom ? videoUi('video.readingAnnotation.unavailable')
           : selectedMode === 'translation-only' && enabled() ? videoUi('video.readingAnnotation.originalRequired')
             : controller.state.status === 'loading' ? videoUi('video.readingAnnotation.loading')
-              : controller.state.status === 'error' ? videoUi('video.readingAnnotation.error') : '';
+              : controller.state.status === 'error' ? videoUi('video.readingAnnotation.error')
+                : controller.state.status === 'no-reading' ? videoUi('video.readingAnnotation.noReading') : '';
         status.hidden = !status.textContent;
       }
       const retry = menu.querySelector<HTMLButtonElement>('[data-action="retry-reading-annotation"]');

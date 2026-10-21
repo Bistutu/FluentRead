@@ -1200,6 +1200,7 @@ export const zhCNMessages = {
     "video.readingAnnotation.previewTranslation": "今天天气真好。",
     "video.readingAnnotation.loading": "读音准备中…",
     "video.readingAnnotation.error": "读音暂不可用",
+    "video.readingAnnotation.noReading": "当前原文无需或不支持读音标注",
     "video.readingAnnotation.retry": "重试读音标注",
     'video.modeBilingual': '双语',
     'video.modeTranslation': '译文',

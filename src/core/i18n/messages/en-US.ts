@@ -1204,6 +1204,7 @@ export const enUSMessages = {
     "video.readingAnnotation.previewTranslation": "It is a beautiful day today.",
     "video.readingAnnotation.loading": "Preparing reading…",
     "video.readingAnnotation.error": "Reading unavailable",
+    "video.readingAnnotation.noReading": "Reading not needed or supported for this text",
     "video.readingAnnotation.retry": "Retry reading annotations",
     'video.modeBilingual': 'Both',
     'video.modeTranslation': 'Translated',

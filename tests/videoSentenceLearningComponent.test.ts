@@ -30,14 +30,18 @@ const {descriptor} = parse(readFileSync(filename, 'utf8'), {filename});
 const compiled = ts.transpileModule(compileScript(descriptor, {id: 'video-sentence-learning-test'}).content, {
   compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true},
 }).outputText;
+const renderedCompiled = ts.transpileModule(compileScript(descriptor, {id: 'video-sentence-learning-mounted', inlineTemplate: true}).content, {
+  compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true},
+}).outputText;
 const require = createRequire(import.meta.url);
 const first = 'First sentence.';
 const second = 'Second sentence.';
 const third = 'Third sentence.';
 const deferred = <T>() => {
   let resolve!: (value: T) => void;
-  const promise = new Promise<T>(done => {resolve = done;});
-  return {promise, resolve};
+  let reject!: (cause: unknown) => void;
+  const promise = new Promise<T>((done, fail) => {resolve = done; reject = fail;});
+  return {promise, resolve, reject};
 };
 let state: Record<string, any>, scope: vue.EffectScope | undefined, config: Config;
 let video: HTMLVideoElement, props: Record<string, any>, unmounted: Array<() => void>;
@@ -46,17 +50,19 @@ let translate: ReturnType<typeof vi.fn>, sendRuntimeMessage: ReturnType<typeof v
 let cancelReading: ReturnType<typeof vi.fn>, unsubscribe: ReturnType<typeof vi.fn>, emit: ReturnType<typeof vi.fn>;
 let annotateVideoReading: ReturnType<typeof vi.fn>;
 let readingCallbacks: {progress: (value: any) => void; result: (value: any) => void; error: (cause: Error) => void};
+let renderedUnmount: (() => void) | undefined;
 
 async function flush(): Promise<void> {
   await Promise.resolve(); await vue.nextTick(); await Promise.resolve(); await vue.nextTick();
 }
 function close(): void {
+  renderedUnmount?.(); renderedUnmount = undefined;
   unmounted.splice(0).forEach(fn => fn()); scope?.stop(); scope = undefined;
 }
-async function mount(): Promise<void> {
+function readComponent(source = compiled, vuePort: typeof vue = {...vue, onBeforeUnmount: (fn: () => void) => unmounted.push(fn)} as typeof vue): vue.Component {
   const exports: Record<string, any> = {};
-  new Function('require', 'exports', compiled)((id: string) => {
-    if (id === 'vue') return {...vue, onBeforeUnmount: (fn: () => void) => unmounted.push(fn)};
+  new Function('require', 'exports', source)((id: string) => {
+    if (id === 'vue') return vuePort;
     if (id === '@/src/ui/i18n') return {useUiI18n: () => ({t: (key: string) => key})};
     if (id === '@/src/services/config/store') return {config, subscribeConfig: (fn: () => void) => {subscription = fn; fn(); return unsubscribe;}};
     if (id === '@/src/core/config/videoSentenceLearningAppearance') return learningAppearance;
@@ -75,9 +81,37 @@ async function mount(): Promise<void> {
     if (id === '../content/subtitleLogic') return {getVideoTranslationConfigFingerprint};
     return require(id);
   }, exports);
+  return exports.default;
+}
+async function mount(): Promise<void> {
+  const component = readComponent() as {setup: (props: Record<string, any>, context: unknown) => Record<string, any>};
   scope = vue.effectScope();
-  state = scope.run(() => vue.proxyRefs(exports.default.setup(props, {expose: () => {}, emit})))!;
+  state = scope.run(() => vue.proxyRefs(component.setup(props, {expose: () => {}, emit})))!;
   await flush();
+}
+/** 使用真实模板与 DOM renderer 验证错误提示及点击重试，避免仅检查 setup 状态而遗漏控件绑定。 */
+async function mountRendered(): Promise<HTMLElement> {
+  const renderer = vue.createRenderer<Node, Element>({
+    insert: (node, parent, anchor) => parent.insertBefore(node, anchor || null),
+    remove: node => node.parentNode?.removeChild(node),
+    createElement: (tag, namespace) => namespace === 'svg' ? document.createElementNS('http://www.w3.org/2000/svg', tag) : document.createElement(tag),
+    createText: value => document.createTextNode(value), createComment: value => document.createComment(value),
+    setText: (node, value) => {node.nodeValue = value;}, setElementText: (node, value) => {node.textContent = value;},
+    parentNode: node => node.parentElement, nextSibling: node => node.nextSibling,
+    patchProp: (node, key, previous, next) => {
+      if (/^on[A-Z]/.test(key)) {
+        const event = key.slice(2).toLowerCase();
+        if (previous) node.removeEventListener(event, previous);
+        if (next) node.addEventListener(event, next);
+      } else if (key === 'style') Object.assign((node as HTMLElement).style, next || {});
+      else if (next == null || next === false) node.removeAttribute(key);
+      else node.setAttribute(key, next === true ? '' : String(next));
+    },
+  });
+  const host = document.createElement('div'); document.body.appendChild(host);
+  const app = renderer.createApp(readComponent(renderedCompiled, vue), props);
+  app.mount(host); renderedUnmount = () => {app.unmount(); host.remove();};
+  await flush(); return host;
 }
 async function advance(ms: number): Promise<void> {await vi.advanceTimersByTimeAsync(ms); await flush();}
 async function step(direction: number): Promise<void> {state.step(direction); await flush();}
@@ -148,6 +182,54 @@ describe('完整句学习组件的调度与异步归属回归', () => {
     expect(translate).toHaveBeenCalledTimes(requests);
     config.videoSubtitleAppearance.readingAnnotation = false; subscription(); await flush();
     expect(state.readingText).toBe(''); expect(state.translation).toBe('人工译文'); expect(state.mode).toBe('loop');
+  });
+
+  it('实际模板显示紧凑读音错误与可点击重试，成功后移除错误且保留原句', async () => {
+    annotateVideoReading.mockRejectedValueOnce(new Error('dictionary unavailable'));
+    config.videoSubtitleAppearance.readingAnnotation = true; props.sourceLanguage = 'ja';
+    const host = await mountRendered(); await advance(0);
+    const error = host.querySelector('[data-learning-reading-error]')!;
+    expect(error.getAttribute('role')).toBe('status'); expect(error.textContent).toContain('video.readingAnnotation.error');
+    const retry = error.querySelector('button')!; expect(retry.textContent).toBe('video.readingAnnotation.retry');
+    retry.dispatchEvent(new document.defaultView!.Event('click', {bubbles: true})); await advance(0);
+    expect(host.querySelector('[data-learning-reading-error]')).toBeNull();
+    expect(host.querySelector('[data-learning-reading]')?.textContent).toBe(`Reading: ${first}`);
+    expect(host.querySelector('[data-learning-original]')?.textContent).toBe(first);
+    expect(annotateVideoReading).toHaveBeenCalledTimes(2);
+  });
+
+  it('读音失败独立重试，不改变人工译文、已保存快照、固定状态或循环', async () => {
+    annotateVideoReading.mockRejectedValueOnce(new Error('dictionary unavailable'));
+    config.videoSubtitleAppearance.readingAnnotation = true; props.sourceLanguage = 'ja';
+    await mount(); await advance(0); expect(state.readingError).toBe(true);
+    state.translation = '人工译文'; state.onTranslationInput(); state.toggleMode('loop'); await state.save();
+    const saved = state.savedSnapshot, translationRequests = translate.mock.calls.length, savedRequests = sendRuntimeMessage.mock.calls.length;
+    expect(state.saved).toBe(true); state.loadReadingAnnotation(); await advance(0);
+    expect(state.readingError).toBe(false); expect(state.readingText).toBe(`Reading: ${first}`);
+    expect(state.translation).toBe('人工译文'); expect(state.saved).toBe(true); expect(state.savedSnapshot).toBe(saved);
+    expect(state.pinned).toBe(true); expect(state.mode).toBe('loop');
+    expect(translate).toHaveBeenCalledTimes(translationRequests); expect(sendRuntimeMessage).toHaveBeenCalledTimes(savedRequests);
+  });
+
+  it('换句、收起、停用与关闭清除读音错误，旧代次AbortError不能误报当前句', async () => {
+    const late = deferred<{text: string; language: string; scheme: string}>();
+    annotateVideoReading.mockReturnValueOnce(late.promise);
+    config.videoSubtitleAppearance.readingAnnotation = true; props.sourceLanguage = 'ja';
+    await mount(); await step(1); await advance(0);
+    late.reject(new DOMException('old sentence cancelled', 'AbortError')); await advance(0);
+    expect(state.readingError).toBe(false); expect(state.readingText).toBe(`Reading: ${second}`);
+    annotateVideoReading.mockRejectedValueOnce(new Error('failed'));
+    await step(1); await advance(0); expect(state.readingError).toBe(true);
+    await step(-1); await advance(0); expect(state.readingError).toBe(false);
+    await step(1); await advance(0); annotateVideoReading.mockRejectedValueOnce(new Error('retry failed'));
+    props.sourceUrl = 'https://www.youtube.com/watch?v=retry-media'; await advance(0); expect(state.readingError).toBe(true);
+    const requests = annotateVideoReading.mock.calls.length; state.expanded = false; await flush();
+    expect(state.readingError).toBe(false); await advance(500); expect(annotateVideoReading).toHaveBeenCalledTimes(requests);
+    annotateVideoReading.mockRejectedValueOnce(new Error('failed again')); state.expanded = true; await advance(0);
+    expect(state.readingError).toBe(true); config.videoSubtitleAppearance.readingAnnotation = false; subscription(); await flush();
+    expect(state.readingError).toBe(false);
+    annotateVideoReading.mockRejectedValueOnce(new Error('failed before close')); config.videoSubtitleAppearance.readingAnnotation = true; subscription(); await advance(0);
+    expect(state.readingError).toBe(true); close(); expect(state.readingError).toBe(false);
   });
 
   it('读音跟随当前固定或历史句，快速换句与关闭拒绝迟到响应', async () => {

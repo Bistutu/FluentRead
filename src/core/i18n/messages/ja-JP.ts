@@ -972,6 +972,7 @@ export const jaJPMessages = {
     "video.readingAnnotation.previewTranslation": "今日はいい天気ですね。",
     "video.readingAnnotation.loading": "読み方を準備中…",
     "video.readingAnnotation.error": "読み方を表示できません",
+    "video.readingAnnotation.noReading": "この原文は読みの表示が不要、または未対応です",
     "video.readingAnnotation.retry": "読み方を再試行",
     'video.modeBilingual': '両方',
     'video.modeTranslation': '訳文',
