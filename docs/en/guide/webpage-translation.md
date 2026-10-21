@@ -24,6 +24,8 @@ When a translation matches the source, FluentRead keeps the source without displ
 2. Choose the target language and translation service, then click **Translate this page**.
 3. Read in bilingual mode, or select **Translation only** to focus on the result. Click **Restore original** to return to the page as it was.
 
+If the website's font makes translations hard to read, click **Aa** at the bottom right of the quick panel's translation card and choose **Translation font on this page → Browser default**. Existing and later translations update immediately in both bilingual and translation-only modes, without translating again. Choose **Original font** to restore the previous font settings. This choice applies only to this page and resets on refresh or navigation; other tabs and global preferences stay separate.
+
 Links retained in bilingual translations, such as user mentions (`@username`) and web addresses, keep the original link color so they remain easy to distinguish from surrounding text.
 
 The default translates as you read. If you need the whole page at once, change the translation range in settings. After restoring, you can translate again with another language or service.

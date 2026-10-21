@@ -1,7 +1,7 @@
 /**
  * @file src/app/content/embeddedFrameRuntime.ts
  * 文件职责：让 OMG! Ubuntu 评论、Kaggle 笔记本和 Hugging Face Spaces 正文 iframe 跟随所属页面的翻译会话。
- * 主要内容：通过既有配置订阅即时重排网页双语与仅译文工件，不重发翻译请求；顶层提供无凭据会话快照并支持从 Hugging Face 其他页面软导航进入 Space，受限子 frame 经后台认证后挂载翻译手势、样式与会话控制；真实路由变化同步失效上下文与请求提交代次，同地址通知不重复清理。
+ * 主要内容：通过既有配置订阅即时重排网页双语与仅译文工件，不重发翻译请求；顶层提供无凭据会话与当前页字体快照并支持从 Hugging Face 其他页面软导航进入 Space，受限子 frame 经后台认证后挂载翻译手势、样式与会话控制；真实路由变化同步失效上下文与请求提交代次，同地址通知不重复清理。
  * 模块边界：不在广告或其他第三方 frame 挂载功能；URL 配对由后台验证，正文候选由共享翻译核心处理。
  */
 import type {ContentScriptContext} from 'wxt/utils/content-script-context';
@@ -32,9 +32,11 @@ import {installPageStyles} from './pageStyles';
 import {syncBilingualSentenceHighlight} from './bilingualSentenceHighlight';
 import {applyCoreTranslationPreferences, createContentSiteAdaptationRuntime} from './siteAdaptationRuntime';
 import {createHoverTranslationConfigSubscription} from './hoverTranslationConfig';
+import {createPageTranslationFontRuntime} from './pageTranslationFont';
 
 /** 页面事件只提示刷新；frame 必须经后台校验 tab、URL 和 frameId 后读取顶层真实状态。 */
-export function installEmbeddedTopFrameBridge(isEnabled: () => boolean, signal: AbortSignal): void {
+export function installEmbeddedTopFrameBridge(isEnabled: () => boolean, signal: AbortSignal,
+    readBrowserDefaultFont?: () => boolean): void {
     // Hugging Face 使用 SPA 导航；先在其顶层注册，再逐次核验当前 Space 路由。
     if (window.top !== window || (!isSupportedEmbeddedTopUrl(window.location.href) &&
         new URL(window.location.href).origin !== 'https://huggingface.co')) return;
@@ -58,7 +60,8 @@ export function installEmbeddedTopFrameBridge(isEnabled: () => boolean, signal: 
             (message.action !== 'state' && message.action !== 'toggle') ||
             !isSupportedEmbeddedTopUrl(window.location.href)) return false;
         if (message.action === 'toggle') toggle(message.invocation);
-        respond({...getFullPageTranslationFrameState(), enabled: isEnabled()});
+        respond({...getFullPageTranslationFrameState(), enabled: isEnabled(),
+            ...(readBrowserDefaultFont ? {browserDefaultFont: readBrowserDefaultFont()} : {})});
         return true;
     };
     const removeMessageListener = addRuntimeMessageListener(browser.runtime, listener);
@@ -66,6 +69,7 @@ export function installEmbeddedTopFrameBridge(isEnabled: () => boolean, signal: 
     document.addEventListener('fluentread-translation-started', notify, {signal});
     document.addEventListener('fluentread-translation-ended', notify, {signal});
     document.addEventListener('fluentread-route-change', notify, {signal});
+    document.addEventListener('fluentread-page-translation-font-changed', notify, {signal});
     notify();
 }
 
@@ -88,6 +92,7 @@ export async function startEmbeddedFrameApp(ctx: ContentScriptContext): Promise<
     let activation: AbortController | null = null;
     let removeStyles: (() => void) | null = null;
     let authorized = false;
+    const pageTranslationFont = createPageTranslationFontRuntime({document});
     const enabled = () => !disposed && !pageLifecycle.isSuspended() && config.on !== false &&
         !isExtensionDisabledOnSite(window.location.href, config.disabledExtensionDomains);
     const toggle = (invocation?: PageTranslationInvocation) => {
@@ -104,6 +109,7 @@ export async function startEmbeddedFrameApp(ctx: ContentScriptContext): Promise<
     const setAvailable = (available: boolean) => {
         authorized = available;
         if (!available) {
+            pageTranslationFont.reset();
             activation?.abort(); activation = null;
             removeStyles?.(); removeStyles = null;
             syncBilingualSentenceHighlight(document, false);
@@ -127,6 +133,7 @@ export async function startEmbeddedFrameApp(ctx: ContentScriptContext): Promise<
     const controller = createFrameSessionController({
         readState: () => browser.runtime.sendMessage({type: EMBEDDED_FRAME_REQUEST, action: 'state'}),
         isEnabled: enabled, setAvailable, restore,
+        syncState: state => { pageTranslationFont.set(state.browserDefaultFont === true); },
         start: (state) => autoTranslateEnglishPage({
             service: state.translationConfig!.service, model: state.translationConfig!.model,
             targetLanguage: state.translationConfig!.targetLanguage, displayMode: state.translationConfig!.displayMode,
@@ -163,6 +170,7 @@ export async function startEmbeddedFrameApp(ctx: ContentScriptContext): Promise<
     cleanup = () => {
         if (lifetime.signal.aborted) return;
         disposed = true; lifetime.abort(); controller.dispose(); unsubscribe();
+        pageTranslationFont.dispose();
         removeMessageListener();
     };
     if (enabled()) await controller.refresh();

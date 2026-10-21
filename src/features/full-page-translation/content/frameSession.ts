@@ -1,7 +1,7 @@
 /**
  * @file src/features/full-page-translation/content/frameSession.ts
  * 文件职责：让受支持邮件与正文子页面跟随顶层全文会话，并隔离异步状态读取的过期响应。
- * 主要内容：定义不含凭据的会话快照，校验响应，合并通知的在途读取，按会话标识与恢复版本决定启动、保留或清理子页面翻译。
+ * 主要内容：定义不含凭据的会话与当前页字体快照，校验响应，合并通知的在途读取；字体独立同步，不因字体变化重启翻译，按会话标识与恢复版本决定启动、保留或清理子页面翻译。
  * 模块边界：不访问 browser、DOM 或配置存储；可信消息传输和功能挂载由 content composition root 注入。
  */
 import {translationLanguageOptions} from '@/src/core/language/catalog';
@@ -11,6 +11,7 @@ import type {FullPageTranslationConfigSnapshot} from './translationRequest';
 
 export interface FrameTranslationState {
     enabled: boolean;
+    browserDefaultFont?: boolean;
     revision: number;
     sessionId: number | null;
     translationConfig?: FullPageTranslationConfigSnapshot;
@@ -22,6 +23,7 @@ export function isFrameTranslationState(value: unknown): value is FrameTranslati
     if (!value || typeof value !== 'object') return false;
     const state = value as FrameTranslationState;
     if (typeof state.enabled !== 'boolean' || !Number.isSafeInteger(state.revision) || state.revision < 0) return false;
+    if (state.browserDefaultFont !== undefined && typeof state.browserDefaultFont !== 'boolean') return false;
     if (state.scope !== undefined && state.scope !== 'content' && state.scope !== 'all') return false;
     if (state.sessionId === null) return true;
     if (!Number.isSafeInteger(state.sessionId) || state.sessionId < 1) return false;
@@ -48,6 +50,7 @@ export interface FrameSessionDependencies {
     readState(): Promise<unknown>;
     isEnabled(): boolean;
     setAvailable(available: boolean): void;
+    syncState?(state: FrameTranslationState): void;
     start(state: FrameTranslationState): void;
     restore(): void;
 }
@@ -99,6 +102,9 @@ export function createFrameSessionController(deps: FrameSessionDependencies) {
                 if (request !== generation) continue;
                 if (!enabled || !isFrameTranslationState(state) || !state.enabled) { clear(); return; }
                 deps.setAvailable(true);
+                if (!ownsBatch()) return;
+                if (request !== generation) continue;
+                deps.syncState?.(state);
                 if (!ownsBatch()) return;
                 if (request !== generation) continue;
                 if (sessionId === state.sessionId && revision === state.revision) return;

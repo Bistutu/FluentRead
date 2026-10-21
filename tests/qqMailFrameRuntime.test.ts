@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
     isDisabled: vi.fn(() => false),
     subscribeConfig: vi.fn(), installStyles: vi.fn(), removeStyles: vi.fn(), syncHighlight: vi.fn(),
     mountSelection: vi.fn(), unmountSelection: vi.fn(),
+    fontSet: vi.fn(), fontReset: vi.fn(), fontDispose: vi.fn(),
 }));
 
 vi.mock('@/src/services/config/store', () => ({
@@ -47,6 +48,9 @@ vi.mock('@/src/app/content/hotkeyRuntime', () => ({
 vi.mock('@/src/app/content/quickTranslationRuntime', () => ({mountConfiguredQuickTranslation: vi.fn()}));
 vi.mock('@/src/app/content/pageStyles', () => ({installPageStyles: mocks.installStyles}));
 vi.mock('@/src/app/content/bilingualSentenceHighlight', () => ({syncBilingualSentenceHighlight: mocks.syncHighlight}));
+vi.mock('@/src/app/content/pageTranslationFont', () => ({createPageTranslationFontRuntime: () => ({
+    read: () => false, set: mocks.fontSet, reset: mocks.fontReset, dispose: mocks.fontDispose,
+})}));
 vi.mock('@/src/app/content/siteAdaptationRuntime', () => ({
     createContentSiteAdaptationRuntime: () => ({routeChanged: mocks.routeChanged, update: vi.fn()}),
     applyCoreTranslationPreferences: vi.fn(() => false),
@@ -92,6 +96,7 @@ beforeEach(() => {
     mocks.resetContext.mockReset();
     mocks.routeChanged.mockReset().mockReturnValue(false);
     mocks.getState.mockReset().mockReturnValue({sessionId: null, translationConfig: undefined, fullPageMode: 'all'});
+    mocks.fontSet.mockReset(); mocks.fontReset.mockReset(); mocks.fontDispose.mockReset();
     mocks.config.on = true;
     mocks.configReady = Promise.resolve();
     mocks.config.bilingualSentenceHighlightEnabled = false;
@@ -333,6 +338,30 @@ describe('frame bridge cleanup after extension reload', () => {
             : kind === 'netease' ? mail.startNeteaseMailFrameApp : startEmbeddedFrameApp;
         return {...globals, start};
     }
+
+    it.each(['qq', 'netease', 'embedded'] as const)(
+        '%s 正文字体跟随认证顶层真值，字体更新不恢复或重新请求翻译', async kind => {
+            const {start} = await readingFrame(kind);
+            let browserDefaultFont = true;
+            mocks.sendMessage.mockImplementation(async () => ({enabled: true, revision: 0, sessionId: null, browserDefaultFont}));
+            let invalidate!: () => void;
+            await start({isInvalid: false, onInvalidated: (callback: () => void) => { invalidate = callback; }} as never);
+            expect(mocks.fontSet).toHaveBeenLastCalledWith(true);
+            const restores = mocks.restoreOriginalContent.mock.calls.length;
+            const listener = mocks.addRuntimeListener.mock.calls[0][0];
+            const type = kind === 'qq' ? 'qqMailFrameRefresh' : kind === 'netease' ? 'neteaseMailFrameRefresh' : 'embeddedFrameRefresh';
+            browserDefaultFont = false;
+            listener({type}, {id: 'other'});
+            expect(mocks.fontSet).toHaveBeenCalledOnce();
+            listener({type}, {id: 'extension-id'});
+            await vi.waitFor(() => expect(mocks.fontSet).toHaveBeenLastCalledWith(false));
+            expect(mocks.restoreOriginalContent).toHaveBeenCalledTimes(restores);
+            expect(mocks.autoTranslateEnglishPage).not.toHaveBeenCalled();
+            invalidate();
+            expect(mocks.fontReset).toHaveBeenCalled();
+            expect(mocks.fontDispose).toHaveBeenCalledOnce();
+        },
+    );
 
     it.each(['qq', 'netease', 'embedded'] as const)(
         '%s 同规则真实路由变化失效旧请求，同地址通知和卸载后事件不重复失效', async kind => {
@@ -587,6 +616,33 @@ describe('Hugging Face Space top frame bridge', () => {
 });
 
 describe('QQ legacy top frame bridge', () => {
+    it.each(['qq', 'netease', 'embedded'] as const)('顶层 %s 字体事件只提示重新读取真实快照', async kind => {
+        const href = kind === 'qq' ? topUrl : kind === 'netease'
+            ? 'https://mail.163.com/js6/main.jsp?sid=redacted#module=read.ReadModule%7C%7B%7D'
+            : 'https://huggingface.co/spaces/FineEnvs/RL-Explorer';
+        const {listeners} = installGlobals(href);
+        const mail = await load();
+        const {installEmbeddedTopFrameBridge} = await import('@/src/app/content/embeddedFrameRuntime');
+        const install = kind === 'qq' ? mail.installQqMailTopFrameBridge
+            : kind === 'netease' ? mail.installNeteaseMailTopFrameBridge : installEmbeddedTopFrameBridge;
+        let browserDefaultFont = true;
+        const lifetime = new AbortController();
+        install(() => true, lifetime.signal, () => browserDefaultFont);
+        const listener = mocks.addRuntimeListener.mock.calls[0][0];
+        const type = kind === 'qq' ? 'qqMailFrameCommand' : kind === 'netease' ? 'neteaseMailFrameCommand' : 'embeddedFrameCommand';
+        const respond = vi.fn();
+        listener({type, action: 'state', browserDefaultFont: false}, {id: 'extension-id'}, respond);
+        expect(respond).toHaveBeenLastCalledWith({...mocks.getState(), enabled: true, browserDefaultFont: true});
+        browserDefaultFont = false;
+        for (const notify of listeners.get('fluentread-page-translation-font-changed') ?? []) notify();
+        listener({type, action: 'state'}, {id: 'extension-id'}, respond);
+        expect(respond).toHaveBeenLastCalledWith({...mocks.getState(), enabled: true, browserDefaultFont: false});
+        expect(mocks.autoTranslateEnglishPage).not.toHaveBeenCalled();
+        expect(mocks.restoreOriginalContent).not.toHaveBeenCalled();
+        lifetime.abort();
+        expect(listeners.get('fluentread-page-translation-font-changed')?.size).toBe(0);
+    });
+
     it('does not install on unrelated URLs', async () => {
         installGlobals('https://mail.qq.com/cgi-bin/readmail?mailid=x');
         const {installQqMailTopFrameBridge} = await load();
