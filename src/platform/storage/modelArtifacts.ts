@@ -1,13 +1,14 @@
 /**
  * @file src/platform/storage/modelArtifacts.ts
  * 文件职责：为按需模型复用固定版本、分块磁盘缓存和内容校验下载能力。
- * 主要内容：4MiB 分块、Range 续传、多来源回退、流式 SHA-256 校验及离线 Response 重建；就绪只认完整校验收据。
+ * 主要内容：4MiB 分块、Range 续传、多来源回退、流式 SHA-256 校验及离线 Response 重建；就绪只认完整校验收据，退役资源可按调用者明确指定的缓存名定向删除。
  * 模块边界：不认识 feature、模型算法或页面正文，不清空其他模型缓存，不执行远程代码。
  */
 import {sha256} from '@noble/hashes/sha256';
 import {huggingFaceDownloadOrigins} from '@/src/platform/http/modelDownloads';
 export interface ModelArtifact {url: string; size: number; sha256: string}
 export const MODEL_ARTIFACT_CHUNK_BYTES = 4 * 1024 * 1024;
+export async function removeModelArtifactCache(cacheName: string): Promise<void> {await caches.delete(cacheName);}
 function active(signal?: AbortSignal): void {if (signal?.aborted) throw new DOMException('模型下载已暂停', 'AbortError');}
 export function createModelArtifactStore(cacheName: string, files: readonly ModelArtifact[]) {
     const part = (file: ModelArtifact, index: number) => `${file.url}?fluent-read-part=${index}`;

@@ -123,9 +123,11 @@ When an announcement or modal dialog blocks the page, full-page translation hand
 
 #### Buttons show the translation only
 
-Buttons, tabs, form labels and toolbar actions are interface controls whose size is fixed by the site's own styling. In bilingual mode this text is **replaced by the translation instead of stacked with the original**, so a button is never pushed taller, its label never overflows, and a toolbar row never breaks apart. Native buttons, elements with a control `role`, button-styled links and buttons built from input elements all follow the same rule. Restoring the original text puts the original labels back.
+Buttons, tabs, form labels and toolbar actions are interface controls whose size is fixed by the site's own styling. In bilingual mode this text is **replaced by the translation instead of stacked with the original**, so a button is never pushed taller, its label never overflows, and a toolbar row never breaks apart. Native buttons, elements with a control `role`, button-styled links and buttons built from input elements follow this rule by default. Restoring the original text puts the original labels back.
 
 Full sentences in paragraphs, headings and disclosure sections still follow the display mode you picked, so bilingual reading is unaffected.
+
+Website adaptation rules can explicitly select a content-bearing button or its internal headline label as a content target. Kagi News headlines keep the original alongside the translation in bilingual mode and show only the translation in translation-only mode. Search, settings and mark-as-read buttons retain their control behavior, and headlines still expand and collapse stories when clicked.
 
 Buttons that are submitted with a form (submit buttons that carry a `name`) and the contents of text fields are left untouched, so the site never receives an action it cannot recognise and your own input is never rewritten.
 

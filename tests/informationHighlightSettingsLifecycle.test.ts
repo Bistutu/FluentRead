@@ -42,7 +42,7 @@ const Dialog = runtime.defineComponent({inheritAttrs: false, props: {modelValue:
 const send = vi.fn((_message: {type: string; modelId?: InformationHighlightModelId}) => Promise.resolve({success: true, status: model()}))
 function model(overrides: Partial<InformationHighlightModelStatus> = {}): InformationHighlightModelStatus {
   return {modelId: 'qwen2.5-0.5b', phase: 'absent', downloaded: false, initialized: false, downloadedBytes: 0, totalBytes: 490043908,
-    supported: true, modelName: 'Qwen2.5 0.5B', downloadSizeBytes: 490043908, ...overrides}
+    supported: true, modelName: 'Qwen2.5 0.5B Base', downloadSizeBytes: 490043908, ...overrides}
 }
 function modelFor(modelId?: InformationHighlightModelId, overrides: Partial<InformationHighlightModelStatus> = {}) {
   const selected = getInformationHighlightModel(modelId)
@@ -128,59 +128,59 @@ async function mount(mode: 'keywords' | 'surprisal-local' = 'surprisal-local', a
 }
 
 describe('信息高亮设置真实父子模板与生命周期', () => {
-  it('两个模型卡分别显示大小和资源状态，原生单选仅保存选择；下载和删除都先确认', async () => {
-    const downloaded = new Set<InformationHighlightModelId>()
+  it('仅展示 Base 模型及真实大小，选择只保存偏好；下载和删除都先确认', async () => {
+    let downloaded = false
     send.mockImplementation(async message => {
       const selected = getInformationHighlightModel(message.modelId)
-      if (message.type === 'PREPARE_INFORMATION_HIGHLIGHT_MODEL') downloaded.add(selected.id)
-      if (message.type === 'REMOVE_INFORMATION_HIGHLIGHT_MODEL') downloaded.delete(selected.id)
-      return {success: true, status: modelFor(selected.id, {downloaded: downloaded.has(selected.id), phase: downloaded.has(selected.id) ? 'ready' : 'absent', downloadedBytes: downloaded.has(selected.id) ? selected.bytes : 0})}
+      if (message.type === 'PREPARE_INFORMATION_HIGHLIGHT_MODEL') downloaded = true
+      if (message.type === 'REMOVE_INFORMATION_HIGHLIGHT_MODEL') downloaded = false
+      return {success: true, status: modelFor(selected.id, {downloaded, phase: downloaded ? 'ready' : 'absent', downloadedBytes: downloaded ? selected.bytes : 0})}
     })
-    await mount(); const q2 = element(card('qwen2.5-0.5b')), q3 = element(card('qwen3-0.6b'))
-    expect(document.querySelectorAll('[data-testid="information-highlight-model-card"]')).toHaveLength(2)
+    await mount(); const base = element(card('qwen2.5-0.5b'))
+    expect(document.querySelectorAll('[data-testid="information-highlight-model-card"]')).toHaveLength(1)
+    expect(document.querySelector('[data-information-highlight-model-id="qwen3-0.6b"]')).toBeNull()
     expect(element(`${card('qwen2.5-0.5b')} [data-information-highlight-download]`).textContent).toContain('490 MB')
-    expect(element(`${card('qwen3-0.6b')} [data-information-highlight-download]`).textContent).toContain('579 MB')
+    expect(base.querySelector('strong')?.textContent).toBe('Qwen2.5 0.5B Base')
     expect(document.querySelector('.highlight-model-status')).toBeNull(); expect(document.querySelector('.highlight-model-privacy')).toBeNull()
     expect(element('[data-information-highlight-mode-select]').closest('label')!.querySelector('small')).toBeNull()
     const radios = [...document.querySelectorAll('[data-information-highlight-model-radio]')]
-    expect(radios).toHaveLength(2); expect(radios.every(radio => radio.getAttribute('type') === 'radio')).toBe(true)
-    expect(new Set(radios.map(radio => radio.getAttribute('name'))).size).toBe(1); expect(radios[0].getAttribute('name')).toBeTruthy()
-    expect(document.querySelector('[data-information-highlight-model-select]')).toBeNull()
-    modelChoice('qwen3-0.6b')(); await settle(); expect(props.config.informationHighlight.model).toBe('qwen3-0.6b'); expect(q3.querySelector('strong')?.textContent).toBe('Qwen3 0.6B')
-    expect(element(card('qwen2.5-0.5b'))).toBe(q2); expect(element(card('qwen3-0.6b'))).toBe(q3); expectOnlyReads()
-    cardEvent('qwen3-0.6b', 'download')(); await settle(); expect(commands('PREPARE_INFORMATION_HIGHLIGHT_MODEL')).toHaveLength(0)
+    expect(radios).toHaveLength(1); expect(radios[0].getAttribute('type')).toBe('radio')
+    expect(radios[0].getAttribute('name')).toBeTruthy(); expect(document.querySelector('[data-information-highlight-model-select]')).toBeNull()
+    modelChoice('qwen2.5-0.5b')(); await settle(); expect(props.config.informationHighlight.model).toBe('qwen2.5-0.5b')
+    expect(element(card('qwen2.5-0.5b'))).toBe(base); expectOnlyReads()
+    cardEvent('qwen2.5-0.5b', 'download')(); await settle(); expect(commands('PREPARE_INFORMATION_HIGHLIGHT_MODEL')).toHaveLength(0)
     const dialog = element('[data-information-highlight-model-dialog]')
-    expect(dialog.getAttribute('data-information-highlight-model-id')).toBe('qwen3-0.6b'); expect(dialog.getAttribute('data-information-highlight-action')).toBe('prepare')
-    expect(dialog.textContent).toContain('Qwen3 0.6B'); expect(dialog.textContent).toContain('579 MB')
+    expect(dialog.getAttribute('data-information-highlight-model-id')).toBe('qwen2.5-0.5b'); expect(dialog.getAttribute('data-information-highlight-action')).toBe('prepare')
+    expect(dialog.textContent).toContain('Qwen2.5 0.5B Base'); expect(dialog.textContent).toContain('490 MB')
     const confirm = event('[data-information-highlight-confirm]'); const pending = confirm(); await confirm(); await pending; await settle()
-    expect(commands('PREPARE_INFORMATION_HIGHLIGHT_MODEL')).toEqual([{type: 'PREPARE_INFORMATION_HIGHLIGHT_MODEL', modelId: 'qwen3-0.6b'}])
+    expect(commands('PREPARE_INFORMATION_HIGHLIGHT_MODEL')).toEqual([{type: 'PREPARE_INFORMATION_HIGHLIGHT_MODEL', modelId: 'qwen2.5-0.5b'}])
     expect(document.querySelector('[data-information-highlight-model-dialog]')).toBeNull()
-    expect(q3.querySelectorAll('.highlight-model-actions button')).toHaveLength(1)
-    expect(element(`${card('qwen3-0.6b')} [data-information-highlight-remove]`).textContent).toBe('informationHighlight.model.remove')
-    expect(q2.querySelector('[data-information-highlight-remove]')).toBeNull(); expect(q2.querySelector('[data-information-highlight-download]')).not.toBeNull()
+    expect(base.querySelectorAll('.highlight-model-actions button')).toHaveLength(1)
+    expect(element(`${card('qwen2.5-0.5b')} [data-information-highlight-remove]`).textContent).toBe('informationHighlight.model.remove')
+    expect(base.querySelector('[data-information-highlight-download]')).toBeNull()
     expect(document.querySelector('.highlight-model-ready')).toBeNull(); expect(document.querySelector('.highlight-model-status')).toBeNull()
-    cardEvent('qwen3-0.6b', 'remove')(); await settle(); event('[data-information-highlight-cancel]')(); await settle()
-    expect(commands('REMOVE_INFORMATION_HIGHLIGHT_MODEL')).toHaveLength(0); expect(element(`${card('qwen3-0.6b')} [data-information-highlight-remove]`)).toBeTruthy()
-    cardEvent('qwen3-0.6b', 'remove')(); await settle(); await event('[data-information-highlight-confirm]')(); await settle()
-    expect(commands('REMOVE_INFORMATION_HIGHLIGHT_MODEL')).toEqual([{type: 'REMOVE_INFORMATION_HIGHLIGHT_MODEL', modelId: 'qwen3-0.6b'}])
-    expect(element(`${card('qwen3-0.6b')} [data-information-highlight-download]`).textContent).toContain('579 MB')
-    expect(props.config.informationHighlight.model).toBe('qwen3-0.6b'); expect(props.config.on).toBe(false)
+    cardEvent('qwen2.5-0.5b', 'remove')(); await settle(); event('[data-information-highlight-cancel]')(); await settle()
+    expect(commands('REMOVE_INFORMATION_HIGHLIGHT_MODEL')).toHaveLength(0); expect(element(`${card('qwen2.5-0.5b')} [data-information-highlight-remove]`)).toBeTruthy()
+    cardEvent('qwen2.5-0.5b', 'remove')(); await settle(); await event('[data-information-highlight-confirm]')(); await settle()
+    expect(commands('REMOVE_INFORMATION_HIGHLIGHT_MODEL')).toEqual([{type: 'REMOVE_INFORMATION_HIGHLIGHT_MODEL', modelId: 'qwen2.5-0.5b'}])
+    expect(element(`${card('qwen2.5-0.5b')} [data-information-highlight-download]`).textContent).toContain('490 MB')
+    expect(props.config.informationHighlight.model).toBe('qwen2.5-0.5b'); expect(props.config.on).toBe(false)
   })
   it.each(['cancel', 'close', 'escape'] as const)('续传也需二次确认，%s 关闭不会发送命令，缓存确认按钮失效', async reason => {
-    send.mockImplementation(async message => ({success: true, status: modelFor(message.modelId, message.modelId === 'qwen3-0.6b' ? {phase: 'paused', downloadedBytes: 20} : {})}))
-    await mount(); expect(element(`${card('qwen3-0.6b')} [data-information-highlight-download]`).textContent).toBe('informationHighlight.model.resume')
-    cardEvent('qwen3-0.6b', 'download')(); await settle(); const oldConfirm = event('[data-information-highlight-confirm]')
+    send.mockImplementation(async message => ({success: true, status: modelFor(message.modelId, {phase: 'paused', downloadedBytes: 20})}))
+    await mount(); expect(element(`${card('qwen2.5-0.5b')} [data-information-highlight-download]`).textContent).toBe('informationHighlight.model.resume')
+    cardEvent('qwen2.5-0.5b', 'download')(); await settle(); const oldConfirm = event('[data-information-highlight-confirm]')
     expectOnlyReads(); expect(element('[data-information-highlight-confirm]').textContent).toBe('informationHighlight.model.resume')
     if (reason === 'escape') event('[data-controlled-model-dialog]', 'onKeydown')({key: 'Escape'})
     else event(`[data-information-highlight-${reason}]`)()
     await settle(); expect(document.querySelector('[data-information-highlight-model-dialog]')).toBeNull(); await oldConfirm(); expectOnlyReads()
-    cardEvent('qwen3-0.6b', 'download')(); await settle(); await event('[data-information-highlight-confirm]')(); await settle()
-    expect(commands('PREPARE_INFORMATION_HIGHLIGHT_MODEL')).toEqual([{type: 'PREPARE_INFORMATION_HIGHLIGHT_MODEL', modelId: 'qwen3-0.6b'}]); expect(props.config.on).toBe(false)
+    cardEvent('qwen2.5-0.5b', 'download')(); await settle(); await event('[data-information-highlight-confirm]')(); await settle()
+    expect(commands('PREPARE_INFORMATION_HIGHLIGHT_MODEL')).toEqual([{type: 'PREPARE_INFORMATION_HIGHLIGHT_MODEL', modelId: 'qwen2.5-0.5b'}]); expect(props.config.on).toBe(false)
   })
-  it.each(['selection', 'configuration', 'preferences', 'hidden', 'cached', 'unmounted'] as const)('%s 变更撤销旧确认，迟到确认和关闭不操作新归属', async reason => {
+  it.each(['reselection', 'configuration', 'preferences', 'hidden', 'cached', 'unmounted'] as const)('%s 变更撤销旧确认，迟到确认和关闭不操作新归属', async reason => {
     await mount(); cardEvent('qwen2.5-0.5b', 'download')(); await settle()
     const oldConfirm = event('[data-information-highlight-confirm]'), oldCancel = event('[data-information-highlight-cancel]'), original = props.config
-    if (reason === 'selection') modelChoice('qwen3-0.6b')()
+    if (reason === 'reselection') modelChoice('qwen2.5-0.5b')()
     else if (reason === 'configuration') {const next = new Config(); next.on = false; next.informationHighlight = {...props.config.informationHighlight}; props.config = next}
     else if (reason === 'preferences') props.config.informationHighlight = {...props.config.informationHighlight}
     else if (reason === 'hidden') props.active = false
@@ -189,10 +189,10 @@ describe('信息高亮设置真实父子模板与生命周期', () => {
     await settle(); expect(document.querySelector('[data-information-highlight-model-dialog]')).toBeNull(); await oldConfirm(); expectOnlyReads(); expect(original.on).toBe(false)
     if (reason === 'unmounted') return
     if (reason === 'hidden') props.active = true; else if (reason === 'cached') shown.value = true
-    await settle(); cardEvent('qwen3-0.6b', 'download')(); await settle(); oldCancel(); await settle()
-    expect(element('[data-information-highlight-model-dialog]').getAttribute('data-information-highlight-model-id')).toBe('qwen3-0.6b')
+    await settle(); cardEvent('qwen2.5-0.5b', 'download')(); await settle(); oldCancel(); await settle()
+    expect(element('[data-information-highlight-model-dialog]').getAttribute('data-information-highlight-model-id')).toBe('qwen2.5-0.5b')
     await oldConfirm(); await event('[data-information-highlight-confirm]')(); await settle()
-    expect(commands('PREPARE_INFORMATION_HIGHLIGHT_MODEL')).toEqual([{type: 'PREPARE_INFORMATION_HIGHLIGHT_MODEL', modelId: 'qwen3-0.6b'}]); expect(props.config.on).toBe(false)
+    expect(commands('PREPARE_INFORMATION_HIGHLIGHT_MODEL')).toEqual([{type: 'PREPARE_INFORMATION_HIGHLIGHT_MODEL', modelId: 'qwen2.5-0.5b'}]); expect(props.config.on).toBe(false)
   })
   it('六套配色直接呈现真实浓淡色阶，单击后即时预览并只保存阅读偏好', async () => {
     await mount('keywords'); event('[data-information-highlight-style="heatmap"]')(); await settle()
@@ -326,9 +326,9 @@ describe('信息高亮设置真实父子模板与生命周期', () => {
     const cards = element('[data-information-highlight-models]'), preferences = element('[data-testid="information-highlight-preferences"]')
     const mode = element('[data-information-highlight-mode-select]').closest('label')!, density = element('[data-information-highlight-density="low"]').closest('.highlight-field')!
     expect(cards.parentElement).toBe(preferences); expect(mode.nextElementSibling).toBe(cards); expect(cards.nextElementSibling).toBe(density)
-    expect(cards.querySelectorAll('[data-testid="information-highlight-model-card"]')).toHaveLength(2)
-    expect(send.mock.calls.map(([message]) => message)).toEqual([{type: 'GET_INFORMATION_HIGHLIGHT_MODEL_STATUS', modelId: 'qwen2.5-0.5b'}, {type: 'GET_INFORMATION_HIGHLIGHT_MODEL_STATUS', modelId: 'qwen3-0.6b'}]); expect(props.config.on).toBe(false)
-    vi.advanceTimersByTime(15000); await settle(); expect(send).toHaveBeenCalledTimes(4); expectOnlyReads()
+    expect(cards.querySelectorAll('[data-testid="information-highlight-model-card"]')).toHaveLength(1)
+    expect(send.mock.calls.map(([message]) => message)).toEqual([{type: 'GET_INFORMATION_HIGHLIGHT_MODEL_STATUS', modelId: 'qwen2.5-0.5b'}]); expect(props.config.on).toBe(false)
+    vi.advanceTimersByTime(15000); await settle(); expect(send).toHaveBeenCalledTimes(2); expectOnlyReads()
   })
   it('分析方式选择器切回关键词只替换偏好模式，保留其余设置并停止模型轮询', async () => {
     await mount(); const original = props.config.informationHighlight
@@ -336,7 +336,7 @@ describe('信息高亮设置真实父子模板与生命周期', () => {
     expect(props.config.informationHighlight).toEqual({enabled: false, hotkey: 'Alt+H', hotkeyEnabled: true, model: 'qwen2.5-0.5b', mode: 'keywords', density: 'high', color: 'blue', style: 'underline', intensity: 'standard'})
     expect(props.config.informationHighlight).not.toBe(original); expect(original.mode).toBe('surprisal-local'); expect(props.config.on).toBe(false)
     expect(document.querySelector('[data-testid="information-highlight-model-card"]')).toBeNull()
-    vi.advanceTimersByTime(60000); await settle(); expect(messages()).toEqual(['GET_INFORMATION_HIGHLIGHT_MODEL_STATUS', 'GET_INFORMATION_HIGHLIGHT_MODEL_STATUS'])
+    vi.advanceTimersByTime(60000); await settle(); expect(messages()).toEqual(['GET_INFORMATION_HIGHLIGHT_MODEL_STATUS'])
   })
   it.each(['configuration', 'preferences'] as const)('%s 替换后旧关键词回调失效，当前回调仍可写入', async reason => {
     await mount(); const old = modeSelect(), oldConfig = props.config, oldPreferences = props.config.informationHighlight
@@ -349,12 +349,12 @@ describe('信息高亮设置真实父子模板与生命周期', () => {
     await settle(); modeSelect()('keywords'); await settle(); expect(props.config.informationHighlight.mode).toBe('keywords'); expect(props.config.on).toBe(false); expectOnlyReads()
   })
   it.each(['hidden', 'cached', 'unmounted'] as const)('%s 后旧父回调和真实按钮不能写入；重新进入也不能复用旧回调', async reason => {
-    await mount(); const old = modeSelect(), oldButton = modelChoice('qwen3-0.6b'), before = {...props.config.informationHighlight}
+    await mount(); const old = modeSelect(), oldButton = modelChoice('qwen2.5-0.5b'), before = {...props.config.informationHighlight}
     if (reason === 'hidden') props.active = false
     else if (reason === 'cached') shown.value = false
     else {app!.unmount(); app = undefined}
     await settle(); old('keywords'); oldButton(); expect(props.config.informationHighlight).toEqual(before)
-    vi.advanceTimersByTime(60000); await settle(); expect(messages()).toEqual(['GET_INFORMATION_HIGHLIGHT_MODEL_STATUS', 'GET_INFORMATION_HIGHLIGHT_MODEL_STATUS'])
+    vi.advanceTimersByTime(60000); await settle(); expect(messages()).toEqual(['GET_INFORMATION_HIGHLIGHT_MODEL_STATUS'])
     if (reason !== 'unmounted') {
       if (reason === 'hidden') props.active = true; else shown.value = true
       await settle(); old('keywords'); oldButton(); expect(props.config.informationHighlight).toEqual(before)
@@ -365,23 +365,23 @@ describe('信息高亮设置真实父子模板与生命周期', () => {
   it('初始隐藏不读模型或允许回退，显现后只读资源；未声明 active 时遵循默认可操作', async () => {
     await mount('surprisal-local', false); const hidden = modeSelect(); hidden('keywords'); expect(send).not.toHaveBeenCalled(); expect(props.config.informationHighlight.mode).toBe('surprisal-local')
     props.active = undefined; await settle(); hidden('keywords'); expect(props.config.informationHighlight.mode).toBe('surprisal-local')
-    expect(new Set(send.mock.calls.map(([message]) => message.modelId))).toEqual(new Set(['qwen2.5-0.5b', 'qwen3-0.6b'])); expectOnlyReads(); modeSelect()('keywords'); await settle()
+    expect(new Set(send.mock.calls.map(([message]) => message.modelId))).toEqual(new Set(['qwen2.5-0.5b'])); expectOnlyReads(); modeSelect()('keywords'); await settle()
     expect(props.config.informationHighlight.mode).toBe('keywords'); expect(props.config.on).toBe(false); expectOnlyReads()
   })
   it('模型读取已就绪不自动下载或启页，外观修改不重新挂载资源卡', async () => {
     send.mockImplementation(async message => ({success: true, status: modelFor(message.modelId, {phase: 'ready', downloaded: true, initialized: true})}))
-    await mount(); const q2 = element(card('qwen2.5-0.5b')), q3 = element(card('qwen3-0.6b'))
-    expect(document.querySelector('.highlight-model-ready')).toBeNull(); expect(document.querySelectorAll('[data-information-highlight-remove]')).toHaveLength(2); expect(document.querySelector('.highlight-model-status')).toBeNull(); expect(props.config.on).toBe(false)
+    await mount(); const base = element(card('qwen2.5-0.5b'))
+    expect(document.querySelector('.highlight-model-ready')).toBeNull(); expect(document.querySelectorAll('[data-information-highlight-remove]')).toHaveLength(1); expect(document.querySelector('.highlight-model-status')).toBeNull(); expect(props.config.on).toBe(false)
     event('[data-information-highlight-color="mint"]')(); await settle()
-    expect(element(card('qwen2.5-0.5b'))).toBe(q2); expect(element(card('qwen3-0.6b'))).toBe(q3); expectOnlyReads()
+    expect(element(card('qwen2.5-0.5b'))).toBe(base); expectOnlyReads()
   })
   it('离开本地模式后迟到 ready 不挂回模型卡或启页，重新选择只发新的状态读取', async () => {
     const query = deferred<{success: boolean; status: InformationHighlightModelStatus}>(); send.mockReturnValueOnce(query.promise)
     await mount(); modeSelect()('keywords'); await settle()
     query.resolve({success: true, status: model({phase: 'ready', downloaded: true, initialized: true})}); await settle()
     expect(document.querySelector('[data-testid="information-highlight-model-card"]')).toBeNull(); expect(props.config.informationHighlight.mode).toBe('keywords'); expect(props.config.on).toBe(false)
-    vi.advanceTimersByTime(60000); await settle(); expect(send).toHaveBeenCalledTimes(2)
-    modeSelect()('surprisal-local'); await settle(); expect(messages()).toEqual(Array(4).fill('GET_INFORMATION_HIGHLIGHT_MODEL_STATUS'))
+    vi.advanceTimersByTime(60000); await settle(); expect(send).toHaveBeenCalledOnce()
+    modeSelect()('surprisal-local'); await settle(); expect(messages()).toEqual(Array(2).fill('GET_INFORMATION_HIGHLIGHT_MODEL_STATUS'))
     expect(element('[data-testid="information-highlight-model-card"]')).toBeTruthy(); expect(props.config.on).toBe(false)
   })
 })

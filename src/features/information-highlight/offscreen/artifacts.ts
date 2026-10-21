@@ -1,12 +1,15 @@
 /**
  * @file src/features/information-highlight/offscreen/artifacts.ts
  * 文件职责：把各个固定信息高亮模型清单接到互相独立的通用校验分块缓存。
- * 主要内容：保留默认模型的 v1 缓存与固定官方 canonical URL，为备选模型分别提供离线读取端口；没有原文或云端分析请求。
+ * 主要内容：保留默认模型的 v1 缓存与固定官方 canonical URL，为备选模型分别提供离线读取端口；仅按确切旧名称清理退役 Qwen3 指令模型缓存，没有原文或云端分析请求。
  * 模块边界：仅组合纯清单和 platform 存储，不依赖其他 feature 的模型缓存，不初始化模型。
  */
 import {DEFAULT_INFORMATION_HIGHLIGHT_MODEL_ID, getInformationHighlightModel, type InformationHighlightModelId} from '@/src/core/config/informationHighlightModel';
-import {createModelArtifactStore} from '@/src/platform/storage/modelArtifacts';
+import {createModelArtifactStore, removeModelArtifactCache} from '@/src/platform/storage/modelArtifacts';
 export const INFORMATION_HIGHLIGHT_CACHE = 'fluent-read-information-highlight-model-v1';
+export function removeRetiredInformationHighlightArtifacts(): Promise<void> {
+    return removeModelArtifactCache('fluent-read-information-highlight-model-qwen3-0.6b-v1');
+}
 type ArtifactStore = ReturnType<typeof createModelArtifactStore>;
 const stores = new Map<InformationHighlightModelId, ArtifactStore>();
 export function getInformationHighlightArtifacts(modelId: InformationHighlightModelId = DEFAULT_INFORMATION_HIGHLIGHT_MODEL_ID) {

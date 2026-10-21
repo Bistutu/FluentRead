@@ -1,7 +1,7 @@
 /**
  * @file tests/informationHighlightContent.test.ts
  * 文件职责：验证信息高亮的文本算法、只读收集及页内会话的实际行为和所有权。
- * 主要内容：使用真实 DOM Text 身份与可控原生绘制端口，覆盖模型切换隔离、内联链接、保护区域、开放及闭合译文、分帧/稳定窗口、异步取消与同文本替换，断言原文和宿主节点不变。
+ * 主要内容：使用真实 DOM Text 身份与可控原生绘制端口，覆盖旧模型配置迁移和通用模型切换隔离、内联链接、保护区域、开放及闭合译文、分帧/稳定窗口、异步取消与同文本替换，断言原文和宿主节点不变。
  * 模块边界：模型端口为可控响应，测试不声称真实模型速度或用户理解收益；真实浏览器 CSS 绘制由独立回归验证。
  */
 import {informationHighlightOpacity} from '@/src/features/information-highlight/domain/presentation';
@@ -11,7 +11,7 @@ import {scoreInformationKeywords, selectInformationSpans} from '@/src/features/i
 import {informationGraphemeBoundaries, informationSliceEnd} from '@/src/features/information-highlight/domain/textBoundaries';
 import {collectInformationParagraphs, informationRanges, isInformationParagraphCurrent} from '@/src/features/information-highlight/content/readingText';
 import {installInformationHighlight, INFORMATION_HIGHLIGHT_NAME} from '@/src/features/information-highlight/public';
-import {DEFAULT_INFORMATION_HIGHLIGHT_PREFERENCES as defaultPreferences} from '@/src/core/config/informationHighlight';
+import {DEFAULT_INFORMATION_HIGHLIGHT_PREFERENCES as defaultPreferences, normalizeInformationHighlightPreferences} from '@/src/core/config/informationHighlight';
 import {registerVisibleTranslationRoot, readVisibleTranslationRoot} from '@/src/features/full-page-translation/content/visibleTranslation';
 import {createInformationHighlightContentRuntime, createInformationHighlightScorePort, createPageInformationHighlightRuntime, handleInformationHighlightMessage} from '@/src/app/content/informationHighlight';
 import type {InformationHighlightResult} from '@/src/features/information-highlight/protocol';
@@ -329,7 +329,27 @@ describe('page-owned scoring, paint and cancellation', () => {
         controller.updatePreferences({...defaults, mode: 'surprisal-local'}); await f.settle(); expect(segment).toHaveBeenCalledTimes(5);
         controller.dispose(); register.mockRestore(); segment.mockRestore();
     });
-    it('isolates same-text model caches and aborts stale scores when the selected model changes', async () => {
+    it('migrates a retired model preference before scoring and reuses the Base same-text cache', async () => {
+        const f = fixture('<article><p>alpha bravo charlie delta echo foxtrot</p></article>');
+        const late = deferred<InformationHighlightResult>();
+        const score = vi.fn((_text: string, _signal: AbortSignal, _modelId?: string) => late.promise);
+        const legacy = {...defaults, mode: 'surprisal-local' as const, model: 'qwen3-0.6b'};
+        const preferences = normalizeInformationHighlightPreferences(legacy);
+        const controller = installInformationHighlight(f.document, preferences, {scoreLocal: score});
+        controller.setEnabled(true); await f.settle(); expect(score).toHaveBeenCalledOnce();
+        expect(score.mock.calls[0][2]).toBe('qwen2.5-0.5b');
+        expect(legacy.model).toBe('qwen3-0.6b');
+        late.resolve({engine: 'Qwen2.5 0.5B Base', spans: [{start: 0, end: 5, score: 10}]});
+        await f.settle(); expect(f.painted()).toEqual(['alpha']);
+        controller.updatePreferences(normalizeInformationHighlightPreferences(legacy)); await f.settle();
+        expect(f.painted()).toEqual(['alpha']); expect(score).toHaveBeenCalledOnce();
+        controller.setEnabled(false); expect(f.painted()).toEqual([]);
+        controller.setEnabled(true); await f.settle(); expect(f.painted()).toEqual(['alpha']);
+        expect(score).toHaveBeenCalledOnce(); controller.dispose();
+    });
+    it('isolates generic model caches and aborts stale scores when a test-only Base choice changes', async () => {
+        // 只向通用控制器注入未来 Base 选项夹具，不通过生产配置归一化或模型清单启用额外模型。
+        const alternativeId = 'test-only-base' as never;
         const f = fixture('<article><p>alpha bravo charlie delta echo foxtrot</p></article>');
         const late = deferred<InformationHighlightResult>();
         const signals: AbortSignal[] = [];
@@ -337,21 +357,21 @@ describe('page-owned scoring, paint and cancellation', () => {
         const score = vi.fn((_text: string, signal: AbortSignal, modelId?: string) => {
             signals.push(signal);
             if (first) {first = false; return late.promise;}
-            return Promise.resolve({engine: modelId!, spans: [{start: modelId === 'qwen3-0.6b' ? 6 : 0, end: modelId === 'qwen3-0.6b' ? 11 : 5, score: 10}]});
+            return Promise.resolve({engine: modelId!, spans: [{start: modelId === alternativeId ? 6 : 0, end: modelId === alternativeId ? 11 : 5, score: 10}]});
         });
         const preferences = {...defaults, mode: 'surprisal-local' as const};
         const controller = installInformationHighlight(f.document, preferences, {scoreLocal: score});
         controller.setEnabled(true); await f.settle(); expect(score).toHaveBeenCalledOnce();
         expect(score.mock.calls[0][2]).toBe('qwen2.5-0.5b');
-        controller.updatePreferences({...preferences, model: 'qwen3-0.6b'});
+        controller.updatePreferences({...preferences, model: alternativeId});
         expect(signals[0].aborted).toBe(true);
         await f.settle(); expect(f.painted()).toEqual(['bravo']);
-        expect(score.mock.calls[1][2]).toBe('qwen3-0.6b');
+        expect(score.mock.calls[1][2]).toBe(alternativeId);
         late.resolve({engine: 'late-old-model', spans: [{start: 0, end: 5, score: 10}]});
         await f.settle(); expect(f.painted()).toEqual(['bravo']);
         controller.updatePreferences(preferences); await f.settle(); expect(f.painted()).toEqual(['alpha']);
         expect(score.mock.calls[2][2]).toBe('qwen2.5-0.5b');
-        controller.updatePreferences({...preferences, model: 'qwen3-0.6b'}); await f.settle();
+        controller.updatePreferences({...preferences, model: alternativeId}); await f.settle();
         expect(f.painted()).toEqual(['bravo']); expect(score).toHaveBeenCalledTimes(3);
         controller.dispose();
     });

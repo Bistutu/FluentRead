@@ -2,7 +2,7 @@
   @file src/core/translation/README.md
 
   文件职责：记录翻译候选核心的职责、处理管线、适配器决策模型与验证契约，帮助维护者理解 DOM 到候选文本的统一政策。
-  主要内容：说明 dom、registry、engine、text、serialization 的协作顺序、独立文本槽协议与基础 DOM 守卫，解释安全守卫、man7 手册的受信正文边界、Shadow DOM、站点适配优先级，以及单元与真实站点回归的覆盖要求。
+  主要内容：说明 dom、registry、engine、text、serialization 的协作顺序、独立文本槽协议与基础 DOM 守卫，解释安全守卫、man7 手册的受信正文边界、内容型按钮的显式站点例外、Shadow DOM、站点适配优先级，以及单元与真实站点回归的覆盖要求。
   模块边界：该文档只描述 core/translation 的维护契约，不充当运行时代码；候选使用 public.ts，纯协议与基础 DOM 判断分别直接使用 slotProtocol.ts、dom.ts，feature 调度和 provider 边界继续受架构测试约束。
 -->
 
@@ -90,7 +90,7 @@ Every accepted candidate includes a reason and optional adapter id. This keeps
 hover/full equality and adapter precedence directly testable without starting a
 browser. Open Shadow DOM is traversed through the same policy.
 
-Buttons and elements with `role=button` or `role=menuitem` own their internal
+By default, buttons and elements with `role=button` or `role=menuitem` own their internal
 labels, including labels styled as flex or grid boxes. They use the control text
 slot path in both display modes, keeping a single visible label within the
 original button height and preserving icons, click handlers and restoration.
@@ -100,6 +100,15 @@ only their own labels into control targets or text runs, leaving nested buttons
 with independent ownership.
 A mutation scan starting at an internal label resolves back to the control;
 protected subtrees still retain their original exclusion boundaries.
+
+An explicit site-adaptation `content` target can classify a content-bearing
+button or its internal headline label as `content`. This reuses the ordinary
+bilingual/single rendering and restoration paths without changing generic
+control ownership or bypassing hidden, editable or no-translate guards.
+Kagi News selects the headline label inside its expand/collapse buttons, with a
+non-atomic button fallback for headlines rendered directly as text. Keeping the
+label as the content owner stacks the bilingual text within the site's flex
+button rather than adding a second flex item. Other action buttons remain controls.
 
 ## Verification contract
 

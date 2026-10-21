@@ -15,7 +15,7 @@ describe('信息高亮偏好与配置迁移', () => {
         expect(second.informationHighlight.hotkeyEnabled).toBe(false);
     });
     it('合法设置可往返，源对象不被改写，未知字段被移除', () => {
-        for (const model of ['qwen2.5-0.5b','qwen3-0.6b'] as const) for (const mode of ['keywords','surprisal-local'] as const) for (const density of ['low','medium','high'] as const)
+        for (const model of ['qwen2.5-0.5b'] as const) for (const mode of ['keywords','surprisal-local'] as const) for (const density of ['low','medium','high'] as const)
             for (const color of ['rose','amber','mint','blue','violet','slate'] as const) for (const style of ['heatmap','background','underline'] as const) {
                 const preferences={enabled:style!=='underline',hotkey:mode==='keywords'?'Alt+H':'',hotkeyEnabled:density!=='low',mode,model,density,color,style,intensity:(['soft','standard','strong'] as const)[density.length%3]};
                 const source={informationHighlight:{...preferences,session:true}};
@@ -42,13 +42,18 @@ describe('信息高亮偏好与配置迁移', () => {
         expect(normalizeInformationHighlightPreferences({})).toEqual({enabled: false, hotkey: 'Alt+H', hotkeyEnabled: false, mode: 'keywords', model: 'qwen2.5-0.5b', density: 'high', color: 'rose', style: 'heatmap', intensity: 'standard'});
         expect(DEFAULT_INFORMATION_HIGHLIGHT_PREFERENCES).toEqual({enabled: false, hotkey: 'Alt+H', hotkeyEnabled: false, mode: 'keywords', model: 'qwen2.5-0.5b', density: 'high', color: 'rose', style: 'heatmap', intensity: 'standard'});
     });
-    it('keeps the legacy model by default and preserves an explicit Qwen3 choice independently of analysis mode', () => {
+    it('migrates retired Qwen3 preferences to Base without changing mode, appearance or shortcut consent', () => {
         for (const model of [undefined, null, false, 3, '', 'qwen3', 'remote-provider']) {
             expect(normalizeInformationHighlightPreferences({mode: 'surprisal-local', model})).toMatchObject({mode: 'surprisal-local', model: 'qwen2.5-0.5b'});
         }
-        const source = {mode: 'keywords', model: 'qwen3-0.6b'};
-        expect(normalizeInformationHighlightPreferences(source)).toMatchObject(source);
-        expect(normalizeConfig({informationHighlight: source}).informationHighlight.model).toBe('qwen3-0.6b');
-        expect(source).toEqual({mode: 'keywords', model: 'qwen3-0.6b'});
+        for (const mode of ['keywords', 'surprisal-local'] as const) {
+            const source = {...DEFAULT_INFORMATION_HIGHLIGHT_PREFERENCES, enabled: true, hotkey: 'Alt+J', hotkeyEnabled: true, mode, model: 'qwen3-0.6b', color: 'mint', density: 'low', intensity: 'strong'};
+            const expected = {...source, model: 'qwen2.5-0.5b'};
+            expect(normalizeInformationHighlightPreferences(source)).toEqual(expected);
+            const config = normalizeConfig({informationHighlight: source});
+            expect(config.informationHighlight).toEqual(expected);
+            expect(normalizeConfig(JSON.parse(JSON.stringify(config))).informationHighlight).toEqual(expected);
+            expect(source.model).toBe('qwen3-0.6b');
+        }
     });
 });
