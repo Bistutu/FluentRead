@@ -9,7 +9,7 @@ import videoLearningText from './video-learning/es-ES.json';
 import selfHelpText from './self-help/es-ES.json';
 import {compositeTranslationMessages, compositeTranslationLegacyText} from './compositeTranslation';
 import {aiRequestTimeoutMessages} from './aiRequestTimeout';
-import {sectionTranslationRulesEnglishMessages} from './sectionTranslationRules';
+import {sectionTranslationRulesSpanishMessages} from './sectionTranslationRulesRomance';
 import {mimoRetirementLegacyText} from './mimoRetirement';
 import {pdfReadingMessages} from './pdfReading';
 import {informationHighlightMessages} from './informationHighlight';
@@ -21,6 +21,7 @@ import cloudBackupText from './cloud-backup/es-ES.json';
 import type {
 enUSMessages} from './en-US';
 import {legacyTextOverrides} from './legacy-overrides';
+import {sectionTranslationRulesLegacyText} from './sectionTranslationRulesLegacy';
 import {createLegacyCorrectionText} from './legacy-corrections';
 import {createRuntimeFeedbackLegacyText} from './runtime-feedback';
 import {localTtsSpanishMessages} from './localTts';
@@ -540,7 +541,7 @@ export const esESMessages = {
     "settings.requestLimits.globalTitle": "Límites de solicitudes",
     "settings.requestLimits.globalHelp": "Los servicios y modelos sin ajustes propios comparten estos límites.",
     ...aiRequestTimeoutMessages["es-ES"],
-    ...sectionTranslationRulesEnglishMessages,
+    ...sectionTranslationRulesSpanishMessages,
     "settings.requestLimits.retryIntervals": "Intervalos de reintento",
     "settings.requestLimits.apiKeyRecovery": "Enfriamiento de la API key fallida",
     "settings.requestLimits.apiKeyRecoveryHelp": "Una clave que falla por autenticación, cuota o límite de frecuencia se omite temporalmente. Si el servicio devuelve Retry-After, se prioriza ese tiempo.",
@@ -2451,6 +2452,7 @@ const esESLegacyTextBase: Readonly<Record<string, string>> = {
 };
 
 export const esESLegacyText: Readonly<Record<string, string>> = {
+    ...sectionTranslationRulesLegacyText['es-ES'],
     ...googleDriveText.legacy,
     ...compositeTranslationLegacyText['es-ES'],
     ...cloudBackupText.legacy,

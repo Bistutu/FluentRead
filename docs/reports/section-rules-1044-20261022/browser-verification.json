@@ -152,5 +152,53 @@
     "scopeHidden": true,
     "modeVisible": true,
     "describedBy": "fr-section-remember-address"
-  }
+  },
+  "localizedNarrow": {
+    "ja-JP": {
+      "viewport": 390,
+      "pickerHeight": 143,
+      "ruleHeight": 112,
+      "modeLabel": "自動翻訳",
+      "modeLabelLines": 1,
+      "ruleScrollWidth": 390,
+      "minSizeButtonWidth": 34
+    },
+    "ko-KR": {
+      "viewport": 390,
+      "pickerHeight": 143,
+      "ruleHeight": 112,
+      "modeLabel": "자동 번역",
+      "modeLabelLines": 1,
+      "ruleScrollWidth": 390,
+      "minSizeButtonWidth": 34
+    },
+    "fr-FR": {
+      "viewport": 390,
+      "pickerHeight": 210.5,
+      "ruleHeight": 112,
+      "modeLabel": "Automatique",
+      "modeLabelLines": 1,
+      "ruleScrollWidth": 390,
+      "minSizeButtonWidth": 34
+    },
+    "ru-RU": {
+      "viewport": 390,
+      "pickerHeight": 210.5,
+      "ruleHeight": 112,
+      "modeLabel": "Автоперевод",
+      "modeLabelLines": 1,
+      "ruleScrollWidth": 390,
+      "minSizeButtonWidth": 34
+    },
+    "es-ES": {
+      "viewport": 390,
+      "pickerHeight": 210.5,
+      "ruleHeight": 112,
+      "modeLabel": "Automática",
+      "modeLabelLines": 1,
+      "ruleScrollWidth": 390,
+      "minSizeButtonWidth": 34
+    }
+  },
+  "localEvidence": "research/section-rules-1044-20261022/localized-merge-run3/report.json"
 }

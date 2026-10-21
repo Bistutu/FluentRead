@@ -144,6 +144,8 @@
 
 .fr-section-bar-heading.is-locked .fr-section-bar-title { display: none; }
 .fr-section-bar-heading.is-locked .fr-section-bar-instruction { color: #f4f5f9; font-weight: 600; }
+.fr-section-bar-actions { flex-wrap: wrap; }
+.fr-section-bar-actions > .fr-section-button { flex-shrink: 0; }
 
 .fr-section-button {
     min-height: 34px;
@@ -169,6 +171,7 @@
 }
 
 .fr-section-confirm {
+    flex-grow: 1;
     margin-left: auto;
     border-color: #ef4776;
     color: #fff;

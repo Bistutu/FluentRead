@@ -9,7 +9,7 @@ import videoLearningText from './video-learning/ja-JP.json';
 import selfHelpText from './self-help/ja-JP.json';
 import {compositeTranslationMessages, compositeTranslationLegacyText} from './compositeTranslation';
 import {aiRequestTimeoutMessages} from './aiRequestTimeout';
-import {sectionTranslationRulesEnglishMessages} from './sectionTranslationRules';
+import {sectionTranslationRulesJapaneseMessages} from './sectionTranslationRulesAsian';
 import {mimoRetirementLegacyText} from './mimoRetirement';
 import {pdfReadingMessages} from './pdfReading';
 import {informationHighlightMessages} from './informationHighlight';
@@ -21,6 +21,7 @@ import cloudBackupText from './cloud-backup/ja-JP.json';
 import type {
 enUSMessages} from './en-US';
 import {legacyTextOverrides} from './legacy-overrides';
+import {sectionTranslationRulesLegacyText} from './sectionTranslationRulesLegacy';
 import {createLegacyCorrectionText} from './legacy-corrections';
 import {createRuntimeFeedbackLegacyText} from './runtime-feedback';
 import {localTtsJapaneseMessages} from './localTts';
@@ -540,7 +541,7 @@ export const jaJPMessages = {
     "settings.requestLimits.globalTitle": "リクエスト制限",
     "settings.requestLimits.globalHelp": "個別設定のないサービスとモデルは、この制限を共有します。",
     ...aiRequestTimeoutMessages["ja-JP"],
-    ...sectionTranslationRulesEnglishMessages,
+    ...sectionTranslationRulesJapaneseMessages,
     "settings.requestLimits.retryIntervals": "再試行の間隔",
     "settings.requestLimits.apiKeyRecovery": "失敗した Key のクールダウン",
     "settings.requestLimits.apiKeyRecoveryHelp": "認証、クォータ、レート制限で失敗した Key を一時的にスキップします。サービスが Retry-After を返した場合は、その待ち時間を優先します。",
@@ -2455,6 +2456,7 @@ const jaJPLegacyTextBase: Readonly<Record<string, string>> = {
 };
 
 export const jaJPLegacyText: Readonly<Record<string, string>> = {
+    ...sectionTranslationRulesLegacyText['ja-JP'],
     ...googleDriveText.legacy,
     ...compositeTranslationLegacyText['ja-JP'],
     ...cloudBackupText.legacy,

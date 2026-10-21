@@ -529,6 +529,28 @@ function assertCompactRules(layout) {
   assert.equal(report.englishPicker.confirmation.text,'Translate and remember');
   await shot('08-picker-remember-390-en');
   await page.keyboard.press('Escape');await wait(async()=>!(await pickerActive()));
+  report.localizedNarrow = {};
+  for (const language of ['ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES']) {
+    await patch({uiLanguage:language});
+    await settingsReopened.reload();
+    await settingsReopened.locator('[data-settings-category="section-translation"], [data-settings-anchor-link="section-translation"]').first().click();
+    await reopenedRow.scrollIntoViewIfNeeded();
+    const localizedSettings = await rulesLayout(settingsReopened); assertCompactRules(localizedSettings);
+    const localizedSettingsShot = path.join(artifacts, `09-settings-rules-390-${language}.png`);
+    await settingsReopened.screenshot({path:localizedSettingsShot});report.screenshots.push(localizedSettingsShot);
+    await page.reload();await page.waitForSelector('#fluent-read-page-styles',{state:'attached'});
+    await activateExtensionTabWithoutForeground(context,page,30000);
+    await hover('#p1');await page.keyboard.press('Alt+R');await wait(pickerActive);
+    await clickPickerButton('.fr-section-expand');await wait(async()=>(await pickerState())?.selection==='locked');
+    await wait(async()=>await picker('return !this.querySelector(".fr-section-remember").hidden && !this.querySelector(".fr-section-confirm").disabled'),8000,`${language} selection inspection completes`);
+    await clickPickerButton('.fr-section-remember-checkbox');
+    await wait(async()=>await picker('return this.querySelector(".fr-section-remember-checkbox").checked'));
+    const localizedPicker = await pickerLayout(); assertCompactPicker(localizedPicker);
+    assert.notEqual(localizedPicker.confirmation.text,'Translate and remember',`${language} uses its own translation`);
+    await shot(`10-picker-remember-390-${language}`);
+    report.localizedNarrow[language] = {settings:localizedSettings,picker:localizedPicker};
+    await page.keyboard.press('Escape');await wait(async()=>!(await pickerActive()));
+  }
   await patch({uiLanguage:'zh-CN'});
   failureSurface = settingsReopened;
   await settingsReopened.reload();

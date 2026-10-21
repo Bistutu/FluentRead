@@ -22,6 +22,7 @@ import googleDriveText from './google-drive/en-US.json';
 import cloudBackupText from './cloud-backup/en-US.json';
 import type {MessageCatalog} from '../types';
 import {legacyTextOverrides} from './legacy-overrides';
+import {sectionTranslationRulesLegacyText} from './sectionTranslationRulesLegacy';
 import {createLegacyCorrectionText} from './legacy-corrections';
 import {createRuntimeFeedbackLegacyText} from './runtime-feedback';
 import {localTtsEnglishMessages} from './localTts';
@@ -2444,6 +2445,7 @@ const enUSLegacyTextBase: Readonly<Record<string, string>> = {
 };
 
 export const enUSLegacyText: Readonly<Record<string, string>> = {
+    ...sectionTranslationRulesLegacyText['en-US'],
     ...googleDriveText.legacy,
     ...compositeTranslationLegacyText['en-US'],
     ...cloudBackupText.legacy,
