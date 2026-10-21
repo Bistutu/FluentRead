@@ -1,7 +1,7 @@
 <!--
  @file src/app/popup/PopupLanguageSelect.vue
  文件职责：隔离 Popup 语言选择器的渲染，使关闭的菜单不创建完整语言选项 DOM。
- 主要内容：关闭时显示已保存语言在当前界面语言中的主名称，菜单和提示保留完整多语名称；触屏列表按实际可见视口限制内部滚动并保留独立关闭入口，只在所属菜单打开时订阅视口；保留 UiSelect 的搜索、键盘与定位及语言文案缓存，拒绝已关闭、禁用、失活或旧选择上下文的事件。
+ 主要内容：关闭时显示已保存语言在当前界面语言中的主名称，菜单和提示保留完整多语名称；触屏列表按实际可见视口限制内部滚动并保留独立关闭入口，只在所属菜单打开时订阅视口；配对往返缓存恢复后开启新的选择上下文，普通退出和卸载保持终止；保留 UiSelect 的搜索、键盘与定位及语言文案缓存，拒绝已关闭、禁用、失活或旧选择上下文的事件。
  模块边界：不读写配置或浏览器状态，选择结果通过 v-model 交给 PopupApp 持久化。
 -->
 <template>
@@ -43,6 +43,8 @@ const menuOpen = ref(false);
 const select = shallowRef<InstanceType<typeof UiSelect> | null>(null);
 const touchViewport = shallowRef<VisualViewportRect>();
 const pageExited = ref(false);
+let persistedHidden = false;
+let terminal = false;
 const controlRevision = ref(0);
 const choices = computed(() => props.source ? options.from : options.to);
 const context = useSettingsActionContext(() => !props.disabled && !pageExited.value,
@@ -92,9 +94,25 @@ const selectActions = computed(() => {
     close: () => {if (current() && menuOpen.value) {select.value?.blur();menuOpen.value = false;}},
   };
 });
-function handlePageHide(): void {pageExited.value = true;}
+function handlePageHide(event: PageTransitionEvent): void {
+  if (terminal) return;
+  persistedHidden = event.persisted;
+  if (!event.persisted) terminal = true;
+  pageExited.value = true;
+}
+function handlePageShow(event: PageTransitionEvent): void {
+  if (!event.persisted || !persistedHidden || terminal) return;
+  persistedHidden = false;
+  pageExited.value = false;
+}
 window.addEventListener('pagehide', handlePageHide);
-onBeforeUnmount(() => {releaseViewport?.();releaseViewport = undefined;window.removeEventListener('pagehide', handlePageHide);});
+window.addEventListener('pageshow', handlePageShow);
+onBeforeUnmount(() => {
+  terminal = true;persistedHidden = false;
+  releaseViewport?.();releaseViewport = undefined;
+  window.removeEventListener('pagehide', handlePageHide);
+  window.removeEventListener('pageshow', handlePageShow);
+});
 const label = (item: {value: string; label: string}) => item.value === 'auto'
   ? translateLegacy(item.label)
   : getMultilingualTargetLanguageLabel(item.value, item.label, language.value);

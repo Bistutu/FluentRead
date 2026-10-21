@@ -1,7 +1,7 @@
 /**
  * @file tests/popupChildOwnership.test.ts
  * 文件职责：执行 Popup 语言选择和首启根组件的实际客户端模板，验证旧事件与迟到加载的归属。
- * 主要内容：真实 Vue/KeepAlive 覆盖开关、源目标切换、外部值同步、关闭、失活、卸载、预加载和外观监听清理；首启根验证配对往返缓存恢复、已保存交接续接及普通退出不可复活；触屏语言列表执行真实视口订阅器，验证平移及键盘高度变化不替换选择器、关闭与失活取消队列，旧浮层回调不能写入新会话。
+ * 主要内容：真实 Vue/KeepAlive 覆盖开关、源目标切换、外部值同步、关闭、失活、卸载、预加载和外观监听清理；语言选择和首启根验证配对往返缓存恢复、普通退出不可复活及旧回调淘汰；首启根另验证已保存交接续接；触屏语言列表执行真实视口订阅器，验证平移及键盘高度变化不替换选择器、关闭与失活取消队列，旧浮层回调不能写入新会话。
  * 模块边界：Element Plus、引导展示、浏览器 locale、模块加载和外观应用为受控端口；不声称真实浏览器焦点或语言持久化证据。
  */
 import {createRequire} from 'node:module'
@@ -151,6 +151,35 @@ describe('PopupLanguageSelect 实际事件归属', () => {
   it.each(['disabled', 'source', 'value', 'cached', 'pagehide', 'unmount'])('%s 后拒绝捕获的选择及可见性事件', async reason => {
     await mount(selectPath, {modelValue: 'en'});await open();const old = handles(select());invalidate(reason);await settle()
     const before = state.menuOpen;old['onUpdate:modelValue']('de');old.onVisibleChange(!before);await settle();expect(updates).not.toHaveBeenCalled();expect(state.menuOpen).toBe(before)
+  })
+  it.each([false, true])('源语言=%s 的配对缓存恢复开启新选择，隐藏前的迟到结果和浮层不能回写', async sourceLanguage => {
+    const v = touchViewport(true);await mount(selectPath, {modelValue: 'en', source: sourceLanguage});await open()
+    const root = state, first = select(), old = handles(first), oldEffect = viewportEffect(), result = deferred<string>()
+    const pending = result.promise.then(value => old['onUpdate:modelValue'](value))
+    v.viewport.dispatchEvent(new win.Event('resize'));expect(v.frames.size).toBe(1)
+    pageTransition('pagehide', true);await settle();expect(state.pageExited).toBe(true);expect(handles(select()).disabled).toBe(true);expect(v.frames.size).toBe(0)
+    pageTransition('pageshow', false);await settle();expect(state.pageExited).toBe(true)
+    pageTransition('pageshow', true);await settle();expect(state).toBe(root);expect(select()).not.toBe(first);expect(handles(select()).disabled).toBe(false);expect(state.menuOpen).toBe(false)
+    await open();const current = select();pageTransition('pageshow', true);await settle();expect(select()).toBe(current)
+    result.resolve('de');await pending;old.onVisibleChange(false)
+    const popper = document.createElement('div');popper.className = 'fluentread-popup-language-popper';oldEffect.effect({state: {elements: {popper}}})
+    expect(popper.style.getPropertyValue('--fluentread-popup-language-height') ?? '').toBe('');expect(updates).not.toHaveBeenCalled();expect(state.menuOpen).toBe(true)
+    handles(select())['onUpdate:modelValue']('de');expectOneUpdate('de')
+  })
+  it('普通退出后的 persisted hide/show 不能重新启用语言选择', async () => {
+    await mount(selectPath, {modelValue: 'en'});await open();const old = handles(select())
+    pageTransition('pagehide', false);await settle();pageTransition('pagehide', true);pageTransition('pageshow', true);await settle()
+    expect(state.pageExited).toBe(true);expect(handles(select()).disabled).toBe(true);old['onUpdate:modelValue']('de');old.onVisibleChange(true)
+    expect(updates).not.toHaveBeenCalled();expect(state.menuOpen).toBe(false)
+  })
+  it('缓存隐藏后卸载移除配对监听，随后 pageshow 不复活语言选择', async () => {
+    const add = vi.fn(win.addEventListener.bind(win)), remove = vi.fn(win.removeEventListener.bind(win));win.addEventListener = add;win.removeEventListener = remove
+    await mount(selectPath, {modelValue: 'en'});await open();const old = handles(select())
+    pageTransition('pagehide', true);await settle();app?.unmount();app = undefined;pageTransition('pageshow', true);await settle()
+    expect(state.pageExited).toBe(true);old['onUpdate:modelValue']('de');expect(updates).not.toHaveBeenCalled()
+    for (const type of ['pagehide', 'pageshow']) {
+      const listener = add.mock.calls.find(call => call[0] === type)?.[1];expect(listener).toBeTypeOf('function');expect(remove).toHaveBeenCalledWith(type, listener)
+    }
   })
   it('禁用后立即重开不复活旧事件，新控件仍可选择', async () => {
     await mount(selectPath, {modelValue: 'en'});await open();const old = handles(select()), first = select();componentProps.disabled = true;componentProps.disabled = false;await settle()
