@@ -3,13 +3,14 @@ import {createInformationHighlightBackgroundHandlers} from '@/src/features/infor
 import {createInformationHighlightOffscreenAdapter} from '@/src/features/information-highlight/background/offscreenAdapter';
 import {createInformationHighlightModelRuntime, createInformationHighlightModelsRuntime, probeInformationHighlightWebGpu} from '@/src/features/information-highlight/offscreen/runtime';
 import {getInformationHighlightArtifactStore} from '@/src/features/information-highlight/offscreen/artifacts';
-import {INFORMATION_HIGHLIGHT_MODEL_BYTES} from '@/src/core/config/informationHighlightModel';
+import {INFORMATION_HIGHLIGHT_MODEL_BYTES, type InformationHighlightModelId} from '@/src/core/config/informationHighlightModel';
+import * as modelCatalog from '@/src/core/config/informationHighlightModel';
 import type {InformationHighlightModelStatus, InformationHighlightResult} from '@/src/features/information-highlight/protocol';
 import type {OffscreenClient} from '@/src/platform/offscreen/client';
 
 const result: InformationHighlightResult = {spans: [{start: 0, end: 1, score: 2}], engine: 'local'};
-const status: InformationHighlightModelStatus = {phase: 'ready', downloaded: true, initialized: false, downloadedBytes: INFORMATION_HIGHLIGHT_MODEL_BYTES, totalBytes: INFORMATION_HIGHLIGHT_MODEL_BYTES, downloadSizeBytes: INFORMATION_HIGHLIGHT_MODEL_BYTES, modelId: 'qwen2.5-0.5b', modelName: 'Qwen2.5 0.5B', supported: true};
-type ModelId = 'qwen2.5-0.5b' | 'qwen3-0.6b';
+const status: InformationHighlightModelStatus = {phase: 'ready', downloaded: true, initialized: false, downloadedBytes: INFORMATION_HIGHLIGHT_MODEL_BYTES, totalBytes: INFORMATION_HIGHLIGHT_MODEL_BYTES, downloadSizeBytes: INFORMATION_HIGHLIGHT_MODEL_BYTES, modelId: 'qwen2.5-0.5b', modelName: 'Qwen2.5 0.5B Base', supported: true};
+type ModelId = InformationHighlightModelId;
 const uuid = '01234567-0123-4123-8123-012345678901';
 const flush = async () => {for (let i = 0; i < 30; i++) await Promise.resolve();};
 afterEach(() => {vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks();});
@@ -38,21 +39,36 @@ describe('background identity and existing offscreen transport', () => {
         expect(offscreen.prepare).toHaveBeenCalledOnce();
         expect(await send('SCORE_INFORMATION_HIGHLIGHT', {text: 'a', requestId: uuid}, {id: 'id', url: 'chrome-extension://id/document.html'})).toEqual({success: true, result});
     });
-    it('routes explicit model identities through management and scoring, and rejects unknown model ids', async () => {
+    it('routes Base identities and rejects retired or unknown models before any management or scoring side effect', async () => {
         const {send, offscreen} = fixture();
         const ui = {id: 'id', url: 'chrome-extension://id/options.html'};
         const commands = {GET_INFORMATION_HIGHLIGHT_MODEL_STATUS: 'status', PREPARE_INFORMATION_HIGHLIGHT_MODEL: 'prepare', PAUSE_INFORMATION_HIGHLIGHT_MODEL: 'pause', REMOVE_INFORMATION_HIGHLIGHT_MODEL: 'remove'} as const;
         for (const [type, method] of Object.entries(commands) as Array<[string, typeof commands[keyof typeof commands]]>) {
-            await send(type, {modelId: 'qwen3-0.6b'}, ui);
-            expect(offscreen[method]).toHaveBeenLastCalledWith('qwen3-0.6b');
-            const calls = offscreen[method].mock.calls.length;
-            await expect(send(type, {modelId: 'remote-model'}, ui)).rejects.toThrow('INVALID_MODEL');
-            expect(offscreen[method]).toHaveBeenCalledTimes(calls);
+            await send(type, {modelId: 'qwen2.5-0.5b'}, ui);
+            expect(offscreen[method]).toHaveBeenLastCalledWith('qwen2.5-0.5b');
+            for (const modelId of ['qwen3-0.6b', 'remote-model']) {
+                await expect(send(type, {modelId}, ui)).rejects.toThrow('INVALID_MODEL');
+                expect(offscreen[method]).toHaveBeenCalledOnce();
+            }
         }
-        await send('SCORE_INFORMATION_HIGHLIGHT', {text: 'a', requestId: uuid, modelId: 'qwen3-0.6b'});
-        expect(offscreen.score).toHaveBeenLastCalledWith('a', expect.any(AbortSignal), 'qwen3-0.6b');
-        await expect(send('SCORE_INFORMATION_HIGHLIGHT', {text: 'a', requestId: uuid, modelId: 'remote-model'})).rejects.toThrow('INVALID_MODEL');
+        await send('SCORE_INFORMATION_HIGHLIGHT', {text: 'a', requestId: uuid, modelId: 'qwen2.5-0.5b'});
+        expect(offscreen.score).toHaveBeenLastCalledWith('a', expect.any(AbortSignal), 'qwen2.5-0.5b');
+        for (const modelId of ['qwen3-0.6b', 'remote-model']) await expect(send('SCORE_INFORMATION_HIGHLIGHT', {text: 'a', requestId: uuid, modelId})).rejects.toThrow('INVALID_MODEL');
         expect(offscreen.score).toHaveBeenCalledOnce();
+    });
+    it('keeps an in-flight Base score alive when a stale page or model card sends a retired model id', async () => {
+        const {send, offscreen} = fixture(); let resolve!: (result: InformationHighlightResult) => void;
+        offscreen.score.mockImplementation(() => new Promise(done => {resolve = done;}));
+        const task = Promise.resolve(send('SCORE_INFORMATION_HIGHLIGHT', {text: 'a', requestId: uuid, modelId: 'qwen2.5-0.5b'}));
+        const signal = offscreen.score.mock.calls[0][1];
+        const ui = {id: 'id', url: 'chrome-extension://id/options.html'};
+        for (const type of ['PREPARE_INFORMATION_HIGHLIGHT_MODEL', 'PAUSE_INFORMATION_HIGHLIGHT_MODEL', 'REMOVE_INFORMATION_HIGHLIGHT_MODEL']) {
+            await expect(send(type, {modelId: 'qwen3-0.6b'}, ui)).rejects.toThrow('INVALID_MODEL');
+        }
+        await expect(send('SCORE_INFORMATION_HIGHLIGHT', {text: 'a', requestId: uuid, modelId: 'qwen3-0.6b'})).rejects.toThrow('INVALID_MODEL');
+        expect(signal.aborted).toBe(false);
+        expect(offscreen.prepare).not.toHaveBeenCalled(); expect(offscreen.pause).not.toHaveBeenCalled(); expect(offscreen.remove).not.toHaveBeenCalled();
+        expect(offscreen.score).toHaveBeenCalledOnce(); resolve(result); await expect(task).resolves.toEqual({success: true, result});
     });
     it('cannot cancel another tab/frame/document and ignores a late result after same-owner cancellation', async () => {
         const {send, offscreen} = fixture(); let resolve!: (result: InformationHighlightResult) => void;
@@ -71,13 +87,13 @@ describe('background identity and existing offscreen transport', () => {
         const adapter = createInformationHighlightOffscreenAdapter({send} as unknown as OffscreenClient);
         for (const command of ['status','prepare','pause','remove'] as const) expect(await adapter[command]()).toEqual(status);
         for (const [command, type] of [['status', 'STATUS'], ['prepare', 'PREPARE'], ['pause', 'PAUSE'], ['remove', 'REMOVE']] as const) {
-            await adapter[command]('qwen3-0.6b');
-            expect(send).toHaveBeenLastCalledWith({type: `INFORMATION_HIGHLIGHT_${type}_OFFSCREEN`, modelId: 'qwen3-0.6b'}, expect.any(Object));
+            await adapter[command]('qwen2.5-0.5b');
+            expect(send).toHaveBeenLastCalledWith({type: `INFORMATION_HIGHLIGHT_${type}_OFFSCREEN`, modelId: 'qwen2.5-0.5b'}, expect.any(Object));
         }
         const signal = new AbortController().signal; expect(await adapter.score('a', signal)).toEqual(result);
         const options = send.mock.calls.at(-1)![1] as {cancelMessage: {requestId: string}; signal: AbortSignal}; expect(options.signal).toBe(signal); expect(options.cancelMessage.requestId).toMatch(/^[0-9a-f-]{36}$/u);
-        await adapter.score('a', signal, 'qwen3-0.6b');
-        expect(send).toHaveBeenLastCalledWith(expect.objectContaining({type: 'INFORMATION_HIGHLIGHT_SCORE_OFFSCREEN', modelId: 'qwen3-0.6b', text: 'a'}), expect.objectContaining({signal}));
+        await adapter.score('a', signal, 'qwen2.5-0.5b');
+        expect(send).toHaveBeenLastCalledWith(expect.objectContaining({type: 'INFORMATION_HIGHLIGHT_SCORE_OFFSCREEN', modelId: 'qwen2.5-0.5b', text: 'a'}), expect.objectContaining({signal}));
         send.mockResolvedValueOnce({success: false, error: 'INFORMATION_HIGHLIGHT_TOKEN_LIMIT'} as never); await expect(adapter.score('a', signal)).rejects.toThrow('TOKEN_LIMIT');
         send.mockResolvedValueOnce({success: false} as never); await expect(adapter.status()).rejects.toThrow('FAILED');
         send.mockResolvedValueOnce({success: false, error: 'bad'} as never); await expect(adapter.prepare()).rejects.toThrow('bad');
@@ -85,11 +101,17 @@ describe('background identity and existing offscreen transport', () => {
     });
 });
 
-describe('model registry keeps downloads independent and shares one GPU worker', () => {
+describe('generic model registry coordinates test-only Base choices and shares one GPU worker', () => {
+    // 生产清单只保留 Qwen2.5 Base；虚构 Base 描述符仅验证协调器在未来增加合格 Base 模型时仍隔离资源。
+    const alternativeId = 'test-only-base' as ModelId;
+    const lookup = modelCatalog.getInformationHighlightModel;
+    const alternative = {...lookup('qwen2.5-0.5b'), id: alternativeId, name: 'Test-only Base'};
     beforeEach(() => {vi.useFakeTimers(); vi.stubGlobal('navigator', {storage: {estimate: async () => ({quota: 10e9, usage: 0})}});});
     function fixture(customStore = false) {
-        const ready = {'qwen2.5-0.5b': true, 'qwen3-0.6b': true};
-        const stores = (['qwen2.5-0.5b', 'qwen3-0.6b'] as const).map(modelId => {
+        vi.spyOn(modelCatalog, 'getInformationHighlightModel').mockImplementation(value => value === alternativeId ? alternative : lookup(value));
+        const ready: Record<string, boolean> = {'qwen2.5-0.5b': true};
+        ready[alternativeId] = true;
+        const stores = (['qwen2.5-0.5b', alternativeId] as const).map(modelId => {
             const store = getInformationHighlightArtifactStore(modelId);
             return {modelId, complete: vi.spyOn(store, 'complete').mockImplementation(async () => ready[modelId]),
                 downloaded: vi.spyOn(store, 'downloaded').mockResolvedValue(0),
@@ -111,7 +133,7 @@ describe('model registry keeps downloads independent and shares one GPU worker',
     it('reads default or supplied registry stores for status without creating a worker or downloading files', async () => {
         for (const customStore of [false, true]) {
             const value = fixture(customStore);
-            expect(await value.runtime.status('qwen3-0.6b')).toMatchObject({modelId: 'qwen3-0.6b', downloaded: true});
+            expect(await value.runtime.status(alternativeId)).toMatchObject({modelId: alternativeId, downloaded: true});
             expect(value.stores[1].complete).toHaveBeenCalledTimes(6);
             expect(value.createWorker).not.toHaveBeenCalled(); expect(value.stores[1].download).not.toHaveBeenCalled();
             value.runtime.dispose(); vi.restoreAllMocks();
@@ -121,15 +143,15 @@ describe('model registry keeps downloads independent and shares one GPU worker',
         const value = fixture();
         const first = value.runtime.score('a', new AbortController().signal, 'qwen2.5-0.5b'); await flush();
         const stale = value.workers[0].onmessage!;
-        const second = value.runtime.score('a', new AbortController().signal, 'qwen3-0.6b'); await flush();
+        const second = value.runtime.score('a', new AbortController().signal, alternativeId); await flush();
         expect(value.createWorker).toHaveBeenCalledOnce();
         value.answer(0); expect(await first).toEqual(result); await flush();
         expect(value.workers[0].terminate).toHaveBeenCalledOnce(); expect(value.createWorker).toHaveBeenCalledTimes(2);
-        expect(value.workers[1].postMessage).toHaveBeenCalledWith(expect.objectContaining({modelId: 'qwen3-0.6b'}));
+        expect(value.workers[1].postMessage).toHaveBeenCalledWith(expect.objectContaining({modelId: alternativeId}));
         stale({data: {requestId: 1, success: true, initialized: true, result: {spans: [], engine: 'stale Qwen2'}}});
-        const newerResult = {...result, engine: 'Qwen3'}; value.answer(1, newerResult); expect(await second).toEqual(newerResult);
+        const newerResult = {...result, engine: 'Test-only Base'}; value.answer(1, newerResult); expect(await second).toEqual(newerResult);
         expect(await value.runtime.status('qwen2.5-0.5b')).toMatchObject({modelId: 'qwen2.5-0.5b', downloaded: true, initialized: false});
-        expect(await value.runtime.status('qwen3-0.6b')).toMatchObject({modelId: 'qwen3-0.6b', downloaded: true, initialized: true});
+        expect(await value.runtime.status(alternativeId)).toMatchObject({modelId: alternativeId, downloaded: true, initialized: true});
         const third = value.runtime.score('a', new AbortController().signal); await flush();
         expect(value.workers[1].terminate).toHaveBeenCalledOnce(); expect(value.createWorker).toHaveBeenCalledTimes(3);
         value.answer(2); await third;
@@ -137,43 +159,43 @@ describe('model registry keeps downloads independent and shares one GPU worker',
         value.runtime.dispose();
     });
     it('pauses and removes only the selected model while keeping the other model assets ready', async () => {
-        const value = fixture(); value.ready['qwen3-0.6b'] = false; let downloadSignal!: AbortSignal;
+        const value = fixture(); value.ready[alternativeId] = false; let downloadSignal!: AbortSignal;
         value.stores[1].download.mockImplementationOnce((_file, signal) => new Promise((_resolve, reject) => {
             downloadSignal = signal; signal.addEventListener('abort', () => reject(new DOMException('paused', 'AbortError')));
         }));
-        await value.runtime.prepare('qwen3-0.6b'); await flush();
+        await value.runtime.prepare(alternativeId); await flush();
         expect(downloadSignal.aborted).toBe(false);
         await value.runtime.pause('qwen2.5-0.5b'); expect(downloadSignal.aborted).toBe(false);
         expect(await value.runtime.status()).toMatchObject({downloaded: true, modelId: 'qwen2.5-0.5b'});
-        await value.runtime.pause('qwen3-0.6b'); await flush(); expect(downloadSignal.aborted).toBe(true);
-        await value.runtime.remove('qwen3-0.6b'); expect(value.stores[1].remove).toHaveBeenCalled(); expect(value.stores[0].remove).not.toHaveBeenCalled();
+        await value.runtime.pause(alternativeId); await flush(); expect(downloadSignal.aborted).toBe(true);
+        await value.runtime.remove(alternativeId); expect(value.stores[1].remove).toHaveBeenCalled(); expect(value.stores[0].remove).not.toHaveBeenCalled();
         expect(await value.runtime.status()).toMatchObject({downloaded: true}); expect(value.stores[0].download).not.toHaveBeenCalled();
         expect(value.createWorker).not.toHaveBeenCalled(); value.runtime.dispose();
     });
     it('does not replace the current warm model for a cancelled queued choice and still accepts a later switch', async () => {
         const value = fixture(), cancelled = new AbortController();
         const first = value.runtime.score('a', new AbortController().signal); await flush();
-        const queued = value.runtime.score('a', cancelled.signal, 'qwen3-0.6b');
+        const queued = value.runtime.score('a', cancelled.signal, alternativeId);
         const cancellation = expect(queued).rejects.toMatchObject({name: 'AbortError'}); cancelled.abort(); await cancellation;
         value.answer(0); await first; await flush();
         expect(value.createWorker).toHaveBeenCalledOnce(); expect(value.workers[0].terminate).not.toHaveBeenCalled();
         expect(await value.runtime.status()).toMatchObject({initialized: true});
         const alreadyCancelled = new AbortController(); alreadyCancelled.abort();
-        await expect(value.runtime.score('a', alreadyCancelled.signal, 'qwen3-0.6b')).rejects.toMatchObject({name: 'AbortError'}); await flush();
+        await expect(value.runtime.score('a', alreadyCancelled.signal, alternativeId)).rejects.toMatchObject({name: 'AbortError'}); await flush();
         expect(value.createWorker).toHaveBeenCalledOnce();
-        const newer = value.runtime.score('a', new AbortController().signal, 'qwen3-0.6b'); await flush(); value.answer(1); await newer;
+        const newer = value.runtime.score('a', new AbortController().signal, alternativeId); await flush(); value.answer(1); await newer;
         expect(value.workers[0].terminate).toHaveBeenCalledOnce(); expect(value.createWorker).toHaveBeenCalledTimes(2); value.runtime.dispose();
     });
     it('recovers the shared queue after one model fails and refuses all work after disposal', async () => {
         const value = fixture();
-        const failed = value.runtime.score('a', new AbortController().signal, 'qwen3-0.6b');
+        const failed = value.runtime.score('a', new AbortController().signal, alternativeId);
         const failure = expect(failed).rejects.toThrow('GPU lost'); await flush(); value.workers[0].onerror?.({message: 'GPU lost'}); await failure;
-        expect(await value.runtime.status('qwen3-0.6b')).toMatchObject({modelId: 'qwen3-0.6b', phase: 'error', initialized: false});
+        expect(await value.runtime.status(alternativeId)).toMatchObject({modelId: alternativeId, phase: 'error', initialized: false});
         const next = value.runtime.score('a', new AbortController().signal); await flush(); value.answer(1); await next;
         expect(await value.runtime.status()).toMatchObject({modelId: 'qwen2.5-0.5b', phase: 'ready', initialized: true});
         value.runtime.dispose(); expect(value.workers.every(worker => worker.terminate.mock.calls.length === 1)).toBe(true);
         expect(() => value.runtime.status()).toThrow('DISPOSED');
-        await expect(value.runtime.score('a', new AbortController().signal, 'qwen3-0.6b')).rejects.toThrow('DISPOSED');
+        await expect(value.runtime.score('a', new AbortController().signal, alternativeId)).rejects.toThrow('DISPOSED');
     });
 });
 
@@ -189,20 +211,44 @@ describe('bounded model runtime and explicit downloads', () => {
         const answer = (response = {success: true, result, initialized: true}) => worker.onmessage?.({data: {requestId: worker.postMessage.mock.calls.findLast(([request]) => request.type === 'score')![0].requestId, ...response}});
         return {runtime, worker, store, createWorker, notify, probe, answer};
     }
-    it('identifies Qwen3 assets and worker requests without overwriting the legacy model status', async () => {
-        const legacy = fixture(), newer = fixture(false, 'qwen3-0.6b');
-        expect(await newer.runtime.status()).toMatchObject({modelId: 'qwen3-0.6b', modelName: 'Qwen3 0.6B', downloaded: false});
-        const newerSize = (await newer.runtime.status()).totalBytes;
-        expect(newerSize).toBeGreaterThan(INFORMATION_HIGHLIGHT_MODEL_BYTES);
-        await newer.runtime.prepare(); await flush();
-        expect(newer.store.download.mock.calls.every(([file]) => (file as {url?: string}).url?.includes('/Qwen3-0.6B-ONNX/'))).toBe(true);
-        expect(legacy.store.download).not.toHaveBeenCalled();
-        const task = newer.runtime.score('a', new AbortController().signal); await flush();
-        expect(newer.worker.postMessage).toHaveBeenCalledWith(expect.objectContaining({type: 'score', modelId: 'qwen3-0.6b'}));
-        newer.answer(); await task; await newer.runtime.remove();
-        expect(await newer.runtime.status()).toMatchObject({downloaded: false, modelId: 'qwen3-0.6b'});
-        expect(await legacy.runtime.status()).toMatchObject({downloaded: true, modelId: 'qwen2.5-0.5b'});
-        newer.runtime.dispose(); legacy.runtime.dispose();
+    it('awaits retired cache cleanup before status reads and the preparation quota check', async () => {
+        let completeCleanup!: () => void;
+        const remove = vi.fn(() => new Promise<boolean>(resolve => {completeCleanup = () => resolve(true);}));
+        const estimate = vi.fn(async () => ({quota: 10e9, usage: 0}));
+        vi.stubGlobal('caches', {delete: remove}); vi.stubGlobal('navigator', {storage: {estimate}});
+        const value = fixture(false), status = value.runtime.status(), preparation = value.runtime.prepare();
+        await flush();
+        expect(remove).toHaveBeenCalledOnce(); expect(remove).toHaveBeenCalledWith('fluent-read-information-highlight-model-qwen3-0.6b-v1');
+        expect(value.store.complete).not.toHaveBeenCalled(); expect(estimate).not.toHaveBeenCalled();
+        completeCleanup();
+        expect(await status).toMatchObject({downloaded: false}); await preparation; await flush();
+        expect(estimate).toHaveBeenCalledOnce(); expect(value.store.download).toHaveBeenCalledTimes(6);
+        await value.runtime.status(); await value.runtime.prepare();
+        expect(remove).toHaveBeenCalledOnce(); value.runtime.dispose();
+    });
+    it('keeps Base status and scoring available if deletion of the retired cache fails', async () => {
+        const remove = vi.fn(async () => {throw new Error('old cache is unavailable');});
+        vi.stubGlobal('caches', {delete: remove});
+        const value = fixture();
+        expect(await value.runtime.status()).toMatchObject({modelId: 'qwen2.5-0.5b', phase: 'ready', downloaded: true});
+        const task = value.runtime.score('a', new AbortController().signal); await flush(); value.answer();
+        await expect(task).resolves.toEqual(result);
+        expect(await value.runtime.status()).toMatchObject({phase: 'ready', initialized: true});
+        expect(value.store.download).not.toHaveBeenCalled(); expect(value.store.remove).not.toHaveBeenCalled();
+        expect(remove).toHaveBeenCalledOnce(); expect(remove).toHaveBeenCalledWith('fluent-read-information-highlight-model-qwen3-0.6b-v1');
+        value.runtime.dispose();
+    });
+    it('uses only the fixed Base artifacts and identifies its worker requests and status', async () => {
+        const value = fixture(false);
+        expect(await value.runtime.status()).toMatchObject({modelId: 'qwen2.5-0.5b', modelName: 'Qwen2.5 0.5B Base', downloaded: false, totalBytes: INFORMATION_HIGHLIGHT_MODEL_BYTES});
+        await value.runtime.prepare(); await flush();
+        expect(value.store.download).toHaveBeenCalledTimes(6);
+        expect(value.store.download.mock.calls.every(([file]) => (file as {url?: string}).url?.includes('/onnx-community/Qwen2.5-0.5B/'))).toBe(true);
+        const task = value.runtime.score('a', new AbortController().signal); await flush();
+        expect(value.worker.postMessage).toHaveBeenCalledWith(expect.objectContaining({type: 'score', modelId: 'qwen2.5-0.5b'}));
+        value.answer(); await task; await value.runtime.remove();
+        expect(await value.runtime.status()).toMatchObject({downloaded: false, initialized: false, modelId: 'qwen2.5-0.5b'});
+        value.runtime.dispose();
     });
     it('status does not create a worker/download, caches cheap capability, and rejects inference before prepare', async () => {
         const {runtime, createWorker, store, probe} = fixture(false);
