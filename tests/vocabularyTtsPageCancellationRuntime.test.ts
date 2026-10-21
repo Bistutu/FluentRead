@@ -69,8 +69,18 @@ async function mountBook(honorAbort = true) {
     expect(Object.hasOwn(sender, 'tab')).toBe(false);
     const {window, document} = parseHTML('<html><head></head><body><div id="mount"></div></body></html>');
     Object.defineProperty(document, 'visibilityState', {configurable: true, value: 'visible'});
-    const browserSpeech = vi.fn(), audioPlay = vi.fn(async () => {});
-    Object.assign(window, {matchMedia: () => ({matches: false, addEventListener() {}, removeEventListener() {}}),
+    const browserSpeech = vi.fn(), audioPlay = vi.fn(async () => {}), audioContexts: any[] = [];
+    class TestAudioContext {
+        state = 'running'; destination = {};
+        resume = vi.fn(async () => {}); close = vi.fn(async () => {this.state = 'closed';});
+        decodeAudioData = vi.fn(async () => ({}));
+        createBufferSource = vi.fn(() => {
+            const source = {buffer: null, onended: null as unknown, connect: vi.fn(), disconnect: vi.fn(), start: vi.fn(), stop: vi.fn()};
+            return source;
+        });
+        constructor() {audioContexts.push(this);}
+    }
+    Object.assign(window, {AudioContext: TestAudioContext, matchMedia: () => ({matches: false, addEventListener() {}, removeEventListener() {}}),
         speechSynthesis: {getVoices: () => [], speak: browserSpeech, cancel: vi.fn()}});
     vi.stubGlobal('__VUE_DEVTOOLS_GLOBAL_HOOK__', {enabled: true, emit() {}});
     vi.stubGlobal('window', window); vi.stubGlobal('document', document);
@@ -142,8 +152,11 @@ async function mountBook(honorAbort = true) {
         const callback = events.get(button!)?.onClick; expect(callback).toBeTypeOf('function');
         callback({target: button, currentTarget: button, stopPropagation() {}, preventDefault() {}});
     }
+    function sendPlaybackState(message: unknown) {
+        for (const listener of listeners) (listener as (message: unknown, sender: unknown) => unknown)(message, sender);
+    }
     function unmount() {app.unmount(); apps.splice(apps.indexOf(app), 1);}
-    return {...rt, sender, document, listeners, traffic, clickSpeech, unmount, browserSpeech, audioPlay};
+    return {...rt, sender, document, listeners, traffic, clickSpeech, sendPlaybackState, unmount, browserSpeech, audioPlay, audioContexts};
 }
 
 describe('vocabulary extension-page TTS cancellation through public runtime', () => {
@@ -169,6 +182,34 @@ describe('vocabulary extension-page TTS cancellation through public runtime', ()
         expect(ctx.traffic.find(row => row.message.type === 'selectionTts')?.response).toMatchObject({success: false});
         expect(ctx.audioPlay).not.toHaveBeenCalled(); expect(ctx.browserSpeech).not.toHaveBeenCalled();
         expect(ctx.online).not.toHaveBeenCalled(); expect(ctx.play).not.toHaveBeenCalled();
+    });
+    it('activates extension-page Web Audio in the click gesture and plays returned synthesis bytes', async () => {
+        const ctx = await mountBook(); ctx.clickSpeech(); await settle();
+        expect(ctx.document.querySelector('.entry-speech-status')?.textContent).toBe('正在合成…');
+        expect(ctx.audioContexts).toHaveLength(1);
+        expect(ctx.audioContexts[0].resume).toHaveBeenCalledOnce();
+        expect(ctx.jobs).toHaveLength(1);
+        ctx.jobs[0].task.resolve(audio()); await settle();
+        expect(ctx.document.querySelector('.entry-speech-status')?.textContent).toBe('正在朗读');
+        expect(ctx.audioContexts[0].decodeAudioData).toHaveBeenCalledOnce();
+        expect(ctx.audioContexts[0].createBufferSource.mock.results[0].value.start).toHaveBeenCalledOnce();
+        expect(ctx.audioPlay).not.toHaveBeenCalled();
+    });
+    it('keeps the visible speech status while offscreen reports playback progress', async () => {
+        const ctx = await mountBook(); ctx.clickSpeech(); await settle();
+        ctx.jobs[0].task.resolve(audio()); await settle();
+        expect(ctx.document.querySelector('.entry-speech-status')?.textContent).toBe('正在朗读');
+        const id = ctx.traffic.find(row => row.message.type === 'selectionTts')?.message.clientRequestId;
+        ctx.sendPlaybackState({type: 'selectionTtsState', clientRequestId: id, state: 'progress', progress: 0.25});
+        await settle();
+        expect(ctx.document.querySelector('.entry-speech-status')?.textContent).toBe('正在朗读');
+    });
+    it('shows concrete provider errors when extension-page playback has no successful fallback', async () => {
+        const ctx = await mountBook(); ctx.clickSpeech(); await settle();
+        ctx.jobs[0].task.reject(new Error('Edge test failure')); await settle();
+        await vi.advanceTimersByTimeAsync(8000); await settle();
+        expect(ctx.document.querySelector('.book-toast')?.textContent).toContain('Edge test failure');
+        expect(ctx.document.querySelector('.book-toast')?.textContent).toContain('扩展页面 Google TTS 不可用');
     });
     it('isolates URL and UUID owners from content, wrong-page STOP and no-tab Google fallback', async () => {
         const rt = runtime(false), first = optionsSender(), other = {url: 'chrome-extension://controlled-extension/options.html?view=another'};

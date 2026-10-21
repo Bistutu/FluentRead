@@ -48,6 +48,7 @@ import {createVideoSubtitleBackgroundRuntime} from '@/src/features/video-subtitl
 import {createLocalModelMessageHandlers} from './localModelMessageRuntime';
 import {localTtsOffscreenAdapter} from '@/src/features/local-tts/background/offscreenAdapter';
 import {createSelectionTtsSynthesizer} from '@/src/features/selection-translation/background/selectionTtsSynthesis';
+import {runtimeFetch} from '@/src/platform/http/runtime';
 import {installWritingBackgroundRuntime} from './writingRuntime';
 import {installHarnessBackgroundRuntime} from './harnessRuntime';
 import {createImageGlossaryContext} from './imageGlossaryContext';
@@ -141,6 +142,11 @@ export function installBackgroundMessageRuntime(options: BackgroundMessageRuntim
             playbackStateSender: {runtimeId: browser.runtime.id, url: browser.runtime.getURL('/offscreen.html')},
             getPreferredVoices: () => config.selectionTtsVoices,
             synthesize: selectionTtsSynthesizer,
+            fetchPageAudio: async (url, signal) => {
+                const response = await runtimeFetch(url, {signal});
+                if (!response.ok) throw new Error(`Google TTS failed: ${response.status}${response.statusText ? ` ${response.statusText}` : ''}`);
+                return {audio: await response.arrayBuffer(), contentType: response.headers.get('content-type') || 'audio/mpeg'};
+            },
             playWithOffscreen: selectionTtsTransport.play,
             stopWithOffscreen: selectionTtsTransport.stop,
             seekWithOffscreen: selectionTtsOffscreenAdapter.seek,

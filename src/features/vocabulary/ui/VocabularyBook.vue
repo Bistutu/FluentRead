@@ -126,7 +126,7 @@
         <section v-else-if="filteredEntries.length === 0" class="empty-state"><span aria-hidden="true"><UiIcon name="search" :size="28" /></span><h3>没有匹配的词条</h3><p>{{ t('learning.collection.noMatchesHelp') }}</p><button type="button" @click="resetFilters">{{ t('learning.collection.reset') }}</button></section>
 
         <section v-else class="word-list" aria-label="收藏的单词与句子">
-          <CollectionEntry v-for="entry in pagedEntries" :key="entry.id" :entry="entry" :translation="entryTranslation(entry)" :playing="playingEntryId === entry.id" :busy="actionBusy" :status="entry.status === 'new' && isVocabularySentence(entry) ? '新收藏' : statusLabel(entry.status)" :review="nextReviewLabel(entry)" @study="openStudy(entry)" @speak="toggleEntrySpeech(entry)" @copy="copyEntry(entry, $event)" @mastery="entry.status === 'mastered' ? relearn(entry) : setMastered(entry)" @remove="removeEntry(entry)" @updated="replaceEntry" />
+          <CollectionEntry v-for="entry in pagedEntries" :key="entry.id" :entry="entry" :translation="entryTranslation(entry)" :playing="playingEntryId === entry.id" :speech-phase="playingEntryId === entry.id ? speechPhase : 'idle'" :busy="actionBusy" :status="entry.status === 'new' && isVocabularySentence(entry) ? '新收藏' : statusLabel(entry.status)" :review="nextReviewLabel(entry)" @study="openStudy(entry)" @speak="toggleEntrySpeech(entry)" @copy="copyEntry(entry, $event)" @mastery="entry.status === 'mastered' ? relearn(entry) : setMastered(entry)" @remove="removeEntry(entry)" @updated="replaceEntry" />
 
           <nav v-if="pageCount > 1" class="pagination" aria-label="单词本分页">
             <button type="button" :disabled="page <= 1" @click="page -= 1">上一页</button>
@@ -243,13 +243,18 @@ const moreMenu = ref<HTMLDetailsElement | null>(null);
 const currentTime = ref(Date.now());
 const lifecycle = createVocabularyLifecycleGuard();
 const playingEntryId = ref('');
+const speechPhase = ref<'idle' | 'requesting' | 'playing'>('idle');
 const speechController = createSelectionTtsContentController({
   createClientRequestId: () => createSelectionTtsClientRequestId(),
   stopRemote: clientRequestId => browser.runtime.sendMessage({type: 'selectionTtsStop', clientRequestId}),
 });
 let entryAudio: HTMLAudioElement | null = null;
 let entryAudioUrl = '';
+let entryAudioContext: AudioContext | null = null;
+let entryAudioSource: AudioBufferSourceNode | null = null;
 let entryUtterance: SpeechSynthesisUtterance | null = null;
+let speechRequestGeneration = 0;
+let entrySpeechWatchdog: number | null = null;
 let toastTimer: number | null = null;
 let timeRefreshTimer: number | null = null;
 let darkMedia: MediaQueryList | null = null;
@@ -317,61 +322,162 @@ watch([query, statusFilter, sortOrder, kindFilter, page, reviewStarted], () => s
 watch(entries, items => { if (playingEntryId.value && !items.some(entry => entry.id === playingEntryId.value)) stopEntrySpeech(); });
 
 function releaseEntryAudio(): void {
+  if (entryAudioSource) { try { entryAudioSource.stop(); } catch { /* 音源可能已经结束 */ } entryAudioSource.disconnect(); entryAudioSource = null; }
   if (entryAudio) { entryAudio.pause(); entryAudio.removeAttribute('src'); entryAudio = null; }
   if (entryAudioUrl) URL.revokeObjectURL(entryAudioUrl);
   entryAudioUrl = '';
 }
 
+function prepareEntryAudioContext(): AudioContext | null {
+  try {
+    if (!entryAudioContext || entryAudioContext.state === 'closed') entryAudioContext = new window.AudioContext();
+    // 必须在用户点击的同步调用栈内 resume；合成网络请求完成后再创建上下文会失去手势授权。
+    void entryAudioContext.resume().catch(() => undefined);
+    return entryAudioContext;
+  } catch { return null; }
+}
+
+async function playEntryAudioBytes(bytes: Uint8Array, contentType: string, generation: number): Promise<boolean> {
+  if (generation !== speechRequestGeneration) return false;
+  if (entryAudioContext && entryAudioContext.state !== 'closed') {
+    await entryAudioContext.resume();
+    const encoded = new Uint8Array(bytes.byteLength);
+    encoded.set(bytes);
+    const buffer = await entryAudioContext.decodeAudioData(encoded.buffer as ArrayBuffer);
+    if (generation !== speechRequestGeneration) return false;
+    const source = entryAudioContext.createBufferSource();
+    source.buffer = buffer;
+    source.connect(entryAudioContext.destination);
+    source.onended = () => { if (entryAudioSource === source) stopEntrySpeech(false); };
+    entryAudioSource = source;
+    source.start();
+    speechPhase.value = 'playing';
+    return true;
+  }
+  const audioUrl = URL.createObjectURL(new Blob([bytes], {type: contentType || 'audio/mpeg'}));
+  entryAudioUrl = audioUrl;
+  const audio = new Audio(audioUrl);
+  entryAudio = audio;
+  audio.onended = () => { if (entryAudio === audio) stopEntrySpeech(false); };
+  audio.onerror = () => { if (entryAudio === audio) { const entry = entries.value.find(item => item.id === playingEntryId.value); if (entry) void fallbackEntrySpeech(entry, generation); } };
+  await audio.play();
+  speechPhase.value = 'playing';
+  return true;
+}
+
 function stopEntrySpeech(notifyRemote = true): void {
+  speechRequestGeneration += 1;
+  if (entrySpeechWatchdog !== null) window.clearTimeout(entrySpeechWatchdog);
+  entrySpeechWatchdog = null;
   speechController.stop(notifyRemote);
   releaseEntryAudio();
   if (entryUtterance && 'speechSynthesis' in window) window.speechSynthesis.cancel();
   entryUtterance = null;
   playingEntryId.value = '';
+  speechPhase.value = 'idle';
 }
 
-function speakEntryWithBrowser(entry: VocabularyEntry): void {
-  if (entryUtterance) return;
+function speakEntryWithBrowser(entry: VocabularyEntry, generation = speechRequestGeneration, failureContext = ''): boolean {
+  if (generation !== speechRequestGeneration) return false;
+  if (entryUtterance) return true;
   // 远端失败后的结束消息或 page.play 的迟到拒绝不能再停止或重复当前浏览器回退。
   speechController.stop(false);
   releaseEntryAudio();
   if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
-    stopEntrySpeech(); showToast('当前环境无法朗读，请稍后重试。'); return;
+    showToast('当前环境无法朗读，请稍后重试。'); return false;
   }
   try {
     const utterance = new SpeechSynthesisUtterance(entry.term);
     utterance.lang = normalizeSpeechLanguage(entry.sourceLanguage);
     const voices = window.speechSynthesis.getVoices();
     utterance.voice = voices.find(voice => voice.lang.toLowerCase() === utterance.lang.toLowerCase()) ?? null;
+    utterance.onstart = () => {
+      speechPhase.value = 'playing';
+      if (entrySpeechWatchdog !== null) window.clearTimeout(entrySpeechWatchdog);
+      entrySpeechWatchdog = null;
+    };
     utterance.onend = () => { if (entryUtterance === utterance) stopEntrySpeech(false); };
-    utterance.onerror = () => { if (entryUtterance === utterance) { stopEntrySpeech(false); showToast('朗读未完成，请重试。'); } };
+    utterance.onerror = event => {
+      if (entryUtterance === utterance) {
+        stopEntrySpeech(false);
+        showToast(`浏览器语音启动失败${event.error ? `：${event.error}` : ''}${failureContext ? `；${failureContext}` : ''}`, false, 10000);
+      }
+    };
     entryUtterance = utterance;
     playingEntryId.value = entry.id;
     window.speechSynthesis.speak(utterance);
-  } catch { stopEntrySpeech(); showToast('当前环境无法朗读，请稍后重试。'); }
+    entrySpeechWatchdog = window.setTimeout(() => {
+      if (entryUtterance !== utterance) return;
+      window.speechSynthesis.cancel();
+      entryUtterance = null;
+      playingEntryId.value = '';
+      entrySpeechWatchdog = null;
+      showToast(`浏览器语音未启动${failureContext ? `；${failureContext}` : ''}`, false, 10000);
+    }, 8000);
+    return true;
+  } catch (cause) { if (generation === speechRequestGeneration) { entryUtterance = null; playingEntryId.value = ''; showToast(`浏览器语音调用失败：${speechErrorText(cause)}${failureContext ? `；${failureContext}` : ''}`, false, 10000); } return false; }
+}
+
+function speechErrorText(cause: unknown): string {
+  if (cause instanceof Error) return cause.message || cause.name;
+  return String(cause || '未知错误');
 }
 
 async function toggleEntrySpeech(entry: VocabularyEntry): Promise<void> {
   const wasPlaying = playingEntryId.value === entry.id;
   stopEntrySpeech();
   if (wasPlaying) return;
+  prepareEntryAudioContext();
+  const generation = speechRequestGeneration;
   playingEntryId.value = entry.id;
+  speechPhase.value = 'requesting';
   const remote = speechController.beginRemoteRequest();
   try {
-    const response = await browser.runtime.sendMessage({type: 'selectionTts', text: entry.term, language: normalizeSpeechLanguage(entry.sourceLanguage), clientRequestId: remote.clientRequestId}) as {success?: boolean; transport?: 'offscreen' | 'page'; audioBase64?: string; contentType?: string};
+    const response = await browser.runtime.sendMessage({type: 'selectionTts', text: entry.term, language: normalizeSpeechLanguage(entry.sourceLanguage), clientRequestId: remote.clientRequestId}) as {success?: boolean; transport?: 'offscreen' | 'page'; audioBase64?: string; contentType?: string; error?: string; errorCode?: string};
     const result = speechController.completeRemoteRequest(remote, response);
-    if (result === 'stale' || result === 'offscreen') return;
-    if (result === 'failed' || !response.audioBase64) { speakEntryWithBrowser(entry); return; }
+    if (result === 'stale' || generation !== speechRequestGeneration) return;
+    if (result === 'offscreen') return;
+    if (result === 'failed' || !response.audioBase64) {
+      const primaryError = response.error && !/取消|已取消|aborted|cancelled/iu.test(response.error) ? response.error : '在线服务未返回音频';
+      await fallbackEntrySpeech(entry, generation, primaryError);
+      return;
+    }
     const binary = atob(response.audioBase64);
     const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
-    entryAudioUrl = URL.createObjectURL(new Blob([bytes], {type: response.contentType || 'audio/mpeg'}));
-    const audio = new Audio(entryAudioUrl);
-    entryAudio = audio;
-    audio.onended = () => { if (entryAudio === audio) stopEntrySpeech(false); };
-    audio.onerror = () => { if (entryAudio === audio) speakEntryWithBrowser(entry); };
-    await audio.play();
-  } catch {
-    if (speechController.rejectRemoteRequest(remote)) speakEntryWithBrowser(entry);
+    await playEntryAudioBytes(bytes, response.contentType || 'audio/mpeg', generation);
+  } catch (cause) {
+    const current = speechController.rejectRemoteRequest(remote);
+    if (current && generation === speechRequestGeneration) await fallbackEntrySpeech(entry, generation, `在线请求或音频播放失败：${speechErrorText(cause)}`);
+  }
+}
+
+async function fallbackEntrySpeech(entry: VocabularyEntry, generation: number, primaryError = ''): Promise<void> {
+  const googleError = await speakEntryWithGoogle(entry, generation);
+  if (googleError === null || generation !== speechRequestGeneration) return;
+  const failureContext = [primaryError ? `在线合成：${primaryError}` : '', `Google 回退：${googleError}`].filter(Boolean).join('；');
+  if (!speakEntryWithBrowser(entry, generation, failureContext)) showToast(`朗读失败：${failureContext}`, false, 10000);
+}
+
+async function speakEntryWithGoogle(entry: VocabularyEntry, generation: number): Promise<string | null> {
+  if (generation !== speechRequestGeneration) return '朗读请求已取消';
+  releaseEntryAudio();
+  const remote = speechController.beginRemoteRequest();
+  try {
+    const response = await browser.runtime.sendMessage({type: 'selectionTtsGoogle', text: entry.term,
+      language: normalizeSpeechLanguage(entry.sourceLanguage), clientRequestId: remote.clientRequestId}) as {success?: boolean; transport?: 'offscreen' | 'page'; audioBase64?: string; contentType?: string; error?: string};
+    const result = speechController.completeRemoteRequest(remote, response);
+    if (generation !== speechRequestGeneration) return '朗读请求已取消';
+    if (result === 'offscreen') { playingEntryId.value = entry.id; speechPhase.value = 'playing'; return null; }
+    if (result === 'stale') return '朗读请求已取消';
+    if (result === 'page' && response.audioBase64) {
+      const binary = atob(response.audioBase64);
+      const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
+      return await playEntryAudioBytes(bytes, response.contentType || 'audio/mpeg', generation) ? null : '页面音频未启动';
+    }
+    return response.error || 'Google 服务未返回音频';
+  } catch (cause) {
+    speechController.rejectRemoteRequest(remote);
+    return speechErrorText(cause);
   }
 }
 
@@ -381,7 +487,7 @@ function handleEntrySpeechState(message: unknown): undefined {
     const entry = entries.value.find(item => item.id === playingEntryId.value);
     if (entry) speakEntryWithBrowser(entry);
     else stopEntrySpeech(false);
-  } else if (state) stopEntrySpeech(false);
+  } else if (state && state !== 'progress') stopEntrySpeech(false);
   return undefined;
 }
 
@@ -800,12 +906,12 @@ function normalizeLanguageKey(value: unknown): string {
 function goodIntervalLabel(entry: VocabularyEntry): string {
   return ['1 天后', '1 天后', '3 天后', '7 天后', '14 天后', '30 天后'][Math.min(5, entry.masteryLevel + 1)] || '30 天后';
 }
-function showToast(message: string, keepUndo = false): void {
+function showToast(message: string, keepUndo = false, durationMs = keepUndo ? 5000 : 2600): void {
   if (!lifecycle.isActive()) return;
   toastMessage.value = message;
   if (!keepUndo) undoExport.value = null;
   if (toastTimer !== null) window.clearTimeout(toastTimer);
-  toastTimer = window.setTimeout(() => { toastMessage.value = ''; undoExport.value = null; }, keepUndo ? 5000 : 2600);
+  toastTimer = window.setTimeout(() => { toastMessage.value = ''; undoExport.value = null; }, durationMs);
 }
 
 function handleBookChanged(message: unknown): undefined {
@@ -867,6 +973,7 @@ onBeforeUnmount(() => {
   darkMedia?.removeEventListener('change', applyTheme);
   if (toastTimer !== null) window.clearTimeout(toastTimer);
   if (timeRefreshTimer !== null) window.clearTimeout(timeRefreshTimer);
+  if (entryAudioContext && entryAudioContext.state !== 'closed') void entryAudioContext.close().catch(() => undefined);
 });
 </script>
 

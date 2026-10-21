@@ -111,7 +111,7 @@ async function getEndpointToken(signal?: AbortSignal): Promise<EndpointToken> {
     body: '',
     signal,
   });
-  if (!response.ok) throw new Error(`Edge TTS endpoint failed: ${response.status}`);
+  if (!response.ok) throw new Error(`Edge TTS endpoint failed: ${response.status}${response.statusText ? ` ${response.statusText}` : ''}`);
   const payload = await readJsonResponse<{ t?: unknown; r?: unknown } | null>(
     response,
     'Edge TTS endpoint returned invalid JSON',
@@ -142,7 +142,7 @@ async function synthesizeWithVoice(voice: string, endpoint: EndpointToken, chunk
       body: buildEdgeTtsSsml(chunk, voice),
       signal,
     });
-    if (!response.ok) throw new Error(`Edge TTS synthesis failed: ${response.status}`);
+    if (!response.ok) throw new Error(`Edge TTS synthesis failed (${voice}): ${response.status}${response.statusText ? ` ${response.statusText}` : ''}`);
     audioBuffers.push(await response.arrayBuffer());
   }
   throwIfAborted(signal);

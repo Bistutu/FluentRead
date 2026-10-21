@@ -6,7 +6,7 @@
  */
 import {getElementTagName, isTopLevelApplicationShell} from '@/src/core/translation/dom';
 import {getChineseScript, normalizeChineseLanguageCode} from '@/src/core/language/chinese';
-import {isLanguageCodeMatch} from '@/src/core/language/codes';
+import {isLanguageCodeMatch, normalizeDetectedLanguageCode} from '@/src/core/language/codes';
 import {isTextInLanguage, shouldSkipChineseSelection} from '@/src/core/language/detect';
 
 export interface SelectionRect {
@@ -469,7 +469,13 @@ export function calculateReadingPopupLayout(anchor: SelectionRect, viewport: Vie
 }
 
 export function normalizeSpeechLanguage(language: string | undefined, fallback = 'en-US'): string {
-    const normalized = String(language ?? '').trim().replace(/_/g, '-');
+    let normalized = String(language ?? '').trim().replace(/_/g, '-');
+    // 词书导入和语言检测可能保存 ISO 639-3（如 eng、jpn）；在线音色目录使用 BCP 47，
+    // 先复用项目统一别名表，并保留地区/脚本，避免 Edge TTS 找不到任何候选音色。
+    if (/^[a-z]{3}(?:-|$)/iu.test(normalized)) {
+        const canonical = normalizeDetectedLanguageCode(normalized);
+        if (canonical) normalized = [canonical, ...normalized.split('-').slice(1)].join('-');
+    }
     const lower = normalized.toLowerCase();
     if (!normalized || ['auto', 'detect', 'unknown', 'und'].includes(lower)) return fallback;
 

@@ -10,6 +10,7 @@
       <h3><button type="button" class="entry-open" :title="sentence ? '打开听读与解释' : '打开学习用法'" @click="emit('study')" data-i18n-ignore>{{ entry.term }}</button></h3>
       <div class="entry-actions">
         <button type="button" class="entry-icon" :class="{playing}" :aria-label="playing ? '停止朗读' : '朗读原文'" :title="playing ? '停止朗读' : '朗读原文'" @click="emit('speak')"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 7h4l4-3v12l-4-3H3z"/><path :d="playing ? 'M14 7v6m3-6v6' : 'M14 7a4 4 0 0 1 0 6m2-9a8 8 0 0 1 0 12'"/></svg></button>
+        <span v-if="playing" class="entry-speech-status" role="status">{{ speechPhase === 'requesting' ? '正在合成…' : '正在朗读' }}</span>
         <details ref="menu" class="entry-more" name="fluentread-collection-popover" @keydown.esc.stop.prevent="closeMenu">
           <summary aria-label="更多收藏操作" title="更多收藏操作"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h.01 M10 10h.01 M16 10h.01"/></svg></summary>
           <div class="entry-menu">
@@ -47,7 +48,7 @@ import {vocabularySourceContext} from '../source';
 import UiIcon from '@/src/ui/components/UiIcon.vue';
 import {useUiI18n} from '@/src/ui/i18n';
 const {t} = useUiI18n();
-const props = defineProps<{entry: VocabularyEntry; translation: string; playing: boolean; busy: boolean; status: string; review: string}>();
+const props = defineProps<{entry: VocabularyEntry; translation: string; playing: boolean; speechPhase: 'idle' | 'requesting' | 'playing'; busy: boolean; status: string; review: string}>();
 const emit = defineEmits<{study: []; speak: []; copy: [bilingual: boolean]; mastery: []; remove: []; updated: [entry: VocabularyEntry]}>();
 const visibleTranslation = computed(() => hasDistinctTranslation(props.entry.term, props.translation));
 const sentence = computed(() => isVocabularySentence(props.entry));
@@ -70,6 +71,7 @@ function updated(entry: VocabularyEntry): void {editing.value = false; emit('upd
 .entry-open {display:block; width:100%; padding:0; border:0; background:transparent; color:var(--ink); font:inherit; text-align:left; overflow-wrap:anywhere; cursor:pointer;}
 .entry-open:hover {color:var(--brand-strong);}
 .entry-actions {display:flex; flex:none; align-items:center; gap:3px;}
+.entry-speech-status {margin-left:4px; color:var(--brand-strong); font-size:11px; white-space:nowrap;}
 .entry-icon,.entry-more > summary {display:grid; place-items:center; box-sizing:border-box; width:30px; height:30px; padding:6px; border:0; border-radius:7px; color:var(--muted); background:transparent; cursor:pointer; list-style:none;}
 svg {width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round;}
 .entry-more > summary svg {stroke-width:3;}
