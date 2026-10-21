@@ -178,6 +178,69 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         expect(taskButton('下载文件 ↓').props.disabled).toBe(false);
     });
 
+    it.each([
+        ['service', 'resolve'], ['service', 'reject'], ['model', 'resolve'], ['model', 'reject'],
+        ['inherited-service', 'resolve'], ['inherited-service', 'reject'],
+    ] as const)('pauses an in-flight PDF after an external %s change, resumes missing text and ignores the old %s', async (change, settlement) => {
+        const initial = JSON.parse(JSON.stringify(ports.config));
+        Object.assign(initial, {service: 'bilibili', documentService: change === 'inherited-service' ? '' : change === 'model' ? 'openai' : 'bilibili', enableAIContext: false});
+        initial.documentModel.openai = 'document-before';
+        initial.token.openai = 'fixture-only-token';
+        Object.assign(ports.config, initial); ports.observer(initial); await flush();
+        ports.pageCount = 2;
+        ports.pageProvider = async (pageNumber, page) => ({...page, getTextContent: async () => {
+            const content = await page.getTextContent();
+            return {...content, items: content.items.map((item: any) => ({...item, str: `Original ${pageNumber}`}))};
+        }});
+        await state.loadFiles([file('external-switch.pdf')]); await flush();
+        expect(state.parsedDocument.segments).toHaveLength(2);
+        state.editSegment(0, '保留人工校订');
+        const old = deferred<string | string[]>();
+        const oldPort = change === 'model' ? ports.batch : ports.translate;
+        oldPort.mockReturnValueOnce(old.promise);
+        const running = state.startTranslation();
+        await vi.waitFor(() => expect(oldPort).toHaveBeenCalledOnce()); await flush();
+        const oldOptions = oldPort.mock.calls[0][2];
+        expect(oldOptions.signal.aborted).toBe(false);
+        expect(oldOptions.serviceOverride).toBe(change === 'model' ? 'openai' : 'bilibili');
+
+        const external = JSON.parse(JSON.stringify(initial));
+        if (change === 'model') external.documentModel.openai = 'document-after';
+        else if (change === 'inherited-service') external.service = 'microsoft';
+        else external.documentService = 'microsoft';
+        Object.assign(ports.config, external); ports.observer(external);
+        expect(oldOptions.signal.aborted).toBe(true);
+        await flush();
+        expect(state.translating).toBe(false);
+        expect(state.runState).toBe('paused');
+        expect(state.statusLabel).toBe('已暂停');
+        expect(taskButton('继续翻译').props.disabled).toBe(false);
+        expect(state.translatedSegments[0]).toBe('保留人工校订');
+        expect(state.confirmedTranslationIds).toEqual([0]);
+        expect(state.settingsChanged).toBe(false);
+
+        ports.batch.mockResolvedValueOnce(['切换后完成的译文']);
+        await taskButton('继续翻译').props.onClick();
+        await vi.waitFor(() => expect(state.translationComplete).toBe(true)); await flush();
+        expect(ports.batch).toHaveBeenCalledTimes(change === 'model' ? 2 : 1);
+        const resumed = ports.batch.mock.calls[change === 'model' ? 1 : 0];
+        expect(resumed[0]).toEqual(['Original 2']);
+        expect(resumed[2]).toMatchObject({
+            serviceOverride: change === 'model' ? 'openai' : 'microsoft',
+            modelOverride: change === 'model' ? 'document-after' : '',
+        });
+        expect(state.translatedSegments).toEqual(['保留人工校订', '切换后完成的译文']);
+        if (settlement === 'resolve') old.resolve(change === 'model' ? ['旧服务迟到译文'] : '旧服务迟到译文');
+        else old.reject(new Error('旧服务迟到 504 错误'));
+        await running; await flush();
+        expect(state.translationComplete).toBe(true);
+        expect(state.translatedSegments).toEqual(['保留人工校订', '切换后完成的译文']);
+        expect(state.confirmedTranslationIds).toEqual([0]);
+        expect(state.errorMessage).toBe('');
+        expect(ports.batch).toHaveBeenCalledTimes(change === 'model' ? 2 : 1);
+        expect(ports.translate).toHaveBeenCalledTimes(change === 'model' ? 0 : 1);
+    });
+
     it('persists a confirmed PDF history restart even when its first request fails, without restoring the replaced result', async () => {
         const parsed = await binaryService.parseDocumentFile(file('history-repeat.pdf'));
         if (parsed.binary?.kind !== 'pdf') throw new Error('expected PDF');
@@ -185,7 +248,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         const factory = new IDBFactory(), history = createDocumentHistory(factory);
         await history.save({id, name: parsed.fileName, format: 'pdf', size: bytes.length, total: parsed.segments.length,
             completed: parsed.segments.length, updatedAt: 1, bytes, mimeType: 'application/pdf', translations: ['历史完整译文'],
-            fingerprint: state.currentFingerprint, parsed, parsedVersion: 18});
+            fingerprint: state.currentFingerprint, parsed, parsedVersion: 19});
         app.unmount(); vi.stubGlobal('indexedDB', factory);
         root = node('root'); app = renderer.createApp(DocumentApp); app.mount(root); state = app._instance.setupState;
         await flush(); await state.openHistory({id}); await flush();
@@ -676,7 +739,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         const factory = new IDBFactory();
         const history = createDocumentHistory(factory);
         await history.save({id, name: 'history.txt', format: parsed.format, size: bytes.length, total: parsed.segments.length,
-            completed: 0, updatedAt: 1, bytes, mimeType, translations: [], fingerprint: '', parsed, parsedVersion: 18});
+            completed: 0, updatedAt: 1, bytes, mimeType, translations: [], fingerprint: '', parsed, parsedVersion: 19});
         app.unmount();
         vi.stubGlobal('indexedDB', factory);
         root = node('root'); app = renderer.createApp(DocumentApp); app.mount(root); state = (app._instance as any).setupState;
@@ -842,7 +905,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         }
         await vi.waitFor(async () => {
             const saved = await history.load(id);
-            expect(saved?.parsedVersion).toBe(18);
+            expect(saved?.parsedVersion).toBe(19);
             expect(saved?.translations).toEqual(expectedTranslations);
             expect((saved?.parsed as any).segments.map((segment: any) => segment.source)).toEqual(expectedSources);
             expect(saved?.parsed).not.toHaveProperty('segmentOrigins');
@@ -904,7 +967,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
             .toBeLessThan(old.binary.pages[0].blocks[0].lines![0].runs![0].y);
         await vi.waitFor(async () => {
             const saved = await history.load(id);
-            expect(saved?.parsedVersion).toBe(18);
+            expect(saved?.parsedVersion).toBe(19);
             expect(saved?.completed).toBe(1); expect(saved?.total).toBe(2);
             expect(saved?.translations).toEqual(translations);
             expect((saved?.parsed as typeof fresh).binary).toEqual(fresh.binary);
@@ -952,7 +1015,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         expect(hostText(retained)).not.toContain(conditionRetained.translation);
         await vi.waitFor(async () => {
             const saved = await history.load(id);
-            expect(saved?.parsedVersion).toBe(18);
+            expect(saved?.parsedVersion).toBe(19);
             expect(saved?.translations).toEqual(['保留正文校订']);
             expect(saved?.retainedRevisions).toEqual([previousRetained, conditionRetained]);
             expect(saved?.completed).toBe(1); expect(saved?.total).toBe(1);
@@ -1107,6 +1170,60 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         expect(ports.batch).not.toHaveBeenCalled(); expect(ports.translate).not.toHaveBeenCalled();
     });
 
+    it.each(['resolve', 'reject'] as const)('cancels OCR when the external PDF service changes and retries without committing the old %s', async settlement => {
+        const initial = JSON.parse(JSON.stringify(ports.config));
+        Object.assign(initial, {documentService: 'bilibili', enableAIContext: false});
+        Object.assign(ports.config, initial); ports.observer(initial); await flush();
+        await state.loadFiles([file('ocr-service-switch.pdf')]);
+        const original = state.parsedDocument;
+        const scanned = markRaw({...original, segments: [], binary: {...original.binary,
+            pages: original.binary.pages.map((page: PdfDocumentPage) => ({...page, scanned: true, segmentIndexes: [], blocks: []})),
+        }});
+        state.parsedDocument = scanned; state.documentQueue[0].document = scanned;
+        const old = deferred<any>(), next = deferred<any>();
+        ports.recognize.mockReturnValueOnce(old.promise).mockReturnValueOnce(next.promise);
+        const running = state.startTranslation();
+        await vi.waitFor(() => expect(ports.recognize).toHaveBeenCalledOnce());
+        const oldControls = ports.recognize.mock.calls[0][2];
+        oldControls.onProgress({completed: 1, total: 3}); await flush();
+        expect(state.recognitionProgress).toBeTruthy();
+
+        const external = {...initial, documentService: 'microsoft'};
+        Object.assign(ports.config, external); ports.observer(external);
+        expect(oldControls.signal.aborted).toBe(true);
+        await flush();
+        expect(state.runState).toBe('paused');
+        expect(state.recognitionProgress).toBe('');
+        expect(state.needsOcr).toBe(true);
+        expect(state.parsedDocument).toBe(scanned);
+        expect(taskButton('继续翻译').props.disabled).toBe(false);
+        taskButton('继续翻译').props.onClick();
+        await vi.waitFor(() => expect(ports.recognize).toHaveBeenCalledTimes(2));
+        const nextControls = ports.recognize.mock.calls[1][2];
+        nextControls.onProgress({completed: 1, total: 2}); await flush();
+        const nextProgress = state.recognitionProgress;
+        oldControls.onProgress({completed: 3, total: 3});
+        if (settlement === 'resolve') old.resolve({...scanned, segments: [{id: 0, source: 'Old OCR result'}]});
+        else old.reject(new Error('Old OCR failure'));
+        await running; await flush();
+        expect(state.translating).toBe(true);
+        expect(nextControls.signal.aborted).toBe(false);
+        expect(state.recognitionProgress).toBe(nextProgress);
+        expect(state.parsedDocument).toBe(scanned);
+        expect(state.errorMessage).toBe('');
+        expect(ports.batch).not.toHaveBeenCalled(); expect(ports.translate).not.toHaveBeenCalled();
+
+        next.resolve({...scanned, segments: [{id: 0, source: 'New OCR result'}], binary: {...scanned.binary,
+            pages: scanned.binary.pages.map((page: PdfDocumentPage) => ({...page, scanned: false, segmentIndexes: [0]})),
+        }});
+        await vi.waitFor(() => expect(state.translationComplete).toBe(true)); await flush();
+        expect(ports.batch).toHaveBeenCalledOnce();
+        expect(ports.batch).toHaveBeenCalledWith(['New OCR result'], 'ocr-service-switch.pdf', expect.objectContaining({serviceOverride: 'microsoft'}));
+        expect(state.translatedSegments).toEqual(['译 New OCR result']);
+        expect(state.recognitionProgress).toBe('');
+        expect(state.errorMessage).toBe('');
+    });
+
     it('shows an OCR failure and a retry action instead of the static scanned-document status', async () => {
         await state.loadFiles([file('scanned.pdf')]);
         const original = state.parsedDocument;
@@ -1207,7 +1324,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         expect(walk(root).some(entry => entry.text === `document.changeDocument.${available ? 'historyHint' : 'downloadHint'}`)).toBe(true);
     });
 
-    it.each([false, true])('keeps the task language, service, model, document batch and AI context snapshot across delayed scanned-PDF OCR with context=%s', async enableAIContext => {
+    it.each([false, true])('keeps the task language, document batch and AI context snapshot across delayed scanned-PDF OCR with context=%s', async enableAIContext => {
         const initial = JSON.parse(JSON.stringify(ports.config));
         Object.assign(initial, {from: 'en', to: 'zh-CN', documentService: 'openai', enableAIMultiSegment: false, enableAIContext});
         initial.documentModel.openai = 'document-before';
@@ -1237,12 +1354,11 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         expect(ports.translate).not.toHaveBeenCalled();
 
         const external = JSON.parse(JSON.stringify(initial));
-        Object.assign(external, {from: 'fr', to: 'de', documentService: 'google', enableAIMultiSegment: true, enableAIContext: !enableAIContext});
-        external.documentModel.openai = 'document-after';
+        Object.assign(external, {from: 'fr', to: 'de', enableAIMultiSegment: true, enableAIContext: !enableAIContext});
         Object.assign(ports.config, external);
         const sharedAfterUpdate = JSON.stringify(ports.config);
         ports.observer(external); await flush();
-        expect(state.config.from).toBe('fr'); expect(state.config.documentService).toBe('google');
+        expect(state.config.from).toBe('fr'); expect(state.config.documentService).toBe('openai');
         expect(state.translating).toBe(true);
         expect(state.taskFingerprint).toBe(fingerprint);
 
@@ -1270,7 +1386,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         expect(state.translatedSegments).toEqual(sources.map(source => `译 ${source}`));
         expect(state.taskFingerprint).toBe(fingerprint);
         expect(state.settingsChanged).toBe(true);
-        expect(state.config.documentModel.openai).toBe('document-after');
+        expect(state.config.documentModel.openai).toBe('document-before');
         expect(JSON.stringify(ports.config)).toBe(sharedAfterUpdate);
         expect(ports.sendMessage).not.toHaveBeenCalled();
     });

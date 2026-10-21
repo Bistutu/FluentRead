@@ -1,7 +1,7 @@
 /**
  * @file src/app/content/runtime.ts
  * 文件职责：作为内容脚本应用的顶层 composition root，协调配置就绪、站点规则、公共样式、主世界桥、功能注册表、快捷键和消息监听生命周期。
- * 主要内容：通过既有配置订阅即时重排网页双语与仅译文工件，不重发翻译请求；装配学习材料继续阅读的来源校验、定位与自动位置更新生命周期；先排除原始 XML 文档与失效扩展上下文，再安装内联 page.css 并按 capability 和配置挂载页面功能；配置变更时更新页面私有网站名单索引，按已提交地址检查自动翻译与站点禁用，锚点跳转保留请求，协调停用、往返缓存暂停恢复与销毁。
+ * 主要内容：通过既有配置订阅即时重排网页双语与仅译文工件，不重发翻译请求；装配当前文档的临时字体控制器与受支持frame同步，实质路由变化、停用、挂起与销毁时撤销；装配学习材料继续阅读的来源校验、定位与自动位置更新生命周期；先排除原始 XML 文档与失效扩展上下文，再安装内联 page.css 并按 capability 和配置挂载页面功能；配置变更时更新页面私有网站名单索引，按已提交地址检查自动翻译与站点禁用，锚点跳转保留请求，协调停用、往返缓存暂停恢复与销毁。
  * 模块边界：本文件只负责依赖装配和页面激活所有权，不实现具体翻译算法、组件内部状态、provider 请求或配置存储；这些职责分别属于 features、services 与 platform。
  */
 import {createLearningContentFeatures} from './learningFeatures';
@@ -55,6 +55,7 @@ import {applyCoreTranslationPreferences, createContentSiteAdaptationRuntime} fro
 import {createOptionalContentFeatureRuntime, type OptionalContentFeatureRuntime} from './optionalFeatures';
 import {createPageInformationHighlightRuntime} from './informationHighlight';
 import {createHoverTranslationConfigSubscription} from './hoverTranslationConfig';
+import {createPageTranslationFontRuntime} from './pageTranslationFont';
 export async function startContentApp(ctx: ContentScriptContext,
     capabilities: BrowserCapabilities = browserCapabilities): Promise<void> {
     if (isRawXmlContentDocument(document) || ctx.isInvalid) return;
@@ -83,6 +84,7 @@ export async function startContentApp(ctx: ContentScriptContext,
     let removePageStyles: (() => void) | null = null;
     let inputBoxConfigGeneration = 0;
     let previousInputBoxConfigKey = inputBoxTranslationConfigKey(config);
+    const pageTranslationFont = import.meta.env.BROWSER === 'userscript' ? undefined : createPageTranslationFontRuntime({document, onChange: () => document.dispatchEvent(new Event('fluentread-page-translation-font-changed'))});
     const informationHighlight = import.meta.env.BROWSER === 'userscript' ? undefined : createPageInformationHighlightRuntime({document, config, send: message => browser.runtime.sendMessage(message), canToggle: () => !currentPageSiteDisabled && !pageLifecycle.isSuspended()});
     const hotkeys = createContentHotkeyRuntime(() => currentPageSiteDisabled);
     const inputTranslationFeature = createInputTranslationContentFeature({
@@ -102,20 +104,19 @@ export async function startContentApp(ctx: ContentScriptContext,
         }); } catch { /* 站点状态广播不能阻断失效后的页面清理。 */ }
     };
     const isPageRuntimeEnabled = (): boolean => !cleanedUp && !ctx.isInvalid && !pageLifecycle.isSuspended() && !currentPageSiteDisabled && config.on !== false;
-    const mailFullPageToggle = capabilities.browser !== 'userscript'
-        ? installQqMailTopFrameBridge(isPageRuntimeEnabled, pageEventController.signal)
-            ?? installNeteaseMailTopFrameBridge(isPageRuntimeEnabled, pageEventController.signal)
+    const mailFullPageToggle = import.meta.env.BROWSER !== 'userscript' && capabilities.browser !== 'userscript'
+        ? installQqMailTopFrameBridge(isPageRuntimeEnabled, pageEventController.signal, () => pageTranslationFont?.read() === true)
+            ?? installNeteaseMailTopFrameBridge(isPageRuntimeEnabled, pageEventController.signal, () => pageTranslationFont?.read() === true)
         : undefined;
     if (import.meta.env.BROWSER !== 'userscript' && capabilities.browser !== 'userscript') {
-        installEmbeddedTopFrameBridge(isPageRuntimeEnabled, pageEventController.signal);
+        installEmbeddedTopFrameBridge(isPageRuntimeEnabled, pageEventController.signal, () => pageTranslationFont?.read() === true);
     }
     const disposePageFeatures = (): void => {
-        featureController?.abort(); featureController = null;
+        if (import.meta.env.BROWSER !== 'userscript') pageTranslationFont?.reset(); featureController?.abort(); featureController = null;
         optionalContentFeatures?.dispose(); optionalContentFeatures = null;
         restoreOriginalContent(); cancelAllTranslations();
         activePageFeatureRegistry?.unmountAll(); activePageFeatureRegistry = null;
-        pageAvailability?.disposeVideoSubtitlePage(); removePageStyles?.();
-        removePageStyles = null;
+        pageAvailability?.disposeVideoSubtitlePage(); removePageStyles?.(); removePageStyles = null;
         syncBilingualSentenceHighlight(document, false);
     };
     const activatePageFeatures = async (): Promise<void> => {
@@ -222,7 +223,7 @@ export async function startContentApp(ctx: ContentScriptContext,
     document.addEventListener('fluentread-route-change', createContentRouteChangeHandler({
         getHref: () => window.location.href,
         routeChanged: href => { informationHighlight?.routeChanged(); siteAdaptation.routeChanged(new URL(href)); },
-        resetTranslationRoute: () => { resetPageTranslationContextCache(); resetFullPageTranslationRouteState(); },
+        resetTranslationRoute: () => { if (import.meta.env.BROWSER !== 'userscript') pageTranslationFont?.reset(); resetPageTranslationContextCache(); resetFullPageTranslationRouteState(); },
         siteDisabled: href => siteRules.isExtensionDisabled(href),
         currentSiteDisabled: () => currentPageSiteDisabled,
         applySiteDisabledState, pageAvailability,
@@ -239,11 +240,11 @@ export async function startContentApp(ctx: ContentScriptContext,
         try {
             if (runtimeMessageListener) runtimeMessages.removeListener(runtimeMessageListener);
         } catch { /* 失效上下文的监听由浏览器释放，页面清理仍由本运行时负责。 */ }
-        disposePageFeatures();
+        disposePageFeatures(); if (import.meta.env.BROWSER !== 'userscript') pageTranslationFont?.dispose();
         unsubscribeContentConfig?.(); unsubscribeContentConfig = null;
     };
     runtimeMessageListener = createContentRuntimeMessageHandler(ctx, {
-        isSiteDisabled: () => currentPageSiteDisabled, updateSiteDisabled: applySiteDisabledState,
+        ...(import.meta.env.BROWSER === 'userscript' ? {} : {pageTranslationFont}), isSiteDisabled: () => currentPageSiteDisabled, updateSiteDisabled: applySiteDisabledState,
         isPageSuspended: pageLifecycle.isSuspended, ...(import.meta.env.BROWSER === 'userscript' ? {} : {informationHighlight}),
     }, capabilities);
     runtimeMessages.addListener(runtimeMessageListener);

@@ -650,6 +650,54 @@ describe('binary document translation formats', () => {
         expect(parsed.segments.some(segment => segment.source.includes('Native body text'))).toBe(true);
     });
 
+    it('扫描正文外的短页眉页脚仍触发 OCR，同时保留图表题注、公式及原生正文', async () => {
+        const pdf = await PDFDocument.create();
+        const picture = await pdf.embedPng(onePixelPng);
+        // 使用 Federal Register 混合 PDF 第 3、6 页的实测图像与文字坐标，不依赖远程文件可用性。
+        const appendix = pdf.addPage([612, 792]);
+        appendix.drawImage(picture, {x: 108, y: 90.81807709, width: 465.06488037, height: 601.58392334});
+        appendix.drawText('APPENDIX', {x: 108, y: 708.79699993, size: 12});
+        const lastPage = () => {
+            const page = pdf.addPage([612, 792]);
+            page.drawImage(picture, {x: 108, y: 116.91583252, width: 465.81503296, height: 603.08416748});
+            return page;
+        };
+        lastPage().drawText('[FR Doc. 2026-21447 Filed: 10/19/2026 8:45 am; Publication Date: 10/20/2026]', {x: 108, y: 92.88100052, size: 11});
+        const both = lastPage();
+        both.drawText('ANNEX', {x: 108, y: 735, size: 12});
+        both.drawText('Published: 2026-10-20', {x: 108, y: 92.88100052, size: 11});
+        lastPage().drawText('Figure 1: Federal systems', {x: 108, y: 92.88100052, size: 11});
+        lastPage().drawText('Native prose still explains the contents.', {x: 108, y: 92.88100052 + 65, size: 11});
+        lastPage().drawText('F(x) = QK', {x: 108, y: 735, size: 12});
+        lastPage().drawText('A detailed native explanation should remain available. '.repeat(4), {x: 40, y: 92.88100052, size: 4});
+        const threeLines = lastPage();
+        for (const [index, text] of ['Native first line', 'Native second line', 'Native third line'].entries()) {
+            threeLines.drawText(text, {x: 108, y: 750 - index * 14, size: 11});
+        }
+        const overlapping = pdf.addPage([612, 792]);
+        overlapping.drawImage(picture, {x: 0, y: 0, width: 612, height: 792});
+        overlapping.drawText('Native text over an image', {x: 108, y: 735, size: 12});
+
+        const bytes = await pdf.save(), before = bytes.slice();
+        const parsed = await parseBinaryDocument('mixed-scanned-attachment.pdf', bytes);
+        expect(bytes).toEqual(before);
+        expect(parsed.binary?.kind === 'pdf' && parsed.binary.pages.map(page => !!page.scanned)).toEqual([true, true, true, false, false, false, false, false, false]);
+        expect(pdfPagesNeedingOcr(parsed)).toEqual([0, 1, 2]);
+        expect(parsed.segments.some(segment => segment.source === 'Figure 1: Federal systems')).toBe(true);
+        expect(parsed.segments.some(segment => segment.source.includes('Native prose'))).toBe(true);
+        expect(parsed.binary?.kind === 'pdf' && parsed.binary.pages[5].blocks.some(block => block.kind === 'formula' && block.preserveSource)).toBe(true);
+    });
+
+    // 可选实件复验使用本地文件；确定性回归由上面的实测坐标夹具覆盖，不要求网络或下载原文件。
+    it.runIf(Boolean(process.env.FLUENTREAD_FEDERAL_REGISTER_PDF))('识别实际公报的四页扫描附件，保留前两页文字层和源文件', async () => {
+        const bytes = new Uint8Array(readFileSync(process.env.FLUENTREAD_FEDERAL_REGISTER_PDF!)), before = bytes.slice();
+        const parsed = await parseBinaryDocument('2026-21447.pdf', bytes);
+        expect(bytes).toEqual(before);
+        expect(parsed.binary?.kind === 'pdf' && parsed.binary.pages.map(page => !!page.scanned)).toEqual([false, false, true, true, true, true]);
+        expect(pdfPagesNeedingOcr(parsed)).toEqual([2, 3, 4, 5]);
+        expect(parsed.segments.some(segment => segment.source.startsWith('SUMMARY:'))).toBe(true);
+    });
+
     it('拒绝解压后单项过大的 ePub/DOCX 压缩包', async () => {
         const zip = new JSZip();
         zip.file('oversized.txt', 'x'.repeat(24 * 1024 * 1024 + 1));

@@ -159,6 +159,7 @@
       "tests/translationAppearance.test.ts",
       "tests/translationAppearanceStyles.test.ts",
       "tests/pageStyles.test.ts",
+      "tests/pageTranslationFont.test.ts",
       "tests/interfaceFonts.test.ts",
       "tests/usePopupLayoutReorder.test.ts",
       "tests/legacyPageCache.test.ts",

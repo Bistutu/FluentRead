@@ -1,7 +1,7 @@
 /**
  * @file src/providers/translation/microsoftTransport.ts
  * 文件职责：提供可跨浏览器扩展与 Obsidian 复用的微软免费翻译 HTTP 协议。
- * 主要内容：构造批量请求、转义纯文本、校验响应数量并还原译文；可选传输租约保留到已启动 HTTP 及未读取的成功或失败正文结束；实体字面值须在解码后保持原有身份和数量，否则整批拒收，避免服务删改内容后进入展示或缓存。
+ * 主要内容：构造批量请求、转义纯文本、校验响应数量并还原译文；可选传输租约保留到成功正文完整读取，错误或取消后主动终止未消费流，不等待错误页和取消确认；实体字面值须在解码后保持原有身份和数量，否则整批拒收，避免服务删改内容后进入展示或缓存。
  * 模块边界：只接收注入的 HTTP 端口，不读取扩展配置或持久化状态；字面值损坏仅抛原生响应错误，由 broker 统一恢复，不在传输层重试或猜测修补。
  */
 import {normalizeChineseLanguageCode} from '@/src/core/language/chinese';
@@ -101,11 +101,11 @@ export async function translateMicrosoftTextsWithTransport(
                     return decoded;
                 });
             } finally {
-                // 已读 JSON 无需再复制；取消前已发出的迟到响应、HTTP 错误或验证页
-                // 则须等未读正文结算，避免仅收到 headers 就提前归还并发许可。
-                if (lease && !response.bodyUsed) {
-                    try {await response.clone().arrayBuffer();}
-                    catch { /* 保留原始 HTTP、取消或响应错误，不让清理读取覆盖分类。 */ }
+                // 成功 JSON 已完整消费；错误页、验证页和取消后的迟到正文直接终止原始流。
+                // 取消确认本身可能挂起或失败，不能让它继续占用共享槽位或覆盖原始错误分类。
+                if (!response.bodyUsed) {
+                    try {void response.body?.cancel().catch(() => undefined);}
+                    catch { /* 同步取消失败也保留原始 HTTP、取消或响应错误。 */ }
                 }
             }
         })();

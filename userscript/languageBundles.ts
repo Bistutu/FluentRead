@@ -2,7 +2,7 @@
  * @file userscript/languageBundles.ts
  * 文件职责：在构建期保留 userscript 可呈现的界面文案，维持已发布语言资源的固定内容。
  * 主要内容：剔除没有扩展 popup 和本地模型后端的信息高亮文案、没有原生右键菜单发送者的操作失败通知，以及没有视频字幕运行时的完整句学习及原生全屏提示文案、Safari 原生免费池授权提示、扩展 Popup 专用缩写和新增文档页的配置读取、进度、续译与旧校订文案；已发布远程词典中的旧文档键保留原内容。脚本内联动态模块与样式，五种固定远程词典不新增扩展分块加载失败、AI 翻译超时或 DeepLX 直连文案，注册时由脚本补齐；局部划选同样在注册时更新文案，远端词典保留此前的点选提示；中英内嵌词典保留可用页面的新文案。
- * 集成兼容：MiMo 退役提示在完整设置可达，注册时补齐而不加入脚本固定词典；扩展专用诊断、新移动端字幕贴底标签、右下角显示模式按钮与新PDF弹窗不进入脚本词典；五种远程资源中的旧导出说明保留已发布文本，尚无脚本后台支持的材料旧文案与模板也从内嵌英文按目录排除，保留实际可用功能文案并避免固定提交引用不存在的新摘要。
+ * 集成兼容：MiMo 退役提示在完整设置可达，注册时补齐而不加入脚本固定词典；扩展专用诊断、新移动端字幕贴底标签、右下角显示模式和当前页字体按钮与新PDF弹窗不进入脚本词典；五种远程资源中的旧导出说明保留已发布文本，尚无脚本后台支持的材料旧文案与模板也从内嵌英文按目录排除，保留实际可用功能文案并避免固定提交引用不存在的新摘要。
  * 模块边界：只投影静态字典，不改变扩展词典、资源提交号或运行时语言装载协议。
  */
 import {UI_LANGUAGE_BUNDLES as extensionBundles} from '../src/core/i18n/bundles';
@@ -85,7 +85,7 @@ export function userscriptMessages<T extends Record<string, string>>(messages: T
         && !key.startsWith('diagnostics.')
         && !['waitingTranslation', 'crossPageContext', 'fullPassage', 'closePassage'].some(name => key === `document.pdfReading.${name}`)
         && !key.startsWith('safari.freePool.')
-        && !key.startsWith('popup.compact.') && !key.startsWith('popup.displayMode.') && !key.startsWith('document.config.')
+        && !key.startsWith('popup.compact.') && !key.startsWith('popup.displayMode.') && !key.startsWith('popup.pageFont.') && !key.startsWith('document.config.')
         && !key.startsWith('document.translationRecovery.')
         && !key.startsWith('document.retainedRevisions.') && !key.startsWith('document.translationProgress.'))) as T;
 }
