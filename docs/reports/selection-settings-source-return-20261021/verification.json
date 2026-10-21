@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "controlled-production-chromium-viewport-media; unsigned-Safari-compilation",
+  "scope": "controlled-production-chromium-viewport-media; unsigned-Safari-compilation; controlled-installed-native-source-return",
   "productPins": {
     "src/app/popup/PopupApp.vue": {
       "bytes": 80845,
@@ -48,7 +48,19 @@
     },
     "correctedTypecheckExit": 0,
     "testInventoryAuditExit": 0,
-    "auditIsExecutedTestCount": false
+    "auditIsExecutedTestCount": false,
+    "followupFixtureCorrection": {
+      "commit": "05fba3849fb8c44fdc93ef80dac53c5eb4d6c3ea",
+      "changedFiles": [
+        "tests/browserFocusSafety.test.ts",
+        "tests/serviceConfigurationLifecycle.test.ts"
+      ],
+      "completeFilesPassed": 317,
+      "typecheckExit": 0,
+      "qualityCISuccess": true,
+      "docsCISuccess": true,
+      "productFilesChanged": false
+    }
   },
   "builds": {
     "chrome": 0,
@@ -221,12 +233,139 @@
     }
   },
   "remaining": [
-    "installed native Safari selection route and return",
+    "installed native local Word-to-Sentence preview transition",
+    "installed normal-selection reading-question IME and Send",
     "actual hidden/show and BFCache behavior on new package",
-    "reading-question IME and software keyboard on installed new package",
     "new-package configuration and permission retention",
     "physical devices, long background and eviction",
     "YouTube authenticated playback and AVKit system fullscreen bridge"
   ],
-  "referenceProjectsUsed": false
+  "referenceProjectsUsed": false,
+  "installedNativeReturn": {
+    "frozenSnapshotCommit": "c54e0b505c90e08a4a13b7a6d4d7ad43cb10ba0a",
+    "builtFromExactClean05fba": false,
+    "dedicatedUpdate": {
+      "AppFiles": 490,
+      "WebFiles": 472,
+      "unsigned": true,
+      "physicalDevice": false
+    },
+    "formal": {
+      "passed": 1,
+      "skipped": 0,
+      "failed": 0,
+      "durationSeconds": 19.620184063911438
+    },
+    "outerExit": 0,
+    "runtime": {
+      "payloadsRead": 8,
+      "publicSnapshots": 8,
+      "UIActions": 6,
+      "PNG": 0,
+      "actions": {
+        "extensionPopup": 1,
+        "moreSettings": 1,
+        "pageMenu": 1,
+        "SafariActivate": 1,
+        "selectionTile": 1,
+        "sourceReturn": 1
+      },
+      "readiness": {
+        "callbacksCappedAt32": 1,
+        "elapsedSeconds": 1.4143959283828735,
+        "lastKnownExactDisabledCountCappedAt2": 1,
+        "ready": true,
+        "result": "COMPLETED",
+        "terminalInvalid": false,
+        "timeoutSeconds": 5
+      },
+      "witnesses": {
+        "completeTabSetAcceptance": false,
+        "configurationOrPermissionRetentionAcceptance": false,
+        "distinctOptionsOwnerObserved": true,
+        "documentTimeOriginOrNoReloadAcceptance": false,
+        "exactKnownFixtureMarkerObserved": true,
+        "hostCount": 0,
+        "numericTabIdMappingAcceptance": false,
+        "originalSameRunNativeOwnerObserved": true,
+        "ownedCount": 0,
+        "productionAcceptance": false,
+        "providerRequestsByDriver": 0,
+        "providerRequestsByProduct": "UNKNOWN_NOT_INTERCEPTED",
+        "returnButtonFull44EnabledHittableFresh": true,
+        "scope": "CONTROLLED_FIXTURE_SINGLE_NATIVE_SOURCE_RETURN_OBSERVED",
+        "scrollMatchesInitial": true,
+        "sourceReturnTapAttempts": 1,
+        "sourceTextUnchanged": true,
+        "strictReadoutSchemaParsed": true,
+        "unknownLabelIdentifierValueOrOwnerUUIDExported": false
+      },
+      "sourceReturnAccepted": true
+    },
+    "commands": 21,
+    "streams": 42,
+    "allCommandsClosedReapedAndGroupsAbsent": true,
+    "all15StartedEndedShutdown": true,
+    "other14WholeRecordsIdentical": true,
+    "threeFocusPointsSame": true,
+    "continuousFocusMonitoring": false,
+    "report": {
+      "bytes": 60188,
+      "sha256": "9c29d40eca7801516fd4377772c5f213ea36cd13cd0a900cb61b8ec3af8e4074"
+    },
+    "RootReceipt": {
+      "bytes": 5135,
+      "sha256": "62205ddcb37ee6cfcb062fac4b0e28c7fa9c92982a5878b0aa310152aeea3a63"
+    },
+    "independentReview": {
+      "bytes": 12375,
+      "sha256": "91d19733f72890367824dc066c2b93da741e56f1db20bda9e8f19be0cd76b6a2"
+    },
+    "controlledSourceReturnAcceptance": true,
+    "configurationRetention": "UNKNOWN",
+    "permissionPersistence": "UNKNOWN",
+    "completeTabSetOrDocumentTimeOriginNoReloadAcceptance": false,
+    "productionAcceptance": false,
+    "GO": false
+  },
+  "relatedControlledKeyboardReport": "../current-shared-reading-keyboard-20261021/verification.json",
+  "latestNativePreviewDiagnostic": {
+    "case": 51,
+    "formal": {
+      "PASS": 0,
+      "SKIP": 1,
+      "FAIL": 0,
+      "durationSeconds": 13.504475951194763
+    },
+    "outerExit": 0,
+    "AX": 3,
+    "UI": 3,
+    "PNG": 0,
+    "readinessSeconds": 5.010149955749512,
+    "readinessCallbacks": 5,
+    "exactKnownLabelCount": 1,
+    "ready": false,
+    "terminalInvalid": true,
+    "selectionTile": 0,
+    "MoreSettings": 0,
+    "SentencePreview": 0,
+    "POnlyGuardReached": false,
+    "previewAcceptance": false,
+    "conclusion": "Stopped at bounded pre-tile readiness. Exact label count does not prove all other readiness gates; no preview or product-regression inference and no unchanged retry.",
+    "commands": 21,
+    "streams": 42,
+    "allClosedReapedGroupsAbsent": true,
+    "report": {
+      "bytes": 60080,
+      "sha256": "cb496e959fe64672cf593321dd1f0e9411d576d71b5c4f66e2b4e6d65f479242"
+    },
+    "RootReceipt": {
+      "bytes": 33730,
+      "sha256": "80d6af7cc23bb6d38cd216e4024602e957e6c3d2f45279530050ac71fc8c28af"
+    },
+    "independentReview": {
+      "bytes": 5647,
+      "sha256": "af462d50de39584609192a1f00e769bc6b4027e21e4ab636d2418163eb2292dd"
+    }
+  }
 }
