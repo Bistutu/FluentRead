@@ -654,5 +654,187 @@
       }
     },
     "independentFreshSourceWebAndThreeAppPerFileMapsVerified": true
+  },
+  "nativeUpdate6": {
+    "scope": "dedicated-simulator-binary-identity-only",
+    "sourceCommit": "0ea3b708e372321e3cdd3da7497584398e4d266e",
+    "outerSession": 15524,
+    "outerExit": 0,
+    "elapsedMs": 30841.337708999996,
+    "singleInstall": true,
+    "commands": 12,
+    "streams": 24,
+    "allClosedReapedOwnGroupsAbsent": true,
+    "appFiles": 490,
+    "webFiles": 472,
+    "fourNewMapPairsEqualBuild": true,
+    "RootFreshInstalledAppWebHashVerified": true,
+    "all15EndedShutdown": true,
+    "other14WholeRecordsUnchanged": true,
+    "configurationPreservation": "UNKNOWN",
+    "permissionPreservation": "UNKNOWN",
+    "UIAcceptance": false,
+    "nativeDialogOrKeyboardAcceptance": false,
+    "evidence": {
+      "report": {
+        "path": "settings-selection-source-return-followup-1/fd81-update-6/update-only-runtime-1/update-only-report.json",
+        "bytes": 54257,
+        "sha256": "459a54e1a93cea4c2c1553a8a72e23844e614d91c07d5ae760da29a83a5a8c51"
+      },
+      "rootReceipt": {
+        "path": "settings-selection-source-return-followup-1/fd81-update-6/update-only-runtime-1/root-execution-receipt.json",
+        "bytes": 7263,
+        "sha256": "575165b3b5335283edee8ee82727d3e308446eea7840be17e93d0b6a677ecb88"
+      },
+      "commitBridge": {
+        "path": "settings-selection-source-return-followup-1/fd81-update-6/root-build5-commit-bridge.json",
+        "bytes": 2105,
+        "sha256": "4074d52c44fe13c454696c0bb149d13d6dd680d6d7e0d10a855ac91851ff0a21"
+      },
+      "independentReview": {
+        "path": "settings-selection-source-return-followup-1/fd81-update-6/actual-independent-review.json",
+        "bytes": 10126,
+        "sha256": "25a77810695da0f179b04403f84c48180272794cd211e5001552ed88a2c46b69"
+      }
+    },
+    "independentFreshInstalledAppWebPerFileAndAggregateHashVerified": true
+  },
+  "nativeCategoryCase55": {
+    "productCommit": "0ea3b708e372321e3cdd3da7497584398e4d266e",
+    "installedPackage": "N5/U6",
+    "formal": {
+      "pass": 0,
+      "skip": 1,
+      "fail": 0,
+      "durationSeconds": 17.021232962608337
+    },
+    "AX": 4,
+    "UI": 4,
+    "PNG": 0,
+    "popupGesture": 1,
+    "knownExactDisabledButtonCount": 1,
+    "readinessElapsedSeconds": 5.011412978172302,
+    "optionsReached": false,
+    "categoryObserved": false,
+    "categoryClicks": 0,
+    "dialogOrKeyboardAccepted": false,
+    "cause": "UNKNOWN",
+    "commands": 21,
+    "streams": 42,
+    "allClosedReapedOwnGroupsAbsent": true,
+    "evidence": {
+      "report": {
+        "path": "fresh-installed84a-native-touch-selection-55/reading-options-readonly-execution-report.json",
+        "bytes": 61063,
+        "sha256": "15ed60db1ab7c39aa86aa4f76d394f579eadb12a1142d26b5caec4004e2d067c"
+      },
+      "rootReceipt": {
+        "path": "fresh-installed84a-native-touch-selection-55/root-execution-receipt.json",
+        "bytes": 4401,
+        "sha256": "9eff120b492e278a8a40621573d6f8eca72448a08d58bfa5e5ba349e65fba72c"
+      },
+      "independentReview": {
+        "path": "fresh-installed84a-native-touch-selection-55/actual-independent-review.json",
+        "bytes": 10189,
+        "sha256": "73485ae8d6eca0db3b4ea41f75c0244d1f766d9776917f09cc1a771008a3b5eb"
+      }
+    },
+    "independentSavedEvidenceReviewPassed": true
+  },
+  "nativeCategoryCase56": {
+    "productCommit": "0ea3b708e372321e3cdd3da7497584398e4d266e",
+    "installedPackage": "N5/U6",
+    "formal": {
+      "pass": 0,
+      "skip": 1,
+      "fail": 0,
+      "durationSeconds": 15.438373923301697
+    },
+    "AX": 6,
+    "UI": 5,
+    "PNG": 0,
+    "fullSettings": {
+      "tapAttempts": 1,
+      "frame": {
+        "height": 46,
+        "width": 60,
+        "x": 320,
+        "y": 491
+      },
+      "newTabCreationProved": false
+    },
+    "category": {
+      "tapAttempts": 1,
+      "frame": {
+        "height": 35,
+        "width": 203,
+        "x": 183,
+        "y": 74
+      },
+      "role": "other",
+      "knownLiveGuardPassed": true,
+      "full44PositiveFinite": false,
+      "DOMOuterBoundsProved": false
+    },
+    "postCategory": {
+      "AddInputSaveReturnOrPermissionActions": 0,
+      "additionalSnapshots": 1,
+      "categoryTapAttempts": 1,
+      "categoryTapReturned": true,
+      "countCappedAt17": 1,
+      "fresh3s": true,
+      "knownLabel": "翻译服务",
+      "knownRowsMaximum16": [
+        {
+          "frame": {
+            "height": 42,
+            "width": 250.00000000000003,
+            "x": 143.99999999999997,
+            "y": 154.33333333333331
+          },
+          "hasCachedWebAncestor": false,
+          "positiveFinite": true,
+          "roleRawValue": 9,
+          "rootFullyContainsKnownNode": true
+        }
+      ],
+      "newMenuSemanticsProved": false,
+      "roleCounts": [
+        {
+          "countCappedAt17": 1,
+          "roleRawValue": 9
+        }
+      ],
+      "sameRunOptionsOwnerObserved": false,
+      "scope": "ONE_POST_CATEGORY_CACHED_SNAPSHOT_KNOWN_SERVICE_LABEL_ROLE_COUNT_FRAME_ONLY",
+      "screenshotsRequestedByContinuation": 0,
+      "serviceOptionTapAttempts": 0,
+      "touchTargetSizeAcceptance": false,
+      "valueIdentifierOrUnknownLabelExported": false
+    },
+    "SelectionMoreGestureActions": 0,
+    "serviceOptionAddInputSavePermissionActions": 0,
+    "dialogOrKeyboardAccepted": false,
+    "commands": 21,
+    "streams": 42,
+    "allClosedReapedOwnGroupsAbsent": true,
+    "evidence": {
+      "report": {
+        "path": "fresh-installed84a-native-touch-selection-56/reading-options-readonly-execution-report.json",
+        "bytes": 61271,
+        "sha256": "91232778596e649d120ff45de0b4c487c864e16ddd759aa04f714f2c92036b14"
+      },
+      "rootReceipt": {
+        "path": "fresh-installed84a-native-touch-selection-56/root-execution-receipt.json",
+        "bytes": 7460,
+        "sha256": "96c16f88a849118fbf89c2b193ece9aaabc7e803e60624e0088cb5a7d090836b"
+      },
+      "independentReview": {
+        "path": "fresh-installed84a-native-touch-selection-56/actual-independent-review.json",
+        "bytes": 13029,
+        "sha256": "004b419a8c141e246ad40ee0c2986b819682b83fa60925b23e7e8f02f09f3e76"
+      }
+    },
+    "independentSavedEvidenceReviewPassed": true
   }
 }
