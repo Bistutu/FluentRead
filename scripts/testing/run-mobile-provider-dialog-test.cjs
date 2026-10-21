@@ -1,7 +1,7 @@
 /**
  * @file scripts/testing/run-mobile-provider-dialog-test.cjs
  * 文件职责：在实际生产扩展的临时后台 Edge 中，限定验证添加服务窗口的移动可见视口与滚动可达性。
- * 主要内容：320/390、触屏横屏、深色、180px 键盘和平移视口夹具及桌面600px；检查44px目标、16px输入、组合字段换行、取消重开和可选的无密钥公共保存。
+ * 主要内容：320/390、触屏横屏、深色、180px 键盘和平移视口夹具及桌面600px；检查公开添加入口与窗口44px目标、16px输入、组合字段换行、取消重开和可选的无密钥公共保存。
  * 模块边界：一个自有浏览器，HTTP(S)离线并全部中止；仅首启语言使用临时配置夹具，服务窗口走真实公共UI。VV/触屏模拟不是OS键盘、iOS或物理设备验收。
  */
 'use strict';
@@ -42,7 +42,7 @@ const cases = [
   {name: 'keyboard-panned-180', width: 390, height: 560, touch: true, visibleHeight: 180, top: 140, composite: true},
   {name: 'desktop-600-dialog', width: 1280, height: 900, touch: false},
 ];
-const report = {ok: false, extensionDir, manifestSHA256: crypto.createHash('sha256').update(manifestBytes).digest('hex'), scope: 'Actual production options Add-service dialog only; controlled VisualViewport/touch media fixtures, not an OS keyboard or native/physical-device acceptance.', cases: [], screenshots: [], consoleErrors: [], httpAttempts: [], cleanup: {profileRemoved: false}, publicSaveRequested: saveProvider};
+const report = {ok: false, extensionDir, manifestSHA256: crypto.createHash('sha256').update(manifestBytes).digest('hex'), scope: 'Actual production options Add-service dialog only; controlled VisualViewport/touch media fixtures, not an OS keyboard or native/physical-device acceptance.', cases: [], addEntryTargets: [], screenshots: [], consoleErrors: [], httpAttempts: [], cleanup: {profileRemoved: false}, publicSaveRequested: saveProvider};
 let session, page, client, stopped = false, launchAttempted = false, timer, currentCase = 'setup';
 const began = performance.now(), actionDeadline = began + 160000;
 function available(maximum = 5000) {
@@ -100,6 +100,15 @@ async function openDialog() {
     await click(toggle);
     await op('expanded public Add entry', timeout => add.waitFor({state: 'visible', timeout}));
   }
+  assert.equal(await op('public Add entry label', () => add.getAttribute('aria-label')), '自定义服务');
+  const bounds = await op('visible public Add entry rectangle', () => add.boundingBox());
+  assert(bounds && bounds.width > 0 && bounds.height > 0, 'Public Add entry must be visible');
+  const media = await op('public Add entry actual media', () => page.evaluate(() => ({narrow: matchMedia('(max-width: 700px)').matches, coarse: matchMedia('(any-pointer: coarse)').matches})));
+  const mobile = media.narrow || media.coarse;
+  report.addEntryTargets.push({case: currentCase, label: '自定义服务', width: bounds.width, height: bounds.height, ...media, mobile});
+  if (mobile) assert(bounds.width >= 43.99 && bounds.height >= 43.99, 'Public mobile Add entry must be at least44px');
+  else assert(Math.abs(bounds.height - 34) <= 0.01, 'Fine-pointer desktop Add entry stays34px');
+  if (currentCase === 'portrait-320' && report.addEntryTargets.filter(entry => entry.case === currentCase).length === 1) await shot('portrait-320-add-entry');
   await click(add);
   await op('actual dialog open', timeout => dialog().waitFor({state: 'visible', timeout}));
   await op('Element Plus open transition complete', timeout => page.waitForFunction(() => {

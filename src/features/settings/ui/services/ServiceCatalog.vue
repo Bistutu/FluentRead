@@ -641,4 +641,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--brand-strong, #
   .hero-service-actions { margin-left: 0; }
   .detail-hero { margin-bottom: 12px; padding-bottom: 12px; }
 }
+@media (max-width: 700px), (any-pointer: coarse) {
+  .service-add-button { min-width: 44px; min-height: 44px; white-space: normal; overflow-wrap: anywhere; }
+}
 </style>

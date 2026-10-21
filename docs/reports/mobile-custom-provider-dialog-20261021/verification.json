@@ -328,5 +328,113 @@
   ],
   "referenceProjectsUsed": false,
   "PRMerged": false,
-  "docsBuildRunByReportAuthor": false
+  "docsBuildRunByReportAuthor": false,
+  "UI6": {
+    "scope": "controlled-production-Options-public-Add-entry44-recheck",
+    "sourceServiceCatalog": {
+      "file": "src/features/settings/ui/services/ServiceCatalog.vue",
+      "bytes": 41002,
+      "sha256": "b8666cf2ab6b194a32112c1b90ba8e4e77bc047aab12d6e4fe530bdd475bb2ad"
+    },
+    "finalDriver": {
+      "file": "scripts/testing/run-mobile-provider-dialog-test.cjs",
+      "bytes": 24171,
+      "sha256": "0c4cdc3336efefe3e58755c004b5e92c16274d82a50707248210784bf1c449da"
+    },
+    "outerExit": 0,
+    "outerEvidence": "Root saved receipt74259",
+    "elapsedMs": 21635.376625,
+    "caseCount": 7,
+    "originalPNGCount": 19,
+    "independentAll19OriginalsViewed": true,
+    "addOpeningObservations": 12,
+    "mobile104x44Observations": 10,
+    "fineDesktop104x34Observations": 2,
+    "allCasesSameObjectControlledVisualViewport": true,
+    "allInterfaceInputsAndFooterSeparatelyReachable": true,
+    "publicSave": {
+      "persisted": true,
+      "noKey": true,
+      "reservedEndpoint": "https://example.invalid/v1/chat/completions",
+      "model": "fixture-model",
+      "defaultServiceUnchanged": true
+    },
+    "pageErrorsObserved": 0,
+    "HTTPAttemptsObserved": 0,
+    "cleanup": "guarded close fulfilled + profileRemoved; no PID/group census",
+    "scopeLimits": "Controlled dimensions/coarse/mouse; no real OS keyboard/touch/Safari/iOS/physical-device or simultaneous all-control visibility. Long-label wrapping not runtime-exercised.",
+    "entryOriginal": {
+      "file": "ui6-portrait-320-add-entry-original.png",
+      "bytes": 42063,
+      "sha256": "cac7c4c6a8c72190fbd0a55f3baf0fcb0ce032eaa64c32f5ccb3695d7fd1b291"
+    },
+    "evidence": {
+      "report": {
+        "path": "mobile-custom-provider-ui-6/report.json",
+        "bytes": 47862,
+        "sha256": "4d7324e4ec8436fad6445c1a0e5b6e9f4d41d81abc99674170d5f4a8e1f5cc62"
+      },
+      "RootReceipt": {
+        "path": "mobile-custom-provider-ui-6/root-execution-receipt.json",
+        "bytes": 11161,
+        "sha256": "62e5434ba662be34b1a6412b9526c108a988dc0356550acce58de082de18af51"
+      },
+      "independentReview": {
+        "path": "mobile-custom-provider-ui-6/actual-independent-review.json",
+        "bytes": 7393,
+        "sha256": "ef7557d0b00be823d455fa1ed135bd85984c2b0b80d15dd45a4be655b9e4484f"
+      }
+    },
+    "nativeBuildOrInstallAcceptanceForEntryFix": false,
+    "historicalUI5AndNative2ValuesPreserved": true
+  },
+  "nativeBuild3": {
+    "scope": "entry44-current-source-unsigned-build-only",
+    "output": "native-unsigned-build-3",
+    "outerSession": 71674,
+    "outerExit": 0,
+    "elapsedMs": 104759.214542,
+    "commands": 8,
+    "streams": 16,
+    "inputs": 17,
+    "sourceFiles": 2673,
+    "sourceBeforeAfterIdentical": true,
+    "freshOutputTreesRootRehashed": true,
+    "nativeAppFiles": [
+      487,
+      490,
+      490
+    ],
+    "webFiles": 472,
+    "unsigned": true,
+    "installed": false,
+    "nativeAcceptance": false,
+    "physicalDeviceAcceptance": false,
+    "priorNative2AndU4Installed": false,
+    "evidence": {
+      "report": {
+        "path": "settings-selection-source-return-followup-1/native-unsigned-build-3/native-build-result.json",
+        "bytes": 32160,
+        "sha256": "cdce0324a337243e3d4e28daf380d4494a44855e29499ac019703e9acbcd8d3b"
+      },
+      "rootReceipt": {
+        "path": "settings-selection-source-return-followup-1/native-unsigned-build-3/root-execution-receipt.json",
+        "bytes": 6356,
+        "sha256": "d118cedc7f9be88aefd2d57ed92e88fbe9269ab2d2b661ec68ed89be487dbbb5"
+      },
+      "independentReview": {
+        "path": "settings-selection-source-return-followup-1/native-unsigned-build-3/actual-independent-review.json",
+        "bytes": 13268,
+        "sha256": "59d09719f7f98bdbcc5d37172edf21f832b7307dac7c53bfa2e3188db0a053c9"
+      }
+    },
+    "newWebBuildSessionsExit0": [
+      95642,
+      61103,
+      17052
+    ],
+    "newUnitTestExecution": false,
+    "unchangedDialogLifecyclePrior159Tests": true,
+    "independentFreshOutputPerFileReviewPassed": true
+  }
 }
