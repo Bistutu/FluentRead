@@ -141,7 +141,12 @@ describe('video player menu composition', () => {
     expect(menu.getAttribute('data-fluent-read-ui')).toBe('video-subtitle');
     expect(menu.getAttribute('translate')).toBe('no');
     expect(menu.querySelector('[data-action="toggle-translation"], [data-action="toggle-visible"]')).toBeNull();
-    expect(menu.querySelectorAll('[role="menuitemcheckbox"]')).toHaveLength(1);
+    expect([...menu.querySelectorAll<HTMLButtonElement>('[role="menuitemcheckbox"]')].map(button => [
+      button.tagName, button.dataset.action, button.getAttribute('aria-label') ?? button.textContent?.trim(), button.getAttribute('aria-checked'),
+    ])).toEqual([
+      ['BUTTON', 'toggle-ai-subtitle', '生成 AI 字幕', 'false'],
+      ['BUTTON', 'toggle-reading-annotation', '读音标注', 'false'],
+    ]);
     expect([...menu.querySelectorAll<HTMLElement>('.fluent-read-video-menu-mode-group [data-mode]')].map(item => [item.dataset.mode, item.textContent]))
       .toEqual([['bilingual', '双语'], ['translation-only', '译文'], ['original-only', '原文'], ['off', '关闭']]);
     const display = menu.querySelector('.fluent-read-video-menu-watch')!;
@@ -149,6 +154,8 @@ describe('video player menu composition', () => {
     expect(display.querySelector('[data-timing-row]')).toBeNull();
     const tools = menu.querySelector<HTMLElement>('.fluent-read-video-menu-tools')!;
     expect(tools.hidden).toBe(true);
+    expect(display.querySelector('[data-action="toggle-reading-annotation"]')).toBeNull();
+    expect(tools.querySelector('[data-action="toggle-reading-annotation"]')).toBeTruthy();
     expect(tools.querySelector('[data-timing-row]')).toBeTruthy();
     const timingControls = menu.querySelector('.fluent-read-video-menu-timing-controls');
     expect([...timingControls!.children].map(element => element.getAttribute('data-action') || element.getAttribute('data-subtitle-offset')))

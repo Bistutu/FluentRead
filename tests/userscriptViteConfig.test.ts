@@ -428,7 +428,7 @@ describe('userscript browser shim injection', () => {
                 expect(JSON.stringify(bundle) + '\n').toBe(readFileSync(resolve(process.cwd(), 'userscript/languages', file), 'utf8'));
             }
             const kept = Object.fromEntries(Object.entries(original.messages).filter(([key]) =>
-                !key.startsWith('informationHighlight.') && !key.startsWith('contextMenu.notice.') && !key.startsWith('video.learning.') && key !== 'video.nativeFullscreenHint' && !key.startsWith('popup.compact.') && !key.startsWith('popup.displayMode.')
+                !key.startsWith('informationHighlight.') && !key.startsWith('contextMenu.notice.') && !key.startsWith('video.learning.') && !key.startsWith('video.readingAnnotation.') && key !== 'video.nativeFullscreenHint' && !key.startsWith('popup.compact.') && !key.startsWith('popup.displayMode.')
                 && !key.startsWith('diagnostics.') && !key.startsWith('popup.pageFont.')
                 && !['waitingTranslation', 'crossPageContext', 'fullPassage', 'closePassage'].some(name => key === `document.pdfReading.${name}`)
                 && !key.startsWith('document.config.') && !key.startsWith('document.translationRecovery.') && !key.startsWith('document.retainedRevisions.')
@@ -505,6 +505,12 @@ describe('userscript browser shim injection', () => {
             expect(extension[key]).toBeTruthy();
             expect(Object.hasOwn(projected, key)).toBe(false);
         }
+        const readingAnnotationKeys = Object.keys(extension).filter(key => key.startsWith('video.readingAnnotation.'));
+        expect(readingAnnotationKeys).not.toHaveLength(0);
+        for (const key of readingAnnotationKeys) {
+            expect(extension[key]).toBeTruthy();
+            expect(Object.hasOwn(projected, key)).toBe(false);
+        }
         for (const key of ['popup.compact.translate', 'popup.compact.restore', 'popup.displayMode.bilingual', 'popup.displayMode.translationOnly', 'popup.displayMode.googleBilingualOnly']) {
             expect(extension[key]).toBeTruthy();
             expect(Object.hasOwn(projected, key)).toBe(false);
@@ -531,7 +537,7 @@ describe('userscript browser shim injection', () => {
             expect(Object.hasOwn(projected, key)).toBe(false);
         }
         const retainedKeys = Object.keys(extension).filter(key => !key.startsWith('informationHighlight.')
-            && !noticeKeys.includes(key) && !learningKeys.includes(key) && !readerRecoveryKeys.includes(key)
+            && !noticeKeys.includes(key) && !learningKeys.includes(key) && !readingAnnotationKeys.includes(key) && !readerRecoveryKeys.includes(key)
             && !diagnosticKeys.includes(key) && !readerDialogKeys.includes(key)
             && key !== 'video.nativeFullscreenHint'
             && !safariPermissionKeys.includes(key) && !pageFontKeys.includes(key)
@@ -743,6 +749,21 @@ describe('userscript browser shim injection', () => {
         expect(stringAliases.get('@/src/platform/storage/credentialContext')).toMatch(/userscript\/credentialContext\.ts$/u);
         expect(stringAliases.get('@/src/platform/storage/configStorageRuntime')).toMatch(/userscript\/storage\.ts$/u);
         expect(userscriptAliases.at(-1)?.find).toBe('@');
+    });
+
+    it('移除 userscript 不可达的字幕外观组件后才排除其专用读音文案', async () => {
+        const {parse, compileScript} = await import('vue/compiler-sfc');
+        const {transformWithEsbuild} = await import('vite');
+        const filename = resolve(process.cwd(), 'src/features/settings/ui/SettingsSections.vue');
+        const {descriptor} = parse(readFileSync(filename, 'utf8'), {filename});
+        const source = compileScript(descriptor, {id: 'userscript-video-appearance-boundary'}).content;
+        const compile = async (browser: string) => (await transformWithEsbuild(source, 'settings-sections.ts', {
+            loader: 'ts', define: {'import.meta.env.BROWSER': JSON.stringify(browser)}, treeShaking: true, minifySyntax: true,
+        })).code;
+        const userscript = await compile('userscript');
+        expect(userscript).not.toContain('VideoSubtitleAppearanceSettings.vue');
+        expect(userscript).toMatch(/\bVideoSubtitleAppearanceSettings = null\b/u);
+        expect(await compile('chrome')).toContain('VideoSubtitleAppearanceSettings.vue');
     });
 
     it('阻止个人校订 UI 绕过 public 空适配器进入任意 userscript chunk', async () => {
