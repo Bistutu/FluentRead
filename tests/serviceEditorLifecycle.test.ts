@@ -1,7 +1,7 @@
 /**
  * @file tests/serviceEditorLifecycle.test.ts
  * 文件职责：验证实际设置子组件的写入边界与延迟焦点生命周期。
- * 主要内容：编译实际 SFC setup/watch，覆盖隐藏、缓存、卸载、配置切换、模型容量和对话框重入。
+ * 主要内容：编译实际 SFC setup/watch，覆盖隐藏、缓存、卸载、配置切换、模型容量和对话框重入；使用真实事件目标与受控 RAF 验证窗口视口订阅的更新、释放和重开。
  * 模块边界：使用空 render 与受控浏览器端口；模板和实际 Element Plus 交互另由生产浏览器验证。
  */
 import {createRequire} from 'node:module'
@@ -205,6 +205,50 @@ describe('服务子编辑器的写入与焦点归属', () => {
     await mount('CustomOpenAIProviderDialog', {modelValue: true});fillProvider();state.nameInput = {focus}
     props.modelValue = false;await settle();state.focusFirstField();state.submitProvider()
     expect(state.draft.apiKey).toBe('');expect(focus).not.toHaveBeenCalled()
+  })
+  it.each(['close', 'hidden', 'cached', 'unmount'])('新服务窗口视口在%s后释放监听与排队帧，迟到事件不更新', async reason => {
+    const viewport = Object.assign(new EventTarget(), {width: 390, height: 780, offsetLeft: 0, offsetTop: 0})
+    const page = Object.assign(new EventTarget(), {visibilityState: 'visible'})
+    const frames = new Map<number, FrameRequestCallback>();let nextFrame = 0
+    const requestAnimationFrame = vi.fn((callback: FrameRequestCallback) => {const id = ++nextFrame;frames.set(id, callback);return id})
+    const cancelAnimationFrame = vi.fn((id: number) => {frames.delete(id)})
+    const view = Object.assign(new EventTarget(), {document: page, visualViewport: viewport, innerWidth: 390, innerHeight: 844,
+      requestAnimationFrame, cancelAnimationFrame})
+    const targets = [view, viewport, page].map(target => ({target, add: vi.spyOn(target, 'addEventListener'), remove: vi.spyOn(target, 'removeEventListener')}))
+    const flushFrame = () => {const queued = [...frames.values()];frames.clear();for (const callback of queued) callback(0)}
+    vi.stubGlobal('window', view)
+    await mount('CustomOpenAIProviderDialog', {modelValue: true})
+    expect(state.dialogViewportStyle).toEqual({'--fluentread-custom-provider-viewport-left': '0px', '--fluentread-custom-provider-viewport-top': '0px',
+      '--fluentread-custom-provider-viewport-width': '390px', '--fluentread-custom-provider-viewport-height': '780px'})
+    Object.assign(viewport, {width: 760, height: 180, offsetLeft: 20, offsetTop: 44})
+    viewport.dispatchEvent(new Event('resize'));viewport.dispatchEvent(new Event('scroll'))
+    expect(frames.size).toBe(1);expect(requestAnimationFrame).toHaveBeenCalledOnce()
+    expect(state.dialogViewportStyle['--fluentread-custom-provider-viewport-height']).toBe('780px')
+    flushFrame()
+    expect(state.dialogViewportStyle).toEqual({'--fluentread-custom-provider-viewport-left': '20px', '--fluentread-custom-provider-viewport-top': '44px',
+      '--fluentread-custom-provider-viewport-width': '760px', '--fluentread-custom-provider-viewport-height': '180px'})
+    viewport.height = 90;view.dispatchEvent(new Event('resize'))
+    expect(frames.size).toBe(1)
+    const [pendingId, lateFrame] = [...frames.entries()][0]!
+    if (reason === 'close') props.modelValue = false
+    else change(reason)
+    await settle()
+    expect(cancelAnimationFrame).toHaveBeenCalledWith(pendingId);expect(frames.size).toBe(0)
+    for (const {add, remove} of targets) {
+      expect(add.mock.calls.length).toBeGreaterThan(0)
+      expect(remove.mock.calls.map(([type, listener]) => [type, listener])).toEqual(add.mock.calls.map(([type, listener]) => [type, listener]))
+    }
+    const stoppedStyle = state.dialogViewportStyle, scheduled = requestAnimationFrame.mock.calls.length
+    Object.assign(viewport, {width: 390, height: 600, offsetLeft: 3, offsetTop: 5})
+    lateFrame(1)
+    for (const {target, add} of targets) for (const [type] of add.mock.calls) target.dispatchEvent(new Event(type))
+    expect(frames.size).toBe(0);expect(requestAnimationFrame).toHaveBeenCalledTimes(scheduled)
+    expect(state.dialogViewportStyle).toBe(stoppedStyle)
+    if (reason === 'close') {
+      props.modelValue = true;await settle()
+      expect(state.dialogViewportStyle).toEqual({'--fluentread-custom-provider-viewport-left': '3px', '--fluentread-custom-provider-viewport-top': '5px',
+        '--fluentread-custom-provider-viewport-width': '390px', '--fluentread-custom-provider-viewport-height': '600px'})
+    }
   })
   it.each(['hidden', 'cached', 'unmount'])('新服务对话框在%s后不提交并清空草稿', async reason => {
     await mount('CustomOpenAIProviderDialog', {modelValue: true}, {onSubmit: emitted});fillProvider();change(reason);await settle();state.submitProvider()

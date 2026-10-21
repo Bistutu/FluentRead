@@ -1,0 +1,332 @@
+{
+  "schema": 1,
+  "scope": "production-options-custom-provider-mobile-dialog-controlled-viewport",
+  "source": {
+    "file": "src/features/settings/ui/services/CustomOpenAIProviderDialog.vue",
+    "bytes": 17050,
+    "sha256": "021b493dae18ed2f42308b355bdd7efe025962440e3152f9a8eb7bd0058e7812"
+  },
+  "builtFromExactCleanCommit": false,
+  "baselineCommitContextOnly": "234f09d6d2c7bf2a4fac9c3d2873dde5c9adfaf6",
+  "ui": {
+    "caseCount": 7,
+    "originalPNGCount": 18,
+    "all18OriginalsPersonallyReviewed": true,
+    "representativeOriginalsCopiedByteExact": 6,
+    "cases": [
+      {
+        "name": "portrait-320",
+        "visibleViewport": {
+          "left": 0,
+          "top": 0,
+          "width": 320,
+          "height": 560
+        },
+        "dialog": {
+          "x": 14,
+          "y": 12,
+          "width": 292,
+          "height": 536,
+          "right": 306,
+          "bottom": 548
+        }
+      },
+      {
+        "name": "portrait-390",
+        "visibleViewport": {
+          "left": 0,
+          "top": 0,
+          "width": 390,
+          "height": 700
+        },
+        "dialog": {
+          "x": 14,
+          "y": 12,
+          "width": 362,
+          "height": 541.28125,
+          "right": 376,
+          "bottom": 553.28125
+        }
+      },
+      {
+        "name": "landscape-844",
+        "visibleViewport": {
+          "left": 0,
+          "top": 0,
+          "width": 844,
+          "height": 390
+        },
+        "dialog": {
+          "x": 122,
+          "y": 12,
+          "width": 600,
+          "height": 366,
+          "right": 722,
+          "bottom": 378
+        }
+      },
+      {
+        "name": "dark-390",
+        "visibleViewport": {
+          "left": 0,
+          "top": 0,
+          "width": 390,
+          "height": 700
+        },
+        "dialog": {
+          "x": 14,
+          "y": 12,
+          "width": 362,
+          "height": 541.28125,
+          "right": 376,
+          "bottom": 553.28125
+        }
+      },
+      {
+        "name": "keyboard-180",
+        "visibleViewport": {
+          "left": 0,
+          "top": 0,
+          "width": 390,
+          "height": 180
+        },
+        "dialog": {
+          "x": 14,
+          "y": 12,
+          "width": 362,
+          "height": 156,
+          "right": 376,
+          "bottom": 168
+        }
+      },
+      {
+        "name": "keyboard-panned-180",
+        "visibleViewport": {
+          "left": 0,
+          "top": 140,
+          "width": 390,
+          "height": 180
+        },
+        "dialog": {
+          "x": 14,
+          "y": 152,
+          "width": 362,
+          "height": 156,
+          "right": 376,
+          "bottom": 308
+        }
+      },
+      {
+        "name": "desktop-600-dialog",
+        "visibleViewport": {
+          "left": 0,
+          "top": 0,
+          "width": 1280,
+          "height": 900
+        },
+        "dialog": {
+          "x": 340,
+          "y": 135,
+          "width": 600,
+          "height": 491.6875,
+          "right": 940,
+          "bottom": 626.6875
+        }
+      }
+    ],
+    "mobileMinTargetPx": 44,
+    "mobileMinInputSelectFontPx": 16,
+    "ownDialogScroll": true,
+    "inputAndFooterIndividuallyReachable": true,
+    "allControlsSimultaneouslyVisible": false,
+    "horizontalOverflow": false,
+    "recordedOuterScrollX": 0,
+    "recordedOuterScrollY": 0,
+    "desktop": {
+      "dialogWidthPx": 600,
+      "inputFontPx": 13,
+      "inputHeightPx": 38
+    },
+    "interfaceCancelReopenClearedAt320": true,
+    "compositeCancelReopenResetCases": [
+      "portrait-320",
+      "landscape-844",
+      "keyboard-panned-180"
+    ],
+    "publicSave": {
+      "persisted": true,
+      "noKey": true,
+      "reservedEndpoint": "https://example.invalid/v1/chat/completions",
+      "model": "fixture-model",
+      "defaultServiceUnchanged": true,
+      "layout": "desktop-600-dialog"
+    },
+    "observedPageErrors": 0,
+    "ordinaryConsoleErrorsIndependentlyMonitored": false,
+    "observedHTTPAttempts": 0,
+    "elapsedMs": 20083.897458,
+    "allCasesVisualViewportDimensionsAndOffsetsInjectedOnExistingObject": true,
+    "coarsePointerEmulated": true,
+    "mouseConvertedToTouch": false,
+    "reachUsesDialogScrollTopAndCenterHitTest": true,
+    "realOSKeyboardOrTouchOrIOSAcceptance": false,
+    "languageOnlyTemporaryProfileFixture": true,
+    "focusEvidence": "startup placement before/after only; not end-of-run or continuous monitoring",
+    "cleanupEvidence": "guarded session.close fulfilled and profileRemoved=true; no saved PID/group census",
+    "acceptedAttempt": 5,
+    "earlierFourHarnessAttemptsPreservedNotAccepted": true
+  },
+  "localChecks": {
+    "focusedTestFiles": 4,
+    "focusedTestsPassed": 159,
+    "focusedTestSeconds": 45.73,
+    "testFiles": [
+      "serviceEditorLifecycle.test.ts",
+      "settingsSectionsLifecycle.test.ts",
+      "mobileVisualViewport.test.ts",
+      "settingsUiArchitecture.test.ts"
+    ],
+    "vueTscNoEmitExit": 0,
+    "testAuditStatus": "ok",
+    "productionWebBuildExits": {
+      "Chrome": 0,
+      "Firefox": 0,
+      "SafariWeb": 0
+    },
+    "ChromeBuildEvidence": "Root tool session30929 exit0 recorded in local-checks and validation; no separate Chrome stdout log retained here"
+  },
+  "nativeBuild": {
+    "output": "native-unsigned-build-2",
+    "outerExit": 0,
+    "elapsedMs": 104519.99450000002,
+    "packageAndThreeReleaseTargetsExit0": true,
+    "platforms": [
+      "macOS",
+      "iOS Simulator",
+      "iPhoneOS arm64"
+    ],
+    "commands": 8,
+    "streams": 16,
+    "allClosedReapedOwnedGroupsAbsent": true,
+    "admittedInputPins": 16,
+    "sourceInventoryFiles": 2673,
+    "sourceInventoryBeforeAfterExact": true,
+    "sourceInventoryScope": "src,entrypoints,public,assets,styles,userscript,scripts,integrations and declared root configs; tests/docs excluded",
+    "webSnapshotFiles": 472,
+    "nativeAppFiles": [
+      487,
+      490,
+      490
+    ],
+    "independentFreshOutputPerFileRehashPassed": true,
+    "unsigned": true,
+    "installed": false,
+    "launched": false,
+    "nativeAcceptance": false,
+    "physicalDeviceAcceptance": false
+  },
+  "originalImages": {
+    "portrait-320-interface-input.png": {
+      "bytes": 40590,
+      "sha256": "ab185f91a063ad0053a4a87c70ba073e75302c0097c5347f9e853c66bead260e"
+    },
+    "portrait-320-interface-footer.png": {
+      "bytes": 40635,
+      "sha256": "03d3538a74e3bcfbf88be8dd66d171f1250eab64c04b1f0701b4c83f2548e437"
+    },
+    "landscape-844-interface-footer.png": {
+      "bytes": 53337,
+      "sha256": "8ed2cfc44bc57ed909e65808eae12def01556b38c37b396b3547adc3a73654f6"
+    },
+    "dark-390-interface-input.png": {
+      "bytes": 53835,
+      "sha256": "65bebcf2f3875aa5eb301b745b73749375a7c1d7cff5da0028dbd42590dc66a3"
+    },
+    "keyboard-panned-180-interface-footer.png": {
+      "bytes": 42854,
+      "sha256": "10437febec77259a512352614394d0f334d8fa1f6f7d140d39eb6de1a465db28"
+    },
+    "desktop-600-dialog-interface-input.png": {
+      "bytes": 168318,
+      "sha256": "d3c0679800b0ea65e3a3161e5339460c7c222e43c4ed75c05393d387b4971afa"
+    }
+  },
+  "researchEvidenceRoot": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/responsive-video-menu-safe-viewport-20261018/goal-followthrough-20261018",
+  "machineEvidence": {
+    "UI5Report": {
+      "path": "mobile-custom-provider-ui-5/report.json",
+      "bytes": 45421,
+      "sha256": "579f8acddb7ea6a8f84cc0e64be0e0f3558a1f4c6a9888a541546b2ca352201f"
+    },
+    "UI5IndependentReview": {
+      "path": "mobile-custom-provider-ui-5/actual-independent-review.json",
+      "bytes": 11818,
+      "sha256": "33b9435b13df553e96997062b854e58936241c43396cebdd5fb47e9001ed9752"
+    },
+    "finalUIDriver": {
+      "path": "scripts/testing/run-mobile-provider-dialog-test.cjs",
+      "bytes": 23074,
+      "sha256": "dfb67bff1aed721d66dc1e2a24aac5b943a9d59242c1513e320992b7cd25efa2"
+    },
+    "localChecks": {
+      "path": "settings-selection-source-return-followup-1/mobile-custom-provider-local-checks.json",
+      "bytes": 2187,
+      "sha256": "82a90065058239ff9f1fcb6dd79a1c7b72ad8f8a574c39cb4ac070e4c72ee4a2"
+    },
+    "validation": {
+      "path": "settings-selection-source-return-followup-1/mobile-custom-provider-native-build-prep-2/root-current-validation.json",
+      "bytes": 10235,
+      "sha256": "cfbd82e320e323a84272e0e74e7b6c87fbcc2ed96e9f70f2329b847c8aa1286f"
+    },
+    "typeLog": {
+      "path": "/private/tmp/fluentread-mobile-provider-typecheck-20261021.log",
+      "bytes": 120,
+      "sha256": "100574242dda4d664ba4e95411f14a89596cbad23fe807a926735c4da8e3e401"
+    },
+    "focusedTestsLog": {
+      "path": "/private/tmp/fluentread-mobile-provider-focused-tests-20261021.log",
+      "bytes": 13285,
+      "sha256": "df6b94479158d0b51fab4e479ff9636689c20d87f47fac8895436a2e08099b90"
+    },
+    "FirefoxBuildLog": {
+      "path": "/private/tmp/fluentread-mobile-provider-firefox-build-20261021.log",
+      "bytes": 86524,
+      "sha256": "3c4119687787a5f893bb5f016a6c31617dc43f122c22ca310d691c077c93d6fa"
+    },
+    "SafariWebBuildLog": {
+      "path": "/private/tmp/fluentread-mobile-provider-safari-web-build-20261021.log",
+      "bytes": 84746,
+      "sha256": "d50ee916997da0458739e507f335602dbd156aa0784389418559152bface257f"
+    },
+    "testAuditLog": {
+      "path": "/private/tmp/fluentread-mobile-provider-test-audit-20261021.log",
+      "bytes": 271,
+      "sha256": "cbf8a6ba6449490da0d453475a2d3301ac1f9f7b8204e609a46f33ee23bed854"
+    },
+    "nativeReport": {
+      "path": "settings-selection-source-return-followup-1/native-unsigned-build-2/native-build-result.json",
+      "bytes": 31688,
+      "sha256": "4c20eacdffae5b2c212f5c5388ca91a7ead861c5b8ece9bf23552b6f2bffa2c8"
+    },
+    "nativeRootReceipt": {
+      "path": "settings-selection-source-return-followup-1/native-unsigned-build-2/root-execution-receipt.json",
+      "bytes": 6354,
+      "sha256": "57cd540186008df09b4b001a06e36d23856351a37de1459abeecc3ad306f5031"
+    },
+    "nativeIndependentReview": {
+      "path": "settings-selection-source-return-followup-1/native-unsigned-build-2/actual-independent-review.json",
+      "bytes": 12653,
+      "sha256": "3515897830b99ff1036f3d0e930809bf90d31d3feaf9a1577637367ae8425470"
+    }
+  },
+  "scopeGaps": [
+    "actual OS keyboard/touch/zoom and native Safari/iOS/physical device",
+    "real provider/API key/request/translation",
+    "simultaneous full-field/header/footer visibility",
+    "continuous focus or independent browser PID-group closure census",
+    "new native package installation/runtime; old c54 native evidence is not this build"
+  ],
+  "referenceProjectsUsed": false,
+  "PRMerged": false,
+  "docsBuildRunByReportAuthor": false
+}

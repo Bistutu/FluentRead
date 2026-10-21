@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "controlled-production-chromium-viewport-media; unsigned-Safari-compilation; controlled-installed-native-source-return",
+  "scope": "controlled-production-chromium-viewport-media; unsigned-Safari-compilation; controlled-installed-native-source-return; installed-native-local-fixed-text-and-control-observation",
   "productPins": {
     "src/app/popup/PopupApp.vue": {
       "bytes": 80845,
@@ -230,10 +230,14 @@
     "options-844-light.png": {
       "bytes": 59797,
       "sha256": "0056255457f48179230bc34c7f4b11588bc96d4646c045da8847e5afa8123791"
+    },
+    "ios-native-word-sentence-controls-original.png": {
+      "bytes": 8245,
+      "sha256": "007902fb86bfe3e41e4aecf539a18bc99dbdc6dcf946793981506f6e278ef710"
     }
   },
   "remaining": [
-    "installed native local Word-to-Sentence preview transition",
+    "whole installed native preview and syntax-table scrolling beyond the accepted visible local text/control group",
     "installed normal-selection reading-question IME and Send",
     "actual hidden/show and BFCache behavior on new package",
     "new-package configuration and permission retention",
@@ -330,6 +334,104 @@
   },
   "relatedControlledKeyboardReport": "../current-shared-reading-keyboard-20261021/verification.json",
   "latestNativePreviewDiagnostic": {
+    "case": 53,
+    "formal": {
+      "PASS": 1,
+      "SKIP": 0,
+      "FAIL": 0,
+      "durationSeconds": 22.915549993515015
+    },
+    "outerExit": 0,
+    "AX": 9,
+    "UI": 7,
+    "PNG": 1,
+    "readiness": {
+      "callbacksCappedAt32": 1,
+      "elapsedSeconds": 1.3835039138793945,
+      "lastKnownExactDisabledCountCappedAt2": 1,
+      "ready": true,
+      "result": "COMPLETED",
+      "terminalInvalid": false,
+      "timeoutSeconds": 5
+    },
+    "scope": "POST_CLICK_LOCAL_FIXED_TEXT_AND_VISIBLE_CONTROL_OBSERVATION_ONLY",
+    "postClickLocalFixedTextObserved": true,
+    "sentencePreviewAccepted": false,
+    "entirePreviewVisibleAccepted": false,
+    "wholeSyntaxTableVisibleAccepted": false,
+    "all28CachedLocalPredicatesTrue": true,
+    "localKnownAnchorCounts": [
+      0,
+      0,
+      1,
+      1
+    ],
+    "PFrame": {
+      "height": 516,
+      "width": 348,
+      "x": 27,
+      "y": 406
+    },
+    "bottomOverflowPoints": 48,
+    "wordFrame": {
+      "height": 44,
+      "width": 52,
+      "x": 42,
+      "y": 452
+    },
+    "sentenceFrame": {
+      "height": 44,
+      "width": 53,
+      "x": 99,
+      "y": 452
+    },
+    "sourceFrame": {
+      "height": 45,
+      "width": 314,
+      "x": 42,
+      "y": 512
+    },
+    "translationFrame": {
+      "height": 17,
+      "width": 246,
+      "x": 42,
+      "y": 572
+    },
+    "sourceTranslationPixelsAccepted": false,
+    "normalPopupUpGestures": 1,
+    "MoreSettings": 1,
+    "SentencePreview": 1,
+    "configurationWrites": 0,
+    "returnActions": 0,
+    "commands": 21,
+    "streams": 42,
+    "allClosedReapedGroupsAbsent": true,
+    "all15ShutdownOther14Same": true,
+    "threeFocusPointsSame": true,
+    "report": {
+      "bytes": 60344,
+      "sha256": "bfcc0a6032d6aed08b7bcae516cbe19a4e5f1451ceea9f05fd1831c7e0e8fc40"
+    },
+    "RootReceipt": {
+      "bytes": 50068,
+      "sha256": "a502791c9b12e133f3900ad0ee0f6f5ce14db193c4bfab1a641149da97f7cea7"
+    },
+    "independentReview": {
+      "bytes": 15272,
+      "sha256": "e7818b4fc05ea26b25cf8e654c9f7314367db38e02e43736d9faddc2e67ce357",
+      "result": "NO_BLOCKING_FINDING_WITHIN_RECORDED_LIMITED_SCOPE"
+    },
+    "originalControlGroupImage": {
+      "bytes": 8245,
+      "sha256": "007902fb86bfe3e41e4aecf539a18bc99dbdc6dcf946793981506f6e278ef710"
+    },
+    "RootViewedOriginal": true,
+    "wholeOptionsImage": false,
+    "historical52SpecificFailure": "UNKNOWN_NOT_BACK_ATTRIBUTED",
+    "conclusion": "Formal PASS accepts visible local fixed text in native AX and full44 controls after the one real Sentence click. Only control-group pixels reviewed; no whole preview/table/return/IME/provider claim.",
+    "IndependentViewedOriginal": true
+  },
+  "priorNativePreviewDiagnostic51": {
     "case": 51,
     "formal": {
       "PASS": 0,
