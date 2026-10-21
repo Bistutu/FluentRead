@@ -665,6 +665,17 @@ describe('selection TTS background handlers', () => {
         expect(dependencies.playWithOffscreen).not.toHaveBeenCalled();
     });
 
+    it('Google TTS 扩展页面获取失败时释放请求并返回具体错误', async () => {
+        const fetchPageAudio = vi.fn(async () => {throw new Error('Google TTS failed: 503 Service Unavailable');});
+        const {router} = createSubject({fetchPageAudio});
+        await expect(router.dispatch({type: SELECTION_TTS_GOOGLE_MESSAGE_TYPE, text: 'hello', language: 'en-US', clientRequestId: 'google-page-error'},
+            {sender: {url: 'chrome-extension://controlled-extension/options.html#settings-vocabulary'}})).resolves.toEqual({
+                handled: true,
+                response: {success: false, error: 'Google TTS failed: 503 Service Unavailable'},
+            });
+        expect(fetchPageAudio).toHaveBeenCalledOnce();
+    });
+
     it('Google late PLAY 使用二次 stop 并返回取消', async () => {
         const play = deferred<void>();
         const {dependencies, router} = createSubject({
