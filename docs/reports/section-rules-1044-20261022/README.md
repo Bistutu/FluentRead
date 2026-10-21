@@ -21,7 +21,11 @@
 
 合入最新主线后，完整 i18n 契约与 userscript 资源契约共 359 项通过，选区与规则 UI 专项 95 项通过。五种非中英语言各 43 条区域规则文案和六种语言的同步差异映射均提供实际译文，保留插值与 CSS / Shadow DOM 写法；完整源文扫描不以英文回退掩盖缺译。
 
-Chrome、Firefox、userscript 和文档构建、TypeScript/Vue 类型检查与 userscript verifier 通过。不运行全量回归，不改变产品版本号。
+五个区域语言模块均已登记严格覆盖率，完整 i18n 专项 90 项通过，statements / branches / functions / lines 均为 100%。架构检查组 2,266 项与测试筛选器 28 项通过，覆盖率门槛与原有排除范围保持不变。
+
+配置差异专项四份测试共 208 项通过，`diff.ts` 四维覆盖率均为 100%。新增场景验证区域规则在历史摘要中准确区分自动、提醒与停用状态，并让损坏旧快照中的非数组值、空项和字符串保持可预览。
+
+Chrome、Firefox、userscript 和文档构建、TypeScript/Vue 类型检查与 userscript verifier 通过。本地未运行全量回归，不改变产品版本号。
 
 生产浏览器的复现入口：
 
