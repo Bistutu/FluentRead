@@ -7,6 +7,7 @@ vi.mock('@/src/features/information-highlight/offscreen/artifacts', () => ({info
 vi.mock('@/src/shared/onnx/resources', () => ({localWasmThreads: () => 1, paceLocalInitialization: async (run: () => Promise<unknown>) => run(), paceLocalInference: async (run: () => Promise<unknown>) => run()}));
 import {startInformationHighlightWorker, type InformationHighlightWorkerRequest} from '@/src/features/information-highlight/offscreen/worker';
 import {startInformationHighlightWorkerApp} from '@/src/app/offscreen/informationHighlightWorker';
+import * as modelCatalog from '@/src/core/config/informationHighlightModel';
 
 const flush = async () => {for (let i = 0; i < 40; i++) await Promise.resolve(); await new Promise(resolve => setTimeout(resolve,0)); for (let i = 0; i < 10; i++) await Promise.resolve();};
 describe('static model worker uses prepared files and serial cooperative cancellation', () => {
@@ -49,6 +50,23 @@ describe('static model worker uses prepared files and serial cooperative cancell
         send({type: 'score', requestId: 3, text: 'a'}); await flush();
         expect(post).toHaveBeenLastCalledWith(expect.objectContaining({success: true, result: expect.objectContaining({engine: expect.stringContaining('Qwen2.5 0.5B Base')})}));
         expect(mocks.model).toHaveBeenCalledOnce(); expect(model).toHaveBeenCalledOnce();
+    });
+    it('keeps a worker bound to one model when a test-only future Base descriptor is available', async () => {
+        // 仅为通用 Worker 的模型归属守卫提供第二个 Base 夹具；真实清单不重新接受 Qwen3。
+        const alternativeId = 'test-only-base' as never, lookup = modelCatalog.getInformationHighlightModel;
+        const alternative = {...lookup(undefined), id: alternativeId, name: 'Test-only Base'};
+        const descriptor = vi.spyOn(modelCatalog, 'getInformationHighlightModel').mockImplementation(value => value === alternativeId ? alternative : lookup(value));
+        try {
+            startInformationHighlightWorker(); send({type: 'score', requestId: 1, text: 'a'}); await flush();
+            send({type: 'score', requestId: 2, text: 'a', modelId: alternativeId}); await flush();
+            expect(post).toHaveBeenLastCalledWith(expect.objectContaining({requestId: 2, success: false, error: 'INFORMATION_HIGHLIGHT_INVALID_MODEL'}));
+            expect(mocks.model).toHaveBeenCalledOnce(); expect(model).toHaveBeenCalledOnce();
+            send({type: 'score', requestId: 3, text: 'a'}); await flush();
+            expect(post).toHaveBeenLastCalledWith(expect.objectContaining({success: true, result: expect.objectContaining({engine: expect.stringContaining('Qwen2.5 0.5B Base')})}));
+            startInformationHighlightWorker(); send({type: 'score', requestId: 4, text: 'a', modelId: alternativeId}); await flush();
+            expect(post).toHaveBeenLastCalledWith(expect.objectContaining({success: true, result: expect.objectContaining({engine: expect.stringContaining('Test-only Base')})}));
+            expect(mocks.model).toHaveBeenCalledTimes(2);
+        } finally {descriptor.mockRestore();}
     });
     it('rejects cancelled queued requests before initialization, ignores malformed messages and never starts duplicate ids', async () => {
         mocks.env.backends.onnx.wasm = undefined; startInformationHighlightWorker();
