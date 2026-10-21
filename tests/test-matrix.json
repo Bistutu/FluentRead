@@ -722,7 +722,8 @@
       "tests/selfHelpNotice.test.ts",
       "tests/serviceRepairReturn.test.ts",
       "tests/materialRepository.test.ts",
-      "tests/serviceRepairFocus.test.ts"
+      "tests/serviceRepairFocus.test.ts",
+      "tests/manpagePreparation.test.ts"
     ],
     "regression": [
       "tests/discordServerIconBoundary.test.ts",

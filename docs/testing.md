@@ -2,6 +2,12 @@
 
 网页兼容维护集与生命周期验收见 [网页翻译稳定性维护](maintainers/web-stability.md)。该入口显式选择十个独立站点，复用已有正文与保护区契约，并将宿主 DOM 探针、原生站点操作、在线供应商和不同浏览器的证据分开记录。`fullPageVisibilityScheduling` 新增路由观察选项刷新、断连 ShadowRoot 回收/重新插入，以及重连观察器时保留待投递保护区变化；`contentFeatureMounting` 与划词 `--lifecycle-only` 验证入口被移除后的恢复、取消、错误重试、禁用和窄屏键盘操作。
 
+## man7 Linux 手册正文
+
+man7 的 Linux 手册将自然语言正文、参数说明、终端会话和源码混放在 `pre` 中。翻译时按手册段落建立可恢复的正文边界，保留原来的换行、缩进和行内链接；命令会话与程序源码继续保持原文。此能力限定于经过结构核验的 man7 Linux 手册，普通网页代码块和 RFC 的格式化文本仍遵守原有保护策略。
+
+生产 Chrome 构建后运行 `node scripts/testing/run-man7-translation-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper scripts/testing/focus-safe-browser.cjs --artifacts-dir <证据目录>`。专项在临时 Edge 第二屏后台正常窗口访问 `core.5.html`，逐段检查 DESCRIPTION 前后正文、参数说明、NOTES 和 EXAMPLES 的说明，验证悬浮与全文翻译—恢复—再次翻译、链接及代码保留，以及恢复后原文 HTML。默认翻译响应受控；在线供应商须另用 `--online` 验证并单独记录，Chrome 构建通过不代表 Firefox 运行验收。
+
 ## Hugging Face Spaces 内嵌正文
 
 扩展通过受限子 frame 入口翻译 Hugging Face Space 的 `*.hf.space` 应用正文，复用顶层全文会话、恢复原文和子 frame 快捷键；从 Hugging Face 其他页面软导航进入 Space 也会建立会话。后台核验浏览器提供的顶层 URL、子 frame URL 和 frameId，仅允许 Space 标识与应用子域精确配对。当前支持名称由英文字母、数字及单连字符组成的标准 Space 地址；含点、下划线或自定义域名的映射尚未覆盖。

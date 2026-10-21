@@ -2,7 +2,7 @@
   @file src/core/translation/README.md
 
   文件职责：记录翻译候选核心的职责、处理管线、适配器决策模型与验证契约，帮助维护者理解 DOM 到候选文本的统一政策。
-  主要内容：说明 dom、registry、engine、text、serialization 的协作顺序、独立文本槽协议与基础 DOM 守卫，解释安全守卫、Shadow DOM、站点适配优先级，以及单元与真实站点回归的覆盖要求。
+  主要内容：说明 dom、registry、engine、text、serialization 的协作顺序、独立文本槽协议与基础 DOM 守卫，解释安全守卫、man7 手册的受信正文边界、Shadow DOM、站点适配优先级，以及单元与真实站点回归的覆盖要求。
   模块边界：该文档只描述 core/translation 的维护契约，不充当运行时代码；候选使用 public.ts，纯协议与基础 DOM 判断分别直接使用 slotProtocol.ts、dom.ts，feature 调度和 provider 边界继续受架构测试约束。
 -->
 
@@ -72,6 +72,13 @@ Scribble/Racket code tables marked `table.RktBlk` are protected as code, while
 ordinary tables and prose remain eligible. Code blocks remain protected, except
 for the browser's direct body `pre` in a `text/plain` document, where that element
 is the readable document itself.
+The man7 Linux manual capability additionally prepares verified manual `pre`
+sections as reversible prose paragraphs. Only internally registered nodes can
+cross that PRE boundary; matching a public marker alone grants no permission.
+Terminal sessions and program source remain protected, while prose, list items
+and parameter explanations share the ordinary hover/full translation pipeline.
+Restoration removes the preparation wrappers and retains original inline nodes,
+links, text and whitespace. This does not enable arbitrary HTML PRE or RFC text.
 Ubuntu HTML manpages preserve command signatures and command labels using the
 manual's section structure. Literal command and argument markup stays original
 inside translated explanations; these rules apply only to Ubuntu's manpage URLs.

@@ -1264,10 +1264,10 @@ describe('49F actual pinned-data virtual catalog consumer', () => {
 
     afterEach(() => vi.unstubAllEnvs());
 
-    it('reconciles all 19 authoritative established rules without mutating pinned data and reuses every unchanged rule', async () => {
+    it('reconciles all 20 authoritative established rules without mutating pinned data and reuses every unchanged rule', async () => {
         const {catalogs, original, originalSnapshot} = await loadCatalogs();
         expect(original.established).toHaveLength(17);
-        expect(catalogs.established).toHaveLength(19);
+        expect(catalogs.established).toHaveLength(20);
         for (const name of ['established', 'websites', 'profiles']) {
             const authoritative = JSON.parse(readFileSync(resolve(process.cwd(), `src/core/site-adaptation/catalog/${name}.json`), 'utf8'));
             expect(catalogs[name]).toEqual(authoritative);

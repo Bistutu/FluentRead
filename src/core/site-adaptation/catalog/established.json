@@ -608,6 +608,16 @@
     ]
   },
   {
+    "id": "man7",
+    "name": "Linux man-pages",
+    "match": {"hosts": ["man7.org"], "paths": ["/linux/man-pages/man*/*.html"]},
+    "priority": 360,
+    "allScopes": true,
+    "mode": "augment",
+    "literalTokens": ["pre b", "pre i"],
+    "omit": ["h2 .top-link", "pre .headline", "pre .footline"]
+  },
+  {
     "id": "ubuntu-manpage",
     "name": "Ubuntu 命令手册",
     "match": {

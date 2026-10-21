@@ -1,7 +1,7 @@
 /**
  * @file src/core/site-adaptation/compiler.ts
  * 文件职责：将网站适配 JSON 编译为既有候选引擎使用的适配器，并组合内置与用户规则。
- * 主要内容：展开单层模板、按域名和路径匹配规则、保护原文并执行自定义整条覆盖；仅内置 Mastodon 策略可发现已核实顶层应用外壳中的公开正文，用户覆盖与停用会撤销该能力。
+ * 主要内容：展开单层模板、按域名和路径匹配规则、保护原文并执行自定义整条覆盖；内置 Mastodon 策略发现顶层应用外壳中的公开正文，内置 man7 策略授予预格式说明段准备能力，用户覆盖与停用会撤销这些能力。
  * 模块边界：仅匹配 URL 与声明内容边界，不注入脚本或样式，不监听页面生命周期。
  */
 
@@ -197,6 +197,8 @@ export function composeSiteAdapters(builtinPack: SiteRulePack, settings: SiteAda
     const adapters = new Map(compileSiteRulePack(builtinPack).map((adapter) => [adapter.id, adapter]));
     const mastodon = adapters.get('mastodon');
     if (mastodon) mastodon.discoverApplicationShellTargets = discoverMastodonApplicationShellTargets;
+    const manpage = adapters.get('man7');
+    if (manpage) manpage.preformattedProse = 'manpage';
     compileSiteRulePack(settings.custom).forEach((adapter) => adapters.set(adapter.id, adapter));
     return [...adapters.values()].filter((adapter) => !disabled.has(adapter.id));
 }

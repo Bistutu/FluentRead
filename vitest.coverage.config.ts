@@ -598,6 +598,8 @@ export default defineConfig({
                 'src/features/settings/model/sitePreferences.ts',
                 'src/core/translation/adapters/declarative.ts',
                 'src/core/translation/current.ts',
+                'src/core/translation/manpage.ts',
+                'src/features/full-page-translation/content/manpagePreparation.ts',
                 'src/core/translation/dom.ts',
                 'src/core/translation/font.ts',
                 'src/core/translation/result.ts',
