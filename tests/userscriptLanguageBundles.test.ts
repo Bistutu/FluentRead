@@ -6,7 +6,6 @@ import {runInNewContext} from 'node:vm';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 // 脚本发布的语言资源不含智能高亮文案；摘要必须按脚本实际使用的投影计算。
 import {UI_LANGUAGE_BUNDLES} from '../userscript/languageBundles';
-import {vocabularySpeechMessages} from '../userscript/vocabularySpeechMessages';
 import {UI_LANGUAGE_BUNDLES as extensionBundles} from '@/src/core/i18n/bundles';
 import {aiRequestTimeoutMessages} from '@/src/core/i18n/messages/aiRequestTimeout';
 import {ungzip} from 'pako';
@@ -20,7 +19,6 @@ const sweepKeys = ['sectionTranslation.picker.preview', 'sectionTranslation.pick
 const sweepCopy = (language: keyof typeof extensionBundles) => Object.fromEntries(sweepKeys.map(key => [key, extensionBundles[language].messages[key]]));
 const deeplxKeys = ['settings.services.deeplx.defaultRoute', 'settings.services.deeplx.endpointHelp'];
 const deeplxCopy = (language: keyof typeof extensionBundles) => Object.fromEntries(deeplxKeys.map(key => [key, extensionBundles[language].messages[key]]));
-const speechCopy = (language: keyof typeof vocabularySpeechMessages) => vocabularySpeechMessages[language];
 
 const resourceCommit = '70d3d901033a579e32a5bf5e6af14555f0d140bb';
 
@@ -44,6 +42,8 @@ describe('userscript remote UI language data', () => {
             expect(Object.keys(bundle.messages).some(key => key.startsWith('popup.displayMode.'))).toBe(false);
             expect(Object.keys(bundle.messages).some(key => key.startsWith('popup.pageFont.'))).toBe(false);
             expect(Object.keys(bundle.messages).some(key => key.startsWith('safari.freePool.'))).toBe(false);
+            expect(Object.keys(bundle.messages).some(key => key.startsWith('learning.collection.speech') && key !== 'learning.collection.speechFailed')).toBe(false);
+            expect(bundle.messages['learning.collection.speechFailed']).toBeTruthy();
             expect(bundle.messages['popup.translateCurrentPage']).toBeTruthy();
         }
         const requests: string[] = [];
@@ -163,7 +163,7 @@ describe('userscript remote UI language data', () => {
         ]);
     });
 
-    it.each(['ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES'] as const)('localizes recovery, speech, DeepLX and MiMo copy after loading pinned %s data and after an offline cache reload', async language => {
+    it.each(['ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES'] as const)('localizes recovery, DeepLX and MiMo copy after loading pinned %s data and after an offline cache reload', async language => {
         const digest = createHash('sha256').update(JSON.stringify(UI_LANGUAGE_BUNDLES[language])).digest('hex').slice(0, 16);
         const remoteFile = `${language}.${digest}.json`;
         const remoteSource = readFileSync(resolve(languageDir, remoteFile), 'utf8');
@@ -193,7 +193,7 @@ describe('userscript remote UI language data', () => {
         vi.stubGlobal('__FLUENTREAD_USERSCRIPT_RESOURCE_COMMIT__', resourceCommit);
         const assertSweepCopy = async () => {
             const core = await import('@/src/core/i18n');
-            for (const key of [...sweepKeys, ...deeplxKeys, ...Object.keys(speechCopy(language))]) {
+            for (const key of [...sweepKeys, ...deeplxKeys]) {
                 expect(core.translate(key, language)).toBe(extensionBundles[language].messages[key]);
             }
         };
@@ -211,7 +211,7 @@ describe('userscript remote UI language data', () => {
                 expect(core.translateLegacyText(mimoRetirementSource, language)).toBe(extensionBundles[language].legacyText[mimoRetirementSource]);
                 expect(register).toHaveBeenCalledTimes(1);
                 expect(register).toHaveBeenCalledWith(language, {
-                    ...original, legacyText: {...original.legacyText, ...mimoRetirementLegacyText[language]}, messages: {...recovery, ...original.messages, ...aiRequestTimeoutMessages[language], ...sweepCopy(language), ...deeplxCopy(language), ...speechCopy(language)},
+                    ...original, legacyText: {...original.legacyText, ...mimoRetirementLegacyText[language]}, messages: {...recovery, ...original.messages, ...aiRequestTimeoutMessages[language], ...sweepCopy(language), ...deeplxCopy(language)},
                 });
                 for (const [key, text] of Object.entries(recovery)) {
                     expect(core.translate(key, language)).toBe(text);
@@ -257,7 +257,7 @@ describe('userscript remote UI language data', () => {
             await expect(loader.ensureUiLanguageBundle('fr-FR')).resolves.toBe(true);
             expect(register).toHaveBeenCalledTimes(1);
             expect(register).toHaveBeenCalledWith('fr-FR', {
-                ...supplied, legacyText: {...supplied.legacyText, ...mimoRetirementLegacyText['fr-FR']}, messages: {...supplied.messages, ...aiRequestTimeoutMessages['fr-FR'], ...sweepCopy('fr-FR'), ...deeplxCopy('fr-FR'), ...speechCopy('fr-FR')},
+                ...supplied, legacyText: {...supplied.legacyText, ...mimoRetirementLegacyText['fr-FR']}, messages: {...supplied.messages, ...aiRequestTimeoutMessages['fr-FR'], ...sweepCopy('fr-FR'), ...deeplxCopy('fr-FR')},
             });
             expect(core.translate('learning.panelLoadError', 'fr-FR')).toBe('Remote section recovery');
             expect(core.translate('learning.reloadPage', 'fr-FR')).toBe('Remote reload');

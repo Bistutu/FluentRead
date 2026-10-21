@@ -13,7 +13,6 @@ import {describe, expect, it, vi} from 'vitest';
 import {ungzip} from 'pako';
 import {gzipUserscriptBuildData} from '@/userscript/buildGzip';
 import {zhCNMessages, UI_LANGUAGE_BUNDLES, userscriptMessages} from '@/userscript/languageBundles';
-import {vocabularySpeechMessages} from '@/userscript/vocabularySpeechMessages';
 import {zhCNMessages as extensionChinese} from '@/src/core/i18n/messages/zh-CN';
 import {UI_LANGUAGE_BUNDLES as extensionBundles} from '@/src/core/i18n/bundles';
 import {aiRequestTimeoutMessages} from '@/src/core/i18n/messages/aiRequestTimeout';
@@ -391,7 +390,7 @@ describe('authoritative site catalogs with an external pinned data asset', () =>
 });
 
 describe('userscript browser shim injection', () => {
-    const registeredSupplementKeys = ['learning.panelLoadError', 'learning.reloadPage', ...Object.keys(aiRequestTimeoutMessages['en-US']), ...Object.keys(vocabularySpeechMessages['ja-JP']),
+    const registeredSupplementKeys = ['learning.panelLoadError', 'learning.reloadPage', ...Object.keys(aiRequestTimeoutMessages['en-US']),
         'sectionTranslation.picker.dragging', 'sectionTranslation.scope.selected', 'settings.services.deeplx.defaultRoute'];
     const publishedOverrideKeys = ['sectionTranslation.picker.preview', 'sectionTranslation.picker.instruction',
         'popup.sectionTranslationTitle', 'settings.services.deeplx.endpointHelp',
@@ -431,6 +430,7 @@ describe('userscript browser shim injection', () => {
             const kept = Object.fromEntries(Object.entries(original.messages).filter(([key]) =>
                 !key.startsWith('informationHighlight.') && !key.startsWith('contextMenu.notice.') && !key.startsWith('video.learning.') && key !== 'video.nativeFullscreenHint' && !key.startsWith('popup.compact.') && !key.startsWith('popup.displayMode.')
                 && !key.startsWith('diagnostics.') && !key.startsWith('popup.pageFont.')
+                && (!key.startsWith('learning.collection.speech') || key === 'learning.collection.speechFailed')
                 && !['waitingTranslation', 'crossPageContext', 'fullPassage', 'closePassage'].some(name => key === `document.pdfReading.${name}`)
                 && !key.startsWith('document.config.') && !key.startsWith('document.translationRecovery.') && !key.startsWith('document.retainedRevisions.')
                 && !key.startsWith('safari.freePool.')
@@ -532,6 +532,7 @@ describe('userscript browser shim injection', () => {
             expect(Object.hasOwn(projected, key)).toBe(false);
         }
         const retainedKeys = Object.keys(extension).filter(key => !key.startsWith('informationHighlight.')
+            && (!key.startsWith('learning.collection.speech') || key === 'learning.collection.speechFailed')
             && !noticeKeys.includes(key) && !learningKeys.includes(key) && !readerRecoveryKeys.includes(key)
             && !diagnosticKeys.includes(key) && !readerDialogKeys.includes(key)
             && key !== 'video.nativeFullscreenHint'
