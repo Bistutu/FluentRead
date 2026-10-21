@@ -251,6 +251,11 @@ describe('局部翻译选择模式', () => {
         expect(h.host()!.getAttribute('data-selection-state')).toBe('locked');
         expect(h.onPick).not.toHaveBeenCalled();
         expect(h.inspect).toHaveBeenLastCalledWith([h.byId('para'), h.byId('second')]);
+        expect(query(h.shadow(), '.fr-section-label-meta').textContent).toBe('sectionTranslation.scope.selected:{"count":2}');
+        expect(query(h.shadow(), '.fr-section-bar-instruction').textContent).toBe('sectionTranslation.label.translate:{"count":2}');
+        expect(query(h.shadow(), '.fr-section-bar-heading').classList.contains('is-locked')).toBe(true);
+        expect(h.shadow().querySelector('.fr-section-bar-preview')).toBeNull();
+        expect(h.shadow().querySelector('.fr-section-bar-keys')).toBeNull();
         clickButton(h, 'confirm');
         expect(h.onPick).toHaveBeenCalledOnce();
         expect(h.onPick).toHaveBeenCalledWith([h.byId('para'), h.byId('second')]);
@@ -277,14 +282,18 @@ describe('局部翻译选择模式', () => {
 
     it('划选非首段的正文变化刷新摘要，隐藏或移除该段使整组无法确认', async () => {
         for (const invalidation of ['remove', 'hidden']) {
-            const h = await createHarness(); h.picker.startSectionPicker(h.options as never); h.flushFrames();
+            const h = await createHarness();
+            h.inspect.mockImplementation((regions: Element | readonly Element[]) => summary({
+                total: 3, pending: Array.isArray(regions) && regions.some(region => region.textContent === 'Updated paragraph') ? 3 : 2,
+            }));
+            h.picker.startSectionPicker(h.options as never); h.flushFrames();
             h.emit('pointerdown', {pointerId: 1, clientX: 50, clientY: 70});
             h.hit.current = h.byId('second');
             h.emit('pointermove', {pointerId: 1, buttons: 1, clientX: 50, clientY: 130});
             h.emit('pointerup', {pointerId: 1, clientX: 50, clientY: 130}); h.flushFrames(); vi.advanceTimersByTime(90);
             const second = h.byId('second'); second.textContent = 'Updated paragraph';
             h.emitMutation(second); vi.advanceTimersByTime(90); h.flushFrames();
-            expect(query(h.shadow(), '.fr-section-bar-preview').textContent).toContain('Updated paragraph');
+            expect(query(h.shadow(), '.fr-section-bar-instruction').textContent).toBe('sectionTranslation.label.translate:{"count":3}');
             expect(h.inspect).toHaveBeenLastCalledWith([h.byId('para'), second]);
             h.emitResize(); h.flushFrames();
             if (invalidation === 'remove') { second.remove(); h.hit.current = null; h.emitMutation(h.byId('readme')); }
@@ -413,7 +422,9 @@ describe('局部翻译选择模式', () => {
         expect(query(shadow, '.fr-section-bar-instruction').getAttribute('role')).toBe('status');
         expect(query(shadow, '.fr-section-bar-instruction').getAttribute('aria-live')).toBe('polite');
         expect(query(shadow, '.fr-section-bar-actions').getAttribute('role')).toBe('toolbar');
-        expect(query(shadow, '.fr-section-bar-preview').textContent).toBe('Hello world');
+        expect(shadow.querySelector('.fr-section-bar-preview')).toBeNull();
+        expect(shadow.querySelector('.fr-section-bar-keys')).toBeNull();
+        expect(query(shadow, '.fr-section-bar').textContent).not.toContain('Hello world');
         expect(query(shadow, '.fr-section-bar-close').getAttribute('aria-label')).toBe('sectionTranslation.picker.close');
 
         vi.advanceTimersByTime(90);
@@ -616,7 +627,7 @@ describe('局部翻译选择模式', () => {
         vi.advanceTimersByTime(1);
         expect(button(harness, 'confirm').disabled).toBe(false);
         expect(harness.inspect).toHaveBeenLastCalledWith(para);
-        expect(query(harness.shadow(), '.fr-section-bar-preview').textContent).toBe('New English source');
+        expect(query(harness.shadow(), '.fr-section-bar-instruction').textContent).toBe('sectionTranslation.label.translate:{"count":2}');
         clickButton(harness, 'confirm');
         expect(harness.onPick).toHaveBeenCalledWith(para);
     });
@@ -777,6 +788,9 @@ describe('局部翻译选择模式', () => {
     it('锁定正文插入文本和注释只刷新摘要，不为非元素节点扫描影子树', async () => {
         const harness = await createHarness();
         const region = harness.byId('para');
+        harness.inspect.mockImplementation(() => summary({
+            total: 3, pending: region.textContent?.includes('Additional original text') ? 3 : 2,
+        }));
         harness.picker.startSectionPicker(harness.options as never);
         harness.flushFrames();
         harness.emit('click', {clientX: 50, clientY: 70});
@@ -791,7 +805,8 @@ describe('局部翻译选择模式', () => {
         vi.advanceTimersByTime(90);
         expect(walker).not.toHaveBeenCalled();
         expect(harness.inspect).toHaveBeenCalledOnce();
-        expect(query(harness.shadow(), '.fr-section-bar-preview').textContent).toContain('Additional original text');
+        expect(harness.inspect).toHaveBeenLastCalledWith(region);
+        expect(query(harness.shadow(), '.fr-section-bar-instruction').textContent).toBe('sectionTranslation.label.translate:{"count":3}');
         harness.picker.stopSectionPicker();
     });
 
@@ -1027,7 +1042,11 @@ describe('局部翻译选择模式', () => {
         harness.picker.startSectionPicker(harness.options as never);
         harness.flushFrames();
         for (const name of ['expand', 'shrink', 'reselect', 'confirm']) {
-            expect(button(harness, name).textContent).toBe(`sectionTranslation.picker.${name}`);
+            if (name === 'expand' || name === 'shrink') {
+                expect(button(harness, name).textContent).toBe(name === 'expand' ? '＋' : '−');
+                expect(button(harness, name).getAttribute('aria-label')).toBe(`sectionTranslation.picker.${name}`);
+                expect(button(harness, name).title).toBe(`sectionTranslation.picker.${name}`);
+            } else expect(button(harness, name).textContent).toBe(`sectionTranslation.picker.${name}`);
             expect(button(harness, name).hidden).toBe(false);
             expect(button(harness, name).type).toBe('button');
         }
@@ -1055,7 +1074,8 @@ describe('局部翻译选择模式', () => {
         harness.flushFrames();
         expect(harness.host()!.getAttribute('data-selection-state')).toBe('preview');
         expect(query(harness.shadow(), '.fr-section-box').classList.contains('is-visible')).toBe(false);
-        expect(query(harness.shadow(), '.fr-section-bar-preview').hidden).toBe(true);
+        expect(query(harness.shadow(), '.fr-section-bar-instruction').textContent).toBe('sectionTranslation.picker.preview');
+        expect(query(harness.shadow(), '.fr-section-bar-heading').classList.contains('is-locked')).toBe(false);
         for (const name of ['expand', 'shrink', 'reselect', 'confirm']) expect(button(harness, name).disabled).toBe(true);
         expect(harness.onPick).not.toHaveBeenCalled();
 
@@ -1063,7 +1083,7 @@ describe('局部翻译选择模式', () => {
         harness.emit('pointermove', {clientX: 60, clientY: 130});
         harness.flushFrames();
         expect(query(harness.shadow(), '.fr-section-box').style.transform).toBe('translate(27px, 117px)');
-        expect(query(harness.shadow(), '.fr-section-bar-preview').textContent).toBe('Second paragraph');
+        expect(harness.resizeObserver.observe).toHaveBeenLastCalledWith(harness.byId('second'));
         harness.emit('keydown', {key: 'ArrowDown'});
         expect(query(harness.shadow(), '.fr-section-box').style.width).toBe('406px');
         expect(button(harness, 'confirm').disabled).toBe(true);
@@ -1126,7 +1146,8 @@ describe('局部翻译选择模式', () => {
         expect(harness.inspect).toHaveBeenLastCalledWith(para);
         expect(harness.onPick).not.toHaveBeenCalled();
         expect(button(harness, 'confirm').disabled).toBe(true);
-        expect(query(harness.shadow(), '.fr-section-bar-preview').textContent).toBe('Changed');
+        expect(query(harness.shadow(), '.fr-section-bar-instruction').textContent).toBe(`sectionTranslation.label.${action}`);
+        expect(query(harness.shadow(), '.fr-section-label-action').textContent).toBe(`sectionTranslation.label.${action}`);
         expect(harness.picker.isSectionPickerActive()).toBe(true);
         harness.picker.stopSectionPicker();
     });
@@ -1146,11 +1167,13 @@ describe('局部翻译选择模式', () => {
         para.appendChild(translation);
         harness.emitMutation(para);
         expect(button(harness, 'confirm').disabled).toBe(false);
-        expect(query(harness.shadow(), '.fr-section-bar-preview').textContent).toBe('Hello world');
+        expect(query(harness.shadow(), '.fr-section-bar-instruction').textContent).toBe('sectionTranslation.label.translate:{"count":2}');
         vi.advanceTimersByTime(90);
         expect(button(harness, 'confirm').textContent).toBe('sectionTranslation.picker.restore');
         expect(button(harness, 'confirm').classList.contains('tone-restore')).toBe(true);
         expect(button(harness, 'confirm').disabled).toBe(false);
+        expect(query(harness.shadow(), '.fr-section-bar-instruction').textContent).toBe('sectionTranslation.label.restore:{"count":2}');
+        expect(query(harness.shadow(), '.fr-section-bar').textContent).not.toContain('译文');
         clickButton(harness, 'confirm');
         expect(harness.inspect).toHaveBeenCalledTimes(3);
         expect(harness.onPick).toHaveBeenCalledOnce();
@@ -1182,6 +1205,9 @@ describe('局部翻译选择模式', () => {
     it('观察锁定目标的尺寸和区域外结构变化时重绘，区域内变化重新盘点，退出清理观察器', async () => {
         const harness = await createHarness();
         const para = harness.byId('para');
+        harness.inspect.mockImplementation(() => summary({
+            total: 3, pending: para.textContent?.startsWith('Updated source ') ? 3 : 2,
+        }));
         harness.picker.startSectionPicker(harness.options as never);
         harness.flushFrames();
         expect(harness.mutationObserver.observe).toHaveBeenCalledWith(harness.document.documentElement, expect.objectContaining({childList: true, characterData: true, subtree: true, attributes: true}));
@@ -1216,11 +1242,12 @@ describe('局部翻译选择模式', () => {
         source.textContent = 'Updated source ';
         harness.emitMutation(source);
         expect(button(harness, 'confirm').disabled).toBe(false);
-        expect(query(harness.shadow(), '.fr-section-bar-preview').textContent).toBe('Updated source world');
+        expect(query(harness.shadow(), '.fr-section-bar-instruction').textContent).toBe('sectionTranslation.label.translate:{"count":2}');
         vi.advanceTimersByTime(90);
         expect(harness.inspect).toHaveBeenCalledOnce();
         expect(harness.inspect).toHaveBeenCalledWith(para);
         expect(button(harness, 'confirm').disabled).toBe(false);
+        expect(query(harness.shadow(), '.fr-section-bar-instruction').textContent).toBe('sectionTranslation.label.translate:{"count":3}');
         harness.mutationObserver.disconnect.mockClear();
         harness.resizeObserver.disconnect.mockClear();
         harness.picker.stopSectionPicker();
@@ -1246,9 +1273,10 @@ describe('局部翻译选择模式', () => {
         else harness.emitResize();
         harness.flushFrames();
         expect(query(harness.shadow(), '.fr-section-box').style.transform).toBe('translate(27px, 57px)');
-        expect(query(harness.shadow(), '.fr-section-bar-preview').textContent).toBe('Second paragraph');
+        expect(harness.resizeObserver.observe).toHaveBeenLastCalledWith(harness.byId('second'));
         expect(query(harness.shadow(), '.fr-section-box').classList.contains('is-following')).toBe(false);
         harness.emit('keydown', {key: 'Enter'});
+        expect(harness.inspect).toHaveBeenLastCalledWith(harness.byId('second'));
         expect(harness.onPick).toHaveBeenCalledWith(harness.byId('second'));
     });
 
@@ -1279,7 +1307,11 @@ describe('局部翻译选择模式', () => {
         harness.emitMutation(harness.document.body, [harness.byId('para')]);
         harness.flushFrames();
         expect(query(harness.shadow(), '.fr-section-box').classList.contains('is-visible')).toBe(true);
-        expect(query(harness.shadow(), '.fr-section-bar-preview').textContent).toBe('Hello world');
+        expect(harness.resizeObserver.observe).toHaveBeenLastCalledWith(harness.byId('para'));
+        expect(harness.host()!.getAttribute('data-selection-count')).toBe('1');
+        vi.advanceTimersByTime(90);
+        expect(harness.inspect).toHaveBeenLastCalledWith(harness.byId('para'));
+        expect(query(harness.shadow(), '.fr-section-label-action').textContent).toBe('sectionTranslation.label.translate:{"count":2}');
         harness.picker.stopSectionPicker();
     });
 
@@ -1312,21 +1344,22 @@ describe('局部翻译选择模式', () => {
         harness.picker.stopSectionPicker();
     });
 
-    it('锁定与标签盘点复用原文预览，只有正文变化或确认复核时重新读取', async () => {
+    it('选择器不为辅助摘录扫描正文，仅在延时盘点和确认复核时通过摘要端口读取', async () => {
         const harness = await createHarness();
         const source = harness.byId('para').firstChild!;
         const originalText = source.textContent;
         const reads = vi.fn(() => originalText);
         Object.defineProperty(source, 'textContent', {get: reads});
+        harness.inspect.mockImplementation(() => summary({action: source.textContent ? 'translate' : 'empty'}));
         harness.picker.startSectionPicker(harness.options as never);
         harness.flushFrames();
-        expect(reads).toHaveBeenCalledOnce();
+        expect(reads).not.toHaveBeenCalled();
         harness.emit('click', {clientX: 50, clientY: 70});
         vi.advanceTimersByTime(90);
         harness.flushFrames();
         expect(reads).toHaveBeenCalledOnce();
         harness.emitMutation(source);
-        expect(reads).toHaveBeenCalledTimes(2);
+        expect(reads).toHaveBeenCalledOnce();
         vi.advanceTimersByTime(90);
         expect(reads).toHaveBeenCalledTimes(2);
         clickButton(harness, 'confirm');
@@ -1417,13 +1450,15 @@ describe('局部翻译选择模式', () => {
         expect(harness.host()!.getAttribute('data-selection-state')).toBe('preview');
         expect(button(harness, 'confirm').disabled).toBe(true);
         expect(harness.resizeObserver.observe).toHaveBeenLastCalledWith(replacement);
-        expect(query(harness.shadow(), '.fr-section-bar-preview').textContent).toBe('Replacement source');
+        expect(harness.host()!.getAttribute('data-selection-count')).toBe('1');
+        expect(query(harness.shadow(), '.fr-section-bar-instruction').textContent).toBe('sectionTranslation.picker.preview');
         expect(button(harness, 'reselect').disabled).toBe(true);
         harness.emit('click', {clientX: 50, clientY: 70});
         harness.emit('keydown', {key: 'Enter'});
         expect(harness.onPick).toHaveBeenCalledOnce();
         expect(harness.onPick).toHaveBeenCalledWith(replacement);
         expect(harness.onPick).not.toHaveBeenCalledWith(old);
+        expect(harness.inspect).toHaveBeenLastCalledWith(replacement);
     });
 
     it('持续每 50ms 更新 DOM 不会使 90ms 盘点饥饿，保留摘要且确认仍同步复核', async () => {
@@ -1486,7 +1521,8 @@ describe('局部翻译选择模式', () => {
         expect(query(harness.shadow(), '.fr-section-box').style.width).toBe('306px');
         expect(query(harness.shadow(), '.fr-section-box').style.height).toBe('86px');
         expect(button(harness, 'confirm').disabled).toBe(false);
-        expect(query(harness.shadow(), '.fr-section-bar-preview').textContent).toBe('New English source inside shadow DOM');
+        expect(harness.inspect).toHaveBeenLastCalledWith(inner);
+        expect(query(harness.shadow(), '.fr-section-bar-instruction').textContent).toBe('sectionTranslation.label.translate:{"count":2}');
         harness.mutationObserver.disconnect.mockClear();
         harness.resizeObserver.disconnect.mockClear();
         clickButton(harness, 'reselect');
@@ -1603,9 +1639,12 @@ describe('局部翻译选择模式', () => {
         harness.hit.current = harness.byId('second');
         harness.emit('click', {clientX: 60, clientY: 130});
         expect(harness.host()!.getAttribute('data-selection-state')).toBe('locked');
-        expect(query(harness.shadow(), '.fr-section-bar-preview').textContent).toBe('Second paragraph');
+        expect(harness.host()!.getAttribute('data-selection-count')).toBe('1');
+        expect(harness.resizeObserver.observe).toHaveBeenLastCalledWith(harness.byId('second'));
+        expect(query(harness.shadow(), '.fr-section-bar-instruction').textContent).toBe('sectionTranslation.label.inspecting');
         expect(harness.onPick).not.toHaveBeenCalled();
         harness.emit('keydown', {key: 'Enter'});
+        expect(harness.inspect).toHaveBeenLastCalledWith(harness.byId('second'));
         expect(harness.onPick).toHaveBeenCalledWith(harness.byId('second'));
         // 高亮框尚未绘制时直接移除界面，不播放收束动画。
         expect(harness.host()).toBeNull();
@@ -1888,4 +1927,166 @@ describe('局部翻译选择模式', () => {
         expect(query(harness.shadow(), '.fr-section-label').style.transform).toBe('translate(30px, 291px)');
         harness.picker.stopSectionPicker();
     });
+});
+
+describe('局部区域记忆交互', () => {
+    const setupRemember = async (onRemember: ReturnType<typeof vi.fn>, rememberScopes = {site: 'example.com', path: 'example.com/articles/'}) => {
+        const h = await createHarness();
+        h.picker.startSectionPicker({...h.options, rememberScopes, onRemember} as never);
+        h.flushFrames();
+        expect(query(h.shadow(), '.fr-section-remember').hidden).toBe(true);
+        h.emit('click', {clientX: 50, clientY: 70}); h.flushFrames(); vi.advanceTimersByTime(90);
+        const checkbox = query(h.shadow(), '.fr-section-remember-checkbox') as HTMLInputElement;
+        const change = () => {
+            const event = new (h.document.defaultView as unknown as {Event: typeof Event}).Event('change');
+            Object.defineProperty(event, 'isTrusted', {value: true});
+            checkbox.dispatchEvent(event);
+        };
+        expect(query(h.shadow(), '.fr-section-remember').hidden).toBe(false);
+        expect(checkbox.checked).not.toBe(true);
+        checkbox.checked = true; change();
+        return h;
+    };
+    const settle = async () => { for (let index = 0; index < 8; index += 1) await Promise.resolve(); };
+
+    it('必要选择保留可访问名称，完整范围经描述关联并在切换网站时更新', async () => {
+        const h = await setupRemember(vi.fn());
+        const scope = query(h.shadow(), '.fr-section-remember-scope') as HTMLSelectElement;
+        const mode = query(h.shadow(), '.fr-section-remember-mode') as HTMLSelectElement;
+        expect(scope.parentElement!.hidden).toBe(false);
+        expect(scope.getAttribute('aria-label')).toBe('sectionTranslation.rules.scope');
+        expect(mode.getAttribute('aria-label')).toBe('sectionTranslation.rules.nextVisit');
+        expect(scope.parentElement!.children).toHaveLength(1);
+        expect(mode.parentElement!.children).toHaveLength(1);
+        const address = query(h.shadow(), `#${scope.getAttribute('aria-describedby')}`);
+        expect(address.className).toBe('fr-section-remember-address');
+        expect(address.hidden).toBe(false);
+        expect(address.textContent).toBe('example.com/articles/');
+        expect(scope.title).toBe('example.com/articles/');
+        Object.defineProperty(scope, 'value', {configurable: true, value: 'site'});
+        const change = new (h.document.defaultView as unknown as {Event: typeof Event}).Event('change');
+        Object.defineProperty(change, 'isTrusted', {value: true});
+        scope.dispatchEvent(change);
+        expect(address.textContent).toBe('example.com');
+        expect(scope.title).toBe('example.com');
+        expect(query(h.shadow(), '.fr-section-bar-instruction').textContent).toBe('sectionTranslation.label.translate:{"count":2}');
+        h.picker.stopSectionPicker();
+    });
+
+    it('根路径等于网站时只显示下次动作，确认仍保存精确的网站范围', async () => {
+        const onRemember = vi.fn().mockResolvedValue(true);
+        const h = await setupRemember(onRemember, {site: 'example.com', path: 'example.com'});
+        const scope = query(h.shadow(), '.fr-section-remember-scope') as HTMLSelectElement;
+        const mode = query(h.shadow(), '.fr-section-remember-mode') as HTMLSelectElement;
+        expect(scope.parentElement!.hidden).toBe(true);
+        expect(mode.parentElement!.hidden).toBe(false);
+        const fields = query(h.shadow(), '.fr-section-remember-fields');
+        expect([...fields.children].filter(field => !(field as HTMLElement).hidden)).toEqual([mode.parentElement]);
+        expect(scope.title).toBe('example.com');
+        expect(query(h.shadow(), `#${scope.getAttribute('aria-describedby')}`).textContent).toBe('example.com');
+        clickButton(h, 'confirm'); await settle();
+        expect(onRemember).toHaveBeenCalledWith(h.byId('para'), {site: 'example.com', mode: 'remind'});
+        expect(h.onPick).toHaveBeenCalledOnce();
+    });
+
+    it('显式记住默认当前路径并提醒，等待保存后才退出翻译，重复确认不重复保存', async () => {
+        let finish!: (value: boolean) => void;
+        const onRemember = vi.fn(() => new Promise<boolean>(resolve => {finish = resolve;}));
+        const h = await setupRemember(onRemember);
+        expect(button(h, 'confirm').textContent).toBe('sectionTranslation.rules.confirm');
+        clickButton(h, 'confirm'); clickButton(h, 'confirm'); h.emit('keydown', {key: 'Enter'});
+        await settle();
+        expect(onRemember).toHaveBeenCalledOnce();
+        expect(onRemember).toHaveBeenCalledWith(h.byId('para'), {site: 'example.com/articles/', mode: 'remind'});
+        expect(h.onPick).not.toHaveBeenCalled(); expect(button(h, 'confirm').disabled).toBe(true);
+        finish(true); await settle();
+        expect(h.onPick).toHaveBeenCalledOnce(); expect(h.picker.isSectionPickerActive()).toBe(false);
+    });
+
+    it('网站自动模式保存失败保留选区与选项，允许重试', async () => {
+        const onRemember = vi.fn().mockResolvedValueOnce(false).mockRejectedValueOnce(new Error('write failed')).mockResolvedValueOnce(true);
+        const h = await setupRemember(onRemember);
+        const scope = query(h.shadow(), '.fr-section-remember-scope') as HTMLSelectElement;
+        const mode = query(h.shadow(), '.fr-section-remember-mode') as HTMLSelectElement;
+        Object.defineProperty(scope, 'value', {configurable: true, value: 'site'});
+        Object.defineProperty(mode, 'value', {configurable: true, value: 'auto'});
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+            clickButton(h, 'confirm'); await settle();
+            expect(h.picker.isSectionPickerActive()).toBe(true); expect(h.onPick).not.toHaveBeenCalled();
+            expect(query(h.shadow(), '.fr-section-remember-status').textContent).toBe('sectionTranslation.rules.saveFailed');
+            expect(button(h, 'confirm').disabled).toBe(false);
+        }
+        clickButton(h, 'confirm'); await settle();
+        expect(onRemember).toHaveBeenCalledTimes(3); expect(onRemember).toHaveBeenLastCalledWith(h.byId('para'), {site: 'example.com', mode: 'auto'});
+        expect(h.onPick).toHaveBeenCalledOnce();
+    });
+
+    it('退出或选区移除后忽略迟到保存结果，保存前立即退出不发送请求', async () => {
+        for (const action of ['exit', 'remove', 'immediate-exit']) {
+            let finish!: (value: boolean) => void;
+            const onRemember = vi.fn(() => new Promise<boolean>(resolve => {finish = resolve;}));
+            const h = await setupRemember(onRemember);
+            clickButton(h, 'confirm');
+            if (action === 'immediate-exit') h.emit('keydown', {key: 'Escape'});
+            await settle();
+            if (action === 'immediate-exit') expect(onRemember).not.toHaveBeenCalled();
+            else {
+                if (action === 'exit') h.emit('keydown', {key: 'Escape'});
+                else {h.byId('para').remove(); h.emitMutation(h.byId('readme')); h.flushFrames();}
+                finish(true); await settle();
+            }
+            expect(h.onPick).not.toHaveBeenCalled(); h.picker.stopSectionPicker();
+        }
+    });
+
+    it('记忆原生控件保留方向键、Enter 和空格，恢复模式隐藏记忆入口', async () => {
+        const h = await setupRemember(vi.fn());
+        for (const selector of ['.fr-section-remember-checkbox', '.fr-section-remember-scope', '.fr-section-remember-mode']) {
+            Object.defineProperty(h.shadow(), 'activeElement', {configurable: true, get: () => query(h.shadow(), selector)});
+            for (const key of ['ArrowUp', 'ArrowDown', 'Enter', ' ']) {
+                const event = h.emit('keydown', {key, composedPath: () => [h.host(), h.document.body]});
+                expect(event.preventDefault).not.toHaveBeenCalled();
+            }
+        }
+        h.inspect.mockReturnValue(summary({action: 'restore', active: 2, pending: 0}));
+        h.emitMutation(h.byId('para')); vi.advanceTimersByTime(90); h.flushFrames();
+        expect(query(h.shadow(), '.fr-section-remember').hidden).toBe(true);
+        h.picker.stopSectionPicker();
+    });
+    it('保存期间方向键和已排队的控件变化不修改确认中的区域或清除保存状态', async () => {
+        let finish!: (value: boolean) => void;
+        const onRemember = vi.fn(() => new Promise<boolean>(resolve => {finish = resolve;}));
+        const h = await setupRemember(onRemember);
+        clickButton(h, 'confirm'); await settle();
+        for (const key of ['ArrowUp', 'ArrowDown']) {
+            const event = h.emit('keydown', {key, repeat: true});
+            expect(event.preventDefault).toHaveBeenCalledOnce();
+        }
+        for (const trusted of [false, true]) {
+            for (const selector of ['.fr-section-remember-checkbox', '.fr-section-remember-scope', '.fr-section-remember-mode']) {
+                const event = new (h.document.defaultView as unknown as {Event: typeof Event}).Event('change');
+                Object.defineProperty(event, 'isTrusted', {value: trusted});
+                query(h.shadow(), selector).dispatchEvent(event);
+            }
+        }
+        expect(query(h.shadow(), '.fr-section-remember-status').textContent).toBe('sectionTranslation.rules.saving');
+        expect(button(h, 'confirm').disabled).toBe(true);
+        expect(onRemember).toHaveBeenCalledOnce();
+        finish(true); await settle();
+        expect(h.onPick).toHaveBeenCalledOnce(); expect(h.onPick).toHaveBeenCalledWith(h.byId('para'));
+    });
+
+    it.each(['退出', '节点移除'] as const)('保存拒绝迟到时不对已失效选择继续报错或翻译：%s', async action => {
+        let fail!: (error: Error) => void;
+        const onRemember = vi.fn(() => new Promise<boolean>((_resolve, reject) => {fail = reject;}));
+        const h = await setupRemember(onRemember);
+        clickButton(h, 'confirm'); await settle();
+        if (action === '退出') h.emit('keydown', {key: 'Escape'});
+        else { h.byId('para').remove(); h.emitMutation(h.byId('readme')); h.flushFrames(); }
+        fail(new Error('Late storage rejection')); await settle();
+        expect(h.onPick).not.toHaveBeenCalled();
+        expect(query(h.shadow(), '.fr-section-remember-status').textContent).not.toBe('sectionTranslation.rules.saveFailed');
+        h.picker.stopSectionPicker();
+    });
+
 });

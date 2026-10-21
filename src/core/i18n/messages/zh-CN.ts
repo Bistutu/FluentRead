@@ -10,6 +10,7 @@ import videoLearningText from './video-learning/zh-CN.json';
 import selfHelpText from './self-help/zh-CN.json';
 import {compositeTranslationMessages} from './compositeTranslation';
 import {aiRequestTimeoutMessages} from './aiRequestTimeout';
+import {sectionTranslationRulesChineseMessages} from './sectionTranslationRules';
 import {pdfReadingChineseMessages} from './pdfReading';
 import {informationHighlightChineseMessages} from './informationHighlight';
 import reencounterText from './reencounter/zh-CN.json';
@@ -536,6 +537,7 @@ export const zhCNMessages = {
     "settings.requestLimits.globalTitle": "请求限制",
     "settings.requestLimits.globalHelp": "未单独设置的服务和模型共用这些限制",
     ...aiRequestTimeoutMessages["zh-CN"],
+    ...sectionTranslationRulesChineseMessages,
     "settings.requestLimits.retryIntervals": "重试间隔",
     "settings.requestLimits.apiKeyRecovery": "失败 Key 冷却时间",
     "settings.requestLimits.apiKeyRecoveryHelp": "某个 Key 因认证、额度或限流失败后会暂时跳过；服务端返回 Retry-After 时优先采用服务端时间",
@@ -737,7 +739,7 @@ export const zhCNMessages = {
     "sectionTranslation.picker.locked": "范围已锁定，可调整后确认",
     "sectionTranslation.picker.expand": "扩大范围",
     "sectionTranslation.picker.shrink": "缩小范围",
-    "sectionTranslation.picker.reselect": "重新选择",
+    "sectionTranslation.picker.reselect": "重选",
     "sectionTranslation.picker.confirm": "翻译所选区域",
     "sectionTranslation.picker.restore": "恢复原文",
     "sectionTranslation.picker.preview": "移动鼠标预览，点击或按住左键划选",

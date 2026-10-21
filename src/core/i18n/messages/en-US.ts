@@ -10,6 +10,7 @@ import videoLearningText from './video-learning/en-US.json';
 import selfHelpText from './self-help/en-US.json';
 import {compositeTranslationMessages, compositeTranslationLegacyText} from './compositeTranslation';
 import {aiRequestTimeoutMessages} from './aiRequestTimeout';
+import {sectionTranslationRulesEnglishMessages} from './sectionTranslationRules';
 import {mimoRetirementLegacyText} from './mimoRetirement';
 import {pdfReadingMessages} from './pdfReading';
 import {informationHighlightMessages} from './informationHighlight';
@@ -21,6 +22,7 @@ import googleDriveText from './google-drive/en-US.json';
 import cloudBackupText from './cloud-backup/en-US.json';
 import type {MessageCatalog} from '../types';
 import {legacyTextOverrides} from './legacy-overrides';
+import {sectionTranslationRulesLegacyText} from './sectionTranslationRulesLegacy';
 import {createLegacyCorrectionText} from './legacy-corrections';
 import {createRuntimeFeedbackLegacyText} from './runtime-feedback';
 import {localTtsEnglishMessages} from './localTts';
@@ -540,6 +542,7 @@ export const enUSMessages = {
     "settings.requestLimits.globalTitle": "Request limits",
     "settings.requestLimits.globalHelp": "Services and models without custom settings share these limits.",
     ...aiRequestTimeoutMessages["en-US"],
+    ...sectionTranslationRulesEnglishMessages,
     "settings.requestLimits.retryIntervals": "Retry intervals",
     "settings.requestLimits.apiKeyRecovery": "Failed key cooldown",
     "settings.requestLimits.apiKeyRecoveryHelp": "Temporarily skip a key after an authentication, quota, or rate-limit failure. A server-provided Retry-After takes priority.",
@@ -2442,6 +2445,7 @@ const enUSLegacyTextBase: Readonly<Record<string, string>> = {
 };
 
 export const enUSLegacyText: Readonly<Record<string, string>> = {
+    ...sectionTranslationRulesLegacyText['en-US'],
     ...googleDriveText.legacy,
     ...compositeTranslationLegacyText['en-US'],
     ...cloudBackupText.legacy,

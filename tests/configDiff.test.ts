@@ -352,6 +352,29 @@ describe('配置差异预览', () => {
         ]));
     });
 
+    it('记住的区域在历史中区分自动、提醒和停用状态，并允许预览损坏的旧快照', () => {
+        const reminder = {id: 'comments', site: 'example.com/comments/', mode: 'remind', enabled: true};
+        const automatic = {id: 'article', site: 'docs.example.com', mode: 'auto', enabled: false};
+        const changed = buildConfigDiff(
+            {sectionTranslationRules: [reminder, automatic]},
+            {sectionTranslationRules: [{...reminder, mode: 'auto'}, {...automatic, mode: 'remind', enabled: true}]},
+        );
+        expect(group(changed, 'translation')?.changes).toEqual([{
+            key: 'sectionTranslationRules', label: '记住的翻译区域',
+            before: 'example.com/comments/ · 提醒、docs.example.com · 自动 · 已停用',
+            after: 'example.com/comments/ · 自动、docs.example.com · 提醒',
+        }]);
+        const legacy = buildConfigDiff(
+            {sectionTranslationRules: '旧版区域记录'},
+            {sectionTranslationRules: [null, '旧版区域记录', automatic]},
+        );
+        expect(group(legacy, 'translation')?.changes).toEqual([{
+            key: 'sectionTranslationRules', label: '记住的翻译区域',
+            before: '旧版区域记录',
+            after: '未设置、旧版区域记录、docs.example.com · 自动 · 已停用',
+        }]);
+    });
+
     it('显示界面皮肤和 Popup 栏目可见性，并安全处理异常栏目值', () => {
         const result = buildConfigDiff({
             interfaceSkin: 'default',

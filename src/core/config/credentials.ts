@@ -2,7 +2,7 @@
  * @file src/core/config/credentials.ts
  *
  * 文件职责：定义配置中的敏感凭据边界，并提供从完整配置提取、解析、比较和清除凭据的纯函数。
- * 主要内容：列出敏感字段和专用存储契约，只提取自有凭据字段；使用迭代复制清洗深层对象、循环及重复引用，网站规则按专用结构校验保留正文标签，并按内容比较凭据，避免对象键顺序导致重复保存。
+ * 主要内容：列出敏感字段和专用存储契约，只提取自有凭据字段；使用迭代复制清洗深层对象、循环及重复引用，网站与局部区域规则按专用结构校验且移除未知字段，并按内容比较凭据，避免对象键顺序导致重复保存。
  * 模块边界：本文件属于 core 领域层，只定义规则、类型与纯转换；不直接读写浏览器存储、不发起网络请求、不挂载 Vue/WXT 入口，持久化、协议调用和界面编排分别由 services、providers 与 features 承担。
  */
 
@@ -10,6 +10,7 @@ import type { Config } from './model';
 import {isSensitiveConfigKey} from './sensitiveKeys';
 import {normalizeApiKeys} from './apiKeys';
 import {normalizeSiteAdaptationSettings} from '@/src/core/site-adaptation/schema';
+import {normalizeSectionTranslationRules} from './sectionTranslationRules';
 
 export {isSensitiveConfigKey} from './sensitiveKeys';
 
@@ -189,6 +190,7 @@ export function sanitizeConfigCredentials(value: unknown): Record<string, unknow
     const sanitized = cloneValue(value, true) as Record<string, unknown>;
     // 仅配置根字段采用严格网站规则 schema；content.key 是标签，其他位置仍按凭据清洗。
     if (Object.hasOwn(value, 'siteAdaptation')) sanitized.siteAdaptation = normalizeSiteAdaptationSettings(value.siteAdaptation);
+    if (Object.hasOwn(value, 'sectionTranslationRules')) sanitized.sectionTranslationRules = normalizeSectionTranslationRules(value.sectionTranslationRules);
     return sanitized;
 }
 

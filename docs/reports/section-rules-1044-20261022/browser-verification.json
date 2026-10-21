@@ -1,0 +1,204 @@
+{
+  "scope": "production extension, trusted CDP pointer/keyboard gestures, deterministic Google transport; not live provider latency or quality",
+  "cases": [
+    "trusted picker saves the article with its default reminder; settings enables automatic mode",
+    "reload automatically translates only remembered roots; dynamic content fills once",
+    "manual restore pauses automatic translation until a route change",
+    "SPA route exits stop matching; entering a remembered path resumes its precise region",
+    "reminder mode waits for a trusted click and dismiss stays quiet for the current page",
+    "settings mode, enablement, site editing and deletion survive storage and page reload"
+  ],
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "nativeSelectCoverage": {
+    "defaultValueVerified": true,
+    "switchingByTrustedGesture": false,
+    "limitation": "macOS background Edge/CDP delivers trusted uncancelled keys to both ordinary page and picker native selects without committing a value change. Native-select-probe evidence records the comparison; automatic mode is selected through actual Element Plus settings controls below."
+  },
+  "dynamic": {
+    "requestsBeforeReload": 3,
+    "afterDynamic": 7,
+    "stableForMs": 1200,
+    "wrappersPerParagraph": [
+      1,
+      1,
+      1
+    ]
+  },
+  "routeFromPicker": {
+    "pickerClosed": true,
+    "requestsBefore": 15,
+    "requestsAfter": 18,
+    "translatedSegments": 3
+  },
+  "reminder": {
+    "requestsBeforeClick": 18,
+    "requestsAfterClick": 21,
+    "dismissedStayedQuiet": true
+  },
+  "totalRequests": 21,
+  "success": true,
+  "focusEvents": {
+    "monitoring": "native macOS activation events throughout the test",
+    "browserActivations": 0,
+    "observerClosed": true
+  },
+  "profileRemoved": true,
+  "pageErrors": 0,
+  "consoleErrors": 0,
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "windowState": "normal",
+    "displayTarget": "secondary",
+    "browserFrontmost": false
+  },
+  "productionBuildFreshnessVerified": true,
+  "pickerHierarchy": {
+    "desktop": {
+      "viewport": 1272,
+      "width": 440,
+      "height": 128.5,
+      "rememberChecked": false,
+      "decisionsBeforeConfirmation": true,
+      "redundantContent": 0,
+      "visibleFieldHeadings": 0,
+      "confirmation": "翻译所选区域"
+    },
+    "narrowUnchecked": {
+      "viewport": 390,
+      "width": 366,
+      "height": 128.5,
+      "rememberChecked": false,
+      "decisionsBeforeConfirmation": true,
+      "redundantContent": 0,
+      "visibleFieldHeadings": 0,
+      "confirmation": "翻译所选区域"
+    },
+    "narrowRemembered": {
+      "viewport": 390,
+      "width": 366,
+      "height": 143,
+      "rememberChecked": true,
+      "decisionsBeforeConfirmation": true,
+      "redundantContent": 0,
+      "visibleFieldHeadings": 0,
+      "confirmation": "翻译并记住"
+    },
+    "english390": {
+      "viewport": 390,
+      "width": 366,
+      "height": 168.5,
+      "rememberChecked": true,
+      "decisionsBeforeConfirmation": true,
+      "redundantContent": 0,
+      "visibleFieldHeadings": 0,
+      "confirmation": "Translate and remember"
+    }
+  },
+  "settingsHierarchy": {
+    "desktop": {
+      "viewport": 1272,
+      "scrollWidth": 1272,
+      "rowHeight": 64,
+      "toggleTextGap": 10,
+      "redundantContent": 0,
+      "headingCount": 0,
+      "mode": {
+        "width": 144,
+        "height": 40,
+        "label": "自动翻译",
+        "labelLines": 1
+      }
+    },
+    "chinese390": {
+      "viewport": 390,
+      "scrollWidth": 390,
+      "rowHeight": 112,
+      "toggleTextGap": 8,
+      "redundantContent": 0,
+      "headingCount": 0,
+      "mode": {
+        "width": 144,
+        "height": 40,
+        "label": "自动翻译",
+        "labelLines": 1
+      }
+    },
+    "english390": {
+      "viewport": 390,
+      "scrollWidth": 390,
+      "rowHeight": 112,
+      "toggleTextGap": 8,
+      "redundantContent": 0,
+      "headingCount": 0,
+      "mode": {
+        "width": 144,
+        "height": 40,
+        "label": "Auto translate",
+        "labelLines": 1
+      }
+    }
+  },
+  "reminderHierarchy": {
+    "height": 42,
+    "narrowHeight": 42,
+    "labelHidden": true,
+    "buttons": 2,
+    "action": "翻译已记住的区域"
+  },
+  "rootScope": {
+    "scopeHidden": true,
+    "modeVisible": true,
+    "describedBy": "fr-section-remember-address"
+  },
+  "localizedNarrow": {
+    "ja-JP": {
+      "viewport": 390,
+      "pickerHeight": 143,
+      "ruleHeight": 112,
+      "modeLabel": "自動翻訳",
+      "modeLabelLines": 1,
+      "ruleScrollWidth": 390,
+      "minSizeButtonWidth": 34
+    },
+    "ko-KR": {
+      "viewport": 390,
+      "pickerHeight": 143,
+      "ruleHeight": 112,
+      "modeLabel": "자동 번역",
+      "modeLabelLines": 1,
+      "ruleScrollWidth": 390,
+      "minSizeButtonWidth": 34
+    },
+    "fr-FR": {
+      "viewport": 390,
+      "pickerHeight": 210.5,
+      "ruleHeight": 112,
+      "modeLabel": "Automatique",
+      "modeLabelLines": 1,
+      "ruleScrollWidth": 390,
+      "minSizeButtonWidth": 34
+    },
+    "ru-RU": {
+      "viewport": 390,
+      "pickerHeight": 210.5,
+      "ruleHeight": 112,
+      "modeLabel": "Автоперевод",
+      "modeLabelLines": 1,
+      "ruleScrollWidth": 390,
+      "minSizeButtonWidth": 34
+    },
+    "es-ES": {
+      "viewport": 390,
+      "pickerHeight": 210.5,
+      "ruleHeight": 112,
+      "modeLabel": "Automática",
+      "modeLabelLines": 1,
+      "ruleScrollWidth": 390,
+      "minSizeButtonWidth": 34
+    }
+  },
+  "localEvidence": "research/section-rules-1044-20261022/localized-merge-run3/report.json"
+}
