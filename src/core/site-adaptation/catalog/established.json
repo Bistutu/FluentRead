@@ -1,5 +1,32 @@
 [
   {
+    "id": "kagi-news",
+    "name": "Kagi News 新闻标题",
+    "match": {
+      "hosts": ["news.kagi.com"]
+    },
+    "allScopes": true,
+    "mode": "augment",
+    "content": [
+      {
+        "css": [
+          "button[aria-label=\"Expand story\"] > span[dir]",
+          "button[aria-label=\"Collapse story\"] > span[dir]"
+        ],
+        "resolve": "closest",
+        "key": "kagi-news:headline"
+      },
+      {
+        "css": [
+          "button[aria-label=\"Expand story\"]",
+          "button[aria-label=\"Collapse story\"]"
+        ],
+        "atomic": false,
+        "key": "kagi-news:headline-button"
+      }
+    ]
+  },
+  {
     "id": "openrouter",
     "name": "OpenRouter",
     "allScopes": true,

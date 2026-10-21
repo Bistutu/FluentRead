@@ -14,6 +14,80 @@ const rule = (extra: Partial<SiteRule> = {}): SiteRule => ({
     id: 'example', name: 'Example', match: {hosts: ['example.test']}, ...extra,
 });
 const pack = (rules: SiteRule[] = [rule()]): SiteRulePack => ({version: 1, rules});
+
+describe('Kagi News content-bearing buttons', () => {
+    function fixture(scope: 'content' | 'all' = 'content', settings = normalizeSiteAdaptationSettings(undefined), href = 'https://news.kagi.com/world/latest') {
+        const {document} = parseHTML(`<html><body><main>
+            <button id="headline" aria-label="Expand story" style="display:flex"><span id="label" dir="ltr">France deploys troops to free up police for Saturday protests</span></button>
+            <button id="plain-headline" aria-label="Expand story">A story title without an internal label still supports bilingual reading.</button>
+            <button id="search">Search</button><button id="settings">Settings</button><button id="read">Mark as read</button>
+            <p id="body">Expanded story paragraphs remain ordinary readable content.</p>
+        </main><nav><button id="navigation">Choose category</button></nav></body></html>`);
+        const core = new TranslationCandidateCore({url: new URL(href), scope, adapters: composeSiteAdapters(builtinSiteRulePack, settings)});
+        return {document, core, headline: document.getElementById('headline')!, label: document.getElementById('label')!};
+    }
+
+    it.each(['content', 'all'] as const)('keeps headline discovery, hover and label mutation scans on one content owner in %s scope', scope => {
+        const {document, core, headline, label} = fixture(scope);
+        for (const ariaLabel of ['Expand story', 'Collapse story']) {
+            headline.setAttribute('aria-label', ariaLabel);
+            const expected = {element: label, kind: 'content', adapterId: 'kagi-news'};
+            expect(core.discover(document).filter(candidate => candidate.element === label)).toEqual([expect.objectContaining(expected)]);
+            expect(core.resolve(label.firstChild)).toMatchObject(expected);
+            expect(core.discover(label)).toEqual([expect.objectContaining(expected)]);
+            expect(core.discover(document).some(candidate => candidate.element === headline)).toBe(false);
+        }
+        for (const id of ['search', 'settings', 'read']) {
+            const control = document.getElementById(id)!;
+            expect(core.resolve(control.firstChild)).toMatchObject({element: control, kind: 'control'});
+        }
+        expect(core.resolve(document.getElementById('body')!.firstChild)?.kind).toBe('content');
+        const navigation = document.getElementById('navigation')!;
+        expect(core.resolve(navigation.firstChild)?.kind).toBe(scope === 'all' ? 'control' : undefined);
+        const plain = document.getElementById('plain-headline')!;
+        expect(core.resolve(plain.firstChild)).toMatchObject({element: plain, kind: 'content', adapterId: 'kagi-news'});
+        expect(compileSiteRulePack(builtinSiteRulePack).find(adapter => adapter.id === 'kagi-news')?.observedAttributes).toContain('aria-label');
+        // A newly inserted card must obtain the same narrow exception without rebuilding the core.
+        const fresh = document.createElement('button');
+        fresh.setAttribute('aria-label', 'Expand story');
+        fresh.textContent = 'A newly loaded story appears after changing the news category.';
+        document.querySelector('main')!.appendChild(fresh);
+        expect(core.discover(fresh)).toEqual([expect.objectContaining({element: fresh, kind: 'content', adapterId: 'kagi-news'})]);
+        fresh.setAttribute('aria-label', 'Mark as read');
+        expect(core.resolve(fresh.firstChild)).toMatchObject({element: fresh, kind: 'control'});
+    });
+
+    it.each(['https://kagi.com/world/latest', 'https://example.test/world/latest'])('retains ordinary control ownership outside the exact host: %s', href => {
+        const {core, headline, label} = fixture('content', undefined, href);
+        expect(core.resolve(label.firstChild)).toMatchObject({element: headline, kind: 'control'});
+    });
+
+    it.each([
+        {enabled: false},
+        {disabledRuleIds: ['kagi-news']},
+        {custom: pack([rule({id: 'kagi-news', match: {hosts: ['news.kagi.com']}})])},
+    ])('withdraws the content exception when disabled or replaced: %j', overrides => {
+        const settings = {...normalizeSiteAdaptationSettings(undefined), ...overrides};
+        const {core, headline, label} = fixture('content', settings);
+        expect(core.resolve(label.firstChild)).toMatchObject({element: headline, kind: 'control'});
+    });
+
+    it('retains local and custom protection boundaries for explicitly selected headline buttons', () => {
+        for (const attributes of ['translate="no"', 'contenteditable="true"', 'hidden', 'class="notranslate"']) {
+            const {document, core} = fixture();
+            document.querySelector('main')!.innerHTML = `<button id="protected" aria-label="Expand story" ${attributes}>Protected news headline stays original.</button>`;
+            const headline = document.getElementById('protected')!;
+            expect(core.resolve(headline.firstChild), attributes).toBeNull();
+            expect(core.discover(document), attributes).toEqual([]);
+        }
+        const settings = normalizeSiteAdaptationSettings({custom: pack([rule({
+            id: 'private-headline', match: {hosts: ['news.kagi.com']}, protect: ['#headline'],
+        })])});
+        const {core, label} = fixture('content', settings);
+        expect(core.resolve(label.firstChild)).toBeNull();
+    });
+});
+
 function reject(value: unknown, expectedPath?: string) {
     const parsed = parseSiteRulePack(value);
     expect(parsed.ok).toBe(false);
