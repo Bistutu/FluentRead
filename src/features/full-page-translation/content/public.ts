@@ -5,5 +5,5 @@
  * 模块边界：这是无平台依赖的 content 公共出口，正文收集、文档评分与样式接线不会间接启动完整翻译或配置存储。
  */
 export {readVisibleTranslationRoot} from './visibleTranslation';
-export {releaseDocumentBilingualRenderingContainment} from './state';
+export {releaseDocumentBilingualRenderingContainment, writeReadingAppearanceFontFamily} from './state';
 export {subscribeTranslationStyleRoots} from './styleRoots';

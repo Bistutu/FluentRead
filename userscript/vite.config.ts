@@ -16,6 +16,7 @@ import {createUserscriptAboutImagesCompressionPlugin} from './aboutImagesPlugin'
 import {createUserscriptServiceBrandIconsCompressionPlugin} from './serviceBrandIconsPlugin';
 import {createUserscriptSettingsDataPlugin} from './settingsDataPlugin';
 import {UI_LANGUAGE_BUNDLES, zhCNMessages} from './languageBundles';
+import {createLanguageSupplements} from './languageSupplementData';
 import {createDeepLXRuntimeBuildPlugin} from '../scripts/testing/deeplx-runtime-build';
 
 const root = resolve(__dirname, '..');
@@ -581,6 +582,7 @@ export default defineConfig({
         'import.meta.env.BROWSER': JSON.stringify('userscript'),
         'import.meta.env.MANIFEST_VERSION': '2',
         __FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__: JSON.stringify(compressedUiLanguageBundles),
+        __FLUENTREAD_USERSCRIPT_LANGUAGE_SUPPLEMENTS__: JSON.stringify(gzipSync(Buffer.from(JSON.stringify(createLanguageSupplements()), 'utf8'), {level: 9}).toString('base64')),
         __FLUENTREAD_USERSCRIPT_REMOTE_LANGUAGES__: JSON.stringify(remoteUiLanguageBundles),
         __FLUENTREAD_USERSCRIPT_RESOURCE_COMMIT__: JSON.stringify(userscriptLanguageResourceCommit),
         __FLUENTREAD_FULL_OPTIONS__: JSON.stringify(bundleLibraries),

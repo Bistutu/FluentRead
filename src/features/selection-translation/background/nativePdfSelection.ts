@@ -16,6 +16,7 @@ export interface NativePdfSelectionDependencies {
     randomToken(): string;
     openWindow(options: {url: string; type: 'popup'; width: number; height: number}): Promise<ResultWindow>;
     closeWindow(windowId: number): Promise<unknown>;
+    scheduleExpiry(callback: () => void, delayMs: number): () => void;
 }
 export const NATIVE_PDF_SELECTION_TTL_MS = 60_000;
 export const NATIVE_PDF_SELECTION_MAX_PENDING = 16;
@@ -23,11 +24,16 @@ const validId = (value: unknown): value is number => typeof value === 'number' &
 
 /** 原文只去掉首尾空白；不猜测排版连字符或改写段落，以菜单原文为准。 */
 export function createNativePdfSelectionBridge(dependencies: NativePdfSelectionDependencies) {
-    interface Ticket {input: NativePdfSelectionInput; expiresAt: number; ready: Promise<boolean>; target?: {windowId: number; tabId?: number}; closed?: boolean;}
+    interface Ticket {input?: NativePdfSelectionInput; expiresAt: number; ready: Promise<boolean>; target?: {windowId: number; tabId?: number}; closed?: boolean; cancelExpiry?: () => void;}
     const tickets = new Map<string, Ticket>();
     const page = dependencies.resultUrl.split(/[?#]/u)[0];
     const close = (ticket: Ticket) => {if (ticket.target && !ticket.closed) {ticket.closed = true; void dependencies.closeWindow(ticket.target.windowId).catch(() => {});}};
-    const discard = (token: string, ticket: Ticket) => {tickets.delete(token); close(ticket);};
+    const release = (ticket: Ticket) => {
+        ticket.cancelExpiry?.();
+        ticket.cancelExpiry = undefined;
+        ticket.input = undefined;
+    };
+    const discard = (token: string, ticket: Ticket) => {if (tickets.get(token) === ticket) tickets.delete(token); release(ticket); close(ticket);};
     const prune = () => {for (const [token, ticket] of tickets) if (ticket.expiresAt <= dependencies.now()) discard(token, ticket);};
     return {
         async open(input: NativePdfSelectionInput): Promise<boolean> {
@@ -40,6 +46,9 @@ export function createNativePdfSelectionBridge(dependencies: NativePdfSelectionD
             if (tickets.size >= NATIVE_PDF_SELECTION_MAX_PENDING) {const [oldToken, oldTicket] = tickets.entries().next().value!; discard(oldToken, oldTicket);}
             const ticket: Ticket = {input: {text, sourceUrl, title: input.title.trim().slice(0, 512)}, expiresAt: dependencies.now() + NATIVE_PDF_SELECTION_TTL_MS, ready: Promise.resolve(false)};
             tickets.set(token, ticket);
+            ticket.cancelExpiry = dependencies.scheduleExpiry(() => {
+                if (tickets.get(token) === ticket) discard(token, ticket);
+            }, NATIVE_PDF_SELECTION_TTL_MS);
             ticket.ready = Promise.resolve().then(() => dependencies.openWindow({url: `${page}#${new URLSearchParams({token})}`, type: 'popup', width: 520, height: 680})).then(window => {
                 if (!validId(window.id)) return false;
                 const firstTab = window.tabs?.[0];
@@ -60,8 +69,17 @@ export function createNativePdfSelectionBridge(dependencies: NativePdfSelectionD
             if (ticket.expiresAt <= dependencies.now()) {discard(token as string, ticket); return null;}
             const target = ticket.target!;
             if (sender.tab?.windowId !== target.windowId || (target.tabId !== undefined && sender.tab.id !== target.tabId)) return null;
+            const input = ticket.input;
             tickets.delete(token as string);
-            return {...ticket.input};
+            release(ticket);
+            return input ? {...input} : null;
+        },
+        windowClosed(windowId: number): void {
+            for (const [token, ticket] of tickets) {
+                if (ticket.target?.windowId !== windowId) continue;
+                ticket.closed = true;
+                discard(token, ticket);
+            }
         },
     };
 }

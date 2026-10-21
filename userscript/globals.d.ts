@@ -72,6 +72,7 @@ declare global {
     } | undefined;
     var pako: {ungzip(data: Uint8Array, options?: {to?: string}): string | Uint8Array} | undefined;
     const __FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__: Readonly<Record<string, string>>;
+    const __FLUENTREAD_USERSCRIPT_LANGUAGE_SUPPLEMENTS__: string;
     const __FLUENTREAD_USERSCRIPT_REMOTE_LANGUAGES__: Readonly<Record<string, string>>;
     const __FLUENTREAD_USERSCRIPT_RESOURCE_COMMIT__: string;
     const __FLUENTREAD_FULL_OPTIONS__: boolean;

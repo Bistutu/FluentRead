@@ -11,11 +11,14 @@ import {isRawXmlContentDocument} from '@/src/shared/dom/documentType';
 const mocks = vi.hoisted(() => ({
     config: {
         on: true, autoTranslate: false, alwaysTranslateDomains: [] as string[], disabledExtensionDomains: [] as string[], bilingualSentenceHighlightEnabled: true,
+        display: 1, style: 0, to: 'zh-Hans', readingAppearanceSites: {} as Record<string, 'system' | 'original'>,
         disableFloatingBall: true, disableSelectionTranslator: true, disableImageTranslator: true,
         selectionAreaEnabled: false, translationProgressPanelEnabled: false,
         writing: {enabled: false}, inputBoxTranslationTrigger: 'disabled', paragraphCopyEnabled: false, vocabularyReencounterEnabled: false,
     },
     configReady: Promise.resolve(), subscribeConfig: vi.fn(),
+    displayModeSync: vi.fn((_initial: any, apply: (next: any) => void) => apply),
+    readingController: undefined as {setEnabled(enabled: boolean): void; dispose(): void} | undefined,
     installPageStyles: vi.fn(), removeStyles: vi.fn(), syncHighlight: vi.fn(), mountParagraphCopyContentFeature: vi.fn(),
     mountInput: vi.fn(), invalidateInput: vi.fn(), restoreOriginal: vi.fn(),
     resetRouteState: vi.fn(), autoTranslate: vi.fn(), fullPageActive: false,
@@ -64,7 +67,7 @@ vi.mock('@/src/app/content/features', () => ({
     unmountShareCard: () => { mocks.shareCardMounted = false; },
     isShareCardMounted: () => mocks.shareCardMounted,
     isFloatingBallAllowedOnPage: () => mocks.floatingBallAllowed,
-    createPageTranslationDisplayModeSync: (_initial: unknown, apply: (next: any) => void) => apply,
+    createPageTranslationDisplayModeSync: mocks.displayModeSync,
     restoreOriginalContent: mocks.restoreOriginal,
     resetFullPageTranslationRouteState: mocks.resetRouteState,
     autoTranslateEnglishPage: mocks.autoTranslate,
@@ -72,6 +75,11 @@ vi.mock('@/src/app/content/features', () => ({
     createInputTranslationContentFeature: () => ({mount: mocks.mountInput, invalidate: mocks.invalidateInput}),
     mountHoverTranslationContentFeature: () => vi.fn(),
 }));
+vi.mock('@/src/features/reading-appearance/content', async importOriginal => {
+    const actual = await importOriginal<typeof import('@/src/features/reading-appearance/content')>();
+    return {...actual, createReadingAppearanceController: (...args: Parameters<typeof actual.createReadingAppearanceController>) =>
+        mocks.readingController ?? actual.createReadingAppearanceController(...args)};
+});
 vi.mock('@/src/services/translation/client', () => ({cancelAllTranslations: vi.fn()}));
 vi.mock('@/src/services/translation/context', () => ({resetPageTranslationContextCache: vi.fn()}));
 vi.mock('@/src/services/translation/legacyPageCache', () => ({clearLegacyPageTranslationCache: vi.fn()}));
@@ -413,6 +421,9 @@ describe('content composition root 冷启动与暂停恢复', () => {
         vi.resetModules();
         vi.clearAllMocks();
         mocks.config.on = true;
+        mocks.config.display = 1; mocks.config.readingAppearanceSites = {};
+        mocks.readingController = undefined;
+        mocks.displayModeSync.mockReset().mockImplementation((_initial: any, apply: (next: any) => void) => apply);
         mocks.config.autoTranslate = false;
         mocks.config.alwaysTranslateDomains = [];
         mocks.fullPageActive = false;
@@ -443,6 +454,74 @@ describe('content composition root 冷启动与暂停恢复', () => {
     });
 
     afterEach(() => { invalidated?.(); vi.unstubAllGlobals(); });
+
+    it('同次配置同步阅读字体与译文显示且同值回声不重排工件', async () => {
+        const {parseHTML} = await import('linkedom');
+        const display = await import('@/src/features/full-page-translation/content/displayMode');
+        const state = await import('@/src/features/full-page-translation/content/state');
+        const core = await import('@/src/core/translation/public');
+        const {appendBilingualTranslation} = await import('@/src/features/full-page-translation/content/renderer');
+        const {document: pageDocument} = parseHTML('<html><head><base href="https://example.com/"></head><body><main><p>Source sentence.</p></main></body></html>');
+        Object.defineProperty(pageDocument, 'contentType', {configurable: true, value: 'text/html'});
+        const realm = pageDocument.defaultView as unknown as Record<string, unknown>;
+        for (const name of ['Node', 'Element', 'HTMLElement', 'MutationObserver', 'ShadowRoot']) vi.stubGlobal(name, realm[name]);
+        vi.stubGlobal('document', pageDocument);
+        vi.stubGlobal('location', (page as EventTarget & {location: {href: string}}).location);
+        vi.stubGlobal('DOMParser', class {parseFromString(source: string) {
+            return parseHTML(`<html><head></head><body>${source}</body></html>`).document;
+        }});
+        // 保留真实 app/reading composition/runtime；字体算法的 CSS 排版由其专项验证。
+        const font = {setEnabled: vi.fn(), dispose: vi.fn()};
+        mocks.readingController = font;
+        // 仅此用例穿过真实 display helper；其余既有生命周期用例保持原端口隔离。
+        mocks.displayModeSync.mockImplementationOnce(display.createPageTranslationDisplayModeSync);
+        const enumerate = vi.spyOn(state, 'getTranslationOwnersWithin');
+        try {
+            const {startContentApp} = await import('@/src/app/content/runtime');
+            const starting = startContentApp(context as never); ready(); await starting;
+            expect(mocks.subscribeConfig).toHaveBeenCalledOnce();
+            expect(font.setEnabled).toHaveBeenLastCalledWith(false);
+            const owner = pageDocument.querySelector('p')! as unknown as HTMLElement;
+            const sourceNodes = core.collectLiveTranslationTextSlots(owner, core.getCurrentTranslationCore().shouldStayOriginal);
+            const sources = sourceNodes.map(part => part.source), translations = sources.map(() => '共同接线译文。');
+            const attempt = state.beginTranslation(owner, 'bilingual', 'content', false,
+                sources.join(' '), sourceNodes.map(part => part.node), false, 'joint-config-identity')!;
+            const replay = state.createBilingualTranslationReplay(sources, translations, {sourceLanguage: 'en', targetLanguage: 'zh-Hans',
+                service: 'microsoft', style: 0, translationBeforeOriginal: true});
+            expect(state.markTranslationComplete(owner, attempt.state, attempt.generation, false)).toBe(true);
+            const snapshot = core.createTranslationSourceSnapshot(owner, core.getCurrentTranslationCore().shouldStayOriginal);
+            state.setBilingualContent(owner, appendBilingualTranslation(owner,
+                core.applyTranslationsToSnapshot(snapshot, translations), {...replay, sourceSkeleton: snapshot.clone}), replay);
+            state.setRenderedStyleAttribute(owner);
+            const controller = attempt.state.controller, generation = attempt.state.generation;
+            const onConfig = mocks.subscribeConfig.mock.calls[0][0];
+            font.setEnabled.mockClear(); enumerate.mockClear();
+
+            // 同一个配置对象的一次通知，同时改变站点字体偏好与显示字段。
+            mocks.config.readingAppearanceSites = {'example.com': 'system'}; mocks.config.display = 0;
+            onConfig(mocks.config);
+            expect(font.setEnabled).toHaveBeenCalledOnce(); expect(font.setEnabled).toHaveBeenLastCalledWith(true);
+            expect(enumerate).toHaveBeenCalledOnce();
+            expect(attempt.state.mode).toBe('single');
+            const hosts = attempt.state.singleTextSlotHosts!;
+            expect(hosts).toHaveLength(sources.length);
+            expect(owner.querySelector('.fluent-read-single-slot')!.getAttribute('aria-label')).toBe(translations[0]);
+            expect(sourceNodes.every(part => owner.contains(part.node))).toBe(true);
+
+            onConfig(mocks.config);
+            expect(font.setEnabled).toHaveBeenCalledTimes(2);
+            expect(font.setEnabled).toHaveBeenLastCalledWith(true);
+            expect(enumerate).toHaveBeenCalledOnce();
+            expect(attempt.state.singleTextSlotHosts).toBe(hosts);
+            expect(hosts.every(({host}) => host.isConnected)).toBe(true);
+            expect(attempt.state.controller).toBe(controller); expect(controller.signal.aborted).toBe(false);
+            expect(attempt.state.generation).toBe(generation);
+            expect(attempt.state.translationInvocationIdentity).toBe('joint-config-identity');
+            expect(mocks.autoTranslate).not.toHaveBeenCalled();
+        } finally {
+            state.restoreAllTranslations(); enumerate.mockRestore(); mocks.readingController = undefined;
+        }
+    });
 
     it('恢复原文后进入下一篇文章重启始终翻译，锚点和重复路由不重复触发', async () => {
         mocks.config.alwaysTranslateDomains = ['example.com'];
