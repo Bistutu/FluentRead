@@ -10,8 +10,10 @@ import {zhCNMessages as extensionChinese} from '../src/core/i18n/messages/zh-CN'
 import {learningMaterialLegacyText, learningMaterialPatterns} from '../src/core/i18n/messages/learningMaterials';
 import {mimoRetirementSource} from '../src/core/i18n/messages/mimoRetirement';
 import type {UiLanguageBundle} from '../src/core/i18n/types';
+import {vocabularySpeechMessages} from './vocabularySpeechMessages';
 
 const materialPatternSources = new Set(learningMaterialPatterns.map(({pattern}) => pattern));
+const vocabularySpeechMessageKeys = Object.keys(vocabularySpeechMessages['ja-JP']);
 const publishedSectionMessages: Readonly<Record<string, Record<string, string>>> = {
     "ja-JP": {
         "sectionTranslation.picker.preview": "マウスを動かしてプレビュー、クリックで選択",
@@ -103,6 +105,8 @@ export const UI_LANGUAGE_BUNDLES = Object.fromEntries(Object.entries(extensionBu
         late: bundle.legacyPatterns.late.filter(([source]) => !materialPatternSources.has(source)),
     };
     if (language !== 'en-US') {
+        // 固定远端词典不变；新增的学习中心朗读状态文案在注册时从扩展词典补入。
+        vocabularySpeechMessageKeys.forEach((key) => { delete messages[key]; });
         // 划选文案在注册时覆盖，继续引用已发布的同一份远程词典。
         Object.assign(messages, publishedSectionMessages[language], publishedPdfExportMessages[language]);
         messages['settings.services.deeplx.endpointHelp'] = publishedDeepLXEndpointHelp[language]!;
