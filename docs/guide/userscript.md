@@ -8,7 +8,9 @@
 
 打开 [Greasy Fork 安装流畅阅读油猴脚本](https://greasyfork.org/zh-CN/scripts/482986-%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB)，按照脚本管理器提示完成安装。
 
-Greasy Fork 上的版本可能晚于 GitHub 源码。排查问题时，请先查看安装页和脚本设置中的版本号。当前运行验证覆盖 Chrome 与 Violentmonkey，以及 Android 模拟器中的 Via 7.3.3；Safari Userscripts 和 Via 真机仍需设备验证。
+Greasy Fork 与仓库构建是不同的更新渠道，发布页版本不代表脚本管理器已更新或脚本已执行。排查问题时，请同时核对发布页和管理器中实际安装的脚本版本。当前运行验证覆盖 Chrome 与 Violentmonkey，以及 Android 模拟器中的 Via 7.3.3；Safari Userscripts 和 Via 真机仍需设备验证。
+
+Tampermonkey 5.3+ 在 Chromium 浏览器中还需要脚本执行许可，具体步骤见[官方说明（含 Edge Android 指引）](https://www.tampermonkey.net/faq.php?q=Q209)。Chrome 138+ 可使用“Allow User Scripts”开关或开发者模式；Edge Android 请按同页的手机指引及当前版本实际提供的入口操作。
 
 ### 从源码构建独立脚本
 
@@ -73,7 +75,7 @@ Userscripts 官方将全站持续访问列为[使用建议](https://github.com/q
 
 ## 和浏览器扩展有什么不同？
 
-油猴脚本受脚本管理器和网页权限限制，不能提供浏览器扩展的全部能力。图片 OCR、圈选截图、Chrome 内置翻译、跨标签页后台功能和 YouTube 字幕功能可能不可用；不同脚本管理器的行为也可能不同。
+当前仓库的油猴构建不提供图片 OCR、圈选截图、Chrome 内置翻译或视频字幕。网页与划词等核心功能仍受脚本管理器 API、执行许可及站点访问权限限制；具体交互和打开设置的方式可能因管理器而异。
 
 </details>
 

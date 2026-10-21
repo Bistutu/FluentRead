@@ -12,9 +12,9 @@
 
 ## 安装与更新
 
-**Android Edge：**从浏览器菜单进入扩展目录，找到流畅阅读并核对权限。安装后在扩展菜单打开流畅阅读；原先打开的文章需要刷新。没有扩展目录或找不到流畅阅读时，请先核对浏览器版本和组织管理策略，或使用支持的脚本环境。不要把桌面“加载已解压扩展”的步骤用于手机。Microsoft 的[移动策略文档](https://learn.microsoft.com/en-us/deployedge/microsoft-edge-mobile-policies)确认 Android 扩展可以受管理策略禁用；此文不保证每个移动版本都能安装全部桌面扩展。更新后刷新文章；扩展目录详情中的版本信息不能单独证明实际安装版本。
+**Android Edge：**从浏览器菜单进入扩展目录，找到流畅阅读并核对权限。安装后在扩展菜单打开流畅阅读；原先打开的文章需要刷新。没有扩展目录或找不到流畅阅读时，请先核对浏览器版本和组织管理策略，或使用支持的脚本环境。不要把桌面“加载已解压扩展”的步骤用于手机。Microsoft 的[扩展管理策略文档](https://learn.microsoft.com/en-us/deployedge/microsoft-edge-browser-policies/extensionsettings)确认 Android 扩展可以受管理策略限制；此文不保证每个移动版本都能安装全部桌面扩展。更新后刷新文章，并在已安装扩展的详情中核对版本；商店目录页显示的版本不能单独证明当前实际安装或运行版本。
 
-**Android Firefox：**打开菜单中的扩展管理器，或者访问 [Mozilla 上的流畅阅读](https://addons.mozilla.org/en-US/firefox/addon/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB/)。2026-10-15 核查时，Mozilla 页面明确标示可用于 Firefox Android；请以当前设备实际出现的安装按钮继续。更新由 Firefox 的扩展机制管理；安装可用性、私密窗口权限及更新方式见 [Mozilla 官方说明](https://support.mozilla.org/en-US/kb/find-and-install-add-ons-firefox-android)。当前开发包在 Android 12 模拟器的 Firefox 158 中，通过官方临时调试加载，完成了公开页面的实际翻译与恢复；这不替代商店安装更新或 Android 真机验收。
+**Android Firefox：**打开菜单中的扩展管理器，或者访问 [Mozilla 上的流畅阅读](https://addons.mozilla.org/en-US/firefox/addon/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB/)。2026-10-21 核查时，Mozilla 页面标示可用于 Firefox Android；[版本页](https://addons.mozilla.org/en-US/firefox/addon/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB/versions/)列出的商店版为 0.0.35（2026-10-08），要求 Firefox 140+，包括 Firefox Android 140+。该商店声明不代表当前源码开发包或设备上实际安装的版本；请以当前设备实际出现的安装按钮继续。更新由 Firefox 的扩展机制管理；安装可用性、私密窗口权限及更新方式见 [Mozilla 官方说明](https://support.mozilla.org/en-US/kb/find-and-install-add-ons-firefox-android)。此前的开发包在 Android 12 模拟器的 Firefox 158 中，通过官方临时调试加载，完成了公开页面的实际翻译与恢复；这是历史运行记录，不是本轮开发包复验，也不替代商店安装更新或 Android 真机验收。
 
 **Safari Userscripts：**先安装 Userscripts 并授予正在阅读的网站权限，再导入脚本。只启用一种流畅阅读脚本。Greasy Fork 更新、手动导入的源码独立版和未来原生 Safari App 是不同渠道；手动文件需要手动替换并让管理器重新读取，构建成功不会自动更新已安装脚本。具体步骤与现有验证范围见[油猴脚本](/guide/userscript)。
 
