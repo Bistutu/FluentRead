@@ -13,6 +13,12 @@ const TOKEN = '00000000000000000000000000000001';
 const SENDER: NativePdfSelectionSender = {id: 'test', url: PAGE, frameId: 0, tab: {id: 21, windowId: 12}};
 function deferred<T>() {let resolve!: (value: T) => void, reject!: (reason: unknown) => void; const promise = new Promise<T>((yes, no) => {resolve = yes; reject = no;}); return {promise, resolve, reject};}
 async function settle() {for (let at = 0; at < 12; at++) await Promise.resolve();}
+function expiryScheduler() {
+    return vi.fn<NativePdfSelectionDependencies['scheduleExpiry']>((callback, delayMs) => {
+        const timer = setTimeout(callback, delayMs);
+        return () => clearTimeout(timer);
+    });
+}
 function fixture(overrides: Partial<NativePdfSelectionDependencies> = {}) {
     let time = 1_000, sequence = 0;
     const dependencies = {extensionId: 'test', resultUrl: PAGE, now: () => time,
@@ -80,6 +86,58 @@ describe('原生 PDF 菜单选区的一次性窗口交付', () => {
         const closeWindow = vi.fn().mockRejectedValue(new Error('already closed')), run = fixture({closeWindow}); await run.bridge.open(INPUT);
         run.advance(NATIVE_PDF_SELECTION_TTL_MS); expect(await run.bridge.claim(TOKEN, SENDER)).toBeNull(); await settle();
         expect(closeWindow).toHaveBeenCalledTimes(1); expect(closeWindow).toHaveBeenCalledWith(12);
+    });
+    it('到期定时器无需再次请求就回收窗口，重复迟到回调也只关闭一次', async () => {
+        const scheduleExpiry = expiryScheduler(), run = fixture({scheduleExpiry});
+        expect(await run.bridge.open(INPUT)).toBe(true);
+        expect(scheduleExpiry).toHaveBeenCalledWith(expect.any(Function), NATIVE_PDF_SELECTION_TTL_MS);
+        expect(vi.getTimerCount()).toBe(1);
+        vi.advanceTimersByTime(NATIVE_PDF_SELECTION_TTL_MS - 1); expect(run.closeWindow).not.toHaveBeenCalled();
+        vi.advanceTimersByTime(1);
+        expect(run.closeWindow).toHaveBeenCalledTimes(1); expect(run.closeWindow).toHaveBeenCalledWith(12);
+        expect(vi.getTimerCount()).toBe(0);
+        const expire = scheduleExpiry.mock.calls[0][0]; expire(); expire();
+        vi.advanceTimersByTime(NATIVE_PDF_SELECTION_TTL_MS);
+        expect(await run.bridge.claim(TOKEN, SENDER)).toBeNull(); expect(run.closeWindow).toHaveBeenCalledTimes(1);
+    });
+    it('领取成功取消到期定时器，已经排队的迟到回调不得关闭已交付窗口', async () => {
+        const scheduleExpiry = expiryScheduler(), run = fixture({scheduleExpiry}); await run.bridge.open(INPUT);
+        expect(vi.getTimerCount()).toBe(1);
+        expect(await run.bridge.claim(TOKEN, SENDER)).toEqual({...INPUT, sourceUrl: 'https://www.usenix.org/paper.pdf?download=1'});
+        expect(vi.getTimerCount()).toBe(0);
+        vi.advanceTimersByTime(NATIVE_PDF_SELECTION_TTL_MS);
+        const expire = scheduleExpiry.mock.calls[0][0]; expire(); expire();
+        expect(run.closeWindow).not.toHaveBeenCalled(); expect(await run.bridge.claim(TOKEN, SENDER)).toBeNull();
+    });
+    it('窗口关闭只丢弃对应票据并取消定时器，另一窗口仍能领取且迟到回调不重复关闭', async () => {
+        const scheduleExpiry = expiryScheduler(), run = fixture({scheduleExpiry, openWindow: vi.fn().mockResolvedValueOnce({id: 12, tabs: [{id: 21}]}).mockResolvedValueOnce({id: 13, tabs: [{id: 22}]})});
+        expect(await run.bridge.open(INPUT)).toBe(true);
+        expect(await run.bridge.open({...INPUT, text: 'another selection'})).toBe(true);
+        expect(vi.getTimerCount()).toBe(2);
+        run.bridge.windowClosed(99); expect(vi.getTimerCount()).toBe(2);
+        run.bridge.windowClosed(12); run.bridge.windowClosed(12);
+        expect(vi.getTimerCount()).toBe(1); expect(run.closeWindow).not.toHaveBeenCalled();
+        expect(await run.bridge.claim(TOKEN, SENDER)).toBeNull();
+        const expireClosed = scheduleExpiry.mock.calls[0][0]; expireClosed(); expireClosed();
+        expect(vi.getTimerCount()).toBe(1); expect(run.closeWindow).not.toHaveBeenCalled();
+        expect(await run.bridge.claim('00000000000000000000000000000002', {...SENDER, tab: {id: 22, windowId: 13}})).toEqual({...INPUT, text: 'another selection', sourceUrl: 'https://www.usenix.org/paper.pdf?download=1'});
+        expect(vi.getTimerCount()).toBe(0);
+        vi.advanceTimersByTime(NATIVE_PDF_SELECTION_TTL_MS);
+        scheduleExpiry.mock.calls[1][0](); expireClosed(); expect(run.closeWindow).not.toHaveBeenCalled();
+    });
+    it('读取发送方身份时同步关闭窗口，已释放正文返回 null 且不影响另一票据', async () => {
+        const scheduleExpiry = expiryScheduler(), run = fixture({scheduleExpiry, openWindow: vi.fn().mockResolvedValueOnce({id: 12, tabs: [{id: 21}]}).mockResolvedValueOnce({id: 13, tabs: [{id: 22}]})});
+        expect(await run.bridge.open(INPUT)).toBe(true);
+        expect(await run.bridge.open({...INPUT, text: 'unaffected selection'})).toBe(true);
+        // 浏览器 sender 通常是普通数据；只读 accessor 在此注入公开 bridge 的同步重入，不代表浏览器事件并发。
+        const readWindowId = vi.fn(() => {run.bridge.windowClosed(12); return 12;});
+        const sender: NativePdfSelectionSender = {...SENDER, tab: {id: 21, get windowId() {return readWindowId();}}};
+        expect(await run.bridge.claim(TOKEN, sender)).toBeNull();
+        expect(readWindowId).toHaveBeenCalledTimes(1); expect(vi.getTimerCount()).toBe(1);
+        run.bridge.windowClosed(12); scheduleExpiry.mock.calls[0][0]();
+        expect(run.closeWindow).not.toHaveBeenCalled(); expect(await run.bridge.claim(TOKEN, SENDER)).toBeNull();
+        expect(await run.bridge.claim('00000000000000000000000000000002', {...SENDER, tab: {id: 22, windowId: 13}})).toEqual({...INPUT, text: 'unaffected selection', sourceUrl: 'https://www.usenix.org/paper.pdf?download=1'});
+        expect(vi.getTimerCount()).toBe(0); expect(run.closeWindow).not.toHaveBeenCalled();
     });
     it('创建等待跨过到期时间，即使窗口迟到成功也回收且只关闭一次', async () => {
         const window = deferred<{id: number}>(), closeWindow = vi.fn().mockResolvedValue(undefined), run = fixture({closeWindow, openWindow: vi.fn().mockReturnValue(window.promise)});

@@ -19,10 +19,18 @@ function fixture(html: string) {
         Object.defineProperty(prototype, 'getPropertyPriority', {configurable: true, value() {return '';}});
         patchedPriorityPrototypes.add(prototype);
     }
-    const nativeSet = prototype.setProperty;
+    const nativeGet = prototype.getPropertyValue, nativeSet = prototype.setProperty, nativeRemove = prototype.removeProperty;
+    // CSSOM returns an empty string for a missing property; linkedom may return undefined.
+    vi.spyOn(prototype, 'getPropertyValue').mockImplementation(function(this: object, key: string) {
+        return nativeGet.call(this, key) ?? '';
+    });
     vi.spyOn(prototype, 'setProperty').mockImplementation(function(this: object, key: string, value: string | null, priority?: string) {
         let map = priorities.get(this); if (!map) {map = new Map(); priorities.set(this, map);} map.set(key, priority || '');
         return nativeSet.call(this, key, value);
+    });
+    vi.spyOn(prototype, 'removeProperty').mockImplementation(function(this: object, key: string) {
+        priorities.get(this)?.delete(key);
+        return nativeRemove.call(this, key) ?? '';
     });
     vi.spyOn(prototype, 'getPropertyPriority').mockImplementation(function(this: object, key: string) {return priorities.get(this)?.get(key) || '';});
     const Observer = class {
@@ -52,6 +60,51 @@ afterEach(() => {
 });
 
 describe('reading appearance content controller', () => {
+    it('delegates real font writes and reversible style cleanup through the injected port', () => {
+        const f = fixture('<article><p id="normal" style="font-family: Georgia; color: red">Normal-priority reading text.</p><p id="important" style="font-family: Times New Roman; color: green">Important-priority reading text.</p><p id="colored" style="color: blue">Reading text with an unrelated style.</p><p id="clean">Reading text without an inline style.</p></article>');
+        const normal = f.element('normal'), important = f.element('important');
+        const colored = f.element('colored'), clean = f.element('clean');
+        normal.style.setProperty('font-family', 'Georgia', '');
+        important.style.setProperty('font-family', 'Times New Roman', 'important');
+        expect(clean.hasAttribute('style')).toBe(false);
+        expect(colored.hasAttribute('style')).toBe(true);
+        const originals = [normal, important, colored, clean].map(element => element.firstChild);
+        // The injected port must perform the actual DOM write; an empty spy cannot satisfy these assertions.
+        const writeFontFamily = vi.fn((element: HTMLElement, value: string, priority: string, removeEmptyStyle: boolean) => {
+            if (value) element.style.setProperty('font-family', value, priority);
+            else element.style.removeProperty('font-family');
+            if (removeEmptyStyle && !element.getAttribute('style')) element.removeAttribute('style');
+        });
+        const controller = createReadingAppearanceController(f.document, {writeFontFamily});
+        try {
+            expect(writeFontFamily).not.toHaveBeenCalled();
+            controller.setEnabled(true);
+            expect(writeFontFamily).toHaveBeenCalledTimes(4);
+            for (const element of [normal, important, colored, clean]) {
+                expect(writeFontFamily).toHaveBeenCalledWith(element, READING_APPEARANCE_FONT, 'important', false);
+                expect(element.style.fontFamily).toBe(READING_APPEARANCE_FONT);
+                expect(element.style.getPropertyPriority('font-family')).toBe('important');
+            }
+            expect(normal.style.color).toBe('red'); expect(important.style.color).toBe('green');
+            expect(colored.style.color).toBe('blue');
+            writeFontFamily.mockClear();
+            controller.setEnabled(false);
+            expect(writeFontFamily).toHaveBeenCalledTimes(4);
+            expect(writeFontFamily).toHaveBeenCalledWith(normal, 'Georgia', '', false);
+            expect(writeFontFamily).toHaveBeenCalledWith(important, 'Times New Roman', 'important', false);
+            expect(writeFontFamily).toHaveBeenCalledWith(colored, '', '', false);
+            expect(writeFontFamily).toHaveBeenCalledWith(clean, '', '', true);
+            expect(normal.style.fontFamily).toBe('Georgia');
+            expect(normal.style.getPropertyPriority('font-family')).toBe('');
+            expect(important.style.fontFamily).toBe('Times New Roman');
+            expect(important.style.getPropertyPriority('font-family')).toBe('important');
+            expect(normal.style.color).toBe('red'); expect(important.style.color).toBe('green');
+            expect(colored.style.fontFamily).toBeFalsy(); expect(colored.style.color).toBe('blue');
+            expect(colored.hasAttribute('style')).toBe(true); expect(clean.hasAttribute('style')).toBe(false);
+            [normal, important, colored, clean].forEach((element, index) => expect(element.firstChild).toBe(originals[index]));
+            expect(f.observers.every(observer => !observer.active)).toBe(true);
+        } finally {controller.dispose();}
+    });
     it('starts disabled and restores original inline families, priority, unrelated styles and text identity', () => {
         const f = fixture('<article><p id="p" style="font-family: Georgia; color: red">Readable paragraph <em id="em">with emphasis</em>.</p><p id="clean">Another paragraph.</p></article>');
         const p = f.element('p'), original = p.firstChild;
