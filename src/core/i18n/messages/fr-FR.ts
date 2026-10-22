@@ -9,6 +9,7 @@ import videoLearningText from './video-learning/fr-FR.json';
 import selfHelpText from './self-help/fr-FR.json';
 import {compositeTranslationMessages, compositeTranslationLegacyText} from './compositeTranslation';
 import {aiRequestTimeoutMessages} from './aiRequestTimeout';
+import {sectionTranslationRulesFrenchMessages} from './sectionTranslationRulesRomance';
 import {mimoRetirementLegacyText} from './mimoRetirement';
 import {pdfReadingMessages} from './pdfReading';
 import {informationHighlightMessages} from './informationHighlight';
@@ -20,6 +21,7 @@ import cloudBackupText from './cloud-backup/fr-FR.json';
 import type {
 enUSMessages} from './en-US';
 import {legacyTextOverrides} from './legacy-overrides';
+import {sectionTranslationRulesLegacyText} from './sectionTranslationRulesLegacy';
 import {createLegacyCorrectionText} from './legacy-corrections';
 import {createRuntimeFeedbackLegacyText} from './runtime-feedback';
 import {localTtsFrenchMessages} from './localTts';
@@ -539,6 +541,7 @@ export const frFRMessages = {
     "settings.requestLimits.globalTitle": "Limites de requêtes",
     "settings.requestLimits.globalHelp": "Les services et modèles sans réglages spécifiques partagent ces limites.",
     ...aiRequestTimeoutMessages["fr-FR"],
+    ...sectionTranslationRulesFrenchMessages,
     "settings.requestLimits.retryIntervals": "Délais de nouvelle tentative",
     "settings.requestLimits.apiKeyRecovery": "Refroidissement de la clé en échec",
     "settings.requestLimits.apiKeyRecoveryHelp": "Une clé ayant échoué pour authentification, quota ou limitation est temporairement ignorée. Le délai Retry-After fourni par le service est prioritaire.",
@@ -955,6 +958,25 @@ export const frFRMessages = {
     'video.aiGenerating': 'Génération…',
     'video.aiLocalTitle': 'Sous-titres IA locaux X',
     'video.aiLocalHint': 'Sans sous-titres natifs, la reconnaissance se fait localement ; la vitesse dépend du CPU et de la mémoire.',
+    "video.readingAnnotation.ja": "Romaji japonais",
+    "video.readingAnnotation.ko": "Romanisation coréenne",
+    "video.readingAnnotation.zh": "Pinyin chinois",
+    "video.readingAnnotation.ru": "Translittération russe",
+    "video.readingAnnotation.el": "Translittération grecque",
+    "video.readingAnnotation.ar": "Translittération arabe",
+    "video.readingAnnotation.hi": "Translittération du hindi",
+    "video.readingAnnotation.th": "Translittération thaïe",
+    "video.readingAnnotation.unavailable": "Les aides à la lecture nécessitent actuellement l’extension du navigateur",
+    "video.readingAnnotation.label": "Aides à la lecture",
+    "video.readingAnnotation.description": "Affiche le romaji, le pinyin ou une aide selon la langue originale",
+    "video.readingAnnotation.originalRequired": "Affichées avec l’original ou les deux langues ; votre préférence est conservée",
+    "video.readingAnnotation.approximation": "Japonais, coréen, chinois, russe, grec, arabe, hindi et thaï pris en charge. La translittération latine facilite la lecture sans indiquer la prononciation exacte. Les noms, les lectures multiples et les voyelles omises peuvent être ambigus.",
+    "video.readingAnnotation.previewSample": "Données de démonstration : exemple japonais fixe pour la mise en page",
+    "video.readingAnnotation.previewTranslation": "Il fait très beau aujourd’hui.",
+    "video.readingAnnotation.loading": "Préparation de la lecture…",
+    "video.readingAnnotation.error": "Lecture indisponible",
+    "video.readingAnnotation.noReading": "Lecture non nécessaire ou non prise en charge pour ce texte",
+    "video.readingAnnotation.retry": "Réessayer les aides à la lecture",
     'video.modeBilingual': 'Les deux',
     'video.modeTranslation': 'Traduction',
     'video.modeOriginal': 'Original',
@@ -2447,6 +2469,7 @@ const frFRLegacyTextBase: Readonly<Record<string, string>> = {
 };
 
 export const frFRLegacyText: Readonly<Record<string, string>> = {
+    ...sectionTranslationRulesLegacyText['fr-FR'],
     ...googleDriveText.legacy,
     ...compositeTranslationLegacyText['fr-FR'],
     ...cloudBackupText.legacy,

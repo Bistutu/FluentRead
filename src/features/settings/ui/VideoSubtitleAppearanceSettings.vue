@@ -1,7 +1,7 @@
 <!--
  * @file src/features/settings/ui/VideoSubtitleAppearanceSettings.vue
  * 文件职责：提供视频字幕外观设置，并用同一套 CSS 变量展示隔离的实时预览。
- * 主要内容：左侧在等高预览区内用正常视频比例呈现字幕样式，滚动调整时保持预览可见；右侧选择显示内容、默认关闭的逐字高亮、皮肤并按字号与位置、颜色与布局分组调整字幕，字号允许 80–500% 与整数自定义输入，支持恢复默认并保留所有外观配置。
+ * 主要内容：左侧在等高预览区内用正常视频比例呈现字幕样式，滚动调整时保持预览可见；右侧选择显示内容、默认关闭的逐字高亮与读音标注、皮肤并按字号与位置、颜色与布局分组调整字幕。读音预览只使用明确标记的固定日语示例，仅译文时隐藏读音但保留偏好；字号允许 80–500% 与整数自定义输入，支持恢复默认。
  * 模块边界：只编辑传入 Config 草稿；保存由 SettingsSections 统一处理，播放器实际应用由 content 层负责。
  -->
 <template>
@@ -10,12 +10,14 @@
       <template #preview>
         <div class="subtitle-preview-scene" :data-position="config.videoSubtitleAppearance.position" :data-auto-bottom="config.videoSubtitleAppearance.autoBottom" data-video-subtitle-preview-scene>
         <div v-if="config.videoSubtitleVisible" class="subtitle-live-preview" :style="previewStyle" data-video-subtitle-preview>
-          <span v-if="config.videoSubtitleDisplayMode !== 'translation-only'" :class="{ 'subtitle-preview-karaoke': config.videoSubtitleAppearance.karaoke }" data-text="Video subtitle preview" data-i18n-ignore>Video subtitle preview</span>
-          <b v-if="config.videoSubtitleDisplayMode !== 'original-only'" :class="{ 'subtitle-preview-karaoke': config.videoSubtitleAppearance.karaoke }" data-text="视频字幕预览" data-i18n-ignore>视频字幕预览</b>
+          <span v-if="config.videoSubtitleDisplayMode !== 'translation-only'" :class="{ 'subtitle-preview-karaoke': config.videoSubtitleAppearance.karaoke }" :data-text="previewOriginal" :lang="config.videoSubtitleAppearance.readingAnnotation ? 'ja' : 'en'" data-i18n-ignore>{{ previewOriginal }}</span>
+          <small v-if="config.videoSubtitleAppearance.readingAnnotation && config.videoSubtitleDisplayMode !== 'translation-only'" class="subtitle-preview-reading" lang="ja-Latn" data-video-subtitle-reading-preview data-i18n-ignore>kyō wa ii tenki desu ne.</small>
+          <b v-if="config.videoSubtitleDisplayMode !== 'original-only'" :class="{ 'subtitle-preview-karaoke': config.videoSubtitleAppearance.karaoke }" :data-text="previewTranslation" data-i18n-ignore>{{ previewTranslation }}</b>
         </div>
         <span v-else class="subtitle-preview-hidden">字幕已隐藏</span>
       </div>
         <p class="subtitle-appearance-hint">切换显示内容、皮肤或位置，左侧示例立即更新</p>
+        <p v-if="config.videoSubtitleAppearance.readingAnnotation" class="subtitle-appearance-hint" data-video-subtitle-reading-sample>{{ t('video.readingAnnotation.previewSample') }}</p>
       </template>
       <div class="subtitle-display-preferences">
         <SettingsItem :label="translateControlLabel('显示 FluentRead 字幕').replace('FluentRead', t('common.brand'))" description="临时隐藏字幕时保留翻译设置" :disabled="!config.videoTranslationEnabled">
@@ -23,6 +25,9 @@
         </SettingsItem>
         <SettingsItem label="字幕显示模式" description="选择原文和译文的呈现方式" :disabled="!config.videoTranslationEnabled || !config.videoSubtitleVisible">
           <SegmentedControl v-model="config.videoSubtitleDisplayMode" :options="displayModeOptions" label="视频字幕显示模式" :disabled="!config.videoTranslationEnabled || !config.videoSubtitleVisible" />
+        </SettingsItem>
+        <SettingsItem class="subtitle-reading-item" :label="t('video.readingAnnotation.label')" :description="!browserCapabilities.extensionDom ? t('video.readingAnnotation.unavailable') : config.videoSubtitleDisplayMode === 'translation-only' ? t('video.readingAnnotation.originalRequired') : t('video.readingAnnotation.description')" :help="t('video.readingAnnotation.approximation')" :disabled="!config.videoTranslationEnabled || !config.videoSubtitleVisible || !browserCapabilities.extensionDom">
+          <el-switch v-model="config.videoSubtitleAppearance.readingAnnotation" :aria-label="t('video.readingAnnotation.label')" :disabled="!config.videoTranslationEnabled || !config.videoSubtitleVisible || !browserCapabilities.extensionDom" data-video-subtitle-reading-annotation />
         </SettingsItem>
         <SettingsItem class="subtitle-karaoke-item" label="逐字高亮" description="字幕随播放进度逐字点亮，像 KTV 歌词一样" :disabled="!config.videoTranslationEnabled || !config.videoSubtitleVisible">
           <el-switch v-model="config.videoSubtitleAppearance.karaoke" aria-label="视频字幕逐字高亮" :disabled="!config.videoTranslationEnabled || !config.videoSubtitleVisible" data-video-subtitle-karaoke />
@@ -86,6 +91,7 @@ const {t, translateLegacy: translateControlLabel} = useControlI18n();
 import {computed} from 'vue';
 import type {CSSProperties} from 'vue';
 import type {Config} from '@/src/core/config/model';
+import {browserCapabilities} from '@/src/platform/browser/capabilities';
 import {
   DEFAULT_VIDEO_SUBTITLE_APPEARANCE,
   VIDEO_SUBTITLE_FONT_SCALE_RANGE,
@@ -103,6 +109,9 @@ const props = defineProps<{config: Config}>();
 const config = computed(() => props.config);
 const displayModeOptions = [{value: 'bilingual', label: '双语'}, {value: 'translation-only', label: '仅译文'}, {value: 'original-only', label: '仅原文'}];
 const previewStyle = computed(() => getVideoSubtitleAppearanceCssVars(config.value.videoSubtitleAppearance) as CSSProperties);
+// 固定示例只预览排版；设置页不导入词典、启动 Worker 或发起字幕/翻译请求。
+const previewOriginal = computed(() => config.value.videoSubtitleAppearance.readingAnnotation ? '今日はいい天気ですね。' : 'Video subtitle preview');
+const previewTranslation = computed(() => config.value.videoSubtitleAppearance.readingAnnotation ? t('video.readingAnnotation.previewTranslation') : '视频字幕预览');
 
 function updateFontScale(event: Event): void {
   const input = event.target as HTMLInputElement;
@@ -166,6 +175,7 @@ function skinSwatchStyle(skin: typeof VIDEO_SUBTITLE_SKINS[number]): Record<stri
 .subtitle-live-preview > span { color: var(--fluent-read-video-subtitle-text-color); }
 .subtitle-live-preview > span, .subtitle-live-preview > b { paint-order: stroke fill; }
 .subtitle-live-preview b { color: var(--fluent-read-video-subtitle-translation-color); font-weight: 650; }
+.subtitle-live-preview .subtitle-preview-reading { color:var(--fluent-read-video-subtitle-text-color); font-size:max(12px, .72em); font-weight:400; line-height:1.35; overflow-wrap:anywhere; text-align:center; -webkit-text-stroke:0; }
 .subtitle-appearance-advanced { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px; }
 .subtitle-appearance-advanced h3 { margin:0; color:var(--ink); font-size:13px; }
 .subtitle-appearance-hint { margin: 6px 0 0; color: var(--muted); font-size: 10.5px; line-height: 1.5; }
@@ -189,7 +199,7 @@ function skinSwatchStyle(skin: typeof VIDEO_SUBTITLE_SKINS[number]): Record<stri
 .subtitle-display-preferences :deep(.settings-item) { padding:0 0 16px; grid-template-columns:minmax(0,1fr) auto; gap:12px; }
 .subtitle-display-preferences :deep(.settings-item + .settings-item) { grid-template-columns:minmax(0,1fr); }
 .subtitle-display-preferences :deep(.settings-item-control) { width:100%; }
-.subtitle-display-preferences :deep(.settings-item.subtitle-karaoke-item) { grid-template-columns:minmax(0,1fr) auto; }
+.subtitle-display-preferences :deep(.settings-item.subtitle-karaoke-item), .subtitle-display-preferences :deep(.settings-item.subtitle-reading-item) { grid-template-columns:minmax(0,1fr) auto; }
 /* 预览与播放器同一套观感：未唱到的字变淡，同字高亮层循环扫过。 */
 .subtitle-preview-karaoke { position:relative; --subtitle-preview-karaoke-color:var(--fluent-read-video-subtitle-text-color); color:color-mix(in srgb, var(--subtitle-preview-karaoke-color) 46%, transparent) !important; }
 b.subtitle-preview-karaoke { --subtitle-preview-karaoke-color:var(--fluent-read-video-subtitle-translation-color); }

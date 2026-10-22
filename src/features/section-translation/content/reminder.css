@@ -1,0 +1,18 @@
+/**
+ * @file src/features/section-translation/content/reminder.css
+ * 文件职责：为已记住区域的页内翻译按钮提供轻量、窄屏友好和深色适配的隔离外观。
+ * 主要内容：使用 FluentRead 品牌粉色和紧凑按钮行，仅失败时增加简短提示；长文案可换行，触控及键盘焦点可见。
+ * 模块边界：仅供 reminder 的 ShadowRoot 使用，不影响宿主页或其他浮层。
+ */
+:host { color-scheme: light dark; }
+.fr-section-reminder { display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding:4px;max-width:min(320px,calc(100vw - 32px));box-sizing:border-box;border:1px solid #e6e8ee;border-radius:10px;background:#fff;color:#293244;box-shadow:0 4px 14px #1a23341f;font:13px/1.5 system-ui,sans-serif; }
+.fr-section-reminder-text { flex-basis:100%;min-width:0;padding:3px 7px;color:#b32955;overflow-wrap:anywhere; }
+.fr-section-reminder-text[hidden] { display:none; }
+button { border:0;cursor:pointer;font:inherit;min-height:32px;border-radius:7px; }
+.fr-section-reminder-action { flex:1;min-width:0;color:#fff;background:#d73568;padding:5px 10px;overflow-wrap:anywhere; }
+.fr-section-reminder-action:hover { background:#bf2857; }
+.fr-section-reminder-close { flex:none;color:#687286;background:transparent;width:32px;padding:0;font-size:21px; }
+.fr-section-reminder-close:hover { color:#293244;background:#f7f8fb; }
+button:focus-visible { outline:2px solid #d73568;outline-offset:2px; }
+button:disabled { opacity:.6;cursor:wait; }
+@media (prefers-color-scheme:dark) { .fr-section-reminder { color:#eef0f6;background:#252a35;border-color:#414857;box-shadow:0 4px 14px #0005; }.fr-section-reminder-text { color:#ff91b1; }.fr-section-reminder-close { color:#abb3c4; }.fr-section-reminder-close:hover { color:#eef0f6;background:#343b49; }button:focus-visible { outline-color:#ff91b1; } }

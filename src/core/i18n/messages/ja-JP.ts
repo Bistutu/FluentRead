@@ -9,6 +9,7 @@ import videoLearningText from './video-learning/ja-JP.json';
 import selfHelpText from './self-help/ja-JP.json';
 import {compositeTranslationMessages, compositeTranslationLegacyText} from './compositeTranslation';
 import {aiRequestTimeoutMessages} from './aiRequestTimeout';
+import {sectionTranslationRulesJapaneseMessages} from './sectionTranslationRulesAsian';
 import {mimoRetirementLegacyText} from './mimoRetirement';
 import {pdfReadingMessages} from './pdfReading';
 import {informationHighlightMessages} from './informationHighlight';
@@ -20,6 +21,7 @@ import cloudBackupText from './cloud-backup/ja-JP.json';
 import type {
 enUSMessages} from './en-US';
 import {legacyTextOverrides} from './legacy-overrides';
+import {sectionTranslationRulesLegacyText} from './sectionTranslationRulesLegacy';
 import {createLegacyCorrectionText} from './legacy-corrections';
 import {createRuntimeFeedbackLegacyText} from './runtime-feedback';
 import {localTtsJapaneseMessages} from './localTts';
@@ -539,6 +541,7 @@ export const jaJPMessages = {
     "settings.requestLimits.globalTitle": "リクエスト制限",
     "settings.requestLimits.globalHelp": "個別設定のないサービスとモデルは、この制限を共有します。",
     ...aiRequestTimeoutMessages["ja-JP"],
+    ...sectionTranslationRulesJapaneseMessages,
     "settings.requestLimits.retryIntervals": "再試行の間隔",
     "settings.requestLimits.apiKeyRecovery": "失敗した Key のクールダウン",
     "settings.requestLimits.apiKeyRecoveryHelp": "認証、クォータ、レート制限で失敗した Key を一時的にスキップします。サービスが Retry-After を返した場合は、その待ち時間を優先します。",
@@ -955,6 +958,25 @@ export const jaJPMessages = {
     'video.aiGenerating': '生成中…',
     'video.aiLocalTitle': 'X ローカル AI 字幕',
     'video.aiLocalHint': '字幕がない場合は端末内で認識します。速度は CPU とメモリに依存します。',
+    "video.readingAnnotation.ja": "日本語のローマ字",
+    "video.readingAnnotation.ko": "韓国語のローマ字",
+    "video.readingAnnotation.zh": "中国語のピンイン",
+    "video.readingAnnotation.ru": "ロシア語の転写",
+    "video.readingAnnotation.el": "ギリシャ語の転写",
+    "video.readingAnnotation.ar": "アラビア語の転写",
+    "video.readingAnnotation.hi": "ヒンディー語の転写",
+    "video.readingAnnotation.th": "タイ語の転写",
+    "video.readingAnnotation.unavailable": "読み方の表記には現在ブラウザー拡張機能が必要です",
+    "video.readingAnnotation.label": "読み方の表記",
+    "video.readingAnnotation.description": "原文の言語に応じてローマ字やピンインなどを表示",
+    "video.readingAnnotation.originalRequired": "原文または二言語表示で有効です。設定は保持されます",
+    "video.readingAnnotation.approximation": "日本語、韓国語、中国語、ロシア語、ギリシャ語、アラビア語、ヒンディー語、タイ語に対応。ラテン文字への転写は読みの補助であり、正確な発音を示すものではありません。固有名詞、複数の読み、省略された母音には曖昧さがあります。",
+    "video.readingAnnotation.previewSample": "デモデータ：レイアウト確認用の固定日本語サンプル",
+    "video.readingAnnotation.previewTranslation": "今日はいい天気ですね。",
+    "video.readingAnnotation.loading": "読み方を準備中…",
+    "video.readingAnnotation.error": "読み方を表示できません",
+    "video.readingAnnotation.noReading": "この原文は読みの表示が不要、または未対応です",
+    "video.readingAnnotation.retry": "読み方を再試行",
     'video.modeBilingual': '両方',
     'video.modeTranslation': '訳文',
     'video.modeOriginal': '原文',
@@ -2453,6 +2475,7 @@ const jaJPLegacyTextBase: Readonly<Record<string, string>> = {
 };
 
 export const jaJPLegacyText: Readonly<Record<string, string>> = {
+    ...sectionTranslationRulesLegacyText['ja-JP'],
     ...googleDriveText.legacy,
     ...compositeTranslationLegacyText['ja-JP'],
     ...cloudBackupText.legacy,

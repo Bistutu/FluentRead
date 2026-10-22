@@ -9,6 +9,7 @@ import videoLearningText from './video-learning/ko-KR.json';
 import selfHelpText from './self-help/ko-KR.json';
 import {compositeTranslationMessages, compositeTranslationLegacyText} from './compositeTranslation';
 import {aiRequestTimeoutMessages} from './aiRequestTimeout';
+import {sectionTranslationRulesKoreanMessages} from './sectionTranslationRulesAsian';
 import {mimoRetirementLegacyText} from './mimoRetirement';
 import {pdfReadingMessages} from './pdfReading';
 import {informationHighlightMessages} from './informationHighlight';
@@ -20,6 +21,7 @@ import cloudBackupText from './cloud-backup/ko-KR.json';
 import type {
 enUSMessages} from './en-US';
 import {legacyTextOverrides} from './legacy-overrides';
+import {sectionTranslationRulesLegacyText} from './sectionTranslationRulesLegacy';
 import {createLegacyCorrectionText} from './legacy-corrections';
 import {createRuntimeFeedbackLegacyText} from './runtime-feedback';
 import {localTtsKoreanMessages} from './localTts';
@@ -539,6 +541,7 @@ export const koKRMessages = {
     "settings.requestLimits.globalTitle": "요청 제한",
     "settings.requestLimits.globalHelp": "개별 설정이 없는 서비스와 모델은 이 제한을 공유합니다.",
     ...aiRequestTimeoutMessages["ko-KR"],
+    ...sectionTranslationRulesKoreanMessages,
     "settings.requestLimits.retryIntervals": "재시도 간격",
     "settings.requestLimits.apiKeyRecovery": "실패한 Key 쿨다운",
     "settings.requestLimits.apiKeyRecoveryHelp": "인증, 할당량 또는 속도 제한 오류가 난 Key는 잠시 건너뜁니다. 서비스가 Retry-After를 보내면 해당 대기 시간을 우선합니다.",
@@ -955,6 +958,25 @@ export const koKRMessages = {
     'video.aiGenerating': '생성 중…',
     'video.aiLocalTitle': 'X 로컬 AI 자막',
     'video.aiLocalHint': '기본 자막이 없으면 기기에서 인식하며, 속도는 CPU와 메모리에 따라 달라집니다.',
+    "video.readingAnnotation.ja": "일본어 로마자",
+    "video.readingAnnotation.ko": "한국어 로마자",
+    "video.readingAnnotation.zh": "중국어 병음",
+    "video.readingAnnotation.ru": "러시아어 전사",
+    "video.readingAnnotation.el": "그리스어 전사",
+    "video.readingAnnotation.ar": "아랍어 전사",
+    "video.readingAnnotation.hi": "힌디어 전사",
+    "video.readingAnnotation.th": "태국어 전사",
+    "video.readingAnnotation.unavailable": "읽기 표기는 현재 브라우저 확장 프로그램이 필요합니다",
+    "video.readingAnnotation.label": "읽기 표기",
+    "video.readingAnnotation.description": "원문 언어에 맞춰 로마자, 병음 등 읽기 도움말 표시",
+    "video.readingAnnotation.originalRequired": "원문 또는 이중 자막에서 표시됩니다. 설정은 유지됩니다",
+    "video.readingAnnotation.approximation": "일본어, 한국어, 중국어, 러시아어, 그리스어, 아랍어, 힌디어와 태국어를 지원합니다. 라틴 문자 전사는 읽기 보조이며 정확한 발음을 뜻하지 않습니다. 이름, 여러 독음과 생략된 모음은 모호할 수 있습니다.",
+    "video.readingAnnotation.previewSample": "데모 데이터: 배치 확인용 고정 일본어 예시",
+    "video.readingAnnotation.previewTranslation": "오늘 날씨가 참 좋네요.",
+    "video.readingAnnotation.loading": "읽기 표기 준비 중…",
+    "video.readingAnnotation.error": "읽기 표기를 사용할 수 없습니다",
+    "video.readingAnnotation.noReading": "이 원문은 읽기 표기가 필요 없거나 지원되지 않습니다",
+    "video.readingAnnotation.retry": "읽기 표기 다시 시도",
     'video.modeBilingual': '둘 다',
     'video.modeTranslation': '번역',
     'video.modeOriginal': '원문',
@@ -2453,6 +2475,7 @@ const koKRLegacyTextBase: Readonly<Record<string, string>> = {
 };
 
 export const koKRLegacyText: Readonly<Record<string, string>> = {
+    ...sectionTranslationRulesLegacyText['ko-KR'],
     ...googleDriveText.legacy,
     ...compositeTranslationLegacyText['ko-KR'],
     ...cloudBackupText.legacy,

@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/nativeFullscreen.ts
  * 文件职责：将已有 YouTube 字幕时间轴映射到 Safari 系统视频全屏可选择的原生 TextTrack。
- * 主要内容：页面内预备原生轨道，按显示方式组合已缓存译文与原文，由系统菜单选择显示，缓存更新保留用户模式，系统改选源轨或关闭时更新恢复归属，退出、禁用、换视频和卸载时仅保守恢复最近可证明让位的站点原轨道；不重启网络翻译，也不承诺系统播放器显示网页覆盖层。
+ * 主要内容：页面内预备原生轨道，按显示方式组合已缓存译文、原文与可选读音；读音按原文索引只更新对应 cue，缓存和模式变化保留用户选择，退出、禁用、换视频和卸载时仅保守恢复最近可证明让位的站点原轨道；不重启网络翻译，也不承诺系统播放器显示网页覆盖层。
  * 模块边界：只持有自己创建的 track 节点与 cue，运行时注入媒体、配置和缓存读取；系统字幕样式和后台脚本调度由浏览器负责。
  */
 import type {VideoSubtitleCue} from './youtubeSubtitleData';
@@ -16,10 +16,30 @@ export interface NativeFullscreenSubtitleState {
   language: string;
   /** 提供时必须随 translation 的可见缓存变化；省略时每轮重读。 */
   revision?: string | number;
+  /** 仅提供当前句结果；空读音是等待态，不能删除同媒体已经完成的读音。 */
+  reading?: {enabled: boolean; source: string; text: string};
   translation: (source: string, cue: VideoSubtitleCue) => string | undefined;
 }
 
 type NativeVideo = HTMLVideoElement & {webkitDisplayingFullscreen?: boolean; webkitEnterFullscreen?: () => void};
+const escapeCueText = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const readingKey = (text: string) => text.replace(/[\s\u3000]+/g, ' ').trim();
+
+function nativeCue(state: NativeFullscreenSubtitleState, cue: VideoSubtitleCue) {
+  const original = cue.text.trim();
+  const translated = state.mode === 'original-only' ? '' : state.translation(original, cue)?.trim() || '';
+  const base = state.mode === 'translation-only' ? translated
+    : state.mode === 'original-only' || !translated || translated === original ? original : `${original}\n${translated}`;
+  const startMs = Math.max(0, cue.startMs + state.offsetMs);
+  const endMs = cue.startMs + cue.durationMs + state.offsetMs;
+  if (!base || !Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) return null;
+  return {source: original, cue: {startMs, durationMs: endMs - startMs, text: escapeCueText(base)}};
+}
+
+function withReading(base: string, original: string, reading: string): string {
+  const escapedOriginal = escapeCueText(original);
+  return `${escapedOriginal}\n${escapeCueText(reading)}${base.slice(escapedOriginal.length)}`;
+}
 
 export function supportsNativeVideoFullscreen(video: HTMLVideoElement | null): boolean {
   return Boolean(video && typeof (video as NativeVideo).webkitEnterFullscreen === 'function');
@@ -28,15 +48,13 @@ export function supportsNativeVideoFullscreen(video: HTMLVideoElement | null): b
 /** VTTCue 接受 WebVTT 标记，正文必须按文字转义，不能把网站的尖括号解释成标签。 */
 export function buildNativeFullscreenCues(state: NativeFullscreenSubtitleState): VideoSubtitleCue[] {
   return state.cues.flatMap(cue => {
-    const original = cue.text.trim();
-    const translated = state.mode === 'original-only' ? '' : state.translation(original, cue)?.trim() || '';
-    const text = state.mode === 'translation-only' ? translated
-      : state.mode === 'original-only' || !translated || translated === original ? original : `${original}\n${translated}`;
-    const startMs = Math.max(0, cue.startMs + state.offsetMs);
-    const endMs = cue.startMs + cue.durationMs + state.offsetMs;
-    if (!text || !Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) return [];
-    return [{startMs, durationMs: endMs - startMs,
-      text: text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}];
+    const item = nativeCue(state, cue);
+    if (!item) return [];
+    const reading = state.reading;
+    if (reading?.enabled && state.mode !== 'translation-only' && readingKey(reading.source) === readingKey(item.source) && reading.text.trim()) {
+      item.cue.text = withReading(item.cue.text, item.source, reading.text.trim());
+    }
+    return [item.cue];
   });
 }
 
@@ -52,6 +70,12 @@ export function createNativeFullscreenSubtitles(read: () => NativeFullscreenSubt
   let preparedCues: readonly VideoSubtitleCue[] | undefined;
   let preparedKey = '';
   let preparedFingerprint = '';
+  let baseTexts: string[] = [];
+  let preparedSources: string[] = [];
+  const sourceIndices = new Map<string, number[]>();
+  const readings = new Map<string, string>();
+  const dirtyReadings = new Set<string>();
+  let readingCharacters = 0;
   const previousShowing = new Set<TextTrack>();
   const onTrackResource = () => sync();
   const onTrackChange = () => {
@@ -125,6 +149,7 @@ export function createNativeFullscreenSubtitles(read: () => NativeFullscreenSubt
     prepared = [];
     preparedCues = undefined;
     preparedKey = '';
+    baseTexts = []; preparedSources = []; sourceIndices.clear(); readings.clear(); dirtyReadings.clear(); readingCharacters = 0;
   };
   const sync = () => {
     if (disposed || syncing) return;
@@ -145,12 +170,44 @@ export function createNativeFullscreenSubtitles(read: () => NativeFullscreenSubt
       if (!video) return;
       const Cue = (video.ownerDocument.defaultView as (Window & {VTTCue?: typeof VTTCue}) | null)?.VTTCue;
       if (typeof Cue !== 'function') return;
-      const preparationKey = JSON.stringify([state.revision, state.mode, state.offsetMs, state.language]);
+      const readingEnabled = state.reading?.enabled === true;
+      if (state.cues !== preparedCues) { readings.clear(); dirtyReadings.clear(); readingCharacters = 0; fingerprint = ''; }
+      else if (!readingEnabled) { readings.clear(); dirtyReadings.clear(); readingCharacters = 0; }
+      const readingSource = readingKey(state.reading?.source || ''), readingText = state.reading?.text.trim() || '';
+      if (readingEnabled && readingSource && readingText && readings.get(readingSource) !== readingText) {
+        const previous = readings.get(readingSource);
+        if (previous) readingCharacters -= readingSource.length + previous.length;
+        readings.delete(readingSource); readings.set(readingSource, readingText);
+        readingCharacters += readingSource.length + readingText.length; dirtyReadings.add(readingSource);
+        while (readings.size > 160 || readingCharacters > 64_000) {
+          const oldest = readings.keys().next().value!;
+          readingCharacters -= oldest.length + readings.get(oldest)!.length;
+          readings.delete(oldest); dirtyReadings.add(oldest);
+        }
+      }
+      const preparationKey = JSON.stringify([state.revision, state.mode, state.offsetMs, state.language, readingEnabled]);
       if (state.revision === undefined || state.cues !== preparedCues || preparationKey !== preparedKey) {
-        prepared = buildNativeFullscreenCues(state);
-        preparedFingerprint = JSON.stringify(prepared);
+        prepared = []; baseTexts = []; preparedSources = [];
+        sourceIndices.clear();
+        for (const cue of state.cues) {
+          const item = nativeCue(state, cue);
+          if (!item) continue;
+          const index = prepared.push(item.cue) - 1;
+          // 默认关闭时不建立读音索引或原文副本，保留原轨道准备的线性开销。
+          if (readingEnabled) {
+            baseTexts.push(item.cue.text); preparedSources.push(item.source);
+            const key = readingKey(item.source);
+            const indices = sourceIndices.get(key) || []; indices.push(index); sourceIndices.set(key, indices);
+          }
+        }
+        for (const source of readings.keys()) dirtyReadings.add(source);
+        preparedFingerprint = JSON.stringify([readingEnabled, prepared]);
         preparedCues = state.cues;
         preparedKey = preparationKey;
+      }
+      for (const source of dirtyReadings) for (const index of sourceIndices.get(source) || []) {
+        const reading = state.mode === 'translation-only' ? '' : readings.get(source);
+        prepared[index].text = reading ? withReading(baseTexts[index], preparedSources[index], reading) : baseTexts[index];
       }
       if (node && node.parentElement !== video) { removeTrackNode(); fingerprint = ''; }
       if (!node) {
@@ -172,10 +229,17 @@ export function createNativeFullscreenSubtitles(read: () => NativeFullscreenSubt
       if (track.mode === 'disabled') return;
       if (node.srclang !== state.language) node.srclang = state.language;
       // 资源任务可能清空动态 cue；只有模式允许时恢复，不切换轨道、不重置选中状态。
-      if (preparedFingerprint === fingerprint && track.cues?.length === prepared.length) return;
+      if (preparedFingerprint === fingerprint && track.cues?.length === prepared.length) {
+        for (const source of dirtyReadings) for (const index of sourceIndices.get(source) || []) {
+          const cue = track.cues[index] as VTTCue;
+          if (cue.text !== prepared[index].text) cue.text = prepared[index].text;
+        }
+        dirtyReadings.clear(); return;
+      }
       for (const cue of Array.from(track.cues || [])) track.removeCue(cue);
       for (const cue of prepared) track.addCue(new Cue(cue.startMs / 1000, (cue.startMs + cue.durationMs) / 1000, cue.text));
       fingerprint = preparedFingerprint;
+      dirtyReadings.clear();
     } catch {
       // 动态 cue 失败只等待下一次补齐，不能暗改用户模式或替其重新选择站点轨。
       fingerprint = '';

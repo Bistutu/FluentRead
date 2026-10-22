@@ -396,11 +396,11 @@ describe('userscript browser shim injection', () => {
         'popup.sectionTranslationTitle', 'settings.services.deeplx.endpointHelp',
         'document.pdfReading.exportHint', 'document.pdfReading.layoutExportHint', 'document.pdfReading.exportPageCount'];
     const pinnedLanguageFiles = {
-        'ja-JP': 'ja-JP.ee48c32301e71a68.json',
-        'ko-KR': 'ko-KR.7540452a4d4f4bf9.json',
-        'fr-FR': 'fr-FR.8e06551370151179.json',
-        'ru-RU': 'ru-RU.7d4fda8f8d41c709.json',
-        'es-ES': 'es-ES.106df7a8f5c384e5.json',
+        'ja-JP': 'ja-JP.b81984c57e32c317.json',
+        'ko-KR': 'ko-KR.f9dd4e317a3ccbac.json',
+        'fr-FR': 'fr-FR.fcc79905550b3705.json',
+        'ru-RU': 'ru-RU.83347fe7c1e5f5da.json',
+        'es-ES': 'es-ES.ccf366fbe218633c.json',
     };
     const publishedMessages: Record<string, Record<string, string>> = Object.fromEntries(Object.entries(pinnedLanguageFiles)
         .map(([language, file]) => [language, JSON.parse(readFileSync(resolve(process.cwd(), 'userscript/languages', file), 'utf8')).messages]));
@@ -428,7 +428,7 @@ describe('userscript browser shim injection', () => {
                 expect(JSON.stringify(bundle) + '\n').toBe(readFileSync(resolve(process.cwd(), 'userscript/languages', file), 'utf8'));
             }
             const kept = Object.fromEntries(Object.entries(original.messages).filter(([key]) =>
-                !key.startsWith('informationHighlight.') && !key.startsWith('contextMenu.notice.') && !key.startsWith('video.learning.') && key !== 'video.nativeFullscreenHint' && !key.startsWith('popup.compact.') && !key.startsWith('popup.displayMode.')
+                !key.startsWith('informationHighlight.') && !key.startsWith('contextMenu.notice.') && !key.startsWith('video.learning.') && !key.startsWith('video.readingAnnotation.') && key !== 'video.nativeFullscreenHint' && !key.startsWith('popup.compact.') && !key.startsWith('popup.displayMode.')
                 && !key.startsWith('diagnostics.') && !key.startsWith('popup.pageFont.')
                 && (!key.startsWith('learning.collection.speech') || key === 'learning.collection.speechFailed')
                 && !['waitingTranslation', 'crossPageContext', 'fullPassage', 'closePassage'].some(name => key === `document.pdfReading.${name}`)
@@ -506,6 +506,12 @@ describe('userscript browser shim injection', () => {
             expect(extension[key]).toBeTruthy();
             expect(Object.hasOwn(projected, key)).toBe(false);
         }
+        const readingAnnotationKeys = Object.keys(extension).filter(key => key.startsWith('video.readingAnnotation.'));
+        expect(readingAnnotationKeys).not.toHaveLength(0);
+        for (const key of readingAnnotationKeys) {
+            expect(extension[key]).toBeTruthy();
+            expect(Object.hasOwn(projected, key)).toBe(false);
+        }
         for (const key of ['popup.compact.translate', 'popup.compact.restore', 'popup.displayMode.bilingual', 'popup.displayMode.translationOnly', 'popup.displayMode.googleBilingualOnly']) {
             expect(extension[key]).toBeTruthy();
             expect(Object.hasOwn(projected, key)).toBe(false);
@@ -533,7 +539,7 @@ describe('userscript browser shim injection', () => {
         }
         const retainedKeys = Object.keys(extension).filter(key => !key.startsWith('informationHighlight.')
             && (!key.startsWith('learning.collection.speech') || key === 'learning.collection.speechFailed')
-            && !noticeKeys.includes(key) && !learningKeys.includes(key) && !readerRecoveryKeys.includes(key)
+            && !noticeKeys.includes(key) && !learningKeys.includes(key) && !readingAnnotationKeys.includes(key) && !readerRecoveryKeys.includes(key)
             && !diagnosticKeys.includes(key) && !readerDialogKeys.includes(key)
             && key !== 'video.nativeFullscreenHint'
             && !safariPermissionKeys.includes(key) && !pageFontKeys.includes(key)
@@ -581,7 +587,7 @@ describe('userscript browser shim injection', () => {
         const defines = (userscriptConfig as {define: Record<string, string>}).define;
         const commit = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_RESOURCE_COMMIT__);
         const bundles = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_REMOTE_LANGUAGES__) as Record<string, string>;
-        expect(commit).toBe('76192ae0358130a79bb7c952c0f1d84748200692');
+        expect(commit).toBe('f804e1b39dbd3313c8bdae9738ebd69a51ad2074');
         expect(bundles).toEqual(pinnedLanguageFiles);
         for (const file of Object.values(bundles)) {
             const path = `userscript/languages/${file}`;
@@ -745,6 +751,21 @@ describe('userscript browser shim injection', () => {
         expect(stringAliases.get('@/src/platform/storage/credentialContext')).toMatch(/userscript\/credentialContext\.ts$/u);
         expect(stringAliases.get('@/src/platform/storage/configStorageRuntime')).toMatch(/userscript\/storage\.ts$/u);
         expect(userscriptAliases.at(-1)?.find).toBe('@');
+    });
+
+    it('移除 userscript 不可达的字幕外观组件后才排除其专用读音文案', async () => {
+        const {parse, compileScript} = await import('vue/compiler-sfc');
+        const {transformWithEsbuild} = await import('vite');
+        const filename = resolve(process.cwd(), 'src/features/settings/ui/SettingsSections.vue');
+        const {descriptor} = parse(readFileSync(filename, 'utf8'), {filename});
+        const source = compileScript(descriptor, {id: 'userscript-video-appearance-boundary'}).content;
+        const compile = async (browser: string) => (await transformWithEsbuild(source, 'settings-sections.ts', {
+            loader: 'ts', define: {'import.meta.env.BROWSER': JSON.stringify(browser)}, treeShaking: true, minifySyntax: true,
+        })).code;
+        const userscript = await compile('userscript');
+        expect(userscript).not.toContain('VideoSubtitleAppearanceSettings.vue');
+        expect(userscript).toMatch(/\bVideoSubtitleAppearanceSettings = null\b/u);
+        expect(await compile('chrome')).toContain('VideoSubtitleAppearanceSettings.vue');
     });
 
     it('阻止个人校订 UI 绕过 public 空适配器进入任意 userscript chunk', async () => {

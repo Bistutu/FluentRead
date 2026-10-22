@@ -1,14 +1,13 @@
 /**
  * @file src/features/section-translation/content/picker.ts
  * 文件职责：实现局部翻译的区域选择模式，稳定预览鼠标下的内容块，支持单击锁定或按住左键划过多个区域，松开后用可见按钮调整并确认翻译或恢复，并在选择期间拦截网页自身的点击与悬停反应。
- * 主要内容：在封闭 Shadow Root 中创建高亮框、自然语言范围标签与固定操作条；用左键拖动采样连续收集独立区域、去重并逐块高亮，松开只锁定、确认才合并派发；取消拖动及失效节点清理整组选区；用边界容差和短暂稳定窗口消除选区抖动，点击锁定后保持区域，按钮与方向键调整范围；识别封闭组件重定向到宿主的按键，操作条焦点不经过网页输入保护；按每帧 150 步预算发现开放 ShadowRoot，动态插入只扫描新增子树，换选与退出取消扫描；原文预览仅在换区或正文变更时重新读取，区域盘点延迟合并；观察正文及布局、保护属性，布局变化时立即按静止指针刷新预览而锁定范围保持不变，隐藏或失效选区解除锁定，排除自身浮层避免观察反馈；确认前刷新区域状态与可见盒子；确认按钮或 Enter 执行、Esc/右键/关闭按钮/页面隐藏退出；确认后短暂收束动画再移除界面。
+ * 主要内容：以封闭 Shadow Root 绘制高亮与紧凑操作条，突出选区状态和确认，省去正文摘录及重复教程；显式勾选后展示记忆动作与范围，保存成功才翻译，失败保留重试并忽略失效结果；拖动采样独立区域、去重后逐块高亮，支持有名称的范围图标和方向键调整；按每帧 150 步发现开放 ShadowRoot，动态插入只扫描新增子树；正文、布局及保护属性变化合并盘点并贴合高亮，退出时清理计时器、观察器和焦点；确认按钮或 Enter 执行，Esc、右键、关闭和隐藏退出。
  * 模块边界：本模块只处理手势、高亮和选择生命周期，所有事件先校验 isTrusted；区域判定规则来自 ../core，区域盘点、翻译和提示文案由调用方注入，不直接发起翻译、不读取配置存储。
  */
 import pickerStyles from './picker.css?inline';
 import {getComposedParent} from '@/src/core/translation/public';
 import {
     describeSectionScope,
-    sectionSourcePreview,
     expandSectionElement,
     isSectionPickerUi,
     resolveSectionElement,
@@ -23,6 +22,11 @@ export interface SectionPickerPoint {
     readonly y: number;
 }
 
+export interface SectionRememberChoice {
+    readonly site: string;
+    readonly mode: 'auto' | 'remind';
+}
+
 export interface SectionPickerOptions {
     /** 进入选择模式时已知的指针位置；快捷键进入时可立即高亮鼠标下的区域。 */
     initialPoint?: SectionPickerPoint | null;
@@ -30,6 +34,10 @@ export interface SectionPickerOptions {
     inspect(element: Element | readonly Element[]): SectionLabelSummary;
     /** 用户确认区域后调用；此时选择模式已经退出，网页恢复正常交互。 */
     onPick(element: Element | readonly Element[]): void;
+    /** 当前地址可记忆的网站及路径范围；无此端口时维持一次性选择。 */
+    rememberScopes?: {readonly site: string; readonly path: string};
+    /** 仅成功持久化后退出；失败或旧选区结果保留当前选择供重试。 */
+    onRemember?(element: Element | readonly Element[], choice: SectionRememberChoice): Promise<boolean>;
     /** 界面文案解析，按当前界面语言返回文字。 */
     text(key: string, params?: Readonly<Record<string, string | number>>): string;
     /** 选择期间再次按下进入快捷键即退出。 */
@@ -193,7 +201,6 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
     const instruction = createElement('span', 'fr-section-bar-instruction', options.text('sectionTranslation.picker.preview'));
     instruction.setAttribute('role', 'status');
     instruction.setAttribute('aria-live', 'polite');
-    const preview = createElement('div', 'fr-section-bar-preview');
     const actions = createElement('div', 'fr-section-bar-actions');
     actions.setAttribute('role', 'toolbar');
     actions.setAttribute('aria-label', options.text('sectionTranslation.picker.title'));
@@ -204,6 +211,12 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
     };
     const larger = button('expand');
     const smaller = button('shrink');
+    for (const [control, symbol] of [[larger, '＋'], [smaller, '−']] as const) {
+        control.setAttribute('aria-label', control.textContent!);
+        control.title = control.textContent!;
+        control.textContent = symbol;
+        control.classList.add('fr-section-size-button');
+    }
     const reselect = button('reselect');
     const confirm = button('confirm');
     const close = createElement('button', 'fr-section-bar-close', '×') as HTMLButtonElement;
@@ -212,7 +225,42 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
     close.title = options.text('sectionTranslation.picker.close');
     heading.append(createElement('strong', 'fr-section-bar-title', options.text('sectionTranslation.picker.title')), instruction, close);
     actions.append(larger, smaller, reselect, confirm);
-    bar.append(heading, preview, actions, createElement('span', 'fr-section-bar-keys', options.text('sectionTranslation.picker.keys')));
+    const remember = createElement('div', 'fr-section-remember');
+    const rememberLabel = createElement('label', 'fr-section-remember-label');
+    const rememberCheckbox = document.createElement('input');
+    rememberCheckbox.type = 'checkbox';
+    rememberCheckbox.className = 'fr-section-remember-checkbox';
+    rememberLabel.append(rememberCheckbox, createElement('span', '', options.text('sectionTranslation.rules.remember')));
+    const rememberFields = createElement('div', 'fr-section-remember-fields');
+    const createChoice = (label: string, className: string, choices: readonly {value: string; label: string}[]): HTMLSelectElement => {
+        const field = createElement('label', 'fr-section-remember-field');
+        const select = document.createElement('select');
+        select.className = className;
+        select.setAttribute('aria-label', options.text(label));
+        for (const choice of choices) {
+            const option = document.createElement('option');
+            option.value = choice.value;
+            option.textContent = options.text(choice.label);
+            select.append(option);
+        }
+        field.append(select);
+        rememberFields.append(field);
+        return select;
+    };
+    const rememberScope = createChoice('sectionTranslation.rules.scope', 'fr-section-remember-scope', [
+        {value: 'path', label: 'sectionTranslation.rules.path'}, {value: 'site', label: 'sectionTranslation.rules.site'},
+    ]);
+    const rememberMode = createChoice('sectionTranslation.rules.nextVisit', 'fr-section-remember-mode', [
+        {value: 'remind', label: 'sectionTranslation.rules.remind'}, {value: 'auto', label: 'sectionTranslation.rules.auto'},
+    ]);
+    const rememberAddress = createElement('small', 'fr-section-remember-address');
+    rememberAddress.id = 'fr-section-remember-address';
+    rememberScope.setAttribute('aria-describedby', rememberAddress.id);
+    const rememberStatus = createElement('span', 'fr-section-remember-status');
+    rememberStatus.setAttribute('role', 'status');
+    rememberStatus.setAttribute('aria-live', 'polite');
+    remember.append(rememberLabel, rememberFields, rememberAddress, rememberStatus);
+    bar.append(heading, remember, actions);
     shadow.append(style, box, label, bar);
     document.documentElement.appendChild(host);
 
@@ -240,9 +288,9 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
     let inspectTimer: ReturnType<typeof setTimeout> | undefined;
     let topmostTimer: ReturnType<typeof setTimeout> | undefined;
     let disposed = false;
+    let remembering = false;
+    let rememberRevision = 0;
     const summaries = new WeakMap<Element, SectionLabelSummary>();
-    let previewTarget: Element | null = null;
-    let previewDirty = true;
     let shadowScanFrame = 0;
     let shadowScans: {root: Node; walker: TreeWalker; current: Element | null}[] = [];
     let shadowScanIndex = 0;
@@ -299,20 +347,29 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
         const summary = current ? summaries.get(current) : undefined;
         host.setAttribute('data-selection-state', drag?.moved ? 'dragging' : locked && current ? 'locked' : 'preview');
         host.setAttribute('data-selection-count', String(selectedRoots().length));
-        instruction.textContent = options.text(drag?.moved ? 'sectionTranslation.picker.dragging' : locked && current ? 'sectionTranslation.picker.locked' : 'sectionTranslation.picker.preview');
-        larger.disabled = !current || (swept.length > 1 ? !swept.some(root => expandSectionElement(root, geometry)) : !expandSectionElement(current, geometry));
-        smaller.disabled = !current || (swept.length > 0 ? sweepExpansion.length === 0 : expansion.length <= 1);
-        reselect.disabled = !locked;
-        confirm.disabled = !locked || !summary || (summary.action !== 'translate' && summary.action !== 'restore');
-        confirm.textContent = options.text(summary?.action === 'restore' ? 'sectionTranslation.picker.restore' : 'sectionTranslation.picker.confirm');
+        const selectionLabel = summary ? resolveSectionLabel(summary) : undefined;
+        instruction.textContent = locked ? selectionLabel ? options.text(selectionLabel.key, selectionLabel.params)
+            : options.text('sectionTranslation.label.inspecting') : options.text(drag?.moved ? 'sectionTranslation.picker.dragging' : 'sectionTranslation.picker.preview');
+        heading.classList.toggle('is-locked', locked && Boolean(current));
+        larger.disabled = remembering || !current || (swept.length > 1 ? !swept.some(root => expandSectionElement(root, geometry)) : !expandSectionElement(current, geometry));
+        smaller.disabled = remembering || !current || (swept.length > 0 ? sweepExpansion.length === 0 : expansion.length <= 1);
+        reselect.disabled = remembering || !locked;
+        confirm.disabled = remembering || !locked || !summary || (summary.action !== 'translate' && summary.action !== 'restore');
+        const canRemember = Boolean(options.rememberScopes && options.onRemember && locked && summary?.action === 'translate');
+        remember.hidden = !canRemember;
+        rememberFields.hidden = !rememberCheckbox.checked;
+        rememberAddress.hidden = !rememberCheckbox.checked;
+        const scopesDiffer = options.rememberScopes?.path !== options.rememberScopes?.site;
+        rememberScope.parentElement!.hidden = !scopesDiffer;
+        rememberCheckbox.disabled = rememberScope.disabled = rememberMode.disabled = remembering;
+        rememberStatus.classList.toggle('is-progress', remembering);
+        const address = options.rememberScopes?.[rememberScope.value === 'site' ? 'site' : 'path'] ?? '';
+        rememberAddress.textContent = address;
+        rememberScope.title = address;
+        confirm.textContent = options.text(remembering ? 'sectionTranslation.rules.saving' : summary?.action === 'restore'
+            ? 'sectionTranslation.picker.restore' : canRemember && rememberCheckbox.checked
+                ? 'sectionTranslation.rules.confirm' : 'sectionTranslation.picker.confirm');
         confirm.classList.toggle('tone-restore', summary?.action === 'restore');
-        // 锁定和标签计数只改动作，不改原文；避免每次更新控件都重复扫描当前子树。
-        if (previewTarget !== current || previewDirty) {
-            previewTarget = current;
-            previewDirty = false;
-            preview.textContent = selectedRoots().map(root => sectionSourcePreview(root)).join(' · ').slice(0, 180);
-        }
-        preview.hidden = !current;
     }
 
     function updateLabel(current: Element): void {
@@ -357,8 +414,10 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
         cancelShadowScanning();
         resizeObserver?.disconnect();
         mutationObserver?.disconnect();
+        rememberRevision += 1;
+        remembering = false;
+        rememberStatus.textContent = '';
         target = next;
-        previewDirty = true;
         if (next) resizeObserver?.observe(next);
         observeTarget();
         targetChanged = true;
@@ -523,6 +582,7 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
     }
 
     function expand(): void {
+        if (remembering) return;
         if (!target?.isConnected) return;
         cancelSettling();
         if (swept.length > 0) {
@@ -543,6 +603,7 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
     }
 
     function shrink(): void {
+        if (remembering) return;
         if (sweepExpansion.length) {setSwept(sweepExpansion.pop()!); return;}
         if (expansion.length <= 1) return;
         cancelSettling();
@@ -565,7 +626,7 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
     }
 
     function pick(element: Element): void {
-        if (drag) return;
+        if (drag || remembering) return;
         if (selectedRoots().some(root => !root.isConnected || !hasVisibleBox(root, geometry.rect(root)))) {
             locked = false;
             commitBase(null);
@@ -575,9 +636,36 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
         const picked = selection();
         const summary = options.inspect(picked);
         summaries.set(element, summary);
-        previewDirty = true;
         updateLabel(element);
         if (summary.action === 'empty' || summary.action === 'settled') return;
+        if (summary.action === 'translate' && rememberCheckbox.checked && options.rememberScopes && options.onRemember) {
+            const revision = ++rememberRevision;
+            const roots = selectedRoots();
+            const choice: SectionRememberChoice = {
+                site: options.rememberScopes[rememberScope.value === 'site' ? 'site' : 'path'],
+                mode: rememberMode.value === 'auto' ? 'auto' : 'remind',
+            };
+            remembering = true;
+            rememberStatus.textContent = options.text('sectionTranslation.rules.saving');
+            updateControls();
+            const current = (): boolean => !disposed && revision === rememberRevision && locked
+                && roots.every(root => root.isConnected && selectedRoots().includes(root));
+            void Promise.resolve().then(() => current() ? options.onRemember!(picked, choice) : false).then(saved => {
+                if (!current()) return;
+                if (saved) { dispose(true); options.onPick(picked); }
+                else {
+                    remembering = false;
+                    rememberStatus.textContent = options.text('sectionTranslation.rules.saveFailed');
+                    updateControls();
+                }
+            }).catch(() => {
+                if (!current()) return;
+                remembering = false;
+                rememberStatus.textContent = options.text('sectionTranslation.rules.saveFailed');
+                updateControls();
+            });
+            return;
+        }
         dispose(true);
         options.onPick(picked);
     }
@@ -731,6 +819,8 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
         // 自己的工具条和按钮都支持范围键；按钮保留原生 Enter 激活，网页及其他扩展界面仍让行。
         const isPickerEvent = typeof event.composedPath === 'function' && event.composedPath().includes(host);
         if (isPickerEvent) {
+            // 原生下拉框与复选框保留方向键、Enter 和空格的浏览器语义。
+            if (shadow.activeElement === rememberCheckbox || shadow.activeElement === rememberScope || shadow.activeElement === rememberMode) return;
             if (event.key === 'Enter' && shadow.activeElement !== bar) return;
         } else if (isExtensionUiEvent(event) || options.isEditing?.(event) === true) return;
         if (event.key === 'ArrowUp') {
@@ -778,6 +868,13 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
         scheduleRender();
     });
     onButton(confirm, () => {if (target) pick(target);});
+    for (const control of [rememberCheckbox, rememberScope, rememberMode]) {
+        control.addEventListener('change', (event) => {
+            if (!event.isTrusted || remembering) return;
+            rememberStatus.textContent = '';
+            updateControls();
+        }, {signal});
+    }
     // 锁定后网页仍可能替换选中的节点；立即解除失效选区，禁止把旧节点交给翻译引擎。
     const mutationObserver = typeof MutationObserver === 'function' ? new MutationObserver((records) => {
         if (disposed) return;
@@ -806,7 +903,6 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
                 if (!shadowScanFrame) scanShadowRoots();
             }
             // 保留上一份可执行摘要直到新盘点完成；确认仍会同步复核，动态正文不会让按钮一直禁用。
-            previewDirty = true;
             scheduleInspect(true);
             scheduleRender();
         }

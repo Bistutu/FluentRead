@@ -10,6 +10,7 @@ import videoLearningText from './video-learning/zh-CN.json';
 import selfHelpText from './self-help/zh-CN.json';
 import {compositeTranslationMessages} from './compositeTranslation';
 import {aiRequestTimeoutMessages} from './aiRequestTimeout';
+import {sectionTranslationRulesChineseMessages} from './sectionTranslationRules';
 import {pdfReadingChineseMessages} from './pdfReading';
 import {informationHighlightChineseMessages} from './informationHighlight';
 import reencounterText from './reencounter/zh-CN.json';
@@ -536,6 +537,7 @@ export const zhCNMessages = {
     "settings.requestLimits.globalTitle": "请求限制",
     "settings.requestLimits.globalHelp": "未单独设置的服务和模型共用这些限制",
     ...aiRequestTimeoutMessages["zh-CN"],
+    ...sectionTranslationRulesChineseMessages,
     "settings.requestLimits.retryIntervals": "重试间隔",
     "settings.requestLimits.apiKeyRecovery": "失败 Key 冷却时间",
     "settings.requestLimits.apiKeyRecoveryHelp": "某个 Key 因认证、额度或限流失败后会暂时跳过；服务端返回 Retry-After 时优先采用服务端时间",
@@ -737,7 +739,7 @@ export const zhCNMessages = {
     "sectionTranslation.picker.locked": "范围已锁定，可调整后确认",
     "sectionTranslation.picker.expand": "扩大范围",
     "sectionTranslation.picker.shrink": "缩小范围",
-    "sectionTranslation.picker.reselect": "重新选择",
+    "sectionTranslation.picker.reselect": "重选",
     "sectionTranslation.picker.confirm": "翻译所选区域",
     "sectionTranslation.picker.restore": "恢复原文",
     "sectionTranslation.picker.preview": "移动鼠标预览，点击或按住左键划选",
@@ -1183,6 +1185,25 @@ export const zhCNMessages = {
     'video.aiGenerating': '生成中…',
     'video.aiLocalTitle': 'X 本地 AI 字幕',
     'video.aiLocalHint': '无原生字幕时，在本机识别；速度取决于 CPU 和内存。',
+    "video.readingAnnotation.ja": "日语罗马音",
+    "video.readingAnnotation.ko": "韩语罗马字",
+    "video.readingAnnotation.zh": "中文拼音",
+    "video.readingAnnotation.ru": "俄语转写",
+    "video.readingAnnotation.el": "希腊语转写",
+    "video.readingAnnotation.ar": "阿拉伯语转写",
+    "video.readingAnnotation.hi": "印地语转写",
+    "video.readingAnnotation.th": "泰语转写",
+    "video.readingAnnotation.unavailable": "读音标注目前需要浏览器扩展版",
+    "video.readingAnnotation.label": "读音标注",
+    "video.readingAnnotation.description": "按原语言显示罗马音、拼音等读音提示",
+    "video.readingAnnotation.originalRequired": "仅原文或双语时显示，当前偏好会保留",
+    "video.readingAnnotation.approximation": "支持日语、韩语、中文、俄语、希腊语、阿拉伯语、印地语与泰语。拉丁转写用于辅助阅读，不等于精确发音；人名、多音字与未标元音可能有歧义。",
+    "video.readingAnnotation.previewSample": "演示数据：固定日语示例，仅预览排版",
+    "video.readingAnnotation.previewTranslation": "今天天气真好。",
+    "video.readingAnnotation.loading": "读音准备中…",
+    "video.readingAnnotation.error": "读音暂不可用",
+    "video.readingAnnotation.noReading": "当前原文无需或不支持读音标注",
+    "video.readingAnnotation.retry": "重试读音标注",
     'video.modeBilingual': '双语',
     'video.modeTranslation': '译文',
     'video.modeOriginal': '原文',

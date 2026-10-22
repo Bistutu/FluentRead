@@ -1,0 +1,27 @@
+{
+  "baseCommit": "0a7728d610ee01f1538f2325c1a38a9c4f304e9b",
+  "sameDependencies": true,
+  "baseline": {
+    "bytes": 2104733,
+    "sha256": "db47c35239f5ec77e5bbb84aa11395660f053bf7eef9bd337e52bf3aec184466"
+  },
+  "candidate": {
+    "bytes": 2124262,
+    "sha256": "d816c4992632104bd48a0e2323a1b36fb67a259140c3d8e2f2208e6a57e32f11"
+  },
+  "deltaBytes": 19529,
+  "deltaPercent": 0.9278611586362735,
+  "previousBudget": 2107100,
+  "budget": 2125100,
+  "remainingBytes": 838,
+  "budgetStepBytes": 1000,
+  "note": "No new dependency. All existing protocol, resource and VM verification checks retained.",
+  "languageResourceCommit": "f804e1b39dbd3313c8bdae9738ebd69a51ad2074",
+  "earlierStage": {
+    "baseCommit": "e15c6df2d1a480b9633140458aeb2a0588fc3e8f",
+    "baselineBytes": 2103154,
+    "candidateBytes": 2122599,
+    "candidateSha256": "5017ea26cccbccb05bab46bf6805595bca961408f674d0ab5b243e9ebf57b445",
+    "budget": 2123100
+  }
+}

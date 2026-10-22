@@ -6,6 +6,14 @@ Turning off **Video subtitle translation** immediately removes the FluentRead bu
 
 On phones, the subtitle menu fits the visible screen instead of the video height. Close stays visible while the menu body scrolls when needed. Display modes come first, with two rows on narrow screens; sentence learning remains a secondary action. Timing and download controls appear directly in the regular menu and under **Subtitle options** in X's compact menu. Reopening returns to the primary controls. The menu adjusts to keyboard, orientation and safe area changes.
 
+## Reading annotations
+
+In the browser extension, turn on **Video appearance → Reading annotations** or use the YouTube/X player subtitle menu to add offline reading hints. This option is off by default. It is currently unavailable in the userscript, where the switch is disabled with an explanation. It follows the original caption language: Japanese romaji, Korean romanization, Chinese pinyin, or Latin transliteration for Russian, Greek, Arabic, Hindi and Thai. The reading appears below the original. Bilingual mode shows original, reading and translation; original-only mode shows original and reading. Translation-only mode and hidden subtitles hide the reading while keeping your preference. Sentence learning always includes the original; its reading follows the pinned or historical sentence selected in the panel and stops new calculations when collapsed.
+
+Processing stays local and does not send captions to a reading service. The Japanese dictionary ships with the extension and initializes only when needed, without a separate dictionary download. Other language engines also load on demand. Original captions and translations do not wait for the reading calculation; the menu explains preparation, failures and captions with no applicable reading. Failed readings can be retried in the menu or sentence learning panel. Changing captions or videos prevents an old reading from appearing on the next sentence.
+
+Latin transliteration is a reading aid, not exact pronunciation. Japanese names and alternate readings, Chinese characters with several pronunciations, Korean sound changes and unwritten Arabic vowels can be ambiguous. Check against the audio. The settings preview explicitly labels its fixed Japanese text and romaji as demo data; it does not read a video or run the reading engine. This display option does not alter original captions, translations or downloaded subtitle text.
+
 ## Sentence learning
 
 Choose the book-icon **Start sentence learning** button in the FluentRead menu of a YouTube or X player. The optional panel groups original timed captions into sentences, with surrounding context and a translation requested for the whole original sentence. Missing punctuation and long captions are labelled as fragments. Enable original captions if no timeline is available. X local AI captions must finish generating before learning is available.

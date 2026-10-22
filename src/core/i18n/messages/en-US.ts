@@ -10,6 +10,7 @@ import videoLearningText from './video-learning/en-US.json';
 import selfHelpText from './self-help/en-US.json';
 import {compositeTranslationMessages, compositeTranslationLegacyText} from './compositeTranslation';
 import {aiRequestTimeoutMessages} from './aiRequestTimeout';
+import {sectionTranslationRulesEnglishMessages} from './sectionTranslationRules';
 import {mimoRetirementLegacyText} from './mimoRetirement';
 import {pdfReadingMessages} from './pdfReading';
 import {informationHighlightMessages} from './informationHighlight';
@@ -21,6 +22,7 @@ import googleDriveText from './google-drive/en-US.json';
 import cloudBackupText from './cloud-backup/en-US.json';
 import type {MessageCatalog} from '../types';
 import {legacyTextOverrides} from './legacy-overrides';
+import {sectionTranslationRulesLegacyText} from './sectionTranslationRulesLegacy';
 import {createLegacyCorrectionText} from './legacy-corrections';
 import {createRuntimeFeedbackLegacyText} from './runtime-feedback';
 import {localTtsEnglishMessages} from './localTts';
@@ -540,6 +542,7 @@ export const enUSMessages = {
     "settings.requestLimits.globalTitle": "Request limits",
     "settings.requestLimits.globalHelp": "Services and models without custom settings share these limits.",
     ...aiRequestTimeoutMessages["en-US"],
+    ...sectionTranslationRulesEnglishMessages,
     "settings.requestLimits.retryIntervals": "Retry intervals",
     "settings.requestLimits.apiKeyRecovery": "Failed key cooldown",
     "settings.requestLimits.apiKeyRecoveryHelp": "Temporarily skip a key after an authentication, quota, or rate-limit failure. A server-provided Retry-After takes priority.",
@@ -1187,6 +1190,25 @@ export const enUSMessages = {
     'video.aiGenerating': 'Generating…',
     'video.aiLocalTitle': 'X local AI subtitles',
     'video.aiLocalHint': 'When native subtitles are unavailable, recognition runs locally; speed depends on CPU and memory.',
+    "video.readingAnnotation.ja": "Japanese romaji",
+    "video.readingAnnotation.ko": "Korean romanization",
+    "video.readingAnnotation.zh": "Chinese pinyin",
+    "video.readingAnnotation.ru": "Russian transliteration",
+    "video.readingAnnotation.el": "Greek transliteration",
+    "video.readingAnnotation.ar": "Arabic transliteration",
+    "video.readingAnnotation.hi": "Hindi transliteration",
+    "video.readingAnnotation.th": "Thai transliteration",
+    "video.readingAnnotation.unavailable": "Reading annotations currently require the browser extension",
+    "video.readingAnnotation.label": "Reading annotations",
+    "video.readingAnnotation.description": "Show romaji, pinyin or other reading hints for the source language",
+    "video.readingAnnotation.originalRequired": "Shown with original or bilingual subtitles; your preference is kept",
+    "video.readingAnnotation.approximation": "Supports Japanese, Korean, Chinese, Russian, Greek, Arabic, Hindi and Thai. Latin transliteration is a reading aid, not exact pronunciation. Names, multiple readings and unwritten vowels can be ambiguous.",
+    "video.readingAnnotation.previewSample": "Demo data: a fixed Japanese sample for layout only",
+    "video.readingAnnotation.previewTranslation": "It is a beautiful day today.",
+    "video.readingAnnotation.loading": "Preparing reading…",
+    "video.readingAnnotation.error": "Reading unavailable",
+    "video.readingAnnotation.noReading": "Reading not needed or supported for this text",
+    "video.readingAnnotation.retry": "Retry reading annotations",
     'video.modeBilingual': 'Both',
     'video.modeTranslation': 'Translated',
     'video.modeOriginal': 'Original',
@@ -2442,6 +2464,7 @@ const enUSLegacyTextBase: Readonly<Record<string, string>> = {
 };
 
 export const enUSLegacyText: Readonly<Record<string, string>> = {
+    ...sectionTranslationRulesLegacyText['en-US'],
     ...googleDriveText.legacy,
     ...compositeTranslationLegacyText['en-US'],
     ...cloudBackupText.legacy,

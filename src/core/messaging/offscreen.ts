@@ -6,6 +6,7 @@
  */
 import {inferenceResponse as response, type InferenceBackend, type InferenceResponse} from './inference';
 import {isVideoTranscriptionInput, isVideoPreparationResult, isVideoTranscriptionResult, type VideoTranscriptionModel, type VideoTranscriptionCancelReason, type VideoTranscriptionInput, type VideoPrepareInput, type VideoTranscriptionResult, type VideoPreparationResult} from './video';
+import {isReadingAnnotationRequest, isReadingAnnotationCancellation, isReadingAnnotationResponse, type ReadingAnnotationRequest, type ReadingAnnotationCancellation, type ReadingAnnotationResponse} from './readingAnnotation';
 export type {InferenceBackend, InferenceFailure, InferenceSuccess, InferenceResponse} from './inference';
 export type {VideoTranscriptionModel, VideoTranscriptionCancelReason, VideoRecognitionMetadata, VideoTranscriptionSegment, VideoTranscriptionResult, VideoPreparationResult, VideoTranscriptionInput, VideoPrepareInput, VideoBackgroundInput, VideoBackgroundRequestMap, VideoBackgroundResponseMap, VideoBackgroundRequestType, VideoBackgroundRequest} from './video';
 export {isVideoPreparationResult, isVideoTranscriptionResult, isVideoBackgroundInput, parseVideoBackgroundResponse} from './video';
@@ -20,6 +21,8 @@ export interface LocalTranslationStatus {models: ModelState[]; version?: 2; task
 export interface LocalTtsSerializedAudio {audioBase64: string; timings?: SpeechCue[]; contentType?: string; voice?: string; backend?: InferenceBackend}
 export interface LocalTranslationInput {model: LocalTranslationModelId; text: string; sourceLanguage: string; targetLanguage: string; sourceLanguageDetectionText?: string}
 export interface OffscreenRequestMap {
+    READING_ANNOTATION: ReadingAnnotationRequest;
+    READING_ANNOTATION_CANCEL: ReadingAnnotationCancellation;
     VIDEO_AI_TRANSCRIBE: VideoTranscriptionInput;
     VIDEO_AI_PREPARE: VideoPrepareInput;
     VIDEO_AI_CANCEL: {streamId: string; reason?: VideoTranscriptionCancelReason};
@@ -37,6 +40,8 @@ export interface OffscreenRequestMap {
     CANCEL_LOCAL_TTS_OFFSCREEN: {requestId: string};
 }
 export interface OffscreenResponseMap {
+    READING_ANNOTATION: ReadingAnnotationResponse;
+    READING_ANNOTATION_CANCEL: InferenceResponse<{cancelled: boolean}>;
     VIDEO_AI_TRANSCRIBE: InferenceResponse<VideoTranscriptionResult>;
     VIDEO_AI_PREPARE: InferenceResponse<VideoPreparationResult>;
     VIDEO_AI_CANCEL: InferenceResponse;
@@ -73,6 +78,8 @@ const translationSnapshot = shape<LocalTranslationDownloadSnapshot>({version: on
 export const isLocalTranslationSnapshot: Validator<LocalTranslationDownloadSnapshot> = (value): value is LocalTranslationDownloadSnapshot => translationSnapshot(value) && normalizeLocalTranslationDownloadSnapshot(value) !== undefined;
 export const isLocalTranslationStatus = shape<LocalTranslationStatus>({models: arrayOf(modelState), version: optional(oneOf(2)), tasks: optional((value): value is LocalTranslationDownloadSnapshot['tasks'] => isLocalTranslationSnapshot({version: 2, tasks: value}))});
 const responses: {[K in OffscreenRequestType]: Validator<OffscreenResponseMap[K]>} = {
+    READING_ANNOTATION: isReadingAnnotationResponse,
+    READING_ANNOTATION_CANCEL: response(shape<{cancelled: boolean}>({cancelled: isBoolean})),
     VIDEO_AI_TRANSCRIBE: response(isVideoTranscriptionResult), VIDEO_AI_PREPARE: response(isVideoPreparationResult), VIDEO_AI_CANCEL: response(noFields), VIDEO_AI_REMOVE_MODEL: response(noFields),
     LOCAL_TRANSLATION_TRANSLATE: response(shape<{result: string; requestId?: string}>({result: isString, requestId: optional(requestId)})),
     LOCAL_TRANSLATION_PREPARE: response(isLocalTranslationSnapshot), LOCAL_TRANSLATION_STATUS: response(isLocalTranslationStatus), LOCAL_TRANSLATION_PAUSE: response(isLocalTranslationSnapshot), LOCAL_TRANSLATION_REMOVE_MODEL: response(noFields),
@@ -82,6 +89,8 @@ const responses: {[K in OffscreenRequestType]: Validator<OffscreenResponseMap[K]
     CANCEL_LOCAL_TTS_OFFSCREEN: response(shape<{cancelled?: boolean; requestId?: string}>({cancelled: optional(isBoolean), requestId: optional(requestId)})),
 };
 const requests: {[K in OffscreenRequestType]: Validator<OffscreenRequestMap[K]>} = {
+    READING_ANNOTATION: isReadingAnnotationRequest,
+    READING_ANNOTATION_CANCEL: isReadingAnnotationCancellation,
     VIDEO_AI_TRANSCRIBE: isVideoTranscriptionInput,
     VIDEO_AI_PREPARE: shape<VideoPrepareInput>({model: optional(videoModel), streamId: optional(isString), keepWarm: optional(isBoolean), preference: optional(oneOf('official', 'mirror', 'auto'))}),
     VIDEO_AI_CANCEL: shape<OffscreenRequestMap['VIDEO_AI_CANCEL']>({streamId: isNonEmptyString, reason: optional(oneOf('cancel', 'complete'))}),

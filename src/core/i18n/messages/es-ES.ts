@@ -9,6 +9,7 @@ import videoLearningText from './video-learning/es-ES.json';
 import selfHelpText from './self-help/es-ES.json';
 import {compositeTranslationMessages, compositeTranslationLegacyText} from './compositeTranslation';
 import {aiRequestTimeoutMessages} from './aiRequestTimeout';
+import {sectionTranslationRulesSpanishMessages} from './sectionTranslationRulesRomance';
 import {mimoRetirementLegacyText} from './mimoRetirement';
 import {pdfReadingMessages} from './pdfReading';
 import {informationHighlightMessages} from './informationHighlight';
@@ -20,6 +21,7 @@ import cloudBackupText from './cloud-backup/es-ES.json';
 import type {
 enUSMessages} from './en-US';
 import {legacyTextOverrides} from './legacy-overrides';
+import {sectionTranslationRulesLegacyText} from './sectionTranslationRulesLegacy';
 import {createLegacyCorrectionText} from './legacy-corrections';
 import {createRuntimeFeedbackLegacyText} from './runtime-feedback';
 import {localTtsSpanishMessages} from './localTts';
@@ -539,6 +541,7 @@ export const esESMessages = {
     "settings.requestLimits.globalTitle": "Límites de solicitudes",
     "settings.requestLimits.globalHelp": "Los servicios y modelos sin ajustes propios comparten estos límites.",
     ...aiRequestTimeoutMessages["es-ES"],
+    ...sectionTranslationRulesSpanishMessages,
     "settings.requestLimits.retryIntervals": "Intervalos de reintento",
     "settings.requestLimits.apiKeyRecovery": "Enfriamiento de la API key fallida",
     "settings.requestLimits.apiKeyRecoveryHelp": "Una clave que falla por autenticación, cuota o límite de frecuencia se omite temporalmente. Si el servicio devuelve Retry-After, se prioriza ese tiempo.",
@@ -955,6 +958,25 @@ export const esESMessages = {
     'video.aiGenerating': 'Generando…',
     'video.aiLocalTitle': 'Subtítulos IA locales de X',
     'video.aiLocalHint': 'Sin subtítulos nativos, el reconocimiento se ejecuta localmente; la velocidad depende de la CPU y la memoria.',
+    "video.readingAnnotation.ja": "Romaji japonés",
+    "video.readingAnnotation.ko": "Romanización coreana",
+    "video.readingAnnotation.zh": "Pinyin chino",
+    "video.readingAnnotation.ru": "Transliteración rusa",
+    "video.readingAnnotation.el": "Transliteración griega",
+    "video.readingAnnotation.ar": "Transliteración árabe",
+    "video.readingAnnotation.hi": "Transliteración hindi",
+    "video.readingAnnotation.th": "Transliteración tailandesa",
+    "video.readingAnnotation.unavailable": "Las guías de lectura requieren actualmente la extensión del navegador",
+    "video.readingAnnotation.label": "Guías de lectura",
+    "video.readingAnnotation.description": "Muestra romaji, pinyin u otras guías según el idioma original",
+    "video.readingAnnotation.originalRequired": "Se muestran con el original o ambos idiomas; se conserva tu preferencia",
+    "video.readingAnnotation.approximation": "Compatible con japonés, coreano, chino, ruso, griego, árabe, hindi y tailandés. La transliteración latina ayuda a leer, pero no indica la pronunciación exacta. Los nombres, las lecturas múltiples y las vocales omitidas pueden ser ambiguos.",
+    "video.readingAnnotation.previewSample": "Datos de ejemplo: muestra japonesa fija solo para el diseño",
+    "video.readingAnnotation.previewTranslation": "Hoy hace un día precioso.",
+    "video.readingAnnotation.loading": "Preparando lectura…",
+    "video.readingAnnotation.error": "Lectura no disponible",
+    "video.readingAnnotation.noReading": "Este texto no requiere guía de lectura o no es compatible",
+    "video.readingAnnotation.retry": "Reintentar guías de lectura",
     'video.modeBilingual': 'Ambos',
     'video.modeTranslation': 'Traducción',
     'video.modeOriginal': 'Original',
@@ -2449,6 +2471,7 @@ const esESLegacyTextBase: Readonly<Record<string, string>> = {
 };
 
 export const esESLegacyText: Readonly<Record<string, string>> = {
+    ...sectionTranslationRulesLegacyText['es-ES'],
     ...googleDriveText.legacy,
     ...compositeTranslationLegacyText['es-ES'],
     ...cloudBackupText.legacy,

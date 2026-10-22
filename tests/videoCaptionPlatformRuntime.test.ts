@@ -2,9 +2,17 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {parseHTML} from 'linkedom';
 import {Config} from '@/src/core/config/model';
 import {mountPlatformCaptions} from '@/src/features/video-subtitle/content/platformRuntime';
+import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
+registerAllUiLanguageBundles();
 
+const readingPort = vi.hoisted(() => ({annotate: vi.fn()}));
+vi.mock('@/src/features/video-subtitle/content/readingAnnotationClient', () => ({annotateVideoReading: readingPort.annotate}));
+vi.mock('@/src/platform/browser/capabilities', () => ({browserCapabilities: {extensionDom: true}}));
 const disposals: Array<() => void> = [];
-beforeEach(() => vi.useFakeTimers());
+beforeEach(() => {
+    vi.useFakeTimers();
+    readingPort.annotate.mockReset().mockImplementation(async (text, language) => ({text: `Reading: ${text}`, language, scheme: 'fixture'}));
+});
 afterEach(() => { disposals.splice(0).forEach(dispose => dispose()); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 function fixture(url: string, html: string, translate = vi.fn().mockResolvedValue('测试译文')) {
@@ -43,6 +51,98 @@ function fixture(url: string, html: string, translate = vi.fn().mockResolvedValu
     return {document, window, config, translate, patch, subscribe, start, shadow, change: () => subscription?.()};
 }
 const sentence = 'This is the first sentence in the meeting.';
+
+describe('平台字幕独立读音生命周期', () => {
+    it('默认不计算，原文模式不等待翻译，当前句结果只适配一次并在仅译文时隐藏', async () => {
+        let finish!: (value: {text: string; language: string; scheme: string}) => void;
+        readingPort.annotate.mockImplementationOnce(() => new Promise(resolve => {finish = resolve;}));
+        const f = fixture('https://meet.google.com/abc-defg-hij', '<span data-caption-text>今日はいい天気です。</span>');
+        f.config.from = 'ja'; f.config.videoSubtitleDisplayMode = 'original-only';
+        f.start(); await vi.advanceTimersByTimeAsync(100);
+        expect(readingPort.annotate).not.toHaveBeenCalled();
+        const panel = f.shadow()!.querySelector<HTMLElement>('.panel')!;
+        const measure = vi.fn(() => 90); Object.defineProperty(panel, 'scrollHeight', {get: measure});
+        f.config.videoSubtitleAppearance.readingAnnotation = true; f.change(); await vi.advanceTimersByTimeAsync(0);
+        expect(readingPort.annotate).toHaveBeenCalledWith('今日はいい天気です。', 'ja', expect.any(AbortSignal));
+        expect(f.shadow()?.querySelector('.source')?.textContent).toBe('今日はいい天気です。');
+        expect(f.translate).not.toHaveBeenCalled(); measure.mockClear();
+        finish({text: 'kyō wa ii tenki desu.', language: 'ja', scheme: 'fixture'}); await vi.advanceTimersByTimeAsync(0);
+        expect(f.shadow()?.querySelector<HTMLElement>('.reading')?.hidden).toBe(false);
+        expect(f.shadow()?.querySelector('.reading')?.textContent).toBe('kyō wa ii tenki desu.');
+        expect(measure).toHaveBeenCalledTimes(2); measure.mockClear();
+        f.config.uiLanguage = 'en-US'; f.change();
+        expect(f.shadow()?.querySelector('.reading')?.getAttribute('aria-label')).toBe('Japanese romaji');
+        expect(measure).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(1000); expect(measure).not.toHaveBeenCalled(); expect(readingPort.annotate).toHaveBeenCalledOnce();
+        f.config.videoSubtitleDisplayMode = 'translation-only'; f.change(); await vi.advanceTimersByTimeAsync(0);
+        expect(f.shadow()?.querySelector<HTMLElement>('.reading')?.hidden).toBe(true);
+        expect(f.config.videoSubtitleAppearance.readingAnnotation).toBe(true);
+        f.config.videoSubtitleDisplayMode = 'original-only'; f.change(); await vi.advanceTimersByTimeAsync(0);
+        expect(f.shadow()?.querySelector('.reading')?.textContent).toBe('kyō wa ii tenki desu.');
+        expect(readingPort.annotate).toHaveBeenCalledOnce();
+    });
+
+    it('长读音保留最低可读字号，在自有区域滚动且关闭与卸载恢复交互', async () => {
+        let finish!: (value: {text: string; language: string; scheme: string}) => void;
+        readingPort.annotate.mockImplementationOnce(() => new Promise(resolve => {finish = resolve;}));
+        const f = fixture('https://meet.google.com/abc-defg-hij', '<span data-caption-text>長い説明です。</span>');
+        Object.defineProperty(f.window, 'innerHeight', {value: 200, configurable: true});
+        f.config.from = 'ja'; f.config.videoSubtitleDisplayMode = 'original-only';
+        f.config.videoSubtitleAppearance.fontScale = 500; f.config.videoSubtitleAppearance.readingAnnotation = true;
+        const dispose = f.start(); await vi.advanceTimersByTimeAsync(0);
+        const panel = f.shadow()!.querySelector<HTMLElement>('.panel')!, reading = f.shadow()!.querySelector<HTMLElement>('.reading')!;
+        const measure = vi.fn(() => reading.hidden ? 60 : 600);
+        Object.defineProperty(panel, 'scrollHeight', {get: measure});
+        Object.defineProperty(panel, 'clientHeight', {get: () => 168}); panel.scrollTop = 0;
+        finish({text: 'nagai setsumei desu. '.repeat(300), language: 'ja', scheme: 'fixture'}); await vi.advanceTimersByTimeAsync(0);
+        expect(panel.style.fontSize).toBe('16px'); expect(f.config.videoSubtitleAppearance.fontScale).toBe(500);
+        expect(panel.dataset.fluentReadSubtitleScrollable).toBe('true'); expect(panel.getAttribute('tabindex')).toBe('0');
+        expect(panel.getAttribute('role')).toBe('region'); expect(panel.getAttribute('aria-label')).toBe('双语字幕');
+        const key = (name: string) => {const event = new f.window.Event('keydown', {bubbles: true, cancelable: true}); Object.defineProperty(event, 'key', {value: name}); return event;};
+        const pageKey = vi.fn(); f.shadow()!.addEventListener('keydown', pageKey);
+        const down = key('ArrowDown'); panel.dispatchEvent(down);
+        expect(panel.scrollTop).toBe(40); expect(down.defaultPrevented).toBe(true); expect(pageKey).not.toHaveBeenCalled();
+        const selectDown = key('ArrowDown'); f.shadow()!.querySelector('select')!.dispatchEvent(selectDown);
+        expect(panel.scrollTop).toBe(40); expect(selectDown.defaultPrevented).toBe(false); expect(pageKey).not.toHaveBeenCalled();
+        measure.mockClear(); await vi.advanceTimersByTimeAsync(1000); expect(measure).not.toHaveBeenCalled();
+        f.config.videoSubtitleAppearance.readingAnnotation = false; f.change();
+        expect(panel.dataset.fluentReadSubtitleScrollable).toBeUndefined(); expect(panel.hasAttribute('tabindex')).toBe(false);
+        expect(panel.scrollTop).toBe(0); expect(panel.style.fontSize).toBe('100px'); expect(panel.getAttribute('role')).toBe('region');
+        f.config.videoSubtitleAppearance.readingAnnotation = true; f.change(); await vi.advanceTimersByTimeAsync(0);
+        expect(panel.dataset.fluentReadSubtitleScrollable).toBe('true'); expect(readingPort.annotate).toHaveBeenCalledOnce();
+        dispose(); panel.scrollTop = 0; const removedDown = key('ArrowDown'); panel.dispatchEvent(removedDown);
+        expect(panel.scrollTop).toBe(0); expect(removedDown.defaultPrevented).toBe(false);
+    });
+
+    it('换句、停用、切会议和卸载拒绝迟到读音，失败独立于翻译且能重新开启', async () => {
+        let firstFinish!: (value: {text: string; language: string; scheme: string}) => void;
+        readingPort.annotate.mockImplementationOnce(() => new Promise(resolve => {firstFinish = resolve;}));
+        const f = fixture('https://teams.microsoft.com/v2/', '<span data-tid="closed-caption-text">最初の文。</span>');
+        f.config.from = 'ja'; f.config.videoSubtitleAppearance.readingAnnotation = true;
+        const dispose = f.start(); await vi.advanceTimersByTimeAsync(0);
+        const firstSignal = readingPort.annotate.mock.calls[0][2] as AbortSignal;
+        f.document.querySelector('span')!.textContent = '次の文。'; await vi.advanceTimersByTimeAsync(300);
+        expect(firstSignal.aborted).toBe(true);
+        expect(f.shadow()?.querySelector('.reading')?.textContent).toBe('Reading: 次の文。');
+        firstFinish({text: '遅れた読み', language: 'ja', scheme: 'fixture'}); await vi.advanceTimersByTimeAsync(0);
+        expect(f.shadow()?.querySelector('.reading')?.textContent).toBe('Reading: 次の文。');
+        f.config.videoSubtitleAppearance.readingAnnotation = false; f.change();
+        readingPort.annotate.mockRejectedValueOnce(new Error('dictionary unavailable'));
+        f.document.querySelector('span')!.textContent = '最後の文。'; f.config.videoSubtitleAppearance.readingAnnotation = true; f.change();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(f.shadow()?.querySelector<HTMLElement>('.reading')?.hidden).toBe(true);
+        expect(f.shadow()?.querySelector('.translation')?.textContent).toBe('测试译文');
+        f.config.videoSubtitleAppearance.readingAnnotation = false; f.change();
+        f.config.videoSubtitleAppearance.readingAnnotation = true; f.change(); await vi.advanceTimersByTimeAsync(0);
+        expect(f.shadow()?.querySelector('.reading')?.textContent).toBe('Reading: 最後の文。');
+        const count = readingPort.annotate.mock.calls.length;
+        Object.defineProperty(f.window, 'location', {value: new URL('https://teams.microsoft.com/v2/another'), configurable: true});
+        await vi.advanceTimersByTimeAsync(300); expect(readingPort.annotate).toHaveBeenCalledTimes(count + 1);
+        dispose(); const after = readingPort.annotate.mock.calls.length;
+        await vi.advanceTimersByTimeAsync(500); expect(readingPort.annotate).toHaveBeenCalledTimes(after);
+        expect(f.document.getElementById('fluent-read-platform-captions')).toBeNull();
+    });
+});
 
 describe('网页会议字幕生命周期', () => {
     it.each([
@@ -199,6 +299,21 @@ function videoFixture(url: string, translate?: ReturnType<typeof vi.fn>) {
 }
 
 describe('Udemy 与 Disney+ 原生人工字幕', () => {
+    it('读音优先使用原轨语言，人工译文与读音分别显示且更换媒体清空读音缓存', async () => {
+        const f = videoFixture('https://www.udemy.com/course/demo/learn/');
+        Object.assign(f.source, {language: 'ja', cues: [{startTime: 0, endTime: 2, text: '今日はいい天気です。'}]});
+        f.config.from = 'en'; f.config.videoSubtitleAppearance.readingAnnotation = true;
+        f.start(); await vi.advanceTimersByTimeAsync(100);
+        expect(readingPort.annotate).toHaveBeenCalledWith('今日はいい天気です。', 'ja', expect.any(AbortSignal));
+        expect(f.shadow()?.querySelector('.translation')?.textContent).toBe('人工字幕');
+        expect(f.shadow()?.querySelector('.reading')?.textContent).toBe('Reading: 今日はいい天気です。');
+        expect(f.shadow()?.querySelector('.reading')?.getAttribute('lang')).toBe('ja-Latn');
+        expect(f.shadow()?.querySelector('.reading')?.getAttribute('aria-label')).toBe('日语罗马音');
+        f.video.setAttribute('src', 'two.mp4'); await vi.advanceTimersByTimeAsync(300);
+        expect(readingPort.annotate).toHaveBeenCalledTimes(2);
+        expect(f.translate).not.toHaveBeenCalled();
+    });
+
     it.each(['https://www.udemy.com/course/demo/learn/', 'https://www.disneyplus.com/video/demo'])('在 %s 优先人工轨，不请求服务并恢复轨道模式', async url => {
         const f = videoFixture(url); const dispose = f.start(); await vi.advanceTimersByTimeAsync(100);
         expect(f.shadow()?.querySelector('.source')?.textContent).toBe(sentence);

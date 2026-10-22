@@ -1,0 +1,56 @@
+{
+  "recordedAt": "2026-10-22",
+  "gomanize": {
+    "package": "@budhash/gomanize@1.2.1",
+    "npmGitHead": "3e519d5cfb689c2444545396e4cfab24d3a2d84a",
+    "source": "https://github.com/budhash/gomanize/tree/3e519d5cfb689c2444545396e4cfab24d3a2d84a",
+    "codeLicenseBlob": "2a54b497d3bd88922f942a98d6c9962d8f404755",
+    "laterUpstreamNoticeBlob": "a02cf9893b301d178e5e4973051e85bbc4726230",
+    "wasm": {
+      "path": "node_modules/@budhash/gomanize/dist/gomanize.wasm",
+      "bytes": 3419775,
+      "sha256": "05e134e871127c086a6b713492218ce73011d1468d2ec92082e79134048c1abf",
+      "changes": "none; copied unchanged to reading-annotation/hi/gomanize.wasm"
+    },
+    "goRuntime": {
+      "path": "node_modules/@budhash/gomanize/dist/wasm_exec.js",
+      "bytes": 16687,
+      "sha256": "45ce9dfe7211247544ab6f4268eb8cb5b6f3d5ae602dc3b51447b7eada99c229",
+      "changes": "fixed compile-time side-effect import; bundled and minified; no eval or Function-constructor loading"
+    },
+    "embeddedData": "Hindi lexicon.tsv, schwa_tree.json and roman_ngrams.tsv derive from Dakshina train data, CC BY-SA 4.0; see reading-annotation-NOTICE.md. The code MIT license does not replace the data licenses.",
+    "embeddedSourceBlobs": {
+      "lang/hindi/lexicon.tsv": "fb7407601b540c7e21620af81d8146f6130d0f33",
+      "lang/hindi/schwa_tree.json": "b6d3723b7507ef2a385c5d93476edc3bd3b9d311",
+      "lang/hindi/roman_ngrams.tsv": "38db35287044aa9299c9ae1a118d7a364e5870c7"
+    }
+  },
+  "koroman": {
+    "package": "koroman@1.0.16",
+    "npmGitHead": "e529729b923f8a9d9acc62b2c9c0887b00e9bd88",
+    "source": "https://github.com/gerosyab/koroman/tree/e529729b923f8a9d9acc62b2c9c0887b00e9bd88",
+    "upstreamLicenseBlob": "970a4da6f0407fe4a45858c88f37890e2b44ca61",
+    "licenseNormalization": "Original malformed LICENSE preserved separately; only merge-conflict markers and duplicate heading removed from reading-koroman-MIT.txt",
+    "coreSha256": "ec1891ef55a6ec92d1fd9447e95f9b0ba9b12caaa40907378e9a863d7bdfbd7e",
+    "implementationChanges": "none; imported from fixed npm package"
+  },
+  "pinyinProData": {
+    "package": "@pinyin-pro/data@1.3.1",
+    "npmGitHead": "815fe17f80fc7a76aa2b21a842e68229e4b72a4a",
+    "source": "https://github.com/chinese-data/pinyin-pro-data/tree/815fe17f80fc7a76aa2b21a842e68229e4b72a4a",
+    "npmDeclaredLicense": "ISC",
+    "sourceLicense": "MIT, Copyright (c) 2024 Chinese-Data",
+    "sourceLicenseBlob": "00f50c41618918a994092e1d62c005bbb71c2605",
+    "scope": "only traditional character mapping, unchanged",
+    "traditionalJsonBytes": 27923,
+    "traditionalJsonSha256": "48db7ca9309bb013e9bd8fdef30f0c29165f8a9ffdee530f812a9a13ef8ab560"
+  },
+  "doublearray": {
+    "package": "doublearray@0.0.2",
+    "source": "https://github.com/takuyaa/doublearray",
+    "license": "MIT, Copyright (c) 2014 Takuya Asano",
+    "licenseSha256": "3f16fbaaaf98d1ba9ad570a1b79799d4932198324b382aa4cad1270fd09f02e3",
+    "implementationSha256": "3236f1164a32ac35a51f7c69788ed93bd0c729ab08c81908ad73e30e74116bef",
+    "scope": "unmodified runtime dependency of @faanau/kuromoji, bundled in Japanese engine chunk"
+  }
+}

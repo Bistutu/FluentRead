@@ -9,6 +9,8 @@ import videoLearningText from './video-learning/ru-RU.json';
 import selfHelpText from './self-help/ru-RU.json';
 import {compositeTranslationMessages, compositeTranslationLegacyText} from './compositeTranslation';
 import {aiRequestTimeoutMessages} from './aiRequestTimeout';
+import {sectionTranslationRulesRussianMessages} from './sectionTranslationRulesRussian';
+import {sectionTranslationRulesLegacyText} from './sectionTranslationRulesLegacy';
 import {mimoRetirementLegacyText} from './mimoRetirement';
 import {pdfReadingMessages} from './pdfReading';
 import {informationHighlightMessages} from './informationHighlight';
@@ -539,6 +541,7 @@ export const ruRUMessages = {
     "settings.requestLimits.globalTitle": "Ограничения запросов",
     "settings.requestLimits.globalHelp": "Сервисы и модели без отдельных настроек используют эти общие ограничения.",
     ...aiRequestTimeoutMessages["ru-RU"],
+    ...sectionTranslationRulesRussianMessages,
     "settings.requestLimits.retryIntervals": "Интервалы повторов",
     "settings.requestLimits.apiKeyRecovery": "Пауза неисправного API Key",
     "settings.requestLimits.apiKeyRecoveryHelp": "Ключ после ошибки аутентификации, квоты или ограничения скорости временно пропускается. Если сервис вернул Retry-After, используется его интервал.",
@@ -955,6 +958,25 @@ export const ruRUMessages = {
     'video.aiGenerating': 'Создание…',
     'video.aiLocalTitle': 'Локальные субтитры ИИ X',
     'video.aiLocalHint': 'Если встроенных субтитров нет, распознавание выполняется локально; скорость зависит от CPU и памяти.',
+    "video.readingAnnotation.ja": "Японский ромадзи",
+    "video.readingAnnotation.ko": "Корейская романизация",
+    "video.readingAnnotation.zh": "Китайский пиньинь",
+    "video.readingAnnotation.ru": "Русская транслитерация",
+    "video.readingAnnotation.el": "Греческая транслитерация",
+    "video.readingAnnotation.ar": "Арабская транслитерация",
+    "video.readingAnnotation.hi": "Транслитерация хинди",
+    "video.readingAnnotation.th": "Тайская транслитерация",
+    "video.readingAnnotation.unavailable": "Для подсказок чтения пока требуется расширение браузера",
+    "video.readingAnnotation.label": "Подсказки чтения",
+    "video.readingAnnotation.description": "Ромадзи, пиньинь и другие подсказки для языка оригинала",
+    "video.readingAnnotation.originalRequired": "Показаны с оригиналом или обоими языками; настройка сохраняется",
+    "video.readingAnnotation.approximation": "Поддерживаются японский, корейский, китайский, русский, греческий, арабский, хинди и тайский. Латинская транслитерация помогает читать, но не передаёт точное произношение. Имена, разные чтения и пропущенные гласные могут быть неоднозначны.",
+    "video.readingAnnotation.previewSample": "Демонстрационные данные: фиксированный японский пример только для оформления",
+    "video.readingAnnotation.previewTranslation": "Сегодня прекрасная погода.",
+    "video.readingAnnotation.loading": "Подготовка чтения…",
+    "video.readingAnnotation.error": "Чтение недоступно",
+    "video.readingAnnotation.noReading": "Подсказки для этого текста не нужны или не поддерживаются",
+    "video.readingAnnotation.retry": "Повторить подсказки чтения",
     'video.modeBilingual': 'Оба',
     'video.modeTranslation': 'Перевод',
     'video.modeOriginal': 'Оригинал',
@@ -2453,6 +2475,7 @@ const ruRULegacyTextBase: Readonly<Record<string, string>> = {
 };
 
 export const ruRULegacyText: Readonly<Record<string, string>> = {
+    ...sectionTranslationRulesLegacyText['ru-RU'],
     ...googleDriveText.legacy,
     ...compositeTranslationLegacyText['ru-RU'],
     ...cloudBackupText.legacy,

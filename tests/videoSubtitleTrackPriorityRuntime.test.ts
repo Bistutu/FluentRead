@@ -10,7 +10,7 @@ import {parseHTML} from 'linkedom';
 const ports = vi.hoisted(() => ({
   config: {} as Record<string, unknown>,
   subscribers: new Set<(value: unknown) => void>(),
-  translate: vi.fn(), send: vi.fn(), fetch: vi.fn(), patch: vi.fn(), watchProgress: vi.fn(), stopProgress: vi.fn(),
+  translate: vi.fn(), annotate: vi.fn(), send: vi.fn(), fetch: vi.fn(), patch: vi.fn(), watchProgress: vi.fn(), stopProgress: vi.fn(),
 }));
 vi.mock('@/src/services/config/store', () => ({
   config: ports.config,
@@ -25,6 +25,7 @@ vi.mock('@/src/services/config/store', () => ({
   },
 }));
 vi.mock('@/src/services/translation/client', () => ({translateVideoText: ports.translate}));
+vi.mock('@/src/features/video-subtitle/content/readingAnnotationClient', () => ({annotateVideoReading: ports.annotate}));
 vi.mock('@/src/platform/browser/runtimeMessages', () => ({sendRuntimeMessage: ports.send}));
 vi.mock('webextension-polyfill', () => ({default: {runtime: {getURL: (path: string) => 'chrome-extension://fixture/' + path}}}));
 vi.mock('@/src/platform/storage/downloadProgress', () => ({watchContentDownloadProgress: ports.watchProgress}));
@@ -84,6 +85,7 @@ beforeEach(() => {
     videoSubtitleDisplayMode: 'bilingual', videoSourceLanguage: 'auto', videoLocalModel: 'tiny',
   });
   ports.translate.mockReset().mockImplementation((source: string) => Promise.resolve(translation(source)));
+  ports.annotate.mockReset().mockImplementation(async (text: string, language: string) => ({text: `Reading: ${text}`, language, scheme: 'fixture'}));
   ports.send.mockReset().mockImplementation(async (message: {type: string}) => {
     if (message.type === 'fluentReadGetVideoAiSubtitleCache') return {success: true, hit: false};
     if (message.type === 'fluentReadCancelLocalVideoTranscription' || message.type === 'fluentReadSetVideoAiSubtitleCache') return {success: true};
@@ -242,6 +244,97 @@ function fixture(nativeText?: string, platform: 'x' | 'youtube' = 'x') {
 }
 const settle = () => vi.advanceTimersByTimeAsync(0);
 const nativeSource = 'The native caption remains visible.';
+
+describe('public mounted reading annotation integration', () => {
+  it('双语字幕切换界面语言时同步更新已有读音的可访问名称且不重新计算', async () => {
+    Object.assign(ports.config, {from: 'ja', uiLanguage: 'zh-CN'});
+    (ports.config as unknown as Config).videoSubtitleAppearance.readingAnnotation = true;
+    const f = fixture(undefined, 'youtube'); f.setCaption('今日はいい天気です。'); f.start(); await vi.advanceTimersByTimeAsync(300);
+    const reading = f.document.getElementById('fluent-read-video-subtitle-reading')!;
+    expect(reading.getAttribute('aria-label')).toBe('日语罗马音');
+    const count = ports.annotate.mock.calls.length;
+    f.changeConfig({uiLanguage: 'en-US'}); await vi.advanceTimersByTimeAsync(100);
+    expect(reading.getAttribute('aria-label')).toBe('Japanese romaji');
+    expect(ports.annotate).toHaveBeenCalledTimes(count);
+  });
+
+  it('默认关闭不请求读音，启用日语仅原文模式后显示独立读音并保持原文正文', async () => {
+    Object.assign(ports.config, {from: 'ja', videoSubtitleDisplayMode: 'original-only'});
+    const f = fixture(undefined, 'youtube'); f.setCaption('今日はいい天気です。'); f.start(); await vi.advanceTimersByTimeAsync(100);
+    expect(ports.annotate).not.toHaveBeenCalled();
+    expect(f.document.getElementById('fluent-read-video-subtitle-reading')).toBeNull();
+    const appearance = (ports.config as unknown as Config).videoSubtitleAppearance;
+    f.changeConfig({videoSubtitleAppearance: {...appearance, readingAnnotation: true}}); await vi.advanceTimersByTimeAsync(100);
+    expect(ports.annotate).toHaveBeenCalledWith('今日はいい天気です。', 'ja', expect.any(AbortSignal));
+    expect(f.document.getElementById('fluent-read-video-subtitle-reading')?.textContent).toBe('Reading: 今日はいい天気です。');
+    expect(f.displayed().source).toBe('今日はいい天気です。');
+    expect(f.document.querySelector('.ytp-caption-segment')?.textContent).toBe('今日はいい天気です。');
+    expect(ports.translate).not.toHaveBeenCalled();
+    expect(ports.send.mock.calls.some(([message]) => message.type === 'fluentReadAnnotateVideoReading')).toBe(false);
+    await vi.advanceTimersByTimeAsync(1200); expect(ports.annotate).toHaveBeenCalledOnce();
+  });
+
+  it('仅原文带读音切回双语时同一cue立即开始翻译，保留原句与缓存读音', async () => {
+    const source = '今日はいい天気です。';
+    Object.assign(ports.config, {from: 'ja', videoSubtitleDisplayMode: 'original-only', videoPreferHumanSubtitles: false});
+    (ports.config as unknown as Config).videoSubtitleAppearance.readingAnnotation = true;
+    const f = fixture(undefined, 'youtube'); f.setCaption(source); f.start(); await vi.advanceTimersByTimeAsync(300);
+    const reading = f.document.getElementById('fluent-read-video-subtitle-reading')!;
+    expect(f.displayed().source).toBe(source); expect(reading.textContent).toBe('Reading: ' + source);
+    expect(ports.translate).not.toHaveBeenCalled(); expect(ports.annotate).toHaveBeenCalledOnce();
+    f.changeConfig({videoSubtitleDisplayMode: 'bilingual'}); await vi.advanceTimersByTimeAsync(300);
+    expect(ports.translate).toHaveBeenCalledWith(source, expect.any(AbortSignal), undefined);
+    expect(f.callsFor(source)).toBe(1); expect(f.displayed()).toMatchObject({source, translated: translation(source), active: true});
+    expect(f.document.getElementById('fluent-read-video-subtitle-reading')).toBe(reading);
+    expect(reading.textContent).toBe('Reading: ' + source); expect(ports.annotate).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(1200); expect(f.callsFor(source)).toBe(1); expect(ports.annotate).toHaveBeenCalledOnce();
+  });
+
+  it('换句、仅译文与关闭作废旧读音，恢复原文模式复用当前句结果', async () => {
+    Object.assign(ports.config, {from: 'ja', videoSubtitleDisplayMode: 'original-only'});
+    (ports.config as unknown as Config).videoSubtitleAppearance.readingAnnotation = true;
+    const old = deferred<{text: string; language: string; scheme: string}>(); ports.annotate.mockReturnValueOnce(old.promise);
+    const f = fixture(undefined, 'youtube'); f.setCaption('最初の文。'); const dispose = f.start(); await vi.advanceTimersByTimeAsync(100);
+    const firstSignal = ports.annotate.mock.calls[0][2] as AbortSignal;
+    f.setCaption('次の文。'); await vi.advanceTimersByTimeAsync(100);
+    expect(firstSignal.aborted).toBe(true);
+    expect(f.document.getElementById('fluent-read-video-subtitle-reading')?.textContent).toBe('Reading: 次の文。');
+    old.resolve({text: '古い読み', language: 'ja', scheme: 'fixture'}); await settle();
+    expect(f.document.getElementById('fluent-read-video-subtitle-reading')?.textContent).toBe('Reading: 次の文。');
+    f.changeConfig({videoSubtitleDisplayMode: 'translation-only'}); await vi.advanceTimersByTimeAsync(100);
+    expect(f.document.getElementById('fluent-read-video-subtitle-reading')?.textContent || '').toBe('');
+    expect((ports.config as unknown as Config).videoSubtitleAppearance.readingAnnotation).toBe(true);
+    f.changeConfig({videoSubtitleDisplayMode: 'original-only'}); await vi.advanceTimersByTimeAsync(100);
+    expect(f.document.getElementById('fluent-read-video-subtitle-reading')?.textContent).toBe('Reading: 次の文。');
+    const late = deferred<{text: string; language: string; scheme: string}>(); ports.annotate.mockReturnValueOnce(late.promise);
+    f.setCaption('最後の文。'); await vi.advanceTimersByTimeAsync(100);
+    const finalSignal = ports.annotate.mock.calls.at(-1)![2] as AbortSignal;
+    f.changeConfig({videoSubtitleVisible: false}); expect(finalSignal.aborted).toBe(true);
+    late.resolve({text: '非表示後の読み', language: 'ja', scheme: 'fixture'}); await vi.advanceTimersByTimeAsync(100);
+    expect(f.document.getElementById('fluent-read-video-subtitle-reading')?.textContent || '').toBe('');
+    dispose(); expect(f.document.getElementById('fluent-read-video-subtitle-reading')).toBeNull();
+  });
+
+  it('真实菜单开关保存偏好、更新ARIA且保留菜单节点和焦点', async () => {
+    Object.assign(ports.config, {from: 'ja', videoSubtitleDisplayMode: 'original-only'});
+    const f = fixture(undefined, 'youtube'); f.setCaption('今日はいい天気です。'); f.start(); await vi.advanceTimersByTimeAsync(100);
+    const menu = f.document.getElementById(VIDEO_TRANSLATION_MENU_ID)!;
+    const entry = f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)!;
+    const open = new f.window.Event('click', {bubbles: true}); Object.defineProperty(open, 'isTrusted', {value: true}); entry.dispatchEvent(open); await settle();
+    const toggle = menu.querySelector<HTMLButtonElement>('[data-action="toggle-reading-annotation"]')!;
+    let focused: HTMLElement | null = null;
+    defineBrowserPort(f.document, 'activeElement', {configurable: true, get: () => focused?.isConnected ? focused : f.document.body});
+    defineBrowserPort(toggle, 'focus', {configurable: true, value: () => {focused = toggle;}}); toggle.focus();
+    clickMenu(f, '[data-action="toggle-reading-annotation"]'); await vi.advanceTimersByTimeAsync(100);
+    expect((ports.config as unknown as Config).videoSubtitleAppearance.readingAnnotation).toBe(true);
+    expect(toggle.getAttribute('aria-checked')).toBe('true'); expect(menu.hidden).toBe(false);
+    expect(menu.querySelector('[data-action="toggle-reading-annotation"]')).toBe(toggle); expect(f.document.activeElement).toBe(toggle);
+    expect(f.document.getElementById('fluent-read-video-subtitle-reading')?.textContent).toBe('Reading: 今日はいい天気です。');
+    clickMenu(f, '[data-action="toggle-reading-annotation"]'); await vi.advanceTimersByTimeAsync(100);
+    expect(toggle.getAttribute('aria-checked')).toBe('false'); expect(f.document.activeElement).toBe(toggle);
+    expect(f.document.getElementById('fluent-read-video-subtitle-reading')?.textContent || '').toBe('');
+  });
+});
 
 function mobileYoutubeLayoutFixture() {
   const f = fixture(undefined, 'youtube');

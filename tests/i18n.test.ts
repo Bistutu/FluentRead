@@ -948,9 +948,14 @@ describe('i18n 全量界面扫描', () => {
     const audit = collectUiSourceCopy(process.cwd());
     // 固定的中英术语演示、语言自身名称和装饰图标不属于界面译文。
     const examples = new Set(['中文', 'A中', '語言', '言語', 'large language model → 大语言模型', 'source,target,tgt_lng large language model,大语言模型,zh-Hans']);
+    const readingPreviewFile = 'src/features/settings/ui/VideoSubtitleAppearanceSettings.vue';
+    // 日语原句用于固定排版示例；仅豁免该组件的这句话，并要求保留本地化的演示数据说明。
+    expect(readFileSync(join(process.cwd(), readingPreviewFile), 'utf8'))
+      .toMatch(/data-video-subtitle-reading-sample>\s*\{\{\s*t\('video\.readingAnnotation\.previewSample'\)\s*\}\}/u);
     const missing: string[] = [];
     for (const {source, files} of audit.sources) {
       if (examples.has(source)) continue;
+      if (source === '今日はいい天気ですね。' && files.length === 1 && files[0] === readingPreviewFile) continue;
       for (const locale of ['en-US', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES'] as const) {
         const result = translateLegacyText(source, locale);
         if (/[\u3400-\u9fff]/u.test(result)) missing.push(`${locale} ${files.join(', ')}: ${source}`);
