@@ -8,7 +8,7 @@ import {parseOffscreenRequest, parseOffscreenResponse, type KnownOffscreenReques
 import type {OffscreenClient, OffscreenSendOptions} from './client';
 
 type LocalInferenceSendOptions = Omit<OffscreenSendOptions, 'cancelMessage'> & {
-    readonly cancelMessage?: KnownOffscreenRequest<'VIDEO_AI_CANCEL' | 'CANCEL_LOCAL_TRANSLATION_OFFSCREEN' | 'CANCEL_LOCAL_TTS_OFFSCREEN'>;
+    readonly cancelMessage?: KnownOffscreenRequest<'VIDEO_AI_CANCEL' | 'CANCEL_LOCAL_TRANSLATION_OFFSCREEN' | 'CANCEL_LOCAL_TTS_OFFSCREEN' | 'READING_ANNOTATION_CANCEL'>;
 };
 export async function sendOffscreenRequest<const K extends OffscreenRequestType>(
     client: OffscreenClient, message: {type: K} & OffscreenRequestMap[NoInfer<K>], options?: LocalInferenceSendOptions,

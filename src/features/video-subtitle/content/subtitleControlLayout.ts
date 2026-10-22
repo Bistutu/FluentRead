@@ -80,7 +80,7 @@ export function prepareSubtitlePanelLayout(panel: HTMLElement, layer: HTMLElemen
 
 // 滚动交互只归自有字幕节点所有；普通字幕不接收指针，不添加 document 级拦截。
 const subtitleScrollOwners = new WeakMap<HTMLElement, {enabled: boolean; source: string; savedScrollTop?: number; dispose: () => void}>();
-function setSubtitlePanelScrollable(panel: HTMLElement, enabled: boolean): void {
+export function setSubtitlePanelScrollable(panel: HTMLElement, enabled: boolean): void {
   let owner = subtitleScrollOwners.get(panel);
   if (enabled && !owner) {
     const heldKeys = new Set<string>();

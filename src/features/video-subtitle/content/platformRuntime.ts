@@ -1,16 +1,21 @@
 /**
  * @file src/features/video-subtitle/content/platformRuntime.ts
  * 文件职责：在会议、Udemy 与 Disney+ 网页中挂载隔离的双语字幕，复用现有视频配置及翻译缓存。
- * 主要内容：观察原生字幕、读取浏览器字幕轨、自动开启明确的会议字幕按钮、优先目标语言人工轨；每轮只测量各视频一次，按当前文本、尺寸和字体输入去重布局，处理失败重试、全屏、动态页面、大字号适配与所有权恢复。
+ * 主要内容：观察原生字幕、读取浏览器字幕轨、自动开启明确的会议字幕按钮、优先目标语言人工轨；可选读音行独立请求与取消，不等待译文，每轮只测量各视频一次，按当前文本、读音、尺寸和字体输入去重布局；长读音保留可读字号并在自有区域提供键盘和触摸滚动，处理失败重试、全屏、动态页面与所有权恢复。
  * 模块边界：只通过注入端口读取配置、翻译和保存设置；布局记录仅属于当前挂载，位置每轮重新读取，字体加载与卸载清除适配状态，不采集音频、不访问账号接口，不修改网站播放器实现。
  */
 import type {Config} from '@/src/core/config/model';
+import {translate} from '@/src/core/i18n';
+import {browserCapabilities} from '@/src/platform/browser/capabilities';
 import {getVideoSubtitleAppearanceCssVars} from '@/src/core/config/videoSubtitleAppearance';
 import {getVideoTranslationConfigFingerprint, normalizeVideoCaptionText} from './subtitleLogic';
 import {VideoTranslationCache} from './translationCache';
 import {fitVideoSubtitleFontSize} from './subtitleLayout';
+import {setSubtitlePanelScrollable, resetSubtitlePanelLayout} from './subtitleControlLayout';
 import {isVideoSubtitleInTargetLanguage} from './subtitleLanguage';
 import {chooseTargetHumanCaptionTrack, getCaptionPlatform, isMeetingCaptionPlatform, PLATFORM_CAPTION_SELECTORS, findCaptionEnableButton, findTeamsCaptionMenuStep, captionLanguageMatch} from './platforms';
+import {VideoReadingAnnotationSession} from './readingAnnotationSession';
+import {annotateVideoReading} from './readingAnnotationClient';
 
 interface PlatformCaptionPorts {
     document: Document;
@@ -42,6 +47,7 @@ export function mountPlatformCaptions(ports: PlatformCaptionPorts): () => void {
     const meeting = isMeetingCaptionPlatform(platform);
     const cache = new VideoTranslationCache((text, signal) => isVideoSubtitleInTargetLanguage(text, config.to)
         ? Promise.resolve(text) : ports.translate(text, signal));
+    const readings = new VideoReadingAnnotationSession(annotateVideoReading);
     const trackModes = new Map<TextTrack, {previous: TextTrackMode; applied: TextTrackMode}>();
     const captionVisibility = new Map<HTMLElement, {value: string; priority: string}>();
     let clickedButtons = new WeakSet<HTMLElement>();
@@ -49,6 +55,7 @@ export function mountPlatformCaptions(ports: PlatformCaptionPorts): () => void {
     let autoButton: HTMLElement | null = null;
     let host: HTMLElement | null = null;
     let sourceLine: HTMLElement | null = null;
+    let readingLine: HTMLElement | null = null;
     let translatedLine: HTMLElement | null = null;
     let retry: HTMLButtonElement | null = null;
     let mode: HTMLSelectElement | null = null;
@@ -64,17 +71,47 @@ export function mountPlatformCaptions(ports: PlatformCaptionPorts): () => void {
     let pendingTimer: ReturnType<typeof setTimeout> | undefined;
     let layoutInputs: {width: number; height: number; maximumHeight: number; fontSize: number; fontFamily: string; lineSpacing: string} | null = null;
     let fittedInputs: readonly unknown[] | null = null;
+    let readingSignature = '';
+    let readingGeneration = 0;
 
     const fit = () => {
         const panel = sourceLine?.parentElement;
         if (!panel || !sourceLine || !translatedLine || !retry || !mode || !layoutInputs) return;
         const {width, height, maximumHeight, fontSize, fontFamily, lineSpacing} = layoutInputs;
         const inputs = [width, height, maximumHeight, fontSize, fontFamily, lineSpacing, mode.value, mode.textContent,
-            sourceLine.textContent, sourceLine.hidden, translatedLine.textContent, retry.hidden, retry.textContent];
+            sourceLine.textContent, sourceLine.hidden, readingLine?.textContent, readingLine?.hidden,
+            translatedLine.textContent, retry.hidden, retry.textContent];
         if (fittedInputs && inputs.every((value, index) => value === fittedInputs![index])) return;
+        const readingVisible = Boolean(readingLine && !readingLine.hidden && readingLine.textContent);
         fitVideoSubtitleFontSize(fontSize, maximumHeight,
-            size => setStyleIfChanged(panel.style, 'font-size', `${size}px`), () => panel.scrollHeight);
+            size => setStyleIfChanged(panel.style, 'font-size', `${size}px`), () => panel.scrollHeight, readingVisible ? 16 : 8);
+        if (readingVisible) {
+            setSubtitlePanelScrollable(panel, panel.scrollHeight > maximumHeight + 1);
+            panel.setAttribute('role', 'region');
+        } else if (panel.dataset.fluentReadSubtitleScrollable === 'true') {
+            setSubtitlePanelScrollable(panel, false); panel.setAttribute('role', 'region');
+        }
         fittedInputs = inputs;
+    };
+
+    // 读音拥有独立的句子身份，翻译服务切换或失败不能决定读音是否可见。
+    const syncReading = (source: string, language: string) => {
+        const visible = browserCapabilities.extensionDom && config.videoSubtitleAppearance.readingAnnotation === true && config.videoSubtitleDisplayMode !== 'translation-only';
+        const next = visible ? JSON.stringify([source, language]) : '';
+        if (next === readingSignature) return;
+        readingSignature = next;
+        const current = ++readingGeneration;
+        readings.cancelPending();
+        if (readingLine) { readingLine.textContent = ''; readingLine.hidden = true; }
+        if (!visible) return;
+        void readings.request(source, language).then(result => {
+            if (disposed || current !== readingGeneration || !readingLine || !result?.text || !host || host.hidden) return;
+            readingLine.textContent = result.text;
+            readingLine.lang = `${result.language.split('-')[0]}-Latn`;
+            readingLine.setAttribute('aria-label', translate(`video.readingAnnotation.${result.language.split('-')[0]}`, config.uiLanguage));
+            readingLine.hidden = false;
+            fit();
+        }).catch(() => { /* 注音失败保留原文与译文；切句或重新开启时可再次尝试。 */ });
     };
 
     const restoreCaptions = () => {
@@ -104,8 +141,11 @@ export function mountPlatformCaptions(ports: PlatformCaptionPorts): () => void {
         layoutInputs = null;
         fittedInputs = null;
         cache.cancelPending();
+        readingGeneration += 1; readingSignature = ''; readings.cancelPending();
+        if (sourceLine?.parentElement) {resetSubtitlePanelLayout(sourceLine.parentElement); sourceLine.parentElement.setAttribute('role', 'region');}
         if (sourceLine?.textContent) sourceLine.textContent = '';
         if (translatedLine?.textContent) translatedLine.textContent = '';
+        if (readingLine) { readingLine.textContent = ''; readingLine.hidden = true; }
         if (retry && !retry.hidden) retry.hidden = true;
         if (host && !host.hidden) host.hidden = true;
     };
@@ -132,14 +172,17 @@ export function mountPlatformCaptions(ports: PlatformCaptionPorts): () => void {
         host.style.cssText = 'all:initial!important;position:fixed!important;z-index:2147483646!important;pointer-events:none!important;box-sizing:border-box!important;';
         const shadow = host.attachShadow({mode: 'open'});
         const style = document.createElement('style');
-        style.textContent = `:host([hidden]){display:none!important}*{box-sizing:border-box}.panel{font-family:var(--fluent-read-video-subtitle-font-family);text-align:center;line-height:var(--fluent-read-video-subtitle-line-spacing);font-size:20px;text-shadow:var(--fluent-read-video-subtitle-text-shadow);background:var(--fluent-read-video-subtitle-background);border-radius:8px;padding:8px 12px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:45vh;overflow:hidden}.source{color:var(--fluent-read-video-subtitle-text-color)}.translation{color:var(--fluent-read-video-subtitle-translation-color)}.tools{display:flex;justify-content:center;gap:8px;margin-top:4px;opacity:.8;pointer-events:auto}select,button{font:12px system-ui;color:#fff;background:#17222e;border:1px solid #8c98a5;border-radius:5px;padding:3px 7px}select:focus-visible,button:focus-visible{outline:2px solid #ffe45c}[hidden]{display:none!important}`;
+        style.textContent = `:host([hidden]){display:none!important}*{box-sizing:border-box}.panel{font-family:var(--fluent-read-video-subtitle-font-family);text-align:center;line-height:var(--fluent-read-video-subtitle-line-spacing);font-size:20px;text-shadow:var(--fluent-read-video-subtitle-text-shadow);background:var(--fluent-read-video-subtitle-background);border-radius:8px;padding:8px 12px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:45vh;overflow:hidden}.panel[data-fluent-read-subtitle-scrollable="true"]{overflow-y:auto;overflow-x:hidden;pointer-events:auto;overscroll-behavior:contain;touch-action:pan-y pinch-zoom}.panel[data-fluent-read-subtitle-scrollable="true"]:focus-visible{outline:2px solid currentColor;outline-offset:-2px}.source,.reading{color:var(--fluent-read-video-subtitle-text-color)}.reading{font-size:max(12px,.72em);line-height:1.35}.translation{color:var(--fluent-read-video-subtitle-translation-color)}.tools{display:flex;justify-content:center;gap:8px;margin-top:4px;opacity:.8;pointer-events:auto}select,button{font:12px system-ui;color:#fff;background:#17222e;border:1px solid #8c98a5;border-radius:5px;padding:3px 7px}select:focus-visible,button:focus-visible{outline:2px solid #ffe45c}[hidden]{display:none!important}`;
         const panel = document.createElement('div');
         panel.className = 'panel';
         panel.setAttribute('role', 'region');
         panel.setAttribute('aria-label', ports.label('双语字幕'));
-        sourceLine = document.createElement('div'); sourceLine.className = 'source';
+        sourceLine = document.createElement('div'); sourceLine.className = 'source fluent-read-video-subtitle-original';
+        readingLine = document.createElement('div'); readingLine.className = 'reading'; readingLine.hidden = true;
         translatedLine = document.createElement('div'); translatedLine.className = 'translation';
         const tools = document.createElement('div'); tools.className = 'tools';
+        // 原生选择框与重试按钮保留自身键盘动作，不由长字幕的滚动快捷键接管。
+        for (const event of ['keydown', 'keyup']) tools.addEventListener(event, key => key.stopPropagation());
         mode = document.createElement('select'); mode.setAttribute('aria-label', ports.label('字幕显示模式'));
         for (const [value, label] of [['bilingual', '双语'], ['translation-only', '仅译文'], ['original-only', '仅原文'], ['off', '关闭']]) {
             const option = document.createElement('option'); option.value = value; option.textContent = ports.label(label); mode.appendChild(option);
@@ -148,7 +191,7 @@ export function mountPlatformCaptions(ports: PlatformCaptionPorts): () => void {
             : {videoSubtitleDisplayMode: mode!.value as Config['videoSubtitleDisplayMode']}));
         retry = document.createElement('button'); retry.type = 'button'; retry.textContent = ports.label('重试'); retry.hidden = true;
         retry.addEventListener('click', () => { cache.retryFailures(); signature = ''; schedule(); });
-        tools.append(mode, retry); panel.append(sourceLine, translatedLine, tools); shadow.append(style, panel); parent.appendChild(host);
+        tools.append(mode, retry); panel.append(sourceLine, readingLine, translatedLine, tools); shadow.append(style, panel); parent.appendChild(host);
     };
 
     const selectVideo = () => {
@@ -199,7 +242,7 @@ export function mountPlatformCaptions(ports: PlatformCaptionPorts): () => void {
             && getCaptionPlatform(window.location) === platform;
         if (!enabled) { clear(); restoreCaptions(); restoreAutoButton(); return; }
         if (route !== window.location.href) {
-            route = window.location.href; clear(); restoreCaptions(); restoreAutoButton(); cache.clear();
+            route = window.location.href; clear(); restoreCaptions(); restoreAutoButton(); cache.clear(); readings.clear();
             clickedButtons = new WeakSet();
             sourceTrack = null; targetTrack = null; mediaKey = '';
         }
@@ -220,7 +263,7 @@ export function mountPlatformCaptions(ports: PlatformCaptionPorts): () => void {
         const nextVideo = selection?.video || null;
         const nextKey = nextVideo ? `${route}:${nextVideo.currentSrc || nextVideo.getAttribute('src') || ''}` : '';
         if (nextVideo !== video || nextKey !== mediaKey) {
-            clear(); restoreCaptions(); cache.clear(); video = nextVideo; mediaKey = nextKey; sourceTrack = null; targetTrack = null;
+            clear(); restoreCaptions(); cache.clear(); readings.clear(); video = nextVideo; mediaKey = nextKey; sourceTrack = null; targetTrack = null;
         }
         if (!meeting && (!video || video.seeking || video.ended || video.readyState === 0)) { clear(); restoreCaptions(); return; }
         syncTracks();
@@ -252,6 +295,11 @@ export function mountPlatformCaptions(ports: PlatformCaptionPorts): () => void {
         layoutInputs = {width, height, maximumHeight, fontSize: 20 * config.videoSubtitleAppearance.fontScale / 100,
             fontFamily: appearance['--fluent-read-video-subtitle-font-family'], lineSpacing: appearance['--fluent-read-video-subtitle-line-spacing']};
         if (sourceLine.textContent !== source) sourceLine.textContent = source;
+        syncReading(source, sourceTrack?.language || config.from || 'auto');
+        if (readingLine && !readingLine.hidden) {
+            const label = translate(`video.readingAnnotation.${readingLine.lang.split('-')[0]}`, config.uiLanguage);
+            if (readingLine.getAttribute('aria-label') !== label) readingLine.setAttribute('aria-label', label);
+        }
         nodes.forEach(node => {
             if (!captionVisibility.has(node)) captionVisibility.set(node, {value: node.style.getPropertyValue('visibility'), priority: node.style.getPropertyPriority('visibility')});
             setStyleIfChanged(node.style, 'visibility', 'hidden', 'important');
@@ -303,7 +351,8 @@ export function mountPlatformCaptions(ports: PlatformCaptionPorts): () => void {
     document.fonts?.addEventListener('loadingdone', invalidateLayout);
     sync();
     return () => {
-        disposed = true; clear(); cache.clear(); restoreCaptions(); restoreAutoButton();
+        disposed = true; clear(); cache.clear(); readings.destroy(); restoreCaptions(); restoreAutoButton();
+        if (sourceLine?.parentElement) resetSubtitlePanelLayout(sourceLine.parentElement, true);
         observer.disconnect(); clearInterval(timer); if (pendingTimer !== undefined) clearTimeout(pendingTimer);
         unsubscribe(); document.removeEventListener('fullscreenchange', invalidateLayout); document.removeEventListener('seeking', schedule, true);
         document.removeEventListener('click', releaseUserControls, true);

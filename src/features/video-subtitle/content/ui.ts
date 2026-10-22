@@ -2,7 +2,7 @@
  * @file src/features/video-subtitle/content/ui.ts
  *
  * 文件职责：封装视频字幕 content UI 的界面语言转换、可访问名称刷新及桌面/触屏安全视口菜单样式，避免 YouTube 播放器运行时承载重复的文案拼装。
- * 主要内容：提供视频菜单本地化、菜单与完整句学习共享的局部外观变量、极矮视口完整关闭目标、按逐字高亮开关写入字幕行、校时与就地模型选择控件样式、节点创建、播放器定位；每次原生字幕读取按候选集合与局部父链排除嵌套内层，保留外层全文和顺序，避免片段两两包含扫描，不跨调用缓存节点；过滤 YouTube 滚动窗口裁掉的旧行，按实际画面及同视频可见底控约束字幕几何、换行与大字号完整高度，并封装字幕清理、媒体时钟读取、样式及字幕下载。
+ * 主要内容：提供视频菜单本地化、局部外观变量、独立纯文本读音行及按语言命名；读音按原文、读音、译文排列并计入字幕布局，防止缩成不可读小字；保留逐字高亮、校时与就地模型选择控件，过滤 YouTube 滚动窗口旧行，按实际画面及同视频可见底控约束字幕几何、换行与大字号完整高度，并封装字幕清理、媒体时钟读取、样式及字幕下载。
  * 模块边界：只读取界面配置并操作视频 feature 拥有的节点、样式和下载链接，不发起翻译或识别请求；任务生命周期由 runtime 管理。
  */
 
@@ -14,7 +14,7 @@ import {getCaptionPlatform} from './platforms';
 import {fitVideoSubtitleFontSize} from './subtitleLayout';
 import {getYoutubeSubtitleControlsScope} from './youtubeControlsScope';
 import {getVisibleYoutubeSubtitleControls, positionMobileYoutubeSubtitle, resetSubtitlePanelLayout, finishSubtitlePanelLayout,
-  prepareSubtitlePanelLayout, findOwnedSubtitlePanel, syncSubtitleScrollHostState, VIDEO_SUBTITLE_SCROLL_HOST_ID} from './subtitleControlLayout';
+  prepareSubtitlePanelLayout, findOwnedSubtitlePanel, syncSubtitleScrollHostState, setSubtitlePanelScrollable, VIDEO_SUBTITLE_SCROLL_HOST_ID} from './subtitleControlLayout';
 import {createVideoKaraokeController, setVideoCaptionText, type VideoKaraokeController, VIDEO_KARAOKE_FILL_PROPERTY, VIDEO_KARAOKE_STATE_ATTRIBUTE, VIDEO_KARAOKE_TEXT_ATTRIBUTE, VIDEO_KARAOKE_UNIT_CLASS} from './karaoke';
 
 import {
@@ -82,6 +82,8 @@ export function refreshVideoUiAccessibility(
     document.getElementById('fluent-read-video-subtitle-panel')?.setAttribute('aria-label', translateVideoUi('video.panelAriaLabel', language));
     document.getElementById('fluent-read-video-subtitle')?.setAttribute('aria-label', translateVideoUi('video.translationOverlayAriaLabel', language));
     document.getElementById('fluent-read-video-subtitle-original')?.setAttribute('aria-label', translateVideoUi('video.originalOverlayAriaLabel', language));
+    const reading = document.getElementById(VIDEO_READING_OVERLAY_ID);
+    if (reading) reading.setAttribute('aria-label', translateVideoUi(reading.dataset.readingLabelKey || 'video.readingAnnotation.label', language));
 }
 
 export const VIDEO_AI_CAPTION_CONTAINER_ID = 'fluent-read-video-ai-caption-container';
@@ -89,6 +91,7 @@ export const VIDEO_CAPTION_CONTAINER_SELECTOR = '#ytp-caption-window-container, 
 export const VIDEO_CAPTION_SEGMENT_SELECTOR = '.ytp-caption-segment';
 export const VIDEO_TRANSLATION_OVERLAY_ID = 'fluent-read-video-subtitle';
 export const VIDEO_NORMALIZED_CAPTION_OVERLAY_ID = 'fluent-read-video-subtitle-original';
+export const VIDEO_READING_OVERLAY_ID = 'fluent-read-video-subtitle-reading';
 export const VIDEO_SUBTITLE_PANEL_ID = 'fluent-read-video-subtitle-panel';
 export const VIDEO_TRANSLATION_LAYER_ID = 'fluent-read-video-subtitle-layer';
 export const VIDEO_TRANSLATION_BUTTON_ID = 'fluent-read-video-subtitle-button';
@@ -180,6 +183,24 @@ export function renderHumanVideoCaption(player: HTMLElement, container: HTMLElem
   container.classList.add(VIDEO_NORMALIZED_CAPTION_CLASS);
   writeVideoCaptionText(getOrCreateTranslationOverlay(player), translation);
   syncTranslationOverlayPosition(container);
+}
+
+/** 读音为独立纯文本行，不污染原文 textContent 或参与估算的逐字高亮。 */
+export function renderVideoReadingAnnotation(player: HTMLElement, text: string, language = ''): boolean {
+  let line = document.getElementById(VIDEO_READING_OVERLAY_ID);
+  if (!line && !text) return false;
+  const panel = getOrCreateVideoSubtitlePanel(player);
+  if (!line) {
+    line = document.createElement('div'); line.id = VIDEO_READING_OVERLAY_ID;
+    markVideoUi(line); line.setAttribute('dir','ltr'); panel.appendChild(line);
+  }
+  if (line.parentElement !== panel) panel.appendChild(line);
+  const changed = line.textContent !== text;
+  if (changed) line.textContent = text;
+  line.lang = language ? `${language}-Latn` : '';
+  line.dataset.readingLabelKey = `video.readingAnnotation.${language || 'label'}`;
+  line.setAttribute('aria-label', videoUi(line.dataset.readingLabelKey));
+  return changed;
 }
 
 
@@ -452,6 +473,7 @@ export function getOrCreateNormalizedCaptionOverlay(player: HTMLElement): HTMLEl
 export function clearRenderedVideoTranslation(owner: Document): void {
   owner.querySelectorAll<HTMLElement>(`#${VIDEO_SUBTITLE_PANEL_ID}`).forEach(panel => resetSubtitlePanelLayout(panel));
   owner.querySelectorAll(`#${VIDEO_TRANSLATION_OVERLAY_ID}`).forEach(node => writeVideoCaptionText(node, ''));
+  owner.querySelectorAll(`#${VIDEO_READING_OVERLAY_ID}`).forEach(node => {node.textContent='';});
 }
 
 export function deactivateNormalizedVideoCaption(owner: Document): void {
@@ -647,7 +669,8 @@ export function syncTranslationOverlayPosition(container: HTMLElement | null): v
   fitVideoSubtitleFontSize(baseFontSize * fontScale,
     fullscreen ? Math.min(maximumHeight, panel.clientHeight || maximumHeight) : maximumHeight,
     size => panel.style.setProperty('--fluent-read-video-subtitle-font-size', `${size}px`),
-    () => panel.scrollHeight);
+    () => panel.scrollHeight, panel.querySelector(`#${VIDEO_READING_OVERLAY_ID}`)?.textContent ? 16 : 8);
+  if (!menuOpen && panel.querySelector(`#${VIDEO_READING_OVERLAY_ID}`)?.textContent && panel.scrollHeight > maximumHeight + 1) setSubtitlePanelScrollable(panel, true);
   centerPanel();
 
   // 双语模式下原生字幕仍然可见时，译文面板要放在原生字幕上方，不能用固定底部
@@ -759,6 +782,7 @@ export function installVideoSubtitleStyle(): HTMLStyleElement {
     #${VIDEO_SUBTITLE_PANEL_ID}[data-fluent-read-subtitle-scrollable="true"] > div { flex-shrink: 0 !important; }
     #${VIDEO_SUBTITLE_PANEL_ID}[data-fluent-read-subtitle-scrollable="true"]:focus-visible { outline: 2px solid currentColor !important; outline-offset: -2px !important; }
     #${VIDEO_TRANSLATION_OVERLAY_ID} {
+      order: 3 !important;
       display: block !important;
       position: relative !important;
       z-index: 2 !important;
@@ -785,6 +809,7 @@ export function installVideoSubtitleStyle(): HTMLStyleElement {
     }
     #${VIDEO_TRANSLATION_OVERLAY_ID}:empty { display: none !important; }
     #${VIDEO_NORMALIZED_CAPTION_OVERLAY_ID} {
+      order: 1 !important;
       display: none !important;
       position: relative !important;
       z-index: 1 !important;
@@ -810,6 +835,19 @@ export function installVideoSubtitleStyle(): HTMLStyleElement {
       visibility: visible !important;
     }
     #${VIDEO_NORMALIZED_CAPTION_OVERLAY_ID}:empty { display: none !important; }
+    #${VIDEO_READING_OVERLAY_ID} {
+      order: 2 !important; display: block !important; max-width: 100% !important; min-width: 0 !important;
+      margin: 0 !important; padding: 0 !important; border: 0 !important;
+      font: 500 max(12px, calc(var(--fluent-read-video-subtitle-font-size, 20px) * .72))/1.4 Arial, sans-serif !important;
+      color: var(--fluent-read-video-subtitle-text-color, #fff) !important;
+      text-align: center !important; white-space: pre-wrap !important; overflow-wrap: anywhere !important;
+      text-shadow: var(--fluent-read-video-subtitle-text-shadow, 0 1px 2px #000) !important;
+      pointer-events: none !important; user-select: none !important;
+    }
+    #${VIDEO_READING_OVERLAY_ID}:empty,
+    :is(#${VIDEO_TRANSLATION_LAYER_ID}, #${VIDEO_SUBTITLE_SCROLL_HOST_ID}).${VIDEO_DISPLAY_TRANSLATION_ONLY_CLASS} #${VIDEO_READING_OVERLAY_ID} {display:none !important;}
+    #${VIDEO_TRANSLATION_MENU_ID} [data-action="toggle-reading-annotation"]::after {content:''; margin-left:auto; min-width:1em;}
+    #${VIDEO_TRANSLATION_MENU_ID} [data-action="toggle-reading-annotation"][aria-checked="true"]::after {content:'✓';}
     /* 逐字高亮：未唱到的字用本行颜色的淡色，唱过的恢复原色，正在唱的字由同字高亮层从行首方向扫过。 */
     #${VIDEO_TRANSLATION_OVERLAY_ID} { --fluent-read-video-karaoke-color: var(--fluent-read-video-subtitle-translation-color, #ffe45c); }
     #${VIDEO_NORMALIZED_CAPTION_OVERLAY_ID} { --fluent-read-video-karaoke-color: var(--fluent-read-video-subtitle-text-color, #fff); }
