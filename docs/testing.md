@@ -762,6 +762,19 @@ pnpm exec vitest run tests/hoverTranslationContentFeature.test.ts tests/fullPage
 
 这些用例覆盖组合键取消后的连续移动、同值属性写入、后代保护资格变化、在途 Text 重建、分槽来源变化、共享等待者取消、双语重挂和恢复，以及仅译文槽被宿主克隆后的原文保全。新增竞态用例应证明旧实现失败，且包含用户下一次正常翻译或恢复的断言，避免用永久禁用翻译掩盖循环。
 
+`fullPageVisibilityScheduling` 另覆盖 input 按钮的 `value/type/name` 动态变化、具名提交值恢复、迟到结果拒绝，以及宽根冷却时独立 ShadowRoot 仍可扫描。`translateQueue` 与翻译 API 用例验证排队期间取消单条请求会立即结算、移除监听且不影响同会话其他任务；已发出的真实传输仍占用并发槽直到结束。`languageTechnicalTokens` 与语言预检用例守护 Markdown 目的地括号边界，确保链接后的外语正文参与判断且供应商输入不被改写。
+
+生产扩展中的链接与表单生命周期可单独运行：
+
+```bash
+node scripts/testing/run-target-language-reading-test.cjs \
+  --cases markdown-boundary,control-lifecycle \
+  --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> \
+  --focus-safe-helper scripts/testing/focus-safe-browser.cjs --artifacts-dir <证据目录>
+```
+
+专项使用临时后台 Edge 与本机确定性响应，检查原始请求、翻译—恢复—再次翻译、动态标签、输入类型切换和实际 FormData 提交值。它验证生产扩展调用与 DOM 契约，不代表外部供应商质量或 Firefox 实机验收。
+
 生产 Chrome 产物另由 `scripts/run-full-page-translation-test.cjs` 验证真实键鼠事件、DOM 工件身份、请求数及连续帧可见性。使用浏览器技能提供的 focus-safe helper 与临时 profile，窗口在第二块屏幕可见但不抢前台。报告必须区分本地确定性服务夹具和真实网站、真实翻译服务的结果。
 
 悬浮性能与取消生命周期由独立专项验证；它使用临时后台 Edge、真实 CDP 键鼠事件和延迟 180ms 的本地微软协议响应：

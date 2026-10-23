@@ -1,0 +1,37 @@
+{
+  "measured_at": "2026-10-23T06:02:21.020743+00:00",
+  "method": "独立 detached 基线工作树，链接同一 node_modules；基线先 wxt prepare，再 pnpm build:userscript；候选仅读取既有产物，未重新构建或覆盖。体积以构建完成后的文件实际字节数为准。",
+  "base_commit": "0ad3d431b425d8e082f15acfce11de23a66b8cc1",
+  "comparison": {
+    "delta_bytes": 1844,
+    "delta_percent": 0.08680400277546854,
+    "existing_budget_bytes": 2125100,
+    "baseline_headroom_bytes": 774,
+    "candidate_over_budget_bytes": 1070,
+    "minimum_exact_increase_bytes": 1070,
+    "existing_step_bytes": 1000,
+    "recommended_minimum_step_increase_bytes": 2000,
+    "recommended_budget_bytes": 2127100,
+    "recommended_headroom_bytes": 930
+  },
+  "commands": [
+    "pnpm exec wxt prepare",
+    "pnpm build:userscript"
+  ],
+  "dependencies": {
+    "lockfile_sha256": "303a963d9f6bf0bacf92ad701ccb0b05699c1834e1206bafa755ebd0f3663385",
+    "lockfiles_identical": true,
+    "node": "v20.11.1",
+    "pnpm": "9.12.1",
+    "new_dependencies": false
+  },
+  "baseline": {
+    "bytes": 2124326,
+    "sha256": "6fe13fde589628320686a15683c6b06f072bb398b407960f447e6a47440f9167"
+  },
+  "candidate": {
+    "bytes": 2126170,
+    "sha256": "7d931cb6a970dc97a1822dd4cf804c6a36c2d839c5c1e1d41f6b43a5c964e05a"
+  },
+  "baseline_worktree_cleanup_verified": true
+}

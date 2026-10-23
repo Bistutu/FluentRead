@@ -40,6 +40,18 @@ describe('平台能力边界', () => {
 });
 
 describe('补充证据的纯规则', () => {
+    it('Markdown 目标后的异语正文使用真实识别保留，平台结果不能把它重新提升为纯英语', async () => {
+        const detector = vi.fn().mockResolvedValue(reliable());
+        const preflight = createLanguagePreflight(detector);
+        for (const destination of ['https://example.com', 'example.com/a_(b)']) {
+            const source = `This is a link to [read the manual](${destination})请保存设置后重启浏览器。`;
+            expect(await preflight(source, 'en')).toBe(false);
+            expect(await preflight(source, 'de', ['en'])).toBe(false);
+            expect(getSupplementalLanguageCandidate(source)).toBeUndefined();
+        }
+        expect(detector).not.toHaveBeenCalled();
+    });
+
     it('1024 字符完整正文仍检查，超过边界立即放行且大 key 不驱逐已缓存正文', () => {
         const text = english.repeat(5).padEnd(1024, '.');
         expect(text).toHaveLength(1024);

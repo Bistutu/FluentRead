@@ -32,6 +32,8 @@ The default translates as you read. If you need the whole page at once, change t
 
 Language checks apply to each paragraph for both hover and page translation. Short Chinese controls, natural Traditional Chinese sentences and clear Chinese instructions containing technical abbreviations can remain unchanged when they match the target or an excluded language. Simplified and Traditional Chinese still convert when their characters differ; shared Chinese text does not need another translation. A webpage's language label alone does not determine a paragraph's language.
 
+For Markdown links displayed as plain text, language checks retain the label and surrounding prose, including text immediately after the closing parenthesis. The original text sent to the translation service stays intact.
+
 For eligible long passages that remain uncertain, a browser language check can provide supporting evidence when available. Conflicting evidence or a short timeout leaves the passage eligible for translation. Quoted foreign passages, uncertain mixed text and ambiguous Han-only text remain conservative cases.
 
 Paragraphs already in the target language keep their original text. A clearly Chinese paragraph can include browser names, build terms, parameters, units or repository links without triggering another translation. Foreign sentences, words explicitly marked for translation and uncertain mixed content still remain eligible, as does conversion between Simplified and Traditional Chinese.
@@ -130,6 +132,8 @@ Full sentences in paragraphs, headings and disclosure sections still follow the 
 Website adaptation rules can explicitly select a content-bearing button or its internal headline label as a content target. Kagi News headlines keep the original alongside the translation in bilingual mode and show only the translation in translation-only mode. Search, settings and mark-as-read buttons retain their control behavior, and headlines still expand and collapse stories when clicked.
 
 Buttons that are submitted with a form (submit buttons that carry a `name`) and the contents of text fields are left untouched, so the site never receives an action it cannot recognise and your own input is never rewritten.
+
+During page translation, changed button labels are translated again after settling. If a button becomes a text field or a named submit control, FluentRead restores its source value; changing it back makes it eligible for translation again. Restoring the page keeps the latest label supplied by the website.
 
 #### Missing menus or interface text
 

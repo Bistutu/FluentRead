@@ -7,7 +7,8 @@
  * 在生产扩展中验证简体、繁体、日文的全文/悬浮、技术短句、混合正文、共享汉字、
  * 错误页面 lang、恢复重翻、动态改写与切换目标。只调用本地确定性服务，所有请求先计数。
  * 这不是留出语料调参工具，运行时例子与冻结的阅读留出 JSON 分开。
- * --cases 可筛选 same-target/hover/full/dynamic/target-switch；可选 native-evidence 使用真实 i18n 检测长英文，不模拟其结果。
+ * --cases 可筛选 same-target/hover/full/dynamic/target-switch；markdown-boundary/control-lifecycle 检查链接后的正文和动态按钮。
+ * 可选 native-evidence 使用真实 i18n 检测长英文，不模拟其结果。
  * 原生结果满足生产采纳契约才断言零请求；否则验证继续翻译并明确记为降级，不能把 API 缺失当作补充能力命中。
  */
 const assert = require('node:assert/strict');
@@ -23,7 +24,12 @@ const argument = (name, fallback) => {
 };
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 const defaultCases = ['same-target', 'hover', 'full', 'dynamic', 'target-switch'];
-const availableCases = [...defaultCases, 'native-evidence'];
+const availableCases = [...defaultCases, 'native-evidence', 'markdown-boundary', 'control-lifecycle'];
+const markdownSamples = [
+  'This is a link to [read the manual](https://example.com)请保存设置后重启浏览器。',
+  'This is a link to [read the manual](example.com/guide)请保存设置后重启浏览器。',
+  'This is a link to [read the manual](https://example.com/a_(b))请保存设置后重启浏览器。',
+];
 const nativeEnglish = 'Bright sunlight warmed the narrow alley beside the quiet bakery while distant bells announced another ordinary morning.';
 const nativeControl = '这段中文用于确认英文目标下的翻译通道仍然工作，原文中的完整说明需要翻译。';
 function matchesSubset(actual, expected) {
@@ -159,6 +165,17 @@ async function startFixture() {
       }
       const url = new URL(request.url, 'http://127.0.0.1');
       if (url.pathname === '/favicon.ico') {response.writeHead(204); response.end(); return;}
+      if (url.pathname === '/markdown' || url.pathname === '/controls') {
+        response.writeHead(200, {'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store'});
+        const body = url.pathname === '/markdown'
+          ? markdownSamples.map((text, index) => '<p id="sample-' + index + '">' + escapeHtml(text) + '</p>').join('')
+          : '<p id="anchor">The original article remains available while the controls change.</p>'
+            + '<form><input id="action" type="button" value="Save draft"><input id="submit" type="submit" value="Publish draft">'
+            + '<input id="private" type="text" value="Private user input"></form>';
+        response.end('<!doctype html><html lang="en"><meta charset="utf-8"><title>Reading lifecycle fixture</title>'
+          + '<style>body{font:19px/1.8 system-ui;margin:30px}main{max-width:1000px}input{font:18px system-ui;margin:12px;padding:12px}</style>'
+          + '<main>' + body + '</main></html>'); return;
+      }
       if (url.pathname === '/native') {
         response.writeHead(200, {'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store'});
         response.end('<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><title>Native evidence fixture</title>'
@@ -220,7 +237,7 @@ async function main() {
   let launched, activePage, acceptsNativeResult;
   const screenshot = async (page, name) => {
     const file = path.join(artifactsDir, name + '.png');
-    await page.screenshot({path: file, animations: 'disabled'}); report.screenshots.push(file);
+    await page.screenshot({path: file, animations: 'disabled', caret: 'initial'}); report.screenshots.push(file);
   };
   try {
     if (selectedCases.includes('native-evidence')) {
@@ -284,7 +301,7 @@ async function main() {
       enableAIContext: false, enableAIMultiSegment: false, glossaryEnabled: false, pageTitleTranslationEnabled: false,
       hotkey: 'Control', floatingBallHotkey: 'Alt+T', fullPageTranslationMode: 'all', mouseHoverTranslationDelay: 0,
       selectionTranslatorMode: 'disabled', disableSelectionTranslator: true, animations: false});
-    for (const target of selectedCases.some(name => name !== 'native-evidence') ? targets : []) {
+    for (const target of selectedCases.some(name => defaultCases.includes(name)) ? targets : []) {
       await patchConfig({from: 'auto', to: target, excludedLanguages: [], useCache: false});
       const page = await createPage(fixture.url + '/article?target=' + encodeURIComponent(target));
       const item = scenarios[target], start = fixture.requests.length;
@@ -378,6 +395,65 @@ async function main() {
       }
       result.requestCount = fixture.requests.length - start; result.status = 'passed';
       await screenshot(page, target + '-restored'); await page.close();
+    }
+    for (const name of ['markdown-boundary', 'control-lifecycle'].filter(name => selectedCases.includes(name))) {
+      const target = name === 'markdown-boundary' ? 'en' : 'zh-Hans';
+      await patchConfig({from: 'auto', to: target, excludedLanguages: [], useCache: false});
+      const page = await createPage(fixture.url + (name === 'markdown-boundary' ? '/markdown' : '/controls'));
+      await page.locator('#fluent-read-page-styles').waitFor({state: 'attached'});
+      const start = fixture.requests.length, result = {name, target, status: 'running', fullCounts: []};
+      report.cases.push(result);
+      const toggle = async () => {
+        await activateExtensionTabWithoutForeground(context, page, 30000);
+        await page.locator('main').click({position: {x: 2, y: 2}});
+        await page.keyboard.down('Alt'); await page.keyboard.press('t'); await page.keyboard.up('Alt');
+      };
+      if (name === 'markdown-boundary') {
+        for (const expected of [1, 0, 1]) {
+          await toggle();
+          await page.waitForFunction(expected => [0, 1, 2].every(index =>
+            document.querySelectorAll('#sample-' + index + ' .fluent-read-bilingual-content').length === expected), expected);
+          result.fullCounts.push(await page.locator('#sample-0 .fluent-read-bilingual-content').count());
+        }
+        for (const source of markdownSamples) assert(fixture.requests.slice(start).some(entry => entry.source === source),
+          '识别副本不得改写发给服务的原文，紧随链接的中文必须参与翻译判断');
+        assert.equal(await page.locator('.fluent-read-bilingual-content .fluent-read-bilingual-content').count(), 0);
+        await screenshot(page, name + '-translated');
+        await toggle();
+        await page.waitForFunction(() => document.querySelectorAll('.fluent-read-bilingual-content').length === 0);
+        for (let index = 0; index < markdownSamples.length; index++) assert.equal(await page.locator('#sample-' + index).textContent(), markdownSamples[index]);
+      } else {
+        const valueIs = (id, value) => page.waitForFunction(({id, value}) => document.getElementById(id).value === value, {id, value});
+        await toggle();
+        await valueIs('action', translated[target]); await valueIs('submit', translated[target]);
+        result.fullCounts.push(1);
+        await page.locator('#action').evaluate(element => element.setAttribute('value', 'Review changes'));
+        await valueIs('action', translated[target]);
+        assert(fixture.requests.slice(start).some(entry => entry.source === 'Review changes'), '动态 value 必须重新翻译');
+        await page.locator('#submit').evaluate(element => element.setAttribute('name', 'commit'));
+        await valueIs('submit', 'Publish draft');
+        result.submittedValue = await page.locator('form').evaluate(form => new FormData(form, document.getElementById('submit')).get('commit'));
+        assert.equal(result.submittedValue, 'Publish draft', '命名提交按钮必须恢复原始提交值');
+        await page.locator('#submit').evaluate(element => element.removeAttribute('name'));
+        await valueIs('submit', translated[target]);
+        await page.locator('#action').evaluate(element => element.setAttribute('type', 'text'));
+        await valueIs('action', 'Review changes');
+        await page.locator('#action').evaluate(element => element.setAttribute('type', 'button'));
+        await valueIs('action', translated[target]);
+        assert.equal(await page.locator('#private').inputValue(), 'Private user input');
+        assert(!fixture.requests.slice(start).some(entry => entry.source?.includes('Private user input')), '用户输入不能发送给翻译服务');
+        await screenshot(page, name + '-translated');
+        for (const expected of [0, 1, 0]) {
+          await toggle();
+          await valueIs('action', expected ? translated[target] : 'Review changes');
+          await valueIs('submit', expected ? translated[target] : 'Publish draft');
+          result.fullCounts.push(expected);
+        }
+      }
+      result.restored = true; result.requestCount = fixture.requests.length - start; result.status = 'passed';
+      await screenshot(page, name + '-restored');
+      fs.writeFileSync(path.join(artifactsDir, name + '.html'), await page.content());
+      await page.close();
     }
     if (selectedCases.includes('native-evidence')) {
       await patchConfig({from: 'auto', to: 'en', excludedLanguages: [], useCache: false});
