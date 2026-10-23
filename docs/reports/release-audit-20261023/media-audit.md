@@ -2,22 +2,22 @@
 
 基线 `0ad3d431b425d8e082f15acfce11de23a66b8cc1`。此报告覆盖 document/image/area/video/local-translation/local-tts 与 document/offscreen app 目录，另按分工补充 TranslationCenter 组件覆盖与冗余逻辑精简；全仓发布、构建、压缩包和所有测试的最终结论由主报告汇总。
 
-## S9 冻结产物与发布限制（2026-10-23）
+## S10 冻结产物与发布限制（2026-10-23）
 
-在独立 `candidate-checkpoint-9`（基准提交 `a85bd32e896b8871de9b894f955cf48ab5e81941`）按普通 userscript、standalone、Greasy Fork、Obsidian 顺序构建。构建后逐一复核冻结清单中的 6756 个源码 SHA，全部一致；没有修改资源、门槛或冻结源码。这里的大小是实际 UTF-8 文件字节，不是 Vite 显示的 kB 字符数，也不是扩展 ZIP 大小。
+在独立 `candidate-checkpoint-10`（基准提交 `e2bc77814b6a5de0f976dd6ee2c2656f08335aef`）按普通 userscript、standalone、Greasy Fork、Obsidian 顺序构建。构建后逐一复核冻结清单中的 6756 个源码 SHA，全部一致；没有修改资源、门槛或冻结源码。这里的大小是实际 UTF-8 文件字节，不是 Vite 显示的 kB 字符数，也不是扩展 ZIP 大小。
 
 | 产物 | 实际字节 | 构建退出码 | 独立校验退出码 |
 | --- | ---: | ---: | ---: |
-| 普通 userscript | 1,857,226 | 0 | 0 |
-| standalone userscript | 3,592,892 | 0 | 0 |
-| Greasy Fork userscript | 2,916,980 | 1 | 1 |
+| 普通 userscript | 1,859,771 | 0 | 0 |
+| standalone userscript | 3,595,448 | 0 | 0 |
+| Greasy Fork userscript | 2,922,016 | 1 | 1 |
 | Obsidian main.js | 2,064,308 | 0 | 未单独设置 |
 
-普通版低于原 2,125,100 字节门槛，余量 267,874 字节；standalone 低于原 3,600,000 字节门槛，余量仅 7,108 字节，后续源码改变仍须重新构建核对。GF 的 Vite 产物已经生成、固定资源校验完成，但构建内置和独立 verifier 均在原 2,000,000 字节门槛处失败，超出 916,980 字节，不能列为发布通过。实际 AST 中所有大小的纯数据字面量合计 472,290 字节；即再把插值模板的静态部分和正则文本都计入候选，也仅 519,075 字节，且未扣读取引用开销，无法靠本轮小范围纯数据外置填补差额。未压缩可执行代码、降低门槛或删除能力来绕过此项。
+普通版低于原 2,125,100 字节门槛，余量 265,329 字节；standalone 低于原 3,600,000 字节门槛，余量仅 4,552 字节，后续源码改变仍须重新构建核对。GF 的 Vite 产物已经生成、固定资源校验完成，但构建内置和独立 verifier 均在原 2,000,000 字节门槛处失败，超出 922,016 字节，不能列为发布通过。此前 GF 冻结产物的只读 AST 盘点中，所有大小的纯数据字面量合计 472,290 字节；即再把插值模板的静态部分和正则文本都计入候选，也仅 519,075 字节，且未扣读取引用开销，无法靠本轮小范围纯数据外置填补差额。该盘点未重新统计 S10，作为已分析过的有限纯数据机会记录；本轮未压缩可执行代码、降低门槛或删除能力来绕过此项。
 
 GF vendor/data 固定于 `4d7fe8be9dcfa2f5f6d312460518171ced4d12f8`，构建保持其已提交字节与来源声明。原始基线 `0ad3d431` 的正式 GF 命令也 exit 1，但在 Vite 之前即被原有资源锁保护阻断：其资源提交为 `20d7b5e0760373958f1d460dda642f83cf5f22c4`，`pnpm-lock.yaml` 已与该资源提交不同。基线工作树前后 clean，未绕过保护，未得到可比产物；因此不能断言基线也超过 2 MB。
 
-详细退出码、完整 SHA、许可证结果与日志索引见证据根目录的 `checkpoint9-media-build-results.json`、`checkpoint9-*-build.log`、`checkpoint9-userscript*-verify.log`；GF 分析见 `media/greasyfork-size-review.md` 及三个 AST census JSON；基线失败见 `baseline-userscript-greasyfork-result.json`。S9 相比 S8 的 standalone 减少 20 字节，其他三项产物字节与 SHA 不变；这只是两个实际冻结产物的比较。S10 尚待冻结后复验，不以 S9 结果代替后续产物。主任务报告 S8 浏览器运行 exit 86，本分任务未将其计为通过，也未启动新浏览器或自动重试。
+详细退出码、实际命令及耗时、完整 SHA、许可证结果与日志索引见证据根目录的 `checkpoint10-media-build-results.json`、`checkpoint10-*-build.log`、`checkpoint10-userscript*-verify.log`；GF 分析见 `media/greasyfork-size-review.md` 及三个 AST census JSON；基线失败见 `baseline-userscript-greasyfork-result.json`。S9 的普通版、standalone、GF 分别为 1,857,226、3,592,892、2,916,980 字节；S10 实际分别增加 2,545、2,556、5,036 字节，Obsidian 字节与 SHA 不变。后续源码如再变化，不能继续沿用 S10 结论。主任务报告 S8 浏览器运行 exit 86，本分任务未将其计为通过，也未启动新浏览器或自动重试。
 
 ## 资源与许可证核对
 
@@ -25,7 +25,7 @@ GF vendor/data 固定于 `4d7fe8be9dcfa2f5f6d312460518171ced4d12f8`，构建保�
 
 普通 userscript 改为复用既有非流式 OpenAI HTTP 执行器，仅改变该执行端口的打包，仍使用共享请求配置、端点、鉴权、错误分类、用量、租约与预算路径。实际安装的原 SDK 与自有端口合同测试独立运行 190 项全部通过；阅读 SSE/工具和原生 Claude/Gemini 不经此入口。明确预期差异是自有执行器不读取宿主 `AI_SDK_TELEMETRY_INTEGRATIONS`，避免宿主钩子观察或打断翻译；不能说所有副作用完全等价。现有非流式执行器仍与锁定 SDK 一样等待正文 cancel 完成，合同未证明永不结算的 cancel 握手也能及时退出。
 
-S9 普通与 standalone 产物均再次核对各包标题及上游声明原文；GF vendor/data 生成字节分别与当前源码及固定提交逐字节相等，Dexie、CryptoJS、franc-min 的来源声明保留。普通产物 SHA 与此前许可证核对产物完全相同。`ai 6.0.264`、`@ai-sdk/openai-compatible 2.0.70`、`@ai-sdk/provider 3.0.15` 的包/版本标题保留，安装包中相同的 Vercel Apache 声明原文完整保留一次；`@ai-sdk/provider-utils 4.0.46` 安装包本身没有 LICENSE 文件，按现有策略保留 Apache 标识及 repository 来源链接，未虚称核验了不存在的授权文件。该核对是产物事实检查，不是额外法律意见。证据为 `media/ordinary-http-independent-review.md`、`ordinary-http-independent-contract.log`、`ordinary-http-artifact-review.json`。
+S10 普通与 standalone 产物均再次核对各包标题及上游声明原文；GF vendor/data 生成字节分别与当前源码及固定提交逐字节相等，Dexie、CryptoJS、franc-min 的来源声明保留。本次核对直接读取 S10 新产物，不以此前产物 SHA 代替。`ai 6.0.264`、`@ai-sdk/openai-compatible 2.0.70`、`@ai-sdk/provider 3.0.15` 的包/版本标题保留，安装包中相同的 Vercel Apache 声明原文完整保留一次；`@ai-sdk/provider-utils 4.0.46` 安装包本身没有 LICENSE 文件，按现有策略保留 Apache 标识及 repository 来源链接，未虚称核验了不存在的授权文件。该核对是产物事实检查，不是额外法律意见。证据为 `media/ordinary-http-independent-review.md`、`ordinary-http-independent-contract.log`、`ordinary-http-artifact-review.json`。
 
 ## 验证登记纠正
 
@@ -152,7 +152,7 @@ S8 的 LocalTtsSettings 有 4 个函数未归因：来源模式、本地音色�
 
 检查实际3,641,566字节的standalone后，确认CSS、英文/中文词典和两张关于页JPEG已经gzip压缩；进一步压缩相同字节的文本表示可以避免删功能。新增独立构建编码器与运行时解码器，使用不含引号、反斜杠或非ASCII字符的Base85，保留自识别前缀、0至3字节填充，拒绝非法长度、字符、超32位块和非零尾填充。其余旧Base64仍按原atob路径恢复。root只对接这五份既有纯数据链，不压缩或动态执行代码，不改许可、图片像素、CSS或消息内容。
 
-15项单元测试覆盖所有字节、0至1024长度与带offset视图、UTF-8/gzip恢复、旧Base64兼容和非法表示；两文件四维100%。实际五份产物解码后的SHA256均与改变编码前的独立探针相同；纯字符串表示合计减少51,653字节。编码落地时整包实测3,592,434字节；S9 后续源码合并后的大小为上表3,592,892字节，不将同时发生的其他源码改动归因给此编码器。
+15项单元测试覆盖所有字节、0至1024长度与带offset视图、UTF-8/gzip恢复、旧Base64兼容和非法表示；两文件四维100%。实际五份产物解码后的SHA256均与改变编码前的独立探针相同；纯字符串表示合计减少51,653字节。编码落地时整包实测3,592,434字节；S10 后续源码合并后的大小为上表3,595,448字节，不将同时发生的其他源码改动归因给此编码器。
 
 实际生产codec在Node20/ARM64完成5轮预热后15轮交替对照。最大CSS的299,620字节gzip数据：原atob加Uint8Array.from解码中位25.82ms，新解码1.87ms；包含pako恢复33.52→9.62ms。其他四项亦未观测处理回退。查表只占256字节，初始化中位0.00042ms。这是本机Node微基准，不是实浏览器启动提速结论；浏览器DecompressionStream未在此测量，调用与fallback语义保持。类型检查与diff检查通过。
 
