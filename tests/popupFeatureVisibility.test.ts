@@ -141,6 +141,7 @@ describe('popup feature visibility', () => {
         const onboarding = source('src/ui/components/UiLanguageOnboarding.vue');
         const styles = source('src/app/popup/popup.css');
         const i18n = source('src/ui/i18n.ts');
+        const legacyDom = source('src/ui/i18n/legacyDom.ts');
 
         expect(popup).toContain('uiLanguageSetupCompleted');
         expect(popup).toContain('<UiLanguageOnboarding');
@@ -164,19 +165,31 @@ describe('popup feature visibility', () => {
         expect(styles).toContain('.popup-shell.language-onboarding-shell { overflow-x: hidden; }');
         expect(styles).toContain('.popup-shell { max-height: 560px; overflow-y: auto;');
         expect(onboarding).toContain('.language-onboarding {\n  position: relative;');
-        expect(i18n).toContain('function isRelevantUiMutation');
-        expect(i18n).toContain('setTimeout(() => {');
-        expect(i18n).toContain('state.observer.disconnect();');
+        expect(i18n).toContain("import {createUiI18nDirective, observeUiDocument} from './i18n/legacyDom';");
+        expect(i18n).toContain('const directive = createUiI18nDirective(context);');
+        expect(i18n).toContain('observeUiDocument(uiRoot, context)');
+        expect(legacyDom).toContain('function isRelevantUiMutation');
+        expect(legacyDom).toContain('setTimeout(() => {');
+        expect(legacyDom).toContain('state.observer.disconnect();');
     });
 
     it('places app language after extension status and target language first in translation display', () => {
         const settings = source('src/features/settings/ui/SettingsSections.vue');
         const options = source('src/app/options/OptionsApp.vue');
 
-        expect(settings.indexOf('data-testid="plugin-master-setting"')).toBeLessThan(settings.indexOf("t('settings.general.language')"));
-        expect(settings.indexOf("t('settings.general.language')")).toBeLessThan(settings.indexOf('label="界面主题"'));
-        expect(settings.indexOf("t('settings.general.defaultTargetLanguage')")).toBeGreaterThan(settings.indexOf('data-testid="default-translation-service-card"'));
-        expect(settings.indexOf("t('settings.general.defaultTargetLanguage')")).toBeLessThan(settings.indexOf('label="翻译模式"'));
+        const positions = {
+            status: settings.indexOf('data-testid="plugin-master-setting"'),
+            language: settings.indexOf("t('settings.general.language')"),
+            theme: settings.indexOf("t('settings.general.theme')"),
+            service: settings.indexOf('data-testid="default-translation-service-card"'),
+            target: settings.indexOf("t('settings.general.defaultTargetLanguage')"),
+            display: settings.indexOf('label="翻译模式"'),
+        };
+        for (const position of Object.values(positions)) expect(position).toBeGreaterThanOrEqual(0);
+        expect(positions.status).toBeLessThan(positions.language);
+        expect(positions.language).toBeLessThan(positions.theme);
+        expect(positions.target).toBeGreaterThan(positions.service);
+        expect(positions.target).toBeLessThan(positions.display);
         expect(options).not.toContain('<UiLanguageSelector />');
         expect(options).not.toContain('<p>{{ activeItem.detail }}</p>');
     });
@@ -275,12 +288,17 @@ describe('popup feature visibility', () => {
     });
 
     it('keeps full-page floating-ball and hotkey controls in the options page', () => {
-        const options = source('src/features/settings/ui/SettingsSections.vue');
+        const elements = templateElements(source('src/features/settings/ui/SettingsSections.vue'));
 
-        expect(options).toContain('v-model="floatingBallEnabled"');
-        expect(options).toContain('aria-label="全文翻译悬浮球"');
-        expect(options).toContain(':model-value="config.floatingBallHotkey"');
-        expect(options).toContain('aria-label="全文翻译快捷键"');
+        const toggles = elements.filter(node => node.tag === 'el-switch'
+            && directive(node, 'model') === 'floatingBallEnabled');
+        expect(toggles).toHaveLength(1);
+        expect(directive(toggles[0], 'bind', 'aria-label')).toBe("t('settings.general.floatingBall')");
+        const hotkeys = elements.filter(node => node.tag === 'el-select'
+            && directive(node, 'bind', 'model-value') === 'config.floatingBallHotkey');
+        expect(hotkeys).toHaveLength(1);
+        expect(hotkeys[0].props.some(prop => prop.type === 6 && prop.name === 'aria-label'
+            && prop.value?.content === '全文翻译快捷键')).toBe(true);
     });
 
     it('keeps beta labels out of every user-facing feature surface', () => {

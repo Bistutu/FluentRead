@@ -14,9 +14,11 @@ import {createUserscriptInlineCssCompressionPlugin} from './inlineCssPlugin';
 import {createUserscriptAboutImagesCompressionPlugin} from './aboutImagesPlugin';
 import {createUserscriptServiceBrandIconsCompressionPlugin} from './serviceBrandIconsPlugin';
 import {createUserscriptSettingsDataPlugin} from './settingsDataPlugin';
+import {packUiLanguageBundle} from './languageData';
 import {gzipUserscriptBuildData} from './buildGzip';
 import {encodeUserscriptData} from './buildDataEncoding';
-import {UI_LANGUAGE_BUNDLES, zhCNMessages} from './languageBundles';
+import {UI_LANGUAGE_BUNDLES, zhCNMessages, currentUserscriptLanguageBundle, createUserscriptLanguageUpdate, userscriptPageMessages} from './languageBundles';
+import type {RegisteredUiLanguage, UiLanguageBundle} from '../src/core/i18n/types';
 import {createDeepLXRuntimeBuildPlugin} from '../scripts/testing/deeplx-runtime-build';
 
 const root = resolve(__dirname, '..');
@@ -27,6 +29,7 @@ const packageJson = JSON.parse(fs.readFileSync(resolve(root, 'package.json'), 'u
 const iconDataUrl = `data:image/png;base64,${fs.readFileSync(resolve(root, 'public/icon/64.png')).toString('base64')}`;
 const bundleLibraries = process.env.FLUENTREAD_USERSCRIPT_STANDALONE === '1';
 const greasyForkSource = process.env.FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE === '1';
+const prepareGreasyForkData = process.env.FLUENTREAD_USERSCRIPT_PREPARE_RESOURCES === '1';
 const vendorUrl = process.env.FLUENTREAD_USERSCRIPT_VENDOR_URL;
 const dataUrl = process.env.FLUENTREAD_USERSCRIPT_DATA_URL;
 const allowedResourceUrl = (url: string | undefined) => Boolean(url && /^(?:https:\/\/|http:\/\/127\.0\.0\.1(?::\d+)?\/)/u.test(url));
@@ -78,19 +81,14 @@ function serializeUiMessages(value: unknown): string {
     return JSON.stringify(value, (_key, item) => item && typeof item === 'object' && !Array.isArray(item)
         ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) : item);
 }
-// 文档页与请求统计组件在所有 userscript 入口都不挂载；按构建能力裁剪内嵌词典，远程固定资源保持原样。
-function userscriptPageMessages<T extends Record<string, string>>(messages: T): T {
-    return Object.fromEntries(Object.entries(messages).filter(([key]) => !key.startsWith('document.')
-        && !key.startsWith('translationStats.'))) as T;
-}
 // 与中文内嵌目录一致，仅投影扩展文档页专用 key；固定远程与外部资源继续使用原 bundle。
 const compressedUiLanguageBundles = greasyForkSource ? {} : Object.fromEntries(Object.entries(UI_LANGUAGE_BUNDLES)
     .filter(([language]) => language === 'en-US')
     .map(([language, bundle]) => [
     language,
     ((bytes: Uint8Array) => bundleLibraries ? encodeUserscriptData(bytes) : Buffer.from(bytes).toString('base64'))(
-        gzipUserscriptBuildData(Buffer.from(serializeUiMessages({...bundle,
-            messages: userscriptPageMessages(bundle.messages)})))),
+        gzipUserscriptBuildData(Buffer.from(serializeUiMessages(packUiLanguageBundle({...bundle,
+            messages: userscriptPageMessages(bundle.messages)}))))),
 ]));
 const remoteUiLanguageBundles = Object.fromEntries(Object.entries(UI_LANGUAGE_BUNDLES)
     .filter(([language]) => language !== 'en-US')
@@ -104,6 +102,15 @@ const remoteUiLanguageBundles = Object.fromEntries(Object.entries(UI_LANGUAGE_BU
         }
         return [language, fileName];
     }));
+// 固定五语 JSON 和 Greasy Fork DATA 只作为发布基线；所有当前修订由构建期差分自动携带。
+const pinnedData = greasyForkSource ? (runInNewContext(fs.readFileSync(resolve(root, 'userscript/resources/fluentread-data.v1.js'), 'utf8'), {}, {timeout: 5_000}) as {english: UiLanguageBundle; zhCNMessages: Record<string, string>; siteCatalogs: Record<string, unknown>; css: string}) : undefined;
+const uiLanguageUpdates = Object.fromEntries(Object.entries(UI_LANGUAGE_BUNDLES).flatMap(([language, baseline]) => {
+    if (language === 'en-US' && !pinnedData) return [];
+    return [[language, createUserscriptLanguageUpdate(currentUserscriptLanguageBundle(language as RegisteredUiLanguage),
+        language === 'en-US' ? pinnedData!.english : baseline)]];
+}));
+const languageUpdateBytes = gzipUserscriptBuildData(Buffer.from(serializeUiMessages(uiLanguageUpdates)));
+const compressedUiLanguageUpdates = bundleLibraries ? encodeUserscriptData(languageUpdateBytes) : languageUpdateBytes.toString('base64');
 const unicodeNotice = `/*\n${fs.readFileSync(resolve(root, 'public/third-party-notices/unicode-17.0.0.txt'), 'utf8')}\n*/`;
 const serviceIconsLicense = fs.readFileSync(resolve(root, 'public/third-party-notices/lobe-icons-MIT.txt'), 'utf8');
 const tinycolorLicense = fs.readFileSync(resolve(root, 'public/third-party-notices/tinycolor-MIT.txt'), 'utf8');
@@ -128,9 +135,7 @@ const siteCatalogFiles = new Set(['established.json', 'websites.json', 'profiles
 const siteCatalogData = Object.fromEntries([...siteCatalogFiles]
     .map((sourcePath) => [basename(sourcePath, '.json'), JSON.parse(fs.readFileSync(sourcePath, 'utf8'))]));
 // 构建目录提供权威规则；固定资源中未变的规则复用，新增或更新的规则随消费者补齐。
-const pinnedSiteCatalogs = greasyForkSource
-    ? (runInNewContext(fs.readFileSync(resolve(root, 'userscript/resources/fluentread-data.v1.js'), 'utf8'), {}, {timeout: 1_000}) as {siteCatalogs: Record<string, unknown>}).siteCatalogs
-    : undefined;
+const pinnedSiteCatalogs = pinnedData?.siteCatalogs;
 const compressedCatalogPrefix = '\0fluentread-userscript-site-catalog:';
 const externalChineseMessagesId = '\0fluentread-userscript-zh-cn.js';
 
@@ -150,11 +155,14 @@ export function createUserscriptCatalogCompressionPlugin(): Plugin {
         load(id) {
             if (id === externalChineseMessagesId) {
                 if (greasyForkSource) {
-                    const deeplxCopy = {
-                        'settings.services.deeplx.defaultRoute': zhCNMessages['settings.services.deeplx.defaultRoute'],
-                        'settings.services.deeplx.endpointHelp': zhCNMessages['settings.services.deeplx.endpointHelp'],
-                    };
-                    return `export const zhCNMessages = {...globalThis.__FLUENTREAD_USERSCRIPT_DATA__.zhCNMessages,...${JSON.stringify(deeplxCopy)}};`;
+                    const current = userscriptPageMessages(zhCNMessages);
+                    const delta = Object.fromEntries(Object.entries(current).filter(([key, value]) => pinnedData!.zhCNMessages[key] !== value));
+                    const compressed = gzipUserscriptBuildData(Buffer.from(serializeUiMessages(delta))).toString('base64');
+                    return [
+                        "import {inflateWithPako} from '@/userscript/pakoRuntime';",
+                        `const update = JSON.parse(inflateWithPako(Uint8Array.from(atob(${JSON.stringify(compressed)}), character => character.charCodeAt(0))));`,
+                        'export const zhCNMessages = {...globalThis.__FLUENTREAD_USERSCRIPT_DATA__.zhCNMessages, ...update};',
+                    ].join('\n');
                 }
                 const contents = serializeUiMessages(userscriptPageMessages(zhCNMessages));
                 const compressedBytes = gzipUserscriptBuildData(Buffer.from(contents));
@@ -460,6 +468,9 @@ function bundleUserscriptCss(): Plugin {
 
             if (greasyForkSource) {
                 // Greasy Fork 的源码文件保留产品逻辑，静态词条、站点规则和样式单独随固定版本缓存。
+                if (!prepareGreasyForkData && cssEntries.length && css !== pinnedData!.css) {
+                    throw new Error('Greasy Fork CSS changed; prepare and publish a new immutable data resource');
+                }
                 const data = {
                     english: UI_LANGUAGE_BUNDLES['en-US'],
                     zhCNMessages,
@@ -469,10 +480,11 @@ function bundleUserscriptCss(): Plugin {
                 this.emitFile({
                     type: 'asset',
                     fileName: 'fluentread-data.v1.js',
-                    source: [
+                    // 已发布 DATA 是不可变基线；当前词典增量和站点规则分别随各自消费者更新。
+                    source: prepareGreasyForkData ? [
                         '/* FluentRead non-code data: UI translations, site rules and CSS. */',
                         `globalThis.__FLUENTREAD_USERSCRIPT_DATA__=${JSON.stringify(data)};`,
-                    ].join('\n'),
+                    ].join('\n') : fs.readFileSync(resolve(root, 'userscript/resources/fluentread-data.v1.js'), 'utf8'),
                 });
             }
 
@@ -608,6 +620,7 @@ export default defineConfig({
         'import.meta.env.BROWSER': JSON.stringify('userscript'),
         'import.meta.env.MANIFEST_VERSION': '2',
         __FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__: JSON.stringify(compressedUiLanguageBundles),
+        __FLUENTREAD_USERSCRIPT_LANGUAGE_UPDATES__: JSON.stringify(compressedUiLanguageUpdates),
         __FLUENTREAD_USERSCRIPT_REMOTE_LANGUAGES__: JSON.stringify(remoteUiLanguageBundles),
         __FLUENTREAD_USERSCRIPT_RESOURCE_COMMIT__: JSON.stringify(userscriptLanguageResourceCommit),
         __FLUENTREAD_FULL_OPTIONS__: JSON.stringify(bundleLibraries),

@@ -3,30 +3,49 @@ import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {resolve} from 'node:path';
 import {runInNewContext} from 'node:vm';
-import {afterEach, describe, expect, it, vi} from 'vitest';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 // 脚本发布的语言资源不含智能高亮文案；摘要必须按脚本实际使用的投影计算。
-import {UI_LANGUAGE_BUNDLES} from '../userscript/languageBundles';
+import {UI_LANGUAGE_BUNDLES, currentUserscriptLanguageBundle, createUserscriptLanguageUpdate} from '../userscript/languageBundles';
+import {gzipUserscriptBuildData} from '../userscript/buildGzip';
 import {UI_LANGUAGE_BUNDLES as extensionBundles} from '@/src/core/i18n/bundles';
 import {aiRequestTimeoutMessages} from '@/src/core/i18n/messages/aiRequestTimeout';
 import {ungzip} from 'pako';
+import {packUiLanguageBundle, unpackUiLanguageBundle} from '@/userscript/languageData';
 import userscriptConfig from '../userscript/vite.config';
 
 const languageDir = resolve(process.cwd(), 'userscript/languages');
 const digest = createHash('sha256').update(JSON.stringify(UI_LANGUAGE_BUNDLES['fr-FR'])).digest('hex').slice(0, 16);
 const fileName = `fr-FR.${digest}.json`;
 const source = readFileSync(resolve(languageDir, fileName), 'utf8');
-const sweepKeys = ['sectionTranslation.picker.preview', 'sectionTranslation.picker.instruction', 'popup.sectionTranslationTitle', 'sectionTranslation.picker.dragging', 'sectionTranslation.scope.selected'];
-const sweepCopy = (language: keyof typeof extensionBundles) => Object.fromEntries(sweepKeys.map(key => [key, extensionBundles[language].messages[key]]));
-const deeplxKeys = ['settings.services.deeplx.defaultRoute', 'settings.services.deeplx.endpointHelp'];
-const deeplxCopy = (language: keyof typeof extensionBundles) => Object.fromEntries(deeplxKeys.map(key => [key, extensionBundles[language].messages[key]]));
-
 const resourceCommit = '70d3d901033a579e32a5bf5e6af14555f0d140bb';
+
+describe('embedded language columns', () => {
+    it('roundtrips sorted catalogs and preserves duplicate patterns and optional captures', () => {
+        const bundle = {messages: {z: '末尾', a: 'first'}, legacyText: {'旧文案': 'legacy'}, legacyPatterns: {
+            early: [], late: [['^same$', 'localized'], ['^same$', 'fallback', []], ['^(.+)$', '{1}', [1]]],
+        }} as const;
+        const packed = packUiLanguageBundle(bundle);
+        expect(packed).toEqual([[['a', 'z'], ['旧文案']], [[], [], []],
+            [['^same$', '^same$', '^(.+)$'], ['localized', 'fallback', '{1}'], [null, [], [1]]], [['first', '末尾'], ['legacy']]]);
+        expect(unpackUiLanguageBundle(JSON.parse(JSON.stringify(packed)))).toEqual(bundle);
+        expect(unpackUiLanguageBundle(bundle)).toBe(bundle);
+        expect(packUiLanguageBundle({...bundle, messages: {a: 'first', z: '末尾'}})).toEqual(packed);
+    });
+});
 
 describe('userscript remote UI language data', () => {
     it('keeps the complete settings notice aligned with the shared locale source', () => {
         const component = readFileSync(resolve(process.cwd(), 'src/features/settings/ui/services/ServiceConfiguration.vue'), 'utf8');
         expect(component).toContain("translateLegacy('" + mimoRetirementSource + "')");
         expect(component).toContain('data-mimo-retirement-note');
+    });
+
+    beforeEach(() => {
+        const defines = (userscriptConfig as {define: Record<string, string>}).define;
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_DATA__', undefined);
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_LANGUAGE_UPDATES__', JSON.parse(defines.__FLUENTREAD_USERSCRIPT_LANGUAGE_UPDATES__));
+        vi.stubGlobal('DecompressionStream', undefined);
+        vi.stubGlobal('pako', {ungzip});
     });
 
     afterEach(() => {
@@ -53,6 +72,8 @@ describe('userscript remote UI language data', () => {
             delete pinned.english.messages['settings.services.deeplx.defaultRoute'];
             pinned.english.messages['settings.services.deeplx.endpointHelp'] = 'Legacy endpoint route help';
         }
+        const englishUpdate = createUserscriptLanguageUpdate(currentUserscriptLanguageBundle('en-US'), pinned.english);
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_LANGUAGE_UPDATES__', gzipUserscriptBuildData(Buffer.from(JSON.stringify({'en-US': englishUpdate}))).toString('base64'));
         const original = JSON.stringify(pinned.english);
         vi.stubGlobal('__FLUENTREAD_USERSCRIPT_DATA__', pinned);
         // data 优先于压缩资源；旧资源缺失或过期的两条文案也必须在注册时修复。
@@ -65,7 +86,7 @@ describe('userscript remote UI language data', () => {
         await expect(loader.ensureUiLanguageBundle('en-US')).resolves.toBe(true);
         expect(hasUiLanguageBundle('en-US')).toBe(true);
         expect(translateLegacyText(mimoRetirementSource, 'en-US')).toBe(extensionBundles['en-US'].legacyText[mimoRetirementSource]);
-        for (const key of deeplxKeys) expect(translate(key, 'en-US')).toBe(extensionBundles['en-US'].messages[key]);
+        for (const [key, text] of Object.entries(currentUserscriptLanguageBundle('en-US').messages)) expect(translate(key, 'en-US')).toBe(text);
         expect(JSON.stringify(pinned.english)).toBe(original);
         expect(requests).toEqual([]);
     });
@@ -191,15 +212,11 @@ describe('userscript remote UI language data', () => {
         vi.stubGlobal('__FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__', {});
         vi.stubGlobal('__FLUENTREAD_USERSCRIPT_REMOTE_LANGUAGES__', {[language]: remoteFile});
         vi.stubGlobal('__FLUENTREAD_USERSCRIPT_RESOURCE_COMMIT__', resourceCommit);
-        const assertSweepCopy = async () => {
+        const current = currentUserscriptLanguageBundle(language);
+        const assertCurrentCopy = async () => {
             const core = await import('@/src/core/i18n');
-            for (const key of [...sweepKeys, ...deeplxKeys]) {
-                expect(core.translate(key, language)).toBe(extensionBundles[language].messages[key]);
-            }
-        };
-        const recovery = {
-            'learning.panelLoadError': extensionBundles[language].messages['learning.panelLoadError'],
-            'learning.reloadPage': extensionBundles[language].messages['learning.reloadPage'],
+            for (const [key, text] of Object.entries(current.messages)) expect(core.translate(key, language), `${language}: ${key}`).toBe(text);
+            for (const [source, text] of Object.entries(current.legacyText)) expect(core.translateLegacyText(source, language), `${language}: ${source}`).toBe(text);
         };
         async function assertLocalizedRegistration() {
             const core = await import('@/src/core/i18n');
@@ -207,22 +224,18 @@ describe('userscript remote UI language data', () => {
             try {
                 const loader = await import('@/userscript/uiLanguageBundles');
                 await expect(loader.ensureUiLanguageBundle(language)).resolves.toBe(true);
-                await assertSweepCopy();
+                await assertCurrentCopy();
                 expect(core.translateLegacyText(mimoRetirementSource, language)).toBe(extensionBundles[language].legacyText[mimoRetirementSource]);
                 expect(register).toHaveBeenCalledTimes(1);
-                expect(register).toHaveBeenCalledWith(language, {
-                    ...original, legacyText: {...original.legacyText, ...mimoRetirementLegacyText[language]}, messages: {...recovery, ...original.messages, ...aiRequestTimeoutMessages[language], ...sweepCopy(language), ...deeplxCopy(language)},
-                });
-                for (const [key, text] of Object.entries(recovery)) {
-                    expect(core.translate(key, language)).toBe(text);
-                    expect(core.translate(key, language)).not.toBe(core.translate(key, 'zh-CN'));
+                const registered = register.mock.calls[0][1];
+                for (const [key, text] of Object.entries(current.messages)) expect(registered.messages[key]).toBe(text);
+                for (const [source, text] of Object.entries(current.legacyText)) expect(registered.legacyText[source]).toBe(text);
+                for (const phase of ['early', 'late'] as const) {
+                    expect(registered.legacyPatterns[phase]).toEqual(current.legacyPatterns[phase]);
                 }
-                for (const [key, text] of Object.entries(aiRequestTimeoutMessages[language])) {
-                    expect(core.translate(key, language)).toBe(text);
-                    if (key !== 'settings.requestLimits.seconds') expect(core.translate(key, language)).not.toBe(core.translate(key, 'zh-CN'));
-                }
+                expect(registered.legacyText['服务优先顺序']).toBe(original.legacyText['服务优先顺序']);
                 await expect(loader.ensureUiLanguageBundle(language)).resolves.toBe(true);
-                await assertSweepCopy();
+                await assertCurrentCopy();
                 expect(core.translateLegacyText(mimoRetirementSource, language)).toBe(extensionBundles[language].legacyText[mimoRetirementSource]);
                 expect(register).toHaveBeenCalledTimes(1);
             } finally { register.mockRestore(); }
@@ -239,7 +252,7 @@ describe('userscript remote UI language data', () => {
         expect(readFileSync(resolve(languageDir, remoteFile), 'utf8')).toBe(remoteSource);
     });
 
-    it('preserves recovery messages supplied by a remote bundle instead of replacing them with the local supplement', async () => {
+    it('uses current source copy over stale cached recovery messages without mutating the cache', async () => {
         const original = JSON.parse(source);
         const messages = {...original.messages,
             'learning.panelLoadError': 'Remote section recovery', 'learning.reloadPage': 'Remote reload'};
@@ -256,13 +269,134 @@ describe('userscript remote UI language data', () => {
             const loader = await import('@/userscript/uiLanguageBundles');
             await expect(loader.ensureUiLanguageBundle('fr-FR')).resolves.toBe(true);
             expect(register).toHaveBeenCalledTimes(1);
-            expect(register).toHaveBeenCalledWith('fr-FR', {
-                ...supplied, legacyText: {...supplied.legacyText, ...mimoRetirementLegacyText['fr-FR']}, messages: {...supplied.messages, ...aiRequestTimeoutMessages['fr-FR'], ...sweepCopy('fr-FR'), ...deeplxCopy('fr-FR')},
-            });
-            expect(core.translate('learning.panelLoadError', 'fr-FR')).toBe('Remote section recovery');
-            expect(core.translate('learning.reloadPage', 'fr-FR')).toBe('Remote reload');
+            const registered = register.mock.calls[0][1];
+            const current = currentUserscriptLanguageBundle('fr-FR');
+            for (const [key, text] of Object.entries(current.messages)) expect(registered.messages[key]).toBe(text);
+            expect(core.translate('learning.panelLoadError', 'fr-FR')).toBe(current.messages['learning.panelLoadError']);
+            expect(core.translate('learning.reloadPage', 'fr-FR')).toBe(current.messages['learning.reloadPage']);
             expect(supplied.messages).toEqual(messages);
         } finally { register.mockRestore(); }
+    });
+
+    it('retries a failed local increment decode using the unchanged cached remote resource', async () => {
+        const original = JSON.parse(source), before = JSON.stringify(original);
+        globalThis.GM = {async getValue() {return original;}, xmlHttpRequest() {throw new Error('offline');}};
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__', {});
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_REMOTE_LANGUAGES__', {'fr-FR': fileName});
+        vi.stubGlobal('pako', {ungzip: vi.fn().mockImplementationOnce(() => {throw new Error('temporary decompression failure');}).mockImplementation(ungzip)});
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        try {
+            const core = await import('@/src/core/i18n');
+            const loader = await import('@/userscript/uiLanguageBundles');
+            await expect(loader.ensureUiLanguageBundle('fr-FR')).resolves.toBe(false);
+            expect(core.hasUiLanguageBundle('fr-FR')).toBe(false);
+            await expect(loader.ensureUiLanguageBundle('fr-FR')).resolves.toBe(true);
+            expect(core.translate('settings.floatingBall.hoverDelayHelp', 'fr-FR')).toBe(extensionBundles['fr-FR'].messages['settings.floatingBall.hoverDelayHelp']);
+            expect(JSON.stringify(original)).toBe(before);
+        } finally {warn.mockRestore();}
+    });
+
+    it('reconstructs duplicate regex entries, reordering and changed captures without changing the baseline', async () => {
+        const baseline = {messages: {'sample': 'old'}, legacyText: {}, legacyPatterns: {early: [], late: [
+            ['^same (.+)$', 'localized {1}', [1]], ['^same (.+)$', 'fallback {1}'], ['^removed$', 'removed'],
+        ]}} as const;
+        const current = {messages: {'sample': 'new'}, legacyText: {}, legacyPatterns: {early: [['^early$', 'new early']], late: [
+            baseline.legacyPatterns.late[1], ['^same (.+)$', 'updated {1}', [1]], baseline.legacyPatterns.late[0],
+        ]}} as const;
+        const update = createUserscriptLanguageUpdate(current, baseline);
+        expect(createUserscriptLanguageUpdate(current, baseline)).toEqual(update);
+        expect(update.legacyPatterns.late).toEqual([current.legacyPatterns.late[1]]);
+        expect(update.patternOrder?.late).toEqual([1, -1, 0]);
+        expect(createUserscriptLanguageUpdate(current, current)).toEqual({messages: {}, legacyText: {}, legacyPatterns: {early: [], late: []}});
+        const before = JSON.stringify(baseline);
+        globalThis.GM = {async getValue() {return baseline;}, xmlHttpRequest() {throw new Error('unexpected request');}};
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__', {});
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_REMOTE_LANGUAGES__', {'fr-FR': fileName});
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_LANGUAGE_UPDATES__', gzipUserscriptBuildData(Buffer.from(JSON.stringify({'fr-FR': update}))).toString('base64'));
+        const core = await import('@/src/core/i18n'), register = vi.spyOn(core, 'registerUiLanguageBundle');
+        try {
+            const loader = await import('@/userscript/uiLanguageBundles');
+            await expect(loader.ensureUiLanguageBundle('fr-FR')).resolves.toBe(true);
+            expect(register).toHaveBeenCalledWith('fr-FR', current);
+            expect(JSON.stringify(baseline)).toBe(before);
+        } finally {register.mockRestore();}
+    });
+
+    it.each([
+        {messages: null},
+        {patternOrder: {early: 'invalid'}},
+        {patternOrder: {early: [0.5]}},
+        {patternOrder: {early: [999999]}},
+        {patternOrder: {early: [-999999]}},
+    ])('rejects malformed local update %j without registering or changing the baseline', async invalid => {
+        const original = JSON.parse(source), before = JSON.stringify(original);
+        const update = {messages: {}, legacyText: {}, legacyPatterns: {early: [], late: []}, ...invalid};
+        globalThis.GM = {async getValue() {return original;}, xmlHttpRequest() {throw new Error('unexpected request');}};
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__', {});
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_REMOTE_LANGUAGES__', {'fr-FR': fileName});
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_LANGUAGE_UPDATES__', gzipUserscriptBuildData(Buffer.from(JSON.stringify({'fr-FR': update}))).toString('base64'));
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        try {
+            const core = await import('@/src/core/i18n');
+            const loader = await import('@/userscript/uiLanguageBundles');
+            await expect(loader.ensureUiLanguageBundle('fr-FR')).resolves.toBe(false);
+            expect(core.hasUiLanguageBundle('fr-FR')).toBe(false);
+            expect(JSON.stringify(original)).toBe(before);
+        } finally {warn.mockRestore();}
+    });
+
+    it('keeps baseline compatibility when an older build has no local increment define', async () => {
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_LANGUAGE_UPDATES__', undefined);
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__', {});
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_REMOTE_LANGUAGES__', {'fr-FR': fileName});
+        globalThis.GM = {async getValue() {return JSON.parse(source);}, xmlHttpRequest() {throw new Error('unexpected request');}};
+        const core = await import('@/src/core/i18n'), register = vi.spyOn(core, 'registerUiLanguageBundle');
+        try {
+            const loader = await import('@/userscript/uiLanguageBundles');
+            await expect(loader.ensureUiLanguageBundle('fr-FR')).resolves.toBe(true);
+            expect(register).toHaveBeenCalledWith('fr-FR', JSON.parse(source));
+        } finally {register.mockRestore();}
+    });
+
+    it('shares concurrent loads and rerenders once after availability, while unsupported languages render once', async () => {
+        let resolveCache!: (value: unknown) => void;
+        globalThis.GM = {async getValue() {return new Promise(resolve => {resolveCache = resolve;});}, xmlHttpRequest() {throw new Error('unexpected request');}};
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__', {});
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_REMOTE_LANGUAGES__', {'fr-FR': fileName});
+        const loader = await import('@/userscript/uiLanguageBundles');
+        const render = vi.fn();
+        loader.renderWithUiLanguageBundle('fr-FR', render);
+        expect(render).toHaveBeenCalledTimes(1);
+        const first = loader.ensureUiLanguageBundle('fr-FR');
+        expect(loader.ensureUiLanguageBundle('fr-FR')).toBe(first);
+        resolveCache(JSON.parse(source));
+        await expect(first).resolves.toBe(true);
+        expect(render).toHaveBeenCalledTimes(2);
+        loader.renderWithUiLanguageBundle('fr-FR', render);
+        expect(render).toHaveBeenCalledTimes(3);
+        const unsupported = vi.fn();
+        loader.renderWithUiLanguageBundle('ko-KR', unsupported);
+        await expect(loader.ensureUiLanguageBundle('ko-KR')).resolves.toBe(false);
+        expect(unsupported).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(['http', 'invalid-resource', 'invalid-compressed'] as const)('rejects %s resources without registering them', async kind => {
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__', kind === 'invalid-compressed'
+            ? {'fr-FR': gzipUserscriptBuildData(Buffer.from('null')).toString('base64')} : {});
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_REMOTE_LANGUAGES__', {'fr-FR': fileName});
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_RESOURCE_COMMIT__', resourceCommit);
+        const requests: string[] = [];
+        globalThis.GM = {
+            async getValue() {throw new Error('cache unavailable');},
+            xmlHttpRequest(details) {requests.push(details.url);return Promise.resolve({status: kind === 'http' ? 503 : 200, statusText: '', responseText: 'null'});},
+        };
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        try {
+            const core = await import('@/src/core/i18n'), loader = await import('@/userscript/uiLanguageBundles');
+            await expect(loader.ensureUiLanguageBundle('fr-FR')).resolves.toBe(false);
+            expect(core.hasUiLanguageBundle('fr-FR')).toBe(false);
+            expect(requests).toHaveLength(kind === 'invalid-compressed' ? 0 : 2);
+        } finally {warn.mockRestore();}
     });
 
 });

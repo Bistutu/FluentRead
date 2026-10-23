@@ -1,7 +1,7 @@
 <!--
  * @file src/features/video-subtitle/ui/VideoSentenceLearning.vue
  * 文件职责：在现有播放器上提供可关闭的完整句学习面板，连接原始字幕、主动播放控制和现有收藏。
- * 主要内容：以双语阅读卡呈现原句、可选本地读音、译文和按需讲解；索引跟随播放、合并快速换句的翻译请求，读音独立跟随固定句或历史句、失败可单独重试、收起时取消且不新增请求；短高换句只归顶自有整卡滚动区，按配置身份管理自动译文、人工草稿与准确的异步收藏状态。
+ * 主要内容：以双语阅读卡呈现原句、可选本地读音、译文和按需讲解；服务与后台错误仅在错误展示边界本地化，字幕、译文与模型正文保留原值；索引跟随播放、合并快速换句的翻译请求，读音独立跟随固定句或历史句、失败可单独重试、收起时取消且不新增请求；短高换句只归顶自有整卡滚动区，按配置身份管理自动译文、人工草稿与准确的异步收藏状态。
  * 材料关联：完整句收藏与问答引用归于可靠视频来源与原始时间，关闭、更换句子和隐私状态禁止迟到关联。
  * 模块边界：不创建或定位播放器，学习键只接受包含当前视频的显式逻辑播放器及面板自身，菜单让位限定已验证同视频范围；不采集音频或计算掌握状态，翻译沿用注入服务，卸载取消控制与迟到回写。
  -->
@@ -30,7 +30,7 @@
           <div class="fr-video-learning-card-heading"><span>{{ t('video.learning.translationTitle') }}</span><button type="button" class="fr-video-learning-text-button" :data-learning-action="editingTranslation ? 'done-translation' : 'edit-translation'" @click="editTranslation">{{ t(editingTranslation ? 'video.learning.done' : 'video.learning.edit') }}</button></div>
           <textarea v-if="editingTranslation" ref="translationEditor" v-model="translation" data-learning-translation :aria-label="t('video.learning.translation')" :placeholder="t('video.learning.editPlaceholder')" rows="2" maxlength="6000" @focus="pinCurrent" @input="onTranslationInput" />
           <p v-else class="fr-video-learning-translation" data-learning-translation-display :aria-busy="translating && !translationEdited" :class="{'is-loading': translating && !translation}">{{ translation || (translating ? t('video.learning.translating') : '') }}</p>
-          <div v-if="translationError" class="fr-video-learning-inline-error" role="alert"><span>{{ translationError }}</span><button type="button" class="fr-video-learning-text-button" @click="loadTranslation">{{ t('video.retryTranslation') }}</button></div>
+          <div v-if="translationError" class="fr-video-learning-inline-error" role="alert"><span>{{ translateLegacy(translationError) }}</span><button type="button" class="fr-video-learning-text-button" @click="loadTranslation">{{ t('video.retryTranslation') }}</button></div>
         </div>
         <p class="fr-video-learning-mode-caption">{{ t('video.learning.mode') }}</p>
         <div class="fr-video-learning-mode" role="group" :aria-label="t('video.learning.mode')">
@@ -47,7 +47,7 @@
         <p v-if="saved" role="status" class="fr-video-learning-status fr-video-learning-saved-status"><span>{{ t('video.learning.savedShort') }}</span><button type="button" class="fr-video-learning-text-button" data-learning-action="library" @click="openLibrary">{{ t('video.learning.library') }} ↗</button></p>
         <p v-if="helpOpen" class="fr-video-learning-hint" data-learning-help>{{ t('video.learning.hint') }}</p>
         <p v-if="notice" role="status" class="fr-video-learning-status">{{ notice }}</p>
-        <p v-if="error" role="alert" class="fr-video-learning-inline-error">{{ error }}</p>
+        <p v-if="error" role="alert" class="fr-video-learning-inline-error">{{ translateLegacy(error) }}</p>
       </template>
       <p v-else class="fr-video-learning-empty">{{ t('video.learning.empty') }}</p>
     </div>
@@ -87,7 +87,7 @@ import {annotateVideoReading} from '../content/readingAnnotationClient';
 const props = defineProps<{video: HTMLVideoElement; player?: HTMLElement; cues: VideoSubtitleCue[]; platform: 'youtube' | 'x'; sourceUrl?: string;
   title: string; sourceLanguage: string; targetLanguage: string; translate: (text: string, signal: AbortSignal) => Promise<string>}>();
 const emit = defineEmits<{close: []}>();
-const {t} = useUiI18n();
+const {t, translateLegacy} = useUiI18n();
 const appearance = ref(normalizeVideoSentenceLearningAppearance(config.videoSentenceLearningAppearance));
 const appearanceStyle = computed(() => getVideoSentenceLearningAppearanceCssVars(appearance.value));
 const helpOpen = ref(false);

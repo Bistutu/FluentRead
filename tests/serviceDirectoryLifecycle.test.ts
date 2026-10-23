@@ -229,9 +229,9 @@ describe('免费设置的轮询和模板事件归属', () => {
   it('隐藏清空未提交邮箱并拒绝直接动作，重开不复活旧超时回调', async () => {
     await mountFree();state.myMemoryEmailDraft = 'draft@example.test';invalidate('hidden');await settle();expect(state.myMemoryEmailDraft).toBe('')
     state.setMode('sequential');state.toggle('deeplx', true);state.move('microsoft', 1);state.myMemoryEmailDraft = 'late@example.test';state.commitMyMemoryEmail();expect(props.config.myMemoryEmail).toBe('');expect(props.config.freeTranslationMode).toBe('balanced');expect(props.config.freeTranslationOrder).not.toContain('deeplx')
-    app.unmount();await mountFree({advanced: true});const old = node(n => n.props['aria-label'] === '每个服务最多等待（秒）').props['onUpdate:modelValue'];const initial = props.config.freeTranslationTimeoutMs
+    app.unmount();await mountFree({advanced: true});const old = node(n => n.props['aria-label'] === 'settings.services.waitTimeout').props['onUpdate:modelValue'];const initial = props.config.freeTranslationTimeoutMs
     props.active = false;await settle();props.active = true;await settle();old(9);expect(props.config.freeTranslationTimeoutMs).toBe(initial)
-    node(n => n.props['aria-label'] === '每个服务最多等待（秒）').props['onUpdate:modelValue'](9);expect(props.config.freeTranslationTimeoutMs).toBe(9000)
+    node(n => n.props['aria-label'] === 'settings.services.waitTimeout').props['onUpdate:modelValue'](9);expect(props.config.freeTranslationTimeoutMs).toBe(9000)
   })
   it('未知模式、非布尔开关与分流模式排序不写入配置', async () => {
     await mountFree();const original = props.config.freeTranslationOrder.slice();state.setMode('unknown');state.toggle('deeplx', 'yes');state.move('microsoft', 1)

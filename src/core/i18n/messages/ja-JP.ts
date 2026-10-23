@@ -28,7 +28,13 @@ import {localTtsJapaneseMessages} from './localTts';
 import {translationStatsJapaneseMessages} from './translationStats';
 import {localTranslationJapaneseMessages} from './localTranslation';
 
+import {personalCorrectionMessages} from './personalCorrections';
+
+import countForms from './count-forms.json';
+
 export const jaJPMessages = {
+    ...countForms['ja-JP'],
+    ...personalCorrectionMessages['ja-JP'],
     "document.config.loadFailed": "設定を読み込めませんでした。再読み込みしてもう一度お試しください。",
     "popup.compact.translate": "翻訳",
     "popup.compact.restore": "戻す",
@@ -784,7 +790,7 @@ export const jaJPMessages = {
     'language.settingsLabel': 'アプリの言語',
     'language.settingsDescription': 'FluentRead 全体で使用する言語を選択します。',
     'language.help': '変更はすぐに反映されます。',
-    'language.saveFailed': 'インターフェース言語を保存できませんでした。設定を開き直してもう一度お試しください。',
+    'language.saveFailed': '表示言語を切り替えられませんでした。もう一度お試しください。',
     'language.changed': 'インターフェース言語を変更しました',
     'language.onboardingWelcomeEyebrow': 'ようこそ',
     'language.onboardingWelcomeTitle': 'FluentRead へようこそ',

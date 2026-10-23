@@ -7,6 +7,7 @@
   "reencounter.current": "Текущее предложение",
   "reencounter.saved": "Сохранённое предложение",
   "reencounter.loading": "Загрузка сохранённого выражения…",
+  "reencounter.readFailed": "Не удалось загрузить сохранённое выражение. Повторите попытку.",
   "reencounter.noSentence": "Нет сохранённого предложения.",
   "reencounter.reference": "Сохранённая справка",
   "reencounter.retry": "Повторить",

@@ -7,6 +7,7 @@
   "reencounter.current": "这次读到的原句",
   "reencounter.saved": "收藏时的原句",
   "reencounter.loading": "正在读取这条收藏…",
+  "reencounter.readFailed": "收藏暂时无法读取，请重试。",
   "reencounter.noSentence": "这条收藏没有可用的原句。",
   "reencounter.reference": "收藏时的参考内容",
   "reencounter.retry": "重试",

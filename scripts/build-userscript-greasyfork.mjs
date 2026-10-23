@@ -43,6 +43,7 @@ const baseUrl = prepareResources
     : `https://cdn.jsdelivr.net/gh/FluentRead/FluentRead@${commit}/${resourceDir}`;
 const buildEnv = {
     FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE: '1',
+    FLUENTREAD_USERSCRIPT_PREPARE_RESOURCES: prepareResources ? '1' : '0',
     FLUENTREAD_USERSCRIPT_VENDOR_URL: `${baseUrl}/fluentread-vendor.v1.js`,
     FLUENTREAD_USERSCRIPT_DATA_URL: `${baseUrl}/fluentread-data.v1.js`,
 };

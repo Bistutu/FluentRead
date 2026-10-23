@@ -28,7 +28,13 @@ import {localTtsRussianMessages} from './localTts';
 import {translationStatsRussianMessages} from './translationStats';
 import {localTranslationRussianMessages} from './localTranslation';
 
+import {personalCorrectionMessages} from './personalCorrections';
+
+import countForms from './count-forms.json';
+
 export const ruRUMessages = {
+    ...countForms['ru-RU'],
+    ...personalCorrectionMessages['ru-RU'],
     "document.config.loadFailed": "Не удалось загрузить настройки. Обновите страницу и повторите попытку.",
     "popup.compact.translate": "Перевести",
     "popup.compact.restore": "Вернуть",
@@ -784,7 +790,7 @@ export const ruRUMessages = {
     'language.settingsLabel': 'Язык приложения',
     'language.settingsDescription': 'Выберите язык, который используется во FluentRead.',
     'language.help': 'Изменения применяются сразу.',
-    'language.saveFailed': 'Не удалось сохранить язык интерфейса. Откройте настройки снова и повторите попытку.',
+    'language.saveFailed': 'Не удалось изменить язык интерфейса. Повторите попытку.',
     'language.changed': 'Язык интерфейса изменён',
     'language.onboardingWelcomeEyebrow': 'Добро пожаловать',
     'language.onboardingWelcomeTitle': 'Добро пожаловать во FluentRead',

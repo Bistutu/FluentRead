@@ -5,6 +5,15 @@ import { resolve } from 'node:path';
 import { parseHTML } from 'linkedom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type {VocabularyEntry, VocabularyBookExport} from '@/src/features/vocabulary/learningModel';
+import {hasUiLanguageBundle, translate, translateLegacyText, type UiLanguage} from '@/src/core/i18n';
+import {createUiI18nPlugin, UI_I18N_KEY, useUiI18n, type UiI18nContext} from '@/src/ui/i18n';
+import {createUiLanguageBundleLoader} from '@/src/platform/i18n/uiLanguageBundles';
+
+const languageLoader = vi.hoisted(() => ({ensure: vi.fn<(language: unknown) => Promise<boolean>>()}));
+vi.mock('@/src/platform/i18n/uiLanguageBundles', async importOriginal => ({
+  ...await importOriginal<typeof import('@/src/platform/i18n/uiLanguageBundles')>(),
+  ensureUiLanguageBundle: (language: unknown) => languageLoader.ensure(language),
+}));
 
 interface ComponentTestState {
   browser: {
@@ -40,6 +49,7 @@ vi.mock('@/src/services/config/store', () => ({
   get config() {return (globalThis as any).__fluentReadVocabularyLifecycleTest?.config ?? {uiLanguage: 'zh-CN'};},
   get configReady() {return (globalThis as any).__fluentReadVocabularyLifecycleTest.configReady;},
   requestConfigPatch: (...args: unknown[]) => (globalThis as any).__fluentReadVocabularyLifecycleTest.requestConfigPatch(...args),
+  getConfigRevision: () => 0,
   subscribeConfig: (...args: unknown[]) => (globalThis as any).__fluentReadVocabularyLifecycleTest.subscribeConfig(...args),
 }));
 
@@ -48,8 +58,17 @@ afterEach(async () => {
   for (const dispose of mountedBooks.splice(0).reverse()) await dispose();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  languageLoader.ensure.mockReset();
   setComponentTestState(undefined);
 });
+
+/** 每个普通生命周期用例注入自己的响应式端口，避免 fallbackContext 保留旧 fixture 的 store。 */
+function testI18n(language = runtime.ref<UiLanguage>('zh-CN')): UiI18nContext {
+  const bundleRevision = runtime.ref(0);
+  return {language, bundleRevision, t: (key, params) => {void bundleRevision.value;return translate(key, language.value, params);},
+    translateLegacy: value => {void bundleRevision.value;return translateLegacyText(value, language.value);},
+    setLanguage: async () => false, dispose: () => undefined};
+}
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -60,7 +79,7 @@ function deferred<T>() {
 async function mountBook(confirm: (...args: unknown[]) => Promise<unknown> = async () => undefined,
   response?: (message: Record<string, unknown>) => Promise<unknown>,
   configPatch: (patch: unknown) => Promise<void> = async () => undefined,
-  options: {keepAlive?: boolean; ready?: Promise<void>; entries?: (entry: VocabularyEntry) => VocabularyEntry[]; list?: () => Promise<unknown>} = {}) {
+  options: {keepAlive?: boolean; ready?: Promise<void>; entries?: (entry: VocabularyEntry) => VocabularyEntry[]; list?: () => Promise<unknown>; language?: UiLanguage; realI18nPlugin?: boolean} = {}) {
   const entry = {id:'saved-a', term:'art', normalizedTerm:'art', identityKey:'en:art', sourceLanguage:'en', kind:'expression',
     translations:{'zh-cn':{text:'艺术',updatedAt:1}}, contexts:[{text:'We study art.',sourceUrl:'https://example.test/private-reading',capturedAt:1}], note:'A saved explanation.', phonetic:'',partOfSpeech:'',
     createdAt:1,updatedAt:1,lastSeenAt:1,encounterCount:1,masteryLevel:0,status:'new',nextReviewAt:1,lastReviewedAt:null,
@@ -79,7 +98,7 @@ async function mountBook(confirm: (...args: unknown[]) => Promise<unknown> = asy
     return {success:true,data:{entry:{...entry,status:'mastered'},log:{}}};
   });
   setComponentTestState({browser:{runtime:{sendMessage,onMessage:{addListener:listener=>{listeners.add(listener)},removeListener:listener=>{listeners.delete(listener)}}}},
-    config:{on:true,theme:'light',uiLanguage:'zh-CN',vocabularyBookEnabled:true,selectionTranslatorMode:'disabled',to:'zh-CN'},
+    config:{on:true,theme:'light',uiLanguage:options.language ?? 'zh-CN',vocabularyBookEnabled:true,selectionTranslatorMode:'disabled',to:'zh-CN'},
     configReady:options.ready ?? Promise.resolve(),requestConfigPatch:configPatch,subscribeConfig:(callback:any)=>{configListeners.add(callback);return()=>configListeners.delete(callback)},confirm});
   const {window} = parseHTML('<html><head></head><body></body></html>');
   Object.defineProperty(window.document,'visibilityState',{configurable:true,value:'visible'});
@@ -113,17 +132,69 @@ async function mountBook(confirm: (...args: unknown[]) => Promise<unknown> = asy
   const shown = runtime.ref(true);
   const otherPage = {render: () => null};
   let panel: any;
+  let i18n!: UiI18nContext;
+  const testLanguage = runtime.ref<UiLanguage>(options.language ?? 'zh-CN');
   const bookNode = () => runtime.h(component,{onNavigate:navigate,ref:(instance:any)=>{if(instance)panel=instance.$.setupState;}});
-  const app = renderer.createApp({setup:()=>()=>options.keepAlive
+  const app = renderer.createApp({setup:()=>{i18n = useUiI18n();return ()=>options.keepAlive
     ? runtime.h(runtime.KeepAlive, null, {default: () => shown.value ? bookNode() : runtime.h(otherPage, {key: 'other-page'})})
-    : bookNode()});
+    : bookNode();}});
   app.config.warnHandler=()=>undefined;
-  const host=doc.createElement('main');doc.body.append(host);app.mount(host); let mounted = true; const unmount = () => {if(mounted){mounted=false;app.unmount();}};
+  const host=doc.createElement('main');doc.body.append(host);
+  if (options.realI18nPlugin) app.use(createUiI18nPlugin({documentRoot: host as unknown as HTMLElement, uiRoot: null}));
+  else app.provide(UI_I18N_KEY, testI18n(testLanguage));
+  app.mount(host); let mounted = true; const unmount = () => {if(mounted){mounted=false;app.unmount();}};
   mountedBooks.push(unmount);
   const flush = async () => {for(let i=0;i<12;i++){await Promise.resolve();await runtime.nextTick();}};
   await flush(); if (!options.ready && !options.list) expect(panel.entries).toHaveLength(stored.length);
-  return {panel,entry,messages,exported,download,clicks,unmount,flush,shown,window,host,windowAdd,windowRemove,stored:()=>stored,navigate,listeners,setStored:(entries:VocabularyEntry[])=>{stored=entries},setListReply:(reply?:()=>Promise<unknown>)=>{listReply=reply},emitMessage:(message:unknown)=>{for(const listener of listeners)listener(message)},updateConfig:(patch:Record<string,unknown>)=>{const config=(globalThis as any)[TEST_STATE_KEY].config;Object.assign(config,patch);for(const listener of configListeners)listener(config)}};
+  return {panel,entry,messages,exported,download,clicks,unmount,flush,shown,window,host,windowAdd,windowRemove,i18n,stored:()=>stored,navigate,listeners,setStored:(entries:VocabularyEntry[])=>{stored=entries},setListReply:(reply?:()=>Promise<unknown>)=>{listReply=reply},emitMessage:(message:unknown)=>{for(const listener of listeners)listener(message)},updateConfig:(patch:Record<string,unknown>)=>{const config=(globalThis as any)[TEST_STATE_KEY].config;Object.assign(config,patch);testLanguage.value = config.uiLanguage;for(const listener of configListeners)listener(config)}};
 }
+
+describe('VocabularyBook shared language resources', () => {
+  it('updates a cached Chinese fallback when the first Japanese bundle arrives without another config or collection change', async () => {
+    expect(hasUiLanguageBundle('ja-JP')).toBe(false);
+    const {UI_LANGUAGE_BUNDLES} = await import('@/src/core/i18n/bundles');
+    const reply = deferred<{ok: boolean; status: number; json(): Promise<unknown>}>();
+    const fetchBundle = vi.fn(() => reply.promise);
+    const warn = vi.fn();
+    const ensure = createUiLanguageBundleLoader({resolveUrl: path => `fixture:${path}`, fetch: fetchBundle, warn});
+    languageLoader.ensure.mockImplementation(ensure);
+    const book = await mountBook(undefined, undefined, undefined, {keepAlive: true, entries: () => [], realI18nPlugin: true});
+    const heading = book.host.querySelector('.collection-overview h2')!;
+    expect(heading.textContent).toBe('0 条收藏');
+
+    book.shown.value = false;
+    await book.flush();
+    book.updateConfig({uiLanguage: 'ja-JP'});
+    await book.flush();
+    expect(book.i18n.language.value).toBe('ja-JP');
+    expect(book.i18n.bundleRevision.value).toBe(0);
+    expect(heading.textContent).toBe('0 条收藏');
+    expect(fetchBundle).toHaveBeenCalledOnce();
+    expect(fetchBundle).toHaveBeenCalledWith('fixture:i18n/ja-JP.json');
+    const messagesBeforeBundle = [...book.messages];
+
+    // 真正的资源加载器完成注册；关闭 DOM 扫描，确保刷新来自共享 bundleRevision。
+    reply.resolve({ok: true, status: 200, json: async () => UI_LANGUAGE_BUNDLES['ja-JP']});
+    await book.flush();
+    expect(book.i18n.bundleRevision.value).toBe(1);
+    expect(heading.textContent).toBe('保存済み：0 件');
+    expect(book.messages).toEqual(messagesBeforeBundle);
+    expect(warn).not.toHaveBeenCalled();
+    expect(book.host.querySelector('.collection-overview h2')).toBeNull();
+
+    book.shown.value = true;
+    await book.flush();
+    expect(book.host.querySelector('.collection-overview h2')).toBe(heading);
+    expect(heading.textContent).toBe('保存済み：0 件');
+    for (const language of ['zh-CN', 'ja-JP', 'zh-CN', 'ja-JP'] as const) {
+      book.updateConfig({uiLanguage: language});
+      await book.flush();
+      expect(heading.textContent).toBe(language === 'ja-JP' ? '保存済み：0 件' : '0 条收藏');
+    }
+    expect(fetchBundle).toHaveBeenCalledOnce();
+    expect(book.panel.entries).toEqual([]);
+  });
+});
 
 describe('VocabularyBook asynchronous action ownership', () => {
   it('opens the explicitly chosen entry from a full book and closes it without replacing the collection', async () => {
@@ -391,6 +462,7 @@ describe('VocabularyBook mounted lifecycle', () => {
         insertStaticContent: () => [{}, {}],
       });
       const app = renderer.createApp(component as import('vue').Component);
+      app.provide(UI_I18N_KEY, testI18n());
       app.config.warnHandler = () => undefined;
       app.mount({});
       await vueRuntime.nextTick();

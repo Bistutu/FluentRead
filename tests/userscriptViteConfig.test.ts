@@ -1,5 +1,4 @@
 import ts from 'typescript';
-import {mimoRetirementSource} from '@/src/core/i18n/messages/mimoRetirement';
 import {createUserscriptSettingsDataPlugin} from '@/userscript/settingsDataPlugin';
 import * as originalAppearance from '@/src/core/config/interfaceAppearance';
 import {readFileSync, readdirSync, realpathSync, mkdirSync, mkdtempSync, rmSync, writeFileSync} from 'node:fs';
@@ -13,8 +12,9 @@ import {runInNewContext} from 'node:vm';
 import {describe, expect, it, vi} from 'vitest';
 import {ungzip} from 'pako';
 import {gzipUserscriptBuildData} from '@/userscript/buildGzip';
+import {unpackUiLanguageBundle} from '@/userscript/languageData';
 import {decodeUserscriptData} from '@/userscript/dataEncoding';
-import {zhCNMessages, UI_LANGUAGE_BUNDLES, userscriptMessages} from '@/userscript/languageBundles';
+import {zhCNMessages, UI_LANGUAGE_BUNDLES, userscriptMessages, currentUserscriptLanguageBundle, createUserscriptLanguageUpdate} from '@/userscript/languageBundles';
 import {zhCNMessages as extensionChinese} from '@/src/core/i18n/messages/zh-CN';
 import {UI_LANGUAGE_BUNDLES as extensionBundles} from '@/src/core/i18n/bundles';
 import {aiRequestTimeoutMessages} from '@/src/core/i18n/messages/aiRequestTimeout';
@@ -419,13 +419,6 @@ describe('authoritative site catalogs with an external pinned data asset', () =>
 describe('userscript browser shim injection', () => {
     const registeredSupplementKeys = ['learning.panelLoadError', 'learning.reloadPage', ...Object.keys(aiRequestTimeoutMessages['en-US']),
         'sectionTranslation.picker.dragging', 'sectionTranslation.scope.selected', 'settings.services.deeplx.defaultRoute'];
-    const publishedOverrideKeys = ['sectionTranslation.picker.preview', 'sectionTranslation.picker.instruction',
-        'popup.sectionTranslationTitle', 'settings.services.deeplx.endpointHelp',
-        'document.pdfReading.exportHint', 'document.pdfReading.layoutExportHint', 'document.pdfReading.exportPageCount'];
-    // 当前扩展新增的条目晚于固定远程资源发布；逐项约束差异，同时继续逐字节验证五份发布包。
-    const postPublicationLegacySources = ['森林绿', '澄澈蓝', '优雅紫', '暖橙', '青碧', 'FluentRead 粉',
-        '莓果红', '暖金', '石墨灰', '免费网页翻译不接受自动目标语言'];
-    const postPublicationMessageKeys = ['settings.translationStyle.category.color', 'settings.translationStyle.colors.brand'];
     const pinnedLanguageFiles = {
         'ja-JP': 'ja-JP.b81984c57e32c317.json',
         'ko-KR': 'ko-KR.f9dd4e317a3ccbac.json',
@@ -436,8 +429,7 @@ describe('userscript browser shim injection', () => {
     const retiredLegacySources = ['鼠标悬停翻译设置', '将鼠标停在段落上，按快捷键查看译文。', '服务优先顺序'];
     const publishedBundles: Record<string, {messages: Record<string, string>; legacyText: Record<string, string>}> = Object.fromEntries(Object.entries(pinnedLanguageFiles)
         .map(([language, file]) => [language, JSON.parse(readFileSync(resolve(process.cwd(), 'userscript/languages', file), 'utf8'))]));
-    const publishedMessages = Object.fromEntries(Object.entries(publishedBundles).map(([language, bundle]) => [language, bundle.messages]));
-    it('preserves pinned remote dictionaries for inlined panes and keeps embedded recovery copy', () => {
+    it('preserves pinned remote dictionaries and derives current embedded settings copy', () => {
         const build = (userscriptConfig as {build: {cssCodeSplit: boolean; rollupOptions: {output: {inlineDynamicImports: boolean}}}}).build;
         expect(build.cssCodeSplit).toBe(false);
         expect(build.rollupOptions.output.inlineDynamicImports).toBe(true);
@@ -445,84 +437,35 @@ describe('userscript browser shim injection', () => {
             expect((zhCNMessages as Record<string, string>)[key]).toBe((extensionChinese as Record<string, string>)[key]);
             expect(UI_LANGUAGE_BUNDLES['en-US'].messages[key]).toBe(extensionBundles['en-US'].messages[key]);
         }
-        for (const [language, bundle] of Object.entries(UI_LANGUAGE_BUNDLES)) {
-            const original = extensionBundles[language as keyof typeof extensionBundles];
-            const materialSources = Object.keys(learningMaterialLegacyText[language as keyof typeof learningMaterialLegacyText]);
-            expect(Object.keys(original.legacyText).filter(source => !(source in bundle.legacyText)).sort()).toEqual([
-                ...materialSources, mimoRetirementSource, '移动端 / X 自动贴底',
-                ...(language === 'en-US' ? [] : postPublicationLegacySources),
-            ].sort());
-            for (const source of postPublicationLegacySources) {
-                expect(original.legacyText[source], `${language}: ${source}`).toBeTruthy();
-                if (language === 'en-US') expect(bundle.legacyText[source]).toBe(original.legacyText[source]);
-                else expect(bundle.legacyText).not.toHaveProperty(source);
-            }
-            const materialPatterns = learningMaterialPatterns.map(({pattern}) => pattern);
-            for (const phase of ['early', 'late'] as const) {
-                expect(bundle.legacyPatterns[phase]).toEqual(original.legacyPatterns[phase].filter(([source]) => !materialPatterns.includes(source)));
-            }
+        expect(UI_LANGUAGE_BUNDLES['en-US']).toEqual({...currentUserscriptLanguageBundle('en-US'),
+            messages: userscriptMessages(extensionBundles['en-US'].messages)});
+        for (const [language, file] of Object.entries(pinnedLanguageFiles)) {
+            const bundle = UI_LANGUAGE_BUNDLES[language as keyof typeof UI_LANGUAGE_BUNDLES];
+            expect(JSON.stringify(bundle) + '\n').toBe(readFileSync(resolve(process.cwd(), 'userscript/languages', file), 'utf8'));
             for (const source of retiredLegacySources) {
-                expect(original.legacyText).not.toHaveProperty(source);
-                if (language === 'en-US') expect(bundle.legacyText).not.toHaveProperty(source);
-                else expect(bundle.legacyText[source]).toBe(publishedBundles[language]!.legacyText[source]);
+                expect(extensionBundles[language as keyof typeof extensionBundles].legacyText).not.toHaveProperty(source);
+                expect(bundle.legacyText[source]).toBe(publishedBundles[language]!.legacyText[source]);
             }
-            // 审计还删除了其他无消费者旧文案；它们与主线三条退役说明一起留在固定远程契约中。
-            for (const [source, value] of Object.entries(bundle.legacyText)) expect(value).toBe(
-                Object.hasOwn(original.legacyText, source) ? original.legacyText[source] : publishedBundles[language]!.legacyText[source]);
-            for (const source of materialSources) expect(original.legacyText[source]).toBeTruthy();
-            if (language !== 'en-US') {
-                // 固定资源是发布契约；必须保持整包字节，不能只证明本地生成文件自洽。
-                const file = pinnedLanguageFiles[language as keyof typeof pinnedLanguageFiles];
-                expect(JSON.stringify(bundle) + '\n').toBe(readFileSync(resolve(process.cwd(), 'userscript/languages', file), 'utf8'));
-            }
-            const kept = Object.fromEntries(Object.entries(original.messages).filter(([key]) =>
-                !key.startsWith('informationHighlight.') && !key.startsWith('contextMenu.notice.') && !key.startsWith('video.learning.') && !key.startsWith('video.readingAnnotation.') && key !== 'video.nativeFullscreenHint' && !key.startsWith('popup.compact.') && !key.startsWith('popup.displayMode.')
-                && !key.startsWith('diagnostics.') && !key.startsWith('popup.pageFont.')
-                && !['waitingTranslation', 'crossPageContext', 'fullPassage', 'closePassage'].some(name => key === `document.pdfReading.${name}`)
-                && !key.startsWith('document.config.') && !key.startsWith('document.translationRecovery.') && !key.startsWith('document.retainedRevisions.')
-                && !key.startsWith('safari.freePool.')
-                && !key.startsWith('document.translationProgress.') && (language === 'en-US'
-                    || (!registeredSupplementKeys.includes(key) && !postPublicationMessageKeys.includes(key)))));
-            if (language !== 'en-US') for (const key of publishedOverrideKeys) kept[key] = publishedMessages[language]![key]!;
-            if (language === 'en-US') expect(bundle.messages).toEqual(kept);
-            else expect(bundle.messages).toEqual(publishedMessages[language]);
-            expect(original.messages['learning.reloadPage']).toBeTruthy();
         }
     });
-    it.each(Object.keys(pinnedLanguageFiles) as Array<keyof typeof extensionBundles>)('freezes only the published %s document messages while retaining current extension copy', language => {
-        const original = extensionBundles[language], projected = UI_LANGUAGE_BUNDLES[language];
-        const originalBefore = JSON.stringify(original);
-        const documentMessages = (messages: Record<string, string>) => Object.fromEntries(Object.entries(messages).filter(([key]) => key.startsWith('document.')));
-        expect(documentMessages(projected.messages)).toEqual(documentMessages(publishedMessages[language]!));
-        for (const suffix of ['waitingTranslation', 'crossPageContext', 'fullPassage', 'closePassage']) {
-            const key = `document.pdfReading.${suffix}`;
-            expect(original.messages[key]).toBeTruthy(); expect(projected.messages).not.toHaveProperty(key);
-        }
-        for (const suffix of ['exportHint', 'layoutExportHint', 'exportPageCount']) {
-            const key = `document.pdfReading.${suffix}`;
-            expect(original.messages[key]).toBeTruthy(); expect(original.messages[key]).not.toBe(publishedMessages[language]![key]);
-            expect(projected.messages[key]).toBe(publishedMessages[language]![key]);
-        }
-        const nonDocument = Object.fromEntries(Object.entries(projected.messages).filter(([key]) => !key.startsWith('document.')));
-        for (const [key, value] of Object.entries(nonDocument)) expect(value).toBe(publishedMessages[language]![key]);
-        // 固定资源直接读取原始 JSON；现用扩展文案及退役条目分别保持自己的归属。
+    it.each(Object.keys(pinnedLanguageFiles) as Array<keyof typeof extensionBundles>)('keeps the published %s resource while deriving every current supported override', language => {
+        const original = extensionBundles[language], baseline = UI_LANGUAGE_BUNDLES[language];
+        const before = JSON.stringify(baseline), originalBefore = JSON.stringify(original);
+        const current = currentUserscriptLanguageBundle(language), update = createUserscriptLanguageUpdate(current, baseline);
+        const merged = {...baseline.messages, ...update.messages}, mergedLegacy = {...baseline.legacyText, ...update.legacyText};
+        for (const [key, value] of Object.entries(current.messages)) expect(merged[key]).toBe(value);
+        for (const [source, value] of Object.entries(current.legacyText)) expect(mergedLegacy[source]).toBe(value);
         const materialSources = new Set(Object.keys(learningMaterialLegacyText[language as keyof typeof learningMaterialLegacyText]));
-        for (const [source, value] of Object.entries(original.legacyText)) {
-            if (postPublicationLegacySources.includes(source)) {
-                expect(value).toBeTruthy();
-                expect(projected.legacyText).not.toHaveProperty(source);
-            } else if (!materialSources.has(source) && source !== mimoRetirementSource && source !== '移动端 / X 自动贴底') {
-                expect(projected.legacyText[source]).toBe(value);
-            }
-        }
-        const pinned = JSON.parse(readFileSync(resolve(process.cwd(), 'userscript/languages', pinnedLanguageFiles[language as keyof typeof pinnedLanguageFiles]), 'utf8'));
-        expect(projected.legacyText).toEqual(pinned.legacyText);
-        for (const source of retiredLegacySources) {
-            expect(original.legacyText).not.toHaveProperty(source);
-            expect(projected.legacyText[source]).toBe(publishedBundles[language]!.legacyText[source]);
-        }
+        for (const source of materialSources) expect(current.legacyText).not.toHaveProperty(source);
         const materialPatterns = learningMaterialPatterns.map(({pattern}) => pattern);
-        for (const phase of ['early', 'late'] as const) expect(projected.legacyPatterns[phase]).toEqual(original.legacyPatterns[phase].filter(([source]) => !materialPatterns.includes(source)));
+        for (const phase of ['early', 'late'] as const) {
+            expect(current.legacyPatterns[phase]).toEqual(original.legacyPatterns[phase].filter(([source]) => !materialPatterns.includes(source)));
+        }
+        // 文档页不属于脚本；旧固定资源保留原发布字节，当前扩展仍有自己的文档说明。
+        for (const key of Object.keys(current.messages)) expect(key.startsWith('document.') || key.startsWith('translationStats.')).toBe(false);
+        const file = pinnedLanguageFiles[language as keyof typeof pinnedLanguageFiles];
+        expect(before + '\n').toBe(readFileSync(resolve(process.cwd(), 'userscript/languages', file), 'utf8'));
+        expect(JSON.stringify(baseline)).toBe(before);
         expect(JSON.stringify(original)).toBe(originalBefore);
     });
     it.each(['standard', 'standalone'] as const)('keeps %s runtime icon inline and pins only the standard manager icon', async mode => {
@@ -553,7 +496,7 @@ describe('userscript browser shim injection', () => {
     });
     it.each<readonly [string, Record<string, string>, Record<string, string>]>([
         ['zh-CN', extensionChinese, zhCNMessages],
-        ...Object.entries(extensionBundles).map(([language, bundle]) => [language, bundle.messages, UI_LANGUAGE_BUNDLES[language as keyof typeof UI_LANGUAGE_BUNDLES].messages] as const),
+        ...Object.entries(extensionBundles).map(([language, bundle]) => [language, bundle.messages, userscriptMessages(bundle.messages)] as const),
     ])('retains extension-only copy in %s while preserving userscript menu and settings copy', (_language, extension, projected) => {
         const noticeKeys = Object.keys(extension).filter(key => key.startsWith('contextMenu.notice.'));
         expect(noticeKeys).toHaveLength(6);
@@ -603,18 +546,9 @@ describe('userscript browser shim injection', () => {
             && !diagnosticKeys.includes(key) && !readerDialogKeys.includes(key)
             && key !== 'video.nativeFullscreenHint'
             && !safariPermissionKeys.includes(key) && !pageFontKeys.includes(key)
-            && key !== 'popup.compact.translate' && key !== 'popup.compact.restore' && !key.startsWith('popup.displayMode.')
-            && (_language === 'zh-CN' || _language === 'en-US'
-                || (!registeredSupplementKeys.includes(key) && !postPublicationMessageKeys.includes(key))));
-        for (const key of postPublicationMessageKeys) {
-            expect(extension[key], `${_language}: ${key}`).toBeTruthy();
-            if (_language === 'zh-CN' || _language === 'en-US') expect(projected[key]).toBe(extension[key]);
-            else expect(projected).not.toHaveProperty(key);
-        }
-        if (_language === 'zh-CN' || _language === 'en-US') expect(Object.keys(projected)).toHaveLength(retainedKeys.length);
-        else expect(projected).toEqual(publishedMessages[_language]);
-        for (const key of retainedKeys) expect(projected[key]).toBe(publishedMessages[_language] && publishedOverrideKeys.includes(key)
-            ? publishedMessages[_language]![key] : extension[key]);
+            && key !== 'popup.compact.translate' && key !== 'popup.compact.restore' && !key.startsWith('popup.displayMode.'));
+        expect(Object.keys(projected)).toHaveLength(retainedKeys.length);
+        for (const key of retainedKeys) expect(projected[key]).toBe(extension[key]);
         expect(projected['contextMenu.translateSelection']).toBeTruthy();
         expect(projected['contextMenu.translatePage']).toBeTruthy();
         expect(projected['contextMenu.restorePage']).toBeTruthy();
@@ -688,7 +622,37 @@ describe('userscript browser shim injection', () => {
         expect(moduleSource).toContain(createHash('sha256').update(gunzipSync(Buffer.from(base64!, 'base64'))).digest('hex'));
     });
 
-    it('updates only the two DeepLX Chinese messages when Greasy Fork uses its pinned old data', async () => {
+    it.each(['0', '1'])('emits immutable Greasy Fork data except in explicit resource preparation mode %s', async prepare => {
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE', '1');
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_PREPARE_RESOURCES', prepare);
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_VENDOR_URL', 'https://fixture.invalid/vendor.js');
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_DATA_URL', 'https://fixture.invalid/data.js');
+        try {
+            vi.resetModules();
+            const {default: config} = await import('@/userscript/vite.config');
+            const plugin = (config as {plugins: any[]}).plugins.find(item => item.name === 'bundle-userscript-css');
+            const emitFile = vi.fn();
+            const entry = {type: 'chunk', isEntry: true, code: 'var fixture = 1;', moduleIds: []};
+            await Reflect.apply(plugin.generateBundle.handler, {emitFile}, [{}, {'entry.js': entry}]);
+            const resource = emitFile.mock.calls[0][0];
+            expect(resource.fileName).toBe('fluentread-data.v1.js');
+            const pinned = readFileSync(resolve(process.cwd(), 'userscript/resources/fluentread-data.v1.js'), 'utf8');
+            if (prepare === '0') {
+                expect(resource.source).toBe(pinned);
+                await expect(Reflect.apply(plugin.generateBundle.handler, {emitFile}, [{}, {'entry.js': entry,
+                    'fixture.css': {type: 'asset', fileName: 'fixture.css', source: 'changed CSS'},
+                }])).rejects.toThrow('Greasy Fork CSS changed');
+            }
+            else {
+                expect(resource.source).not.toBe(pinned);
+                const current = runInNewContext(resource.source, {}, {timeout: 5000});
+                expect(current.english).toEqual(UI_LANGUAGE_BUNDLES['en-US']);
+                expect(current.zhCNMessages).toEqual(zhCNMessages);
+            }
+        } finally {vi.unstubAllEnvs();vi.resetModules();}
+    });
+
+    it('updates every changed Chinese message when Greasy Fork uses its pinned old data', async () => {
         vi.stubEnv('FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE', '1');
         vi.stubEnv('FLUENTREAD_USERSCRIPT_VENDOR_URL', 'https://fixture.invalid/vendor.js');
         vi.stubEnv('FLUENTREAD_USERSCRIPT_DATA_URL', 'https://fixture.invalid/data.js');
@@ -703,16 +667,15 @@ describe('userscript browser shim injection', () => {
             const source = await Reflect.apply(load, {}, [id]);
             const compiled = await transformWithEsbuild(source, 'pinned-chinese.js', {format: 'cjs', target: 'es2018'});
             const data = runInNewContext(readFileSync(resolve(process.cwd(), 'userscript/resources/fluentread-data.v1.js'), 'utf8'), {}, {timeout: 5000});
-            data.zhCNMessages['settings.services.deeplx.defaultRoute'] = '旧版默认线路';
-            data.zhCNMessages['settings.services.deeplx.endpointHelp'] = '旧版地址说明';
             const before = JSON.stringify(data);
-            const realm = {module: {exports: {} as {zhCNMessages: Record<string, string>}}, __FLUENTREAD_USERSCRIPT_DATA__: data};
+            const realm = {module: {exports: {} as {zhCNMessages: Record<string, string>}}, __FLUENTREAD_USERSCRIPT_DATA__: data,
+                Uint8Array, atob, require: () => ({inflateWithPako: (bytes: Uint8Array) => ungzip(bytes, {to: 'string'})})};
             runInNewContext(compiled.code, realm, {timeout: 5000});
             const result = realm.module.exports.zhCNMessages;
-            const keys = ['settings.services.deeplx.defaultRoute', 'settings.services.deeplx.endpointHelp'];
-            for (const key of keys) expect(result[key]).toBe((zhCNMessages as Record<string, string>)[key]);
-            const changes = Object.keys(result).filter(key => result[key] !== data.zhCNMessages[key]);
-            expect(changes.sort()).toEqual(keys.sort());
+            const current = Object.fromEntries(Object.entries(zhCNMessages).filter(([key]) => !key.startsWith('document.') && !key.startsWith('translationStats.')));
+            for (const [key, value] of Object.entries(current)) expect(result[key]).toBe(value);
+            expect(result['settings.floatingBall.hoverDelayHelp']).toBeTruthy();
+            expect(Object.keys(result).some(key => result[key] !== data.zhCNMessages[key])).toBe(true);
             expect(JSON.stringify(data)).toBe(before);
         } finally {vi.unstubAllEnvs();vi.resetModules();}
     });
@@ -727,14 +690,14 @@ describe('userscript browser shim injection', () => {
         const messages = Object.fromEntries(Object.entries(original.messages).filter(([key]) => !readerOnly.includes(key)));
         const expected = {...original, messages};
         const bytes = Buffer.from(compressed['en-US'], 'base64');
-        const restored = JSON.parse(gunzipSync(bytes).toString('utf8'));
+        const restored = unpackUiLanguageBundle(JSON.parse(gunzipSync(bytes).toString('utf8')));
         // 整包比较同时约束保留 messages、legacyText、legacyPatterns 及其余 bundle 字段。
         expect(restored).toEqual(expected);
         expect(Object.keys(restored.messages)).toHaveLength(Object.keys(original.messages).length - readerOnly.length);
         // 读出实际 define 后再走现有脚本解码端口，不以另造的 fixture 压缩串代替构建配置。
         vi.stubGlobal('pako', {ungzip});
         try {
-            expect(JSON.parse(inflateWithPako(bytes))).toEqual(expected);
+            expect(unpackUiLanguageBundle(JSON.parse(inflateWithPako(bytes)))).toEqual(expected);
         } finally {
             vi.unstubAllGlobals();
         }
@@ -742,7 +705,7 @@ describe('userscript browser shim injection', () => {
     it('applies the same page capability boundary to the embedded English catalog and preserves learning-center source copy', () => {
         const defines = (userscriptConfig as {define: Record<string, string>}).define;
         const compressed = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__)['en-US'];
-        const restored = JSON.parse(gunzipSync(Buffer.from(compressed, 'base64')).toString('utf8'));
+        const restored = unpackUiLanguageBundle(JSON.parse(gunzipSync(Buffer.from(compressed, 'base64')).toString('utf8')));
         const english = UI_LANGUAGE_BUNDLES['en-US'];
         const messages = Object.fromEntries(Object.entries(english.messages).filter(([key]) => !(key.startsWith('document.') || key.startsWith('translationStats.'))));
         expect(Object.keys(messages).length).toBeLessThan(Object.keys(english.messages).length);
@@ -756,7 +719,7 @@ describe('userscript browser shim injection', () => {
             vi.resetModules();
             const {default: standalone, createUserscriptCatalogCompressionPlugin: createPlugin} = await import('@/userscript/vite.config');
             const defines = (standalone as {define: Record<string, string>}).define;
-            const english = JSON.parse(gunzipSync(decodeUserscriptData(JSON.parse(defines.__FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__)['en-US'])).toString('utf8'));
+            const english = unpackUiLanguageBundle(JSON.parse(gunzipSync(decodeUserscriptData(JSON.parse(defines.__FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__)['en-US'])).toString('utf8')));
             const plugin = createPlugin() as unknown as {resolveId: (source: string, importer: string) => string; load: (id: string) => string};
             const source = plugin.load(plugin.resolveId('./messages/zh-CN', resolve(process.cwd(), 'src/core/i18n/index.ts')));
             const chinese = JSON.parse(gunzipSync(decodeUserscriptData(JSON.parse(source.match(/decodeUserscriptData\(("(?:[^"\\]|\\.)*")\)/u)![1]))).toString('utf8'));
@@ -2112,7 +2075,6 @@ describe('standalone immutable glossary and UI catalogs', () => {
         ['src/core/config/driveSync.ts', ['VISIBLE_FIELDS']],
         ['src/features/settings/model/navigation.ts', ['settingsPagePanels', 'settingsSearchTargets']],
         ['src/core/config/translationLoadingStyle.ts', ['translationLoadingStyleOptions']],
-        ['userscript/uiLanguageBundles.ts', ['recoveryMessages', 'sectionSweepMessages', 'deeplxMessages']],
         ['src/core/config/freeTranslation.ts', ['FREE_TRANSLATION_PROVIDERS']],
         ['src/core/language/catalog.ts', ['translationLanguageOptions']],
         ['src/core/language/partOfSpeech.ts', ['PARTS']],

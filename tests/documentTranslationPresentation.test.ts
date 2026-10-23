@@ -1,4 +1,6 @@
 import {describe, expect, it} from 'vitest';
+import {translate, translateLegacyText, type UiLanguage} from '@/src/core/i18n';
+import {registerAllUiLanguageBundles} from './helpers/uiLanguageBundles';
 
 import {parseDocument, type BinaryDocumentData, type DocumentFormat, type ParsedDocument} from '@/src/features/document-translation/core/document';
 import {
@@ -8,6 +10,7 @@ import {
     getDocumentExportPreview,
     getDocumentEmptyReaderHint,
     getDocxPartLabel,
+    getDocumentGeneratedPositionLabels,
     isRichDocumentFormat,
     isSubtitleDocumentFormat,
 } from '@/src/features/document-translation/ui/presentation';
@@ -24,6 +27,24 @@ function parsed(format: DocumentFormat, binary?: BinaryDocumentData): ParsedDocu
 }
 
 describe('document translation presentation', () => {
+    it('localizes generated PDF and DOCX positions in seven languages without guessing user headings', () => {
+        registerAllUiLanguageBundles();
+        const pdf = parsed('pdf', {kind: 'pdf', bytes: new Uint8Array(), pages: [{pageNumber: 7, width: 100, height: 100, segmentIndexes: [0, 9], blocks: []}]});
+        pdf.segments = [{id: 0, source: 'Original', contextLabel: '第 7 页'}];
+        const docx = parsed('docx', {kind: 'docx', bytes: new Uint8Array(), parts: [{path: 'word/header1.xml', source: '', paragraphSegments: [{paragraphIndex: 0, segmentIndex: 0}, {paragraphIndex: 1, segmentIndex: 9}]}]});
+        docx.segments = [{id: 0, source: 'Header', pathLabel: '页眉'}];
+        const epub = parsed('epub', {kind: 'epub', bytes: new Uint8Array(), chapters: []});
+        epub.segments = [{id: 0, source: 'Original', contextLabel: '第 7 页'}];
+        for (const language of ['zh-CN', 'en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES'] as UiLanguage[]) {
+            const labels = (document: ParsedDocument) => getDocumentGeneratedPositionLabels(document, page => translate('document.pageNumber', language, {page}), value => translateLegacyText(value, language));
+            expect([...labels(pdf)]).toEqual([[0, translate('document.pageNumber', language, {page: 7})]]);
+            expect([...labels(docx)]).toEqual([[0, translateLegacyText('页眉', language)]]);
+            expect([...labels(epub)]).toEqual([]);
+            expect([...labels(parsed('json'))]).toEqual([]);
+        }
+        expect(epub.segments[0].contextLabel).toBe('第 7 页');
+        expect(pdf.segments[0].contextLabel).toBe('第 7 页');
+    });
     it('does not read the rest of a large text document to produce its download excerpt', () => {
         const document = parseDocument('long.txt', 'A'.repeat(1700));
         expect(getDocumentExportPreview(document, [], 'translated')).toBe(`${'A'.repeat(1600)}\n…`);

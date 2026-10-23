@@ -484,7 +484,11 @@
       "tests/sectionTranslationLocator.test.ts",
       "tests/sectionTranslationSave.test.ts",
       "tests/userscriptReadingStorage.test.ts",
-      "tests/userscriptDataEncoding.test.ts"
+      "tests/userscriptDataEncoding.test.ts",
+      "tests/i18nKeyReferences.test.ts",
+      "tests/i18nMetadata.test.ts",
+      "tests/i18nRuntimeContracts.test.ts",
+      "tests/i18nPlural.test.ts"
     ],
     "functional": [
       "tests/affectedTests.test.ts",
@@ -752,7 +756,9 @@
       "tests/userscriptReadingRuntime.test.ts",
       "tests/userscriptReadingGeneration.test.ts",
       "tests/videoReadingCachedJapanese.test.ts",
-      "tests/videoReadingHindi.test.ts"
+      "tests/videoReadingHindi.test.ts",
+      "tests/i18nSettingsCopy.test.ts",
+      "tests/i18nContentUi.test.ts"
     ],
     "regression": [
       "tests/discordServerIconBoundary.test.ts",

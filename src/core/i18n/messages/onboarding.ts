@@ -18,7 +18,7 @@ export const onboardingProductNames = {
 } as const satisfies Readonly<Record<UiLanguage, string>>;
 
 export const onboardingChineseMessages = {
-    'language.saveFailed': '界面语言保存失败，请重新打开设置页后重试。',
+    'language.saveFailed': '未能切换界面语言，请重试。',
     'language.onboardingWelcomeEyebrow': '欢迎使用',
     'language.onboardingWelcomeNext': '设置界面语言',
     'language.onboardingBack': '返回',
@@ -33,7 +33,7 @@ export const onboardingChineseMessages = {
 export type OnboardingMessageKey = keyof typeof onboardingChineseMessages;
 
 export const onboardingEnglishMessages: Readonly<Record<OnboardingMessageKey, string>> = {
-    'language.saveFailed': 'The interface language could not be saved. Reopen settings and try again.',
+    'language.saveFailed': 'Could not change the interface language. Try again.',
     'language.onboardingWelcomeEyebrow': 'Welcome',
     'language.onboardingWelcomeNext': 'Set interface language',
     'language.onboardingBack': 'Back',

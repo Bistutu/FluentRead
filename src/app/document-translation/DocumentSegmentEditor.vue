@@ -26,7 +26,7 @@
     </details>
     <div v-if="!filteredSegments.length" class="editor-empty">{{ query ? '没有找到匹配内容，试试其他关键词。' : '所有片段都已有译文。' }}</div>
     <article v-for="segment in visibleSegments" :key="segment.id" class="segment-edit-row" :data-segment-id="segment.id">
-      <div class="segment-position"><strong>#{{ segment.id + 1 }}</strong><span data-i18n-ignore>{{ segment.pathLabel || segment.contextLabel || (segment.timeStart ? `${segment.timeStart} → ${segment.timeEnd}` : translateLegacy('正文')) }}</span><small :class="{ pending: !translations[segment.id]?.trim() }">{{ translations[segment.id]?.trim() ? '已有译文' : '未翻译' }}</small></div>
+      <div class="segment-position"><strong>#{{ segment.id + 1 }}</strong><span data-i18n-ignore>{{ generatedPositionLabels.get(segment.id) || segment.pathLabel || segment.contextLabel || (segment.timeStart ? `${segment.timeStart} → ${segment.timeEnd}` : translateLegacy('正文')) }}</span><small :class="{ pending: !translations[segment.id]?.trim() }">{{ translations[segment.id]?.trim() ? '已有译文' : '未翻译' }}</small></div>
       <div class="segment-edit-columns">
         <div><span class="segment-column-label">原文</span><p class="document-source" data-i18n-ignore>{{ sourceText(segment) }}</p></div>
         <label v-if="!translations[segment.id]?.trim() || hasDistinctTranslation(sourceText(segment), formatDocumentReaderText(document.format, translations[segment.id])) || editingSameId === segment.id"><span class="segment-column-label">译文</span><textarea class="document-translation" :value="translations[segment.id] || ''" :aria-label="t('document.segmentTranslation', {number: segment.id + 1})" :disabled="disabled" @focus="editingId = segment.id" @blur="editingId = null" :rows="Math.min(12, Math.max(3, Math.ceil((translations[segment.id]?.length || segment.source.length) / 55)))" placeholder="译文会出现在这里，也可以手动填写" @input="emit('update', segment.id, ($event.target as HTMLTextAreaElement).value)" /><small v-if="hasDocumentPlaceholder(translations[segment.id])" class="segment-placeholder-hint">{{ translateLegacy('<g1>…</g1> 这类标记对应原文里的链接、加粗等格式，保留它们，译文才带有这些格式。') }}</small></label>
@@ -49,10 +49,12 @@ import {useUiI18n} from "@/src/ui/i18n";
 const {t, translateLegacy} = useUiI18n();
 import {computed, ref, watch} from 'vue';
 import {documentSegmentMarkupSources, formatDocumentReaderText, hasDocumentPlaceholder, type DocumentSegment, type DocumentRetainedRevision, type ParsedDocument} from '@/src/features/document-translation/public';
+import {getDocumentGeneratedPositionLabels} from '@/src/features/document-translation/ui/presentation';
 const props = defineProps<{document: ParsedDocument; translations: string[]; retainedRevisions?: DocumentRetainedRevision[]; disabled: boolean}>();
 const emit = defineEmits<{update: [index: number, value: string]}>();
 // 整句送翻的片段，原文列显示替换成占位符之前的文字。
 const markupSources = computed(() => documentSegmentMarkupSources(props.document));
+const generatedPositionLabels = computed(() => getDocumentGeneratedPositionLabels(props.document, page => t('document.pageNumber', {page}), translateLegacy));
 const sourceText = (segment: DocumentSegment) => formatDocumentReaderText(props.document.format, markupSources.value.get(segment.id) ?? segment.source);
 const query = ref('');
 const onlyPending = ref(false);

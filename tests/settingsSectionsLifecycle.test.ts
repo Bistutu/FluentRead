@@ -1216,7 +1216,7 @@ describe('设置父模板实际功能事件', () => {
         expect(f.patch).toHaveBeenCalledOnce();expect(f.patch.mock.calls[0][0]).toMatchObject({service: 'microsoft', to: 'ja', display: 1});
         f.patch.mockClear();await f.choose('翻译模式', '仅译文模式');expect(f.state.config.display).toBe(0);expect(f.patch).toHaveBeenCalledOnce();
         f.media.matches = true;f.theme.mockClear();f.media.onchange!();expect(f.theme).toHaveBeenLastCalledWith(true, undefined);
-        await f.choose('界面主题', '亮色主题');expect(f.state.config.theme).toBe('light');expect(f.theme).toHaveBeenLastCalledWith(false, undefined);
+        await f.choose('settings.general.theme', '亮色主题');expect(f.state.config.theme).toBe('light');expect(f.theme).toHaveBeenLastCalledWith(false, undefined);
         f.theme.mockClear();f.media.onchange!();expect(f.theme).not.toHaveBeenCalled();expect(f.query).not.toHaveBeenCalled();
         app!.unmount();app = undefined;expect(f.media.onchange).toBeNull();
     });
@@ -1224,9 +1224,9 @@ describe('设置父模板实际功能事件', () => {
         const f = await settingsUiFixture('settings-general', {on: true, disableFloatingBall: false, selectionTranslatorMode: 'bilingual', translationProgressPanelEnabled: true, enableAIContext: false});
         f.query.mockResolvedValue([{id: 8}]);
         await f.emit('el-switch:popup.aiContext.settingsTitle', 'update:modelValue', true);expect(f.state.config.enableAIContext).toBe(true);expect(f.query).not.toHaveBeenCalled();
-        expect((await f.port('el-switch:全文翻译悬浮球')).attrs.modelValue).toBe(true);
-        await f.emit('el-switch:全文翻译悬浮球', 'update:modelValue', false);expect(f.state.config.disableFloatingBall).toBe(true);expect(f.send).toHaveBeenLastCalledWith(8, {type:'toggleFloatingBall',isEnabled:false});
-        f.send.mockClear();await f.emit('el-switch:显示翻译进度面板','update:modelValue',false);await f.emit('el-switch:显示翻译进度面板','change',false);
+        expect((await f.port('el-switch:settings.general.floatingBall')).attrs.modelValue).toBe(true);
+        await f.emit('el-switch:settings.general.floatingBall', 'update:modelValue', false);expect(f.state.config.disableFloatingBall).toBe(true);expect(f.send).toHaveBeenLastCalledWith(8, {type:'toggleFloatingBall',isEnabled:false});
+        f.send.mockClear();await f.emit('el-switch:settings.general.progressPanel','update:modelValue',false);await f.emit('el-switch:settings.general.progressPanel','change',false);
         expect(f.state.config.translationProgressPanelEnabled).toBe(false);expect(f.send).toHaveBeenCalledOnce();expect(f.send).toHaveBeenCalledWith(8,{type:'toggleTranslationProgressPanel',isEnabled:false});
         f.send.mockClear();await f.emit('feature:settings.general.masterTitle','update:modelValue',false);
         expect(f.state.config.on).toBe(false);expect(f.state.config.selectionTranslatorMode).toBe('bilingual');expect(f.state.config.disableFloatingBall).toBe(true);expect(f.send.mock.calls.map(call=>call[1])).toEqual([{type:'toggleFloatingBall',isEnabled:false},{type:'updateSelectionTranslatorMode',mode:'disabled'},{type:'toggleSelectionAreaTranslator',isEnabled:false}]);

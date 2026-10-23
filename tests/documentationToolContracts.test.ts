@@ -15,6 +15,7 @@ const repo = path.resolve(__dirname, '..');
 const sourceRoot = process.env.DOCUMENTATION_TOOL_SOURCE_ROOT || repo;
 const roots: string[] = [];
 const taglines = JSON.parse(fs.readFileSync(path.join(repo, 'src/core/i18n/messages/brand-taglines.json'), 'utf8')) as Record<string, string>;
+const descriptions = JSON.parse(fs.readFileSync(path.join(repo, 'src/core/i18n/messages/product-descriptions.json'), 'utf8')) as Record<string, string>;
 const combined = `${taglines['en-US']} ${taglines['zh-CN']}`;
 function fixture() {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fluentread-doc-contract-'));
@@ -68,13 +69,14 @@ async function checker(root: string, script: string) {
 function brandFixture(bilingual = false) {
     const root = fixture();
     write(root, 'src/core/i18n/messages/brand-taglines.json', JSON.stringify(taglines));
-    write(root, 'package.json', JSON.stringify({description: combined}));
+    write(root, 'src/core/i18n/messages/product-descriptions.json', JSON.stringify(descriptions));
+    write(root, 'package.json', JSON.stringify({description: descriptions['en-US']}));
     write(root, 'marketing/brand.md', Object.values(taglines).join('\n'));
     for (const language of Object.keys(taglines)) write(root, `src/core/i18n/messages/${language}.ts`, `"brand.tagline": brandTaglines['${language}']`);
     for (const [locale, language] of [['en', 'en-US'], ['zh-CN', 'zh-CN']]) {
         const folder = `marketing/chrome-web-store/${locale}`;
-        write(root, `${folder}/short-description.txt`, combined + '\n');
-        write(root, `${folder}/listing.json`, JSON.stringify({shortDescription: combined}));
+        write(root, `${folder}/short-description.txt`, descriptions[language] + '\n');
+        write(root, `${folder}/listing.json`, JSON.stringify({shortDescription: descriptions[language]}));
         write(root, `${folder}/description.txt`, `${taglines[language]}\n\nFixture`);
         write(root, `marketing/copy/${locale}.md`, taglines[language]);
     }
@@ -303,11 +305,34 @@ describe('documentation delivery CLI contracts', () => {
         const result = await checker(root, 'verify-brand-copy.mjs');
         expect(result.code).toBe(1); expect(result.err).toContain(`${language}: interface resource`);
     });
-    it.each(['package.json', 'marketing/chrome-web-store/en/short-description.txt', 'marketing/chrome-web-store/zh-CN/listing.json', 'marketing/chrome-web-store/en/description.txt', 'marketing/copy/zh-CN.md', 'marketing/brand.md'])('rejects broken combined/store/community contract at %s', async file => {
+    it.each([
+        ['package.json', JSON.stringify({description: combined}), 'Package product description'],
+        ['marketing/chrome-web-store/en/short-description.txt', combined, 'en: localized product short description'],
+        ['marketing/chrome-web-store/zh-CN/short-description.txt', combined, 'zh-CN: localized product short description'],
+        ['marketing/chrome-web-store/en/listing.json', JSON.stringify({shortDescription: combined}), 'en: listing'],
+        ['marketing/chrome-web-store/zh-CN/listing.json', JSON.stringify({shortDescription: combined}), 'zh-CN: listing'],
+        ['marketing/chrome-web-store/en/description.txt', 'bad', 'en: full description'],
+        ['marketing/copy/zh-CN.md', 'bad', 'zh-CN: community copy'],
+        ['marketing/brand.md', 'bad', 'copyable brand guide'],
+    ])('rejects broken functional description/store/community contract at %s', async (file, invalid, diagnostic) => {
         const root = brandFixture(true);
-        write(root, file, file.endsWith('.json') ? JSON.stringify({description:'bad',shortDescription:'bad'}) : 'bad');
+        write(root, file, invalid);
         const result = await checker(root, 'verify-brand-copy.mjs');
-        expect(result.code).toBe(1); expect(result.err).toContain('AssertionError');
+        expect(result.code).toBe(1); expect(result.err).toContain(diagnostic);
+    });
+    it.each([
+        ['missing locale', Object.fromEntries(Object.entries(descriptions).filter(([language]) => language !== 'es-ES')), 'Product descriptions cover the same seven languages'],
+        ['unsupported locale', {...Object.fromEntries(Object.entries(descriptions).filter(([language]) => language !== 'es-ES')), 'pt-BR':'Fixture'}, 'Product descriptions cover the same seven languages'],
+        ['empty text', {...descriptions, 'ja-JP':''}, 'ja-JP: empty or untrimmed product description'],
+        ['non-string text', {...descriptions, 'ko-KR':42}, 'ko-KR: empty or untrimmed product description'],
+        ['untrimmed text', {...descriptions, 'es-ES':` ${descriptions['es-ES']}`}, 'es-ES: empty or untrimmed product description'],
+        ['overlong text', {...descriptions, 'fr-FR':'x'.repeat(133)}, 'fr-FR: native manifest description limit'],
+        ['multiline text', {...descriptions, 'ru-RU':'Fixture\nDescription'}, 'ru-RU: native manifest description limit'],
+    ] as const)('rejects invalid product descriptions: %s', async (_case, invalid, diagnostic) => {
+        const root = brandFixture();
+        write(root, 'src/core/i18n/messages/product-descriptions.json', JSON.stringify(invalid));
+        const result = await checker(root, 'verify-brand-copy.mjs');
+        expect(result.code).toBe(1); expect(result.err).toContain(diagnostic);
     });
     it('rejects fewer than seven languages and empty translated taglines', async () => {
         for (const value of [{...taglines, 'ja-JP':''}, Object.fromEntries(Object.entries(taglines).slice(1))]) {

@@ -7,6 +7,7 @@
   "reencounter.current": "La frase actual",
   "reencounter.saved": "La frase guardada",
   "reencounter.loading": "Cargando esta expresión…",
+  "reencounter.readFailed": "No se pudo cargar esta expresión guardada. Vuelve a intentarlo.",
   "reencounter.noSentence": "No hay una frase guardada.",
   "reencounter.reference": "Referencia guardada",
   "reencounter.retry": "Reintentar",

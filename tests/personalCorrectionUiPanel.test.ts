@@ -9,9 +9,15 @@ import {parseHTML} from 'linkedom';
 import {afterEach,beforeAll,beforeEach,describe,expect,it,vi} from 'vitest';
 import type {App} from 'vue';
 import type {PersonalCorrectionRecord} from '@/src/core/personal-corrections/public';
+import {createUiI18nPlugin} from '@/src/ui/i18n';
+import {translate, translateLegacyText, type UiLanguage} from '@/src/core/i18n';
+import {registerAllUiLanguageBundles} from './helpers/uiLanguageBundles';
 
-const mocks=vi.hoisted(()=>({config:{theme:'auto',interfaceSkin:'default'},listeners:new Set<(value:any)=>void>(),stop:vi.fn()}));
-vi.mock('@/src/services/config/store',()=>({config:mocks.config,subscribeConfig:(fn:(value:any)=>void)=>{mocks.listeners.add(fn);return()=>{mocks.listeners.delete(fn);mocks.stop();};}}));
+const mocks=vi.hoisted(()=>({config:{theme:'auto',interfaceSkin:'default',uiLanguage:'zh-CN'},listeners:new Set<(value:any)=>void>(),stop:vi.fn()}));
+vi.mock('@/src/services/config/store',()=>({config:mocks.config,configReady:Promise.resolve(),getConfigRevision:()=>0,requestConfigPatch:vi.fn(),subscribeConfig:(fn:(value:any)=>void)=>{mocks.listeners.add(fn);return()=>{mocks.listeners.delete(fn);mocks.stop();};}}));
+vi.mock('webextension-polyfill',()=>({default:{runtime:{sendMessage:vi.fn()}}}));
+vi.mock('@/src/platform/i18n/uiLanguageBundles',()=>({ensureUiLanguageBundle:async()=>true}));
+registerAllUiLanguageBundles();
 const runtime=createRequire(import.meta.url)('vue') as typeof import('vue');
 let component:any,app:App|undefined,document:Document,window:ReturnType<typeof parseHTML>['window'],focused:HTMLElement|null;
 let mediaListener:((event:{matches:boolean})=>void)|undefined;const removeMedia=vi.fn();
@@ -19,12 +25,12 @@ const settle=async()=>{for(let i=0;i<4;i++){await Promise.resolve();await runtim
 const mid='material-'+'a'.repeat(64),pid='00000000-0000-4000-8000-000000000002';
 function entry(patch:Partial<PersonalCorrectionRecord>={}):PersonalCorrectionRecord{return {id:'00000000-0000-4000-8000-000000000001',scope:{kind:'material',id:mid,label:'文章'},source:'He opened the bank.',translation:'他开设了银行。',sourceLanguage:'en',targetLanguage:'zh-CN',context:'Finance',revision:1,...patch};}
 beforeAll(async()=>{component=(await import('@/src/features/personal-corrections/ui/PersonalCorrectionPanel.vue')).default;expect(component.render).toBeTypeOf('function');});
-beforeEach(()=>{vi.clearAllMocks();mocks.config.theme='auto';mocks.listeners.clear();focused=null;mediaListener=undefined;const dom=parseHTML('<html><body><button id="outside">Outside</button><div id="app"></div></body></html>');document=dom.document;window=dom.window;
+beforeEach(()=>{vi.clearAllMocks();mocks.config.theme='auto';mocks.config.uiLanguage='zh-CN';mocks.listeners.clear();focused=null;mediaListener=undefined;const dom=parseHTML('<html><body><button id="outside">Outside</button><div id="app"></div></body></html>');document=dom.document;window=dom.window;
   Object.defineProperty(document,'activeElement',{get:()=>focused,configurable:true});window.HTMLElement.prototype.focus=function(){focused=this;};
   Object.defineProperty(window,'visualViewport',{value:undefined,writable:true,configurable:true});window.innerWidth=1024;window.innerHeight=768;
   window.HTMLElement.prototype.getBoundingClientRect=function(){return {x:20,y:300,left:20,top:300,right:340,bottom:324,width:320,height:24,toJSON:()=>({})};};
   window.matchMedia=()=>({matches:false,addEventListener:(_type:string,fn:any)=>{mediaListener=fn;},removeEventListener:removeMedia}) as any;
-  for(const [name,value]of Object.entries({document,window,HTMLElement:window.HTMLElement,Element:window.Element,Event:window.Event}))vi.stubGlobal(name,value);
+  for(const [name,value]of Object.entries({document,window,HTMLElement:window.HTMLElement,Element:window.Element,Event:window.Event,Node:window.Node,MutationObserver:window.MutationObserver,NodeFilter:{SHOW_TEXT:4}}))vi.stubGlobal(name,value);
 });
 afterEach(async()=>{app?.unmount();app=undefined;await settle();vi.useRealTimers();vi.unstubAllGlobals();});
 async function mount(patch:Record<string,unknown>={},closedShadow=false){
@@ -40,7 +46,7 @@ async function mount(patch:Record<string,unknown>={},closedShadow=false){
   const container=document.querySelector<HTMLElement>('#app')!;
   const root=closedShadow?container.attachShadow({mode:'closed'}):document;
   if(closedShadow)Object.defineProperty(root,'activeElement',{get:()=>focused,configurable:true});
-  app=renderer.createApp(component,{controller});app.config.warnHandler=()=>undefined;app.mount(closedShadow?root as any:container);await settle();
+  app=renderer.createApp(component,{controller});app.config.warnHandler=()=>undefined;app.use(createUiI18nPlugin());app.mount(closedShadow?root as any:container);await settle();
   const get=(selector:string)=>{const node=root.querySelector<HTMLElement>(selector);expect(node).not.toBeNull();return node!;};
   const click=async(selector:string)=>{get(selector).dispatchEvent(new window.Event('click',{bubbles:true}));await settle();};
   const key=async(key:string,shiftKey=false)=>{const event=new window.Event('keydown',{bubbles:true,cancelable:true});Object.assign(event,{key,shiftKey});get('[data-testid=correction-dialog]').dispatchEvent(event);await settle();return event;};
@@ -48,6 +54,25 @@ async function mount(patch:Record<string,unknown>={},closedShadow=false){
   return {state,controller,get,click,key,event,root,container};
 }
 describe('actual personal correction panel',()=>{
+  it('switches all seven languages in the mounted panel while preserving project names, chapters and editable content',async()=>{
+    const project='设置';
+    const f=await mount({open:true,source:'校订译文',draft:'编辑译文',context:'',projects:[{id:pid,label:project}],entries:[entry({scope:{kind:'project',id:pid,label:project}})]});
+    for(const language of ['en-US','ja-JP','ko-KR','fr-FR','ru-RU','es-ES','zh-CN'] as UiLanguage[]){
+      mocks.config.uiLanguage=language;for(const fn of mocks.listeners)fn(mocks.config);await settle();
+      await vi.waitFor(()=>expect(f.get('.tabs button').textContent).toBe(translateLegacyText('编辑译文',language)));
+      expect(f.get('[data-testid=correction-source]').textContent).toBe('校订译文');
+      expect((f.get('[data-testid=correction-translation]') as HTMLTextAreaElement).value).toBe('编辑译文');
+      expect(f.get(`option[value="${pid}"]`).textContent).toBe(translate('personalCorrections.projectName',language,{name:project}));
+      f.state.scopeId=pid;await settle();expect(f.get('[data-testid=correction-scope]').title).toBe(project);
+      f.state.scopeId='material';await settle();expect(f.get('[data-testid=correction-scope]').title).toBe(translate('personalCorrections.currentPage',language));
+      if(language==='en-US')expect(f.get('[data-testid=correction-language]').textContent).toBe('English → Simplified Chinese');
+      await f.event(f.get('[data-testid=correction-scope-help]'),'mouseenter');
+      expect(f.get('.scope-tooltip-context').textContent).toBe(translate('personalCorrections.noChapter',language));
+      f.state.context='所在章节 · 用户正文';await settle();expect(f.get('.scope-tooltip-context').textContent).toBe('所在章节 · 用户正文');
+      f.state.managing=true;await settle();expect(f.get('.record-meta > span').textContent).toBe(translate('personalCorrections.projectName',language,{name:project}));
+      f.state.managing=false;f.state.context='';await settle();
+    }
+  });
   it('opens from accessible entry, edits text without parsing markup, previews then confirms, and restores prior focus',async()=>{
     const outside=document.querySelector<HTMLElement>('#outside')!;outside.focus();const f=await mount({candidate:{source:'source'}});await f.click('[data-testid=correction-entry]');expect(focused).toBe(f.get('[data-testid=correction-translation]'));
     const input=f.get('[data-testid=correction-translation]') as HTMLTextAreaElement;input.value='<img src=x onerror=alert(1)>修订';input.dispatchEvent(new window.Event('input',{bubbles:true}));await settle();expect(f.controller.setDraft).toHaveBeenCalledWith(input.value);
@@ -144,6 +169,6 @@ describe('actual personal correction panel',()=>{
     const outside=document.querySelector<HTMLElement>('#outside')!;outside.focus();const f=await mount();f.state.open=true;await settle();mediaListener!({matches:true});await settle();expect(document.querySelector('.correction-ui')!.classList.contains('dark')).toBe(true);
     for(const fn of mocks.listeners)fn({theme:'light',interfaceSkin:'minimal'});await settle();expect(document.querySelector('.correction-ui')!.classList.contains('dark')).toBe(false);for(const fn of mocks.listeners)fn({theme:'dark',interfaceSkin:'default'});await settle();expect(document.querySelector('.correction-ui')!.classList.contains('dark')).toBe(true);
     f.state.entries=[entry()] as any;f.state.managing=true;await settle();expect(focused).toBe(document.querySelector('[data-correction-edit]'));f.state.managing=false;await settle();expect(focused).toBe(document.querySelector('textarea'));
-    outside.remove();f.state.open=false;await settle();f.state.managing=true;await settle();app!.unmount();app=undefined;expect(mocks.stop).toHaveBeenCalledTimes(1);expect(removeMedia).toHaveBeenCalledWith('change',expect.any(Function));
+    outside.remove();f.state.open=false;await settle();f.state.managing=true;await settle();app!.unmount();app=undefined;expect(mocks.stop).toHaveBeenCalledTimes(2);expect(mocks.listeners.size).toBe(0);expect(removeMedia).toHaveBeenCalledWith('change',expect.any(Function));
   });
 });

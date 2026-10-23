@@ -28,7 +28,13 @@ import {localTtsKoreanMessages} from './localTts';
 import {translationStatsKoreanMessages} from './translationStats';
 import {localTranslationKoreanMessages} from './localTranslation';
 
+import {personalCorrectionMessages} from './personalCorrections';
+
+import countForms from './count-forms.json';
+
 export const koKRMessages = {
+    ...countForms['ko-KR'],
+    ...personalCorrectionMessages['ko-KR'],
     "document.config.loadFailed": "설정을 불러오지 못했습니다. 새로고침 후 다시 시도하세요.",
     "popup.compact.translate": "번역",
     "popup.compact.restore": "복원",
@@ -784,7 +790,7 @@ export const koKRMessages = {
     'language.settingsLabel': '앱 언어',
     'language.settingsDescription': 'FluentRead 전체에서 사용할 언어를 선택합니다.',
     'language.help': '변경 사항은 즉시 적용됩니다.',
-    'language.saveFailed': '인터페이스 언어를 저장하지 못했습니다. 설정을 다시 열고 시도해 주세요.',
+    'language.saveFailed': '인터페이스 언어를 변경하지 못했습니다. 다시 시도해 주세요.',
     'language.changed': '인터페이스 언어가 변경되었습니다',
     'language.onboardingWelcomeEyebrow': '환영합니다',
     'language.onboardingWelcomeTitle': 'FluentRead에 오신 것을 환영합니다',

@@ -8,21 +8,25 @@ import {fileURLToPath} from 'node:url';
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const taglines = JSON.parse(read('src/core/i18n/messages/brand-taglines.json'));
-const combined = `${taglines['en-US']} ${taglines['zh-CN']}`;
+const descriptions = JSON.parse(read('src/core/i18n/messages/product-descriptions.json'));
 
 assert.equal(Object.keys(taglines).length, 7, 'Seven interface languages need brand copy');
 assert.equal(taglines['en-US'], 'Closer languages. A bigger world.');
 assert.equal(taglines['zh-CN'], '让语言更近，让世界更大。');
-assert.equal(JSON.parse(read('package.json')).description, combined, 'Package description');
+assert.deepEqual(Object.keys(descriptions).sort(), Object.keys(taglines).sort(), 'Product descriptions cover the same seven languages');
+assert.equal(JSON.parse(read('package.json')).description, descriptions['en-US'], 'Package product description');
 for (const [language, tagline] of Object.entries(taglines)) {
     assert.ok(typeof tagline === 'string' && tagline.trim(), `${language}: empty tagline`);
+    const description = descriptions[language];
+    assert.ok(typeof description === 'string' && description.trim() === description && description.length > 0, `${language}: empty or untrimmed product description`);
+    assert.ok(description.length <= 132 && !/[\r\n]/u.test(description), `${language}: native manifest description limit`);
     assert.ok(read(`src/core/i18n/messages/${language}.ts`).includes(`"brand.tagline": brandTaglines['${language}']`), `${language}: interface resource`);
     assert.ok(read('marketing/brand.md').includes(tagline), `${language}: copyable brand guide`);
 }
 for (const [locale, language] of [['en', 'en-US'], ['zh-CN', 'zh-CN']]) {
     const folder = `marketing/chrome-web-store/${locale}`;
     const short = read(`${folder}/short-description.txt`).trim();
-    assert.equal(short, combined, `${locale}: short description`);
+    assert.equal(short, descriptions[language], `${locale}: localized product short description`);
     assert.ok([...short].length <= 132, `${locale}: short description length`);
     assert.equal(JSON.parse(read(`${folder}/listing.json`)).shortDescription, short, `${locale}: listing`);
     assert.ok(read(`${folder}/description.txt`).startsWith(`${taglines[language]}\n\n`), `${locale}: full description`);
@@ -36,4 +40,4 @@ for (const [file, language, counterpart] of [
     assert.ok(intro.includes(taglines[language]), `${file}: localized opening`);
     assert.ok(intro.includes(`](${counterpart})`), `${file}: language switch in opening`);
 }
-console.log('Brand copy verified: 7 languages, localized README openings and language links, package and store descriptions, community copy.');
+console.log('Brand copy verified: 7 languages, localized README openings and language links, functional package and store descriptions, community copy.');

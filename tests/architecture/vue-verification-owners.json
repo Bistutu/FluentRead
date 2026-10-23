@@ -183,10 +183,11 @@
       "scenario": "实际服务覆盖选择及上下文失效"
     },
     "src/features/settings/ui/FloatingBallSettings.vue": {
-      "kind": "frozen-debt",
-      "sourceSha256": "8033fa94eba8ed88b265a2fe5e36a2791de0668002e68263149de38a76a9d1ee",
-      "reason": "提供悬浮球的进阶外观与交互设置，把按钮显示方式、展开延迟、点击行为、紧凑尺寸、设置入口、收起不透明度和禁用网站集中在一处编辑。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
-      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+      "kind": "behavior",
+      "tests": [
+        "tests/i18nSettingsCopy.test.ts"
+      ],
+      "scenario": "真实客户端模板七语即时切换、扩展/脚本入口区别、显隐和归一化事件及关闭状态"
     },
     "src/features/settings/ui/GoogleDriveSync.vue": {
       "kind": "frozen-debt",

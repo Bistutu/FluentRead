@@ -7,6 +7,7 @@
   "reencounter.current": "지금 읽는 문장",
   "reencounter.saved": "저장 당시의 문장",
   "reencounter.loading": "저장한 표현을 불러오는 중…",
+  "reencounter.readFailed": "저장한 표현을 불러올 수 없습니다. 다시 시도하세요.",
   "reencounter.noSentence": "저장된 원문 문장이 없습니다.",
   "reencounter.reference": "저장 당시의 참고 내용",
   "reencounter.retry": "다시 시도",

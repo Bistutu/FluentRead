@@ -1,7 +1,7 @@
 <!--
  * @file src/features/vocabulary/ui/ReencounterPanel.vue
  * 文件职责：在独立 Shadow UI 中呈现阅读时再次遇见的表达与新旧原句对照。
- * 主要内容：提供可键盘访问的轻量入口、附近命中导航、真实原句和收藏参考；主动请求当前语境讲解，无关配置通知保留当前回答，讲解输入变化与卸载取消旧请求，支持重试、本次暂停和关闭标记。
+ * 主要内容：提供可键盘访问的轻量入口、附近命中导航、真实原句和收藏参考；仅在反馈展示边界本地化读取、讲解与保存提示，不扫描用户原句；主动请求当前语境讲解，无关配置通知保留当前回答，讲解输入变化与卸载取消旧请求，支持重试、本次暂停和关闭标记。
  * 模块边界：不扫描或改写网页、不读取词书数据库、不更新掌握度；读取交给内容挂载器，模型交给既有阅读助手，界面样式只作用于本组件。
  -->
 <template>
@@ -18,12 +18,12 @@
         <div class="sentence-section"><h4>{{ t('reencounter.saved') }}</h4><blockquote v-if="state.saved.savedSentence" data-i18n-ignore>{{ state.saved.savedSentence }}</blockquote><p v-else class="hint">{{ t('reencounter.noSentence') }}</p><small v-if="state.saved.savedTitle" data-i18n-ignore>{{ state.saved.savedTitle }}</small></div>
         <details v-if="state.saved.reference" class="saved-reference"><summary>{{ t('reencounter.reference') }}</summary><ReadingAnswer :text="state.saved.reference" /></details>
       </template>
-      <p v-if="state.error" class="error" role="alert">{{ state.error }} <button type="button" @click="retry">{{ t('reencounter.retry') }}</button></p>
+      <p v-if="state.error" class="error" role="alert">{{ state.error === '收藏暂时无法读取' ? t('reencounter.readFailed') : translateLegacy(state.error) }} <button type="button" @click="retry">{{ t('reencounter.retry') }}</button></p>
       <div class="meaning-actions"><button v-if="canExplain" class="primary" type="button" :disabled="busy" @click="explain">{{ answer ? t('reencounter.explainAgain') : t('reencounter.explain') }}</button><button v-if="busy" type="button" @click="stop">{{ t('reencounter.stop') }}</button><button v-if="!canExplain" type="button" @click="settings">{{ t('reencounter.setup') }}</button></div>
       <p v-if="busy" class="hint" role="status">{{ t('reencounter.explaining') }}</p>
       <ReadingAnswer v-if="answer" :text="answer" />
-      <p v-if="error" class="error" role="alert">{{ error }} <button type="button" @click="explain">{{ t('reencounter.retry') }}</button></p>
-      <p v-if="notice" class="hint" role="status">{{ notice }}</p>
+      <p v-if="error" class="error" role="alert">{{ translateLegacy(error) }} <button type="button" @click="explain">{{ t('reencounter.retry') }}</button></p>
+      <p v-if="notice" class="hint" role="status">{{ translateLegacy(notice) }}</p>
       <p class="hint">{{ contextAllowed ? t('reencounter.requestScope') : t('reencounter.contextDisabled') }}</p>
       <footer><nav v-if="state.occurrences.length > 1" :aria-label="t('reencounter.navigation')"><button type="button" @click="step(-1)">‹</button><span>{{ currentIndex + 1 }} / {{ state.occurrences.length }}</span><button type="button" @click="step(1)">›</button></nav><details><summary>{{ t('reencounter.options') }}</summary><div class="menu"><button type="button" @click="pause">{{ t('reencounter.pause') }}</button><button type="button" @click="disable">{{ t('reencounter.disable') }}</button></div></details></footer>
     </section>
@@ -44,7 +44,7 @@ import type {ReencounterOccurrence} from '../content/readingText';
 
 const props = defineProps<{state: ReencounterState; open: (occurrence: ReencounterOccurrence) => unknown; close: () => void;
   pause: () => void; disable: () => unknown; retry: () => unknown}>();
-const {t} = useUiI18n();
+const {t, translateLegacy} = useUiI18n();
 const prefs = ref({...config});
 const media = window.matchMedia('(prefers-color-scheme: dark)');
 const systemDark = ref(media.matches);

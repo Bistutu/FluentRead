@@ -1,26 +1,31 @@
 /**
  * @file tests/videoSentenceLearningComponent.test.ts
  * 文件职责：执行完整句视频学习组件的真实 setup，验证调度、收藏、问答与材料关联的异步归属。
- * 主要内容：保留播放器操作、翻译与草稿回归；材料通过真实公开 begin/complete/client 验证来源、时间、代次冻结与成功引用，失败和旧播放器卸载不会误关联。
+ * 主要内容：保留播放器操作、翻译与草稿回归；材料通过真实公开 begin/complete/client 验证来源、时间、代次冻结与成功引用，失败和旧播放器卸载不会误关联；真实错误输出边界使用六语词典且不会改写字幕、译文或模型回答。
  * 模块边界：仅替换媒体、模型及浏览器消息传输，不替换材料采集逻辑；DOM 布局与真实平台由独立生产验收覆盖。
  */
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {parseHTML} from 'linkedom';
 import * as vue from 'vue';
 import {Config} from '@/src/core/config/model';
+import {translateLegacyText, type UiLanguage} from '@/src/core/i18n';
+import {registerAllUiLanguageBundles} from './helpers/uiLanguageBundles';
+
+registerAllUiLanguageBundles();
+const errorLocale = vi.hoisted(() => ({language: null as unknown as vue.Ref<UiLanguage>}));
 
 const materialTransport = vi.hoisted(() => ({sendMessage: vi.fn(), extension: {inIncognitoContext: false}}));
 vi.mock('webextension-polyfill', () => ({default: {runtime: {sendMessage: materialTransport.sendMessage}, extension: materialTransport.extension}}));
 
 import VideoSentenceLearning from '@/src/features/video-subtitle/ui/VideoSentenceLearning.vue';
-vi.mock('@/src/ui/i18n', () => ({useUiI18n: () => ({t: (key: string) => key})}));
+vi.mock('@/src/ui/i18n', () => ({useUiI18n: () => ({t: (key: string) => key, translateLegacy: (value: string) => translateLegacyText(value, errorLocale.language.value)})}));
 vi.mock('@/src/services/config/store', () => ({
   get config() {return config;}, configReady: Promise.resolve(),
   subscribeConfig: (fn: () => void) => {subscription = fn; fn(); return unsubscribe;},
 }));
 vi.mock('@/src/platform/browser/runtimeMessages', () => ({sendRuntimeMessage: (...args: unknown[]) => sendRuntimeMessage(...args)}));
 vi.mock('@/src/platform/browser/capabilities', () => ({browserCapabilities: {extensionDom: true}}));
-vi.mock('@/src/features/reading-assistant/ui/answer/public', () => ({ReadingAnswer: {render: () => null}}));
+vi.mock('@/src/features/reading-assistant/ui/answer/public', () => ({ReadingAnswer: {props: ['text'], setup: (props: {text: string}) => () => vue.h('output', {'data-reading-answer': ''}, props.text)}}));
 vi.mock('@/src/features/reading-assistant/public', () => ({streamReading: (...args: unknown[]) => streamReading(...args)}));
 vi.mock('@/src/features/video-subtitle/content/readingAnnotationClient', () => ({annotateVideoReading: (...args: unknown[]) => annotateVideoReading(...args)}));
 const first = 'First sentence.';
@@ -108,6 +113,7 @@ function portalKeyboardFixture() {
 }
 
 beforeEach(() => {
+  errorLocale.language = vue.ref<UiLanguage>('zh-CN');
   vi.useFakeTimers();
   materialTransport.extension.inIncognitoContext = false;
   materialTransport.sendMessage.mockReset().mockImplementation(async message => ({success: true, data: message.action === 'generation' ? 7 : {id: 'video-material'}}));
@@ -148,6 +154,47 @@ describe('完整句学习组件的调度与异步归属回归', () => {
     expect(host.querySelector('[data-learning-action="save"]')?.hasAttribute('disabled')).toBe(true);
     pending.resolve('Refreshed translation'); await flush();
     expect(host.querySelector('[data-learning-action="save"]')?.hasAttribute('disabled')).toBe(false);
+  });
+
+  it.each(['translation', 'result', 'stream', 'startup', 'save'] as const)('六语错误展示边界本地化 %s，原始状态保留可随界面语言更新', async kind => {
+    const source = '理解请求未完成，请重试';
+    if (kind === 'translation') translate.mockRejectedValueOnce(new Error(source));
+    if (kind === 'startup') streamReading.mockImplementationOnce(() => {throw new Error(source);});
+    const host = await mountRendered();
+    if (kind === 'save') {
+      sendRuntimeMessage.mockResolvedValueOnce({success: false, error: {message: source}});
+      await state.save();
+    } else if (kind !== 'translation') {
+      state.explain();
+      if (kind === 'result') readingCallbacks.result({success: false, error: source});
+      if (kind === 'stream') readingCallbacks.error(new Error(source));
+    }
+    await flush();
+    expect(kind === 'translation' ? state.translationError : state.error).toBe(source);
+    for (const language of ['en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES'] as const) {
+      errorLocale.language.value = language;await flush();
+      const translated = translateLegacyText(source, language);
+      expect(translated).not.toBe(source);
+      expect(host.querySelector('[role="alert"]')!.textContent).toContain(translated);
+      expect(kind === 'translation' ? state.translationError : state.error).toBe(source);
+      expect(host.querySelector('[data-learning-original]')?.textContent).toBe(first);
+    }
+  });
+
+  it('与已登记错误同文的字幕、译文和模型正文保持原样，未知错误也不猜译', async () => {
+    const source = '理解请求未完成，请重试';
+    props.cues = [{text: source, startMs: 0, durationMs: 1000}];
+    translate.mockResolvedValueOnce(source);errorLocale.language.value = 'en-US';
+    const host = await mountRendered();
+    expect(host.querySelector('[data-learning-original]')?.textContent).toBe(source);
+    expect(host.querySelector('[data-learning-translation-display]')?.textContent).toBe(source);
+    state.explain();readingCallbacks.progress({kind: 'text', text: source});await flush();
+    expect(host.querySelector('[data-reading-answer]')?.textContent).toBe(source);
+    readingCallbacks.result({success: true, text: source});await flush();
+    expect(host.querySelector('[data-reading-answer]')?.textContent).toBe(source);
+    state.explain();readingCallbacks.error(new Error('Custom provider detail: 原始内容'));await flush();
+    expect(host.querySelector('[role="alert"]')?.textContent).toBe('Custom provider detail: 原始内容');
+    expect(host.querySelector('[data-learning-translation-display]')?.textContent).toBe(source);
   });
 
   it.each(['ja', ''])('读音无来源语言时回退配置 %s，空结果不显示错误，换句后的归顶任务可安全卸载', async source => {

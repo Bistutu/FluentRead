@@ -7,7 +7,7 @@
 import {registerUiLanguageBundle} from '@/src/core/i18n';
 import {UI_LANGUAGE_BUNDLES} from '@/src/core/i18n/bundles';
 import type {RegisteredUiLanguage} from '@/src/core/i18n/types';
-export {UI_LANGUAGE_BUNDLES, createUiLanguageBundleFiles, createExtensionNameLocaleFiles} from '@/src/core/i18n/bundles';
+export {UI_LANGUAGE_BUNDLES, createUiLanguageBundleFiles, createExtensionMetadataLocaleFiles} from '@/src/core/i18n/bundles';
 export function registerAllUiLanguageBundles(): void {
     for (const [language, bundle] of Object.entries(UI_LANGUAGE_BUNDLES)) {
         registerUiLanguageBundle(language as RegisteredUiLanguage, bundle);

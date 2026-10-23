@@ -1,6 +1,6 @@
 {
   "title": "FluentRead-流畅阅读",
-  "shortDescription": "Closer languages. A bigger world. 让语言更近，让世界更大。",
+  "shortDescription": "Read web pages in two languages, translate selected text, and choose from multiple translation services.",
   "descriptionFile": "description.txt",
   "language": "en",
   "sourceLanguageInScreenshots": "auto"

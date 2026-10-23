@@ -1,7 +1,7 @@
 <!--
  * @file src/features/settings/ui/services/FreeTranslationSettings.vue
  * 文件职责：编辑免费翻译服务的启停、选择策略、邮箱与等待时间。
- * 主要内容：策略选择与启用数量默认可见，全部服务的启停、连接结果、耗时、分流参考和可选邮箱放在默认展开且可手动收起的设置卡片中，收起保留表单；B站翻译仅标注免费；Safari 单独呈现实际域授权并在真实点击中逐线路申请，权限查询有界且切换时取消等待；撤权与重新激活时复查域权限，自己授权后的事件不取消原点击；错误保留翻译键；仅展开且活跃的分流视图合并读取后台快照，收起或切换时取消等待和旧事件，邮箱草稿只在所属配置提交。
+ * 主要内容：策略选择与启用数量默认可见，全部服务的启停、连接结果、耗时、分流参考和可选邮箱放在默认展开且可手动收起的设置卡片中，收起保留表单；B站翻译仅标注免费；Safari 单独呈现实际域授权并在真实点击中逐线路申请，权限查询有界且切换时取消等待；撤权与重新激活时复查域权限，自己授权后的事件不取消原点击；错误保留翻译键，等待上限以完整七语帮助说明逐服务与总预算，不承诺外部服务恢复时间；仅展开且活跃的分流视图合并读取后台快照，收起或切换时取消等待和旧事件，邮箱草稿只在所属配置提交。
  * 模块边界：只修改传入的配置，由设置页统一持久化；通过平台端口管理 Safari 授权，只读取不含凭据的后台权重快照，不请求翻译或更改启用顺序。
  -->
 <template>
@@ -61,8 +61,8 @@
     </template>
     <template v-if="advanced">
       <div class="timeout-field">
-        <div class="timeout-label"><strong>{{ t('settings.services.waitTimeout') }}</strong><FieldHelp :content="`${t('settings.services.freeWeights.budget')} ${translateLegacy('网络问题通常几分钟后重试；限流按服务提示恢复；拦截可能需要几小时；日额度通常隔天恢复')}`" /></div>
-        <el-input-number :model-value="config.freeTranslationTimeoutMs / 1000" :min="1" :max="15" :step="1" :controls="false" :aria-label="translateLegacy('每个服务最多等待（秒）')" :disabled="!active" :onUpdate:modelValue="actions.setDuration" />
+        <div class="timeout-label"><strong>{{ t('settings.services.waitTimeout') }}</strong><FieldHelp :content="t('settings.services.freeWeights.timeoutHelp')" /></div>
+        <el-input-number :model-value="config.freeTranslationTimeoutMs / 1000" :min="1" :max="15" :step="1" :controls="false" :aria-label="t('settings.services.waitTimeout')" :disabled="!active" :onUpdate:modelValue="actions.setDuration" />
       </div>
     </template>
   </div>
