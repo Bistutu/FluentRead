@@ -156,7 +156,7 @@ const save = () => fs.writeFileSync(path.join(artifacts, 'report.json'), JSON.st
     const assertCurrentDefault = async expected => {
       await page.waitForFunction(expected => document.querySelector('.service-catalog')?.dataset.defaultService === expected, expected);
       assert.equal(await catalog().getAttribute('data-editing-service'), expected);
-      assert.equal(await page.locator('.detail-hero .active-badge').count(), 1);
+      assert.equal(await page.locator('.detail-hero .active-badge, .detail-hero .editing-badge').count(), 0);
       assert.equal(await page.locator(`.service-rail [data-service-value="${expected}"] .library-default`).count(), 1);
       assert.equal(await page.locator('.service-rail .library-default').count(), 1);
       assert.equal(await action().isDisabled(), true);
@@ -183,7 +183,7 @@ const save = () => fs.writeFileSync(path.join(artifacts, 'report.json'), JSON.st
     await selectService('bilibili');
     assert.equal(await catalog().getAttribute('data-default-service'), 'freeTranslation');
     assert.equal((await readConfig()).service, 'freeTranslation');
-    assert.equal(await page.locator('.detail-hero .editing-badge').count(), 1);
+    assert.equal(await page.locator('.detail-hero .editing-badge').count(), 0);
     const desktop = await page.locator('.detail-hero').evaluate(node => {
       const a = node.querySelector('[data-set-default-service-button]').getBoundingClientRect();
       const b = node.querySelector('[data-connection-test-button]').getBoundingClientRect();

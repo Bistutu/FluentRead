@@ -1,0 +1,62 @@
+{
+  "date": "2026-10-23",
+  "baseCommit": "0ad3d431b425d8e082f15acfce11de23a66b8cc1",
+  "artifact": "Chrome MV3 production extension",
+  "productionFingerprint": {
+    "sha256": "c64c9cd665607b46c4b6f8e83f9c21808cfee61cbb3a3826a67a1e859a6d04fe",
+    "fileCount": 525
+  },
+  "browser": "Isolated Microsoft Edge",
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "windowPlacement": "background-visible-no-focus",
+  "totalCases": 104,
+  "totalScreenshots": 128,
+  "suites": {
+    "main": {
+      "ok": true,
+      "cases": 85,
+      "screenshots": 96,
+      "consoleErrors": 0,
+      "cleanup": {
+        "ownedBrowserClosed": true,
+        "profileRemoved": true
+      },
+      "finishedAt": "2026-10-23T06:08:28.905Z"
+    },
+    "learning": {
+      "ok": true,
+      "cases": 7,
+      "screenshots": 23,
+      "consoleErrors": 0,
+      "cleanup": {
+        "ownedBrowserClosed": true,
+        "profileRemoved": true
+      },
+      "finishedAt": "2026-10-23T06:08:45.052Z"
+    },
+    "document": {
+      "ok": true,
+      "cases": 12,
+      "screenshots": 9,
+      "consoleErrors": 0,
+      "cleanup": [],
+      "finishedAt": "2026-10-23T06:08:53.447Z"
+    }
+  },
+  "document": {
+    "requests": 1,
+    "downloads": [
+      {
+        "bytes": 184,
+        "containsSource": true,
+        "containsTranslation": true
+      }
+    ]
+  },
+  "limitations": [
+    "Controlled loopback document translation; no live provider claims.",
+    "Desktop Edge viewports; no physical mobile, Firefox or Safari runtime claims.",
+    "Targeted regression only."
+  ]
+}

@@ -134,6 +134,7 @@ const save = () => fs.writeFileSync(path.join(artifacts, 'report.json'), JSON.st
     assert.equal(await page.locator('.no-model-panel').count(), 0); report.cases.push('one-active-settings-pane-and-no-empty-model-placeholder');
     report.hooks.apiKeySelectors = (await page.locator('input[type="password"], [data-api-key], [data-testid*="api-key"]').count()) > 0;
     await selected('freeTranslation').click();
+    await page.locator('[data-free-provider-disclosure] > summary').click();
     const freeRequests = page.locator('[data-configuration-group="requests"]');
     assert.equal(await page.locator('[id$="tab-requests"]').getAttribute('aria-selected'), 'true');
     assert(await page.locator('[data-fallback-provider]:visible').count() > 0);
@@ -149,6 +150,7 @@ const save = () => fs.writeFileSync(path.join(artifacts, 'report.json'), JSON.st
     await page.locator(`[data-fallback-provider="${disabledProvider}"] .el-switch`).click();
     await page.close(); page = await newOptions(); await rail().waitFor({state: 'visible'});
     await selected('freeTranslation').click();
+    await page.locator('[data-free-provider-disclosure] > summary').click();
     const reopenedFreeRequests = page.locator('[data-configuration-group="requests"]');
     assert.equal(await page.locator('[id$="tab-requests"]').getAttribute('aria-selected'), 'true');
     const reopenedMode = await page.locator('input[type="radio"][value="sequential"]').isChecked();

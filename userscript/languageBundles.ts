@@ -3,6 +3,7 @@
  * 文件职责：在构建期保留 userscript 可呈现的界面文案，维持已发布语言资源的固定内容。
  * 主要内容：剔除没有扩展 popup 和本地模型后端的信息高亮文案、没有原生右键菜单发送者的操作失败通知，以及没有视频字幕运行时的完整句学习、读音标注及原生全屏提示文案、Safari 原生免费池授权提示、扩展 Popup 专用缩写和新增文档页的配置读取、进度、续译与旧校订文案；已发布远程词典中的旧文档键保留原内容。脚本内联动态模块与样式，五种固定远程词典不新增扩展分块加载失败、AI 翻译超时或 DeepLX 直连文案，注册时由脚本补齐；局部划选同样在注册时更新文案，远端词典保留此前的点选提示；中英内嵌词典保留可用页面的新文案。
  * 集成兼容：MiMo 退役提示在完整设置可达，注册时补齐而不加入脚本固定词典；扩展专用诊断、新移动端字幕贴底标签、右下角显示模式和当前页字体按钮与新PDF弹窗不进入脚本词典；五种远程资源中的旧导出说明保留已发布文本，尚无脚本后台支持的材料旧文案与模板也从内嵌英文按目录排除，保留实际可用功能文案并避免固定提交引用不存在的新摘要。
+ * 发布兼容：已从扩展界面移除的旧说明仅在五种远程词典投影中按原顺序保留，不再登记为现用界面校正文案。
  * 模块边界：只投影静态字典，不改变扩展词典、资源提交号或运行时语言装载协议。
  */
 import {UI_LANGUAGE_BUNDLES as extensionBundles} from '../src/core/i18n/bundles';
@@ -12,6 +13,24 @@ import {mimoRetirementSource} from '../src/core/i18n/messages/mimoRetirement';
 import type {UiLanguageBundle} from '../src/core/i18n/types';
 
 const materialPatternSources = new Set(learningMaterialPatterns.map(({pattern}) => pattern));
+// 这些旧界面文案已经删除；只保留已发布远程资源的内容与键顺序，不再进入扩展或内嵌英文词典。
+// 每行依次为插入位置前一项、旧原文，以及日本語、한국어、Français、Русский、Español。
+const publishedRetiredLegacyRows = [
+    ['连接测试失败', '鼠标悬停翻译设置', 'ホバー翻訳の設定', '마우스 오버 번역 설정', 'Réglages de la traduction au survol', 'Настройки перевода при наведении', 'Ajustes de la traducción al pasar el ratón'],
+    ['选择文字', '将鼠标停在段落上，按快捷键查看译文。', '段落にカーソルを合わせ、ショートカットキーを押すと訳文が表示されます。', '문단에 마우스를 올리고 단축키를 눌러 번역문을 확인하세요.', 'Placez le pointeur sur un paragraphe et appuyez sur le raccourci pour afficher sa traduction.', 'Наведите курсор на абзац и нажмите сочетание клавиш, чтобы увидеть перевод.', 'Coloca el cursor sobre un párrafo y pulsa el atajo para ver la traducción.'],
+    ['始终翻译已开启', '服务优先顺序', 'サービスの優先順', '서비스 우선순위', 'Ordre de priorité des services', 'Приоритетный порядок сервисов', 'Orden de prioridad de los servicios'],
+] as const;
+const publishedLegacyColumns = {'ja-JP': 2, 'ko-KR': 3, 'fr-FR': 4, 'ru-RU': 5, 'es-ES': 6} as const;
+
+function preservePublishedRetiredLegacyText(language: string, legacyText: Record<string, string>): Record<string, string> {
+    const column = publishedLegacyColumns[language as keyof typeof publishedLegacyColumns];
+    if (!column) return legacyText;
+    return Object.fromEntries(Object.entries(legacyText).flatMap((entry) => {
+        const retired = publishedRetiredLegacyRows.find(([previousSource]) => previousSource === entry[0]);
+        return retired ? [entry, [retired[1], retired[column]]] : [entry];
+    }));
+}
+
 const publishedSectionMessages: Readonly<Record<string, Record<string, string>>> = {
     "ja-JP": {
         "sectionTranslation.picker.preview": "マウスを動かしてプレビュー、クリックで選択",
@@ -97,8 +116,9 @@ export const UI_LANGUAGE_BUNDLES = Object.fromEntries(Object.entries(extensionBu
     const materialSources = new Set(Object.keys(learningMaterialLegacyText[language as keyof typeof learningMaterialLegacyText]));
     // 完整设置复用 ServiceConfiguration；新增 MiMo 文案由语言注册器补回。
     // 不将这条新增文案写入远程词典，避免固定提交引用尚不存在的新内容摘要。
-    const legacyText = Object.fromEntries(Object.entries(bundle.legacyText).filter(([source]) =>
-        !materialSources.has(source) && source !== mimoRetirementSource && source !== '移动端 / X 自动贴底'));
+    const legacyText = preservePublishedRetiredLegacyText(language,
+        Object.fromEntries(Object.entries(bundle.legacyText).filter(([source]) =>
+            !materialSources.has(source) && source !== mimoRetirementSource && source !== '移动端 / X 自动贴底')));
     const legacyPatterns = {
         early: bundle.legacyPatterns.early.filter(([source]) => !materialPatternSources.has(source)),
         late: bundle.legacyPatterns.late.filter(([source]) => !materialPatternSources.has(source)),

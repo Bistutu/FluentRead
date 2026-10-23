@@ -59,8 +59,7 @@ async function layout(page) {
             summary:rect(summary),summaryLabel:summary.getAttribute('aria-label'),summaryTitle:summary.title,
             name:name?.textContent || '',nameRect:rect(name),nameLines,model:model?.textContent || '',modelRect:rect(model),modelTitle:model?.title || '',
             modelLineHeight:model ? parseFloat(getComputedStyle(model).lineHeight) : 0,
-            defaultIcons:summary.querySelectorAll('.provider-avatar:not(.provider-overflow)').length,
-            additionalServices:summary.querySelector('.provider-overflow')?.textContent || '',
+            defaultIcons:summary.querySelectorAll('.provider-avatar').length,
             primary:primaryRect,primaryCount:document.querySelectorAll('[data-testid="page-translation"]').length,primaryVisible:visible(primaryRect),
             reminder:reminder ? {rect:rect(reminder),text:reminder.textContent,role:reminder.getAttribute('role'),animationName:reminderStyle.animationName,
                 animationDuration:reminderStyle.animationDuration,boxShadow:reminderStyle.boxShadow,settingsButtons:reminder.querySelectorAll('button').length} : null,
@@ -163,7 +162,7 @@ async function main(args) {
                     assert.equal(metrics.modelTitle,'Configured model: 文',`${name}: title preserves the exact saved model`);
                     assert(metrics.summaryLabel.includes(' · 文 · Configured model: 文') && metrics.summaryTitle.includes(' · 文 · Configured model: 文'),`${name}: accessible summary preserves user-owned content`);
                 }
-                if (expectation.extra) assert.equal(metrics.additionalServices,expectation.extra,`${name}: unique extra-service count`);
+                if (expectation.assigned) assert(metrics.summaryTitle.includes('DeepSeek'),`${name}: feature assignments remain available in the full summary`);
                 if (expectation.reminder) {
                     assert(metrics.reminder?.role === 'alert' && metrics.reminder.settingsButtons === 1,`${name}: reminder keeps alert and settings action`);
                     assert.equal(metrics.reminder.animationName,'none',`${name}: reminder has no decorative animation`);
@@ -242,7 +241,7 @@ async function main(args) {
                 ['long-custom',{service:customId},{name:longName,model:longModel}],
                 ['non-model',{service:'google'},{name:language === 'zh-CN' ? '谷歌翻译' : 'Google Translate',model:''}],
                 ['local-model',{service:'localTranslation'},{name:language === 'zh-CN' ? '本地模型翻译' : 'Local model translation',model:'fluentread/opus-zh-en'}],
-                ['assigned',{service:'openai',hoverTranslationService:'deepseek',selectionTranslationService:'google'},{name:'OpenAI',model:'gpt-4.1-mini',extra:'+2'}],
+                ['assigned',{service:'openai',hoverTranslationService:'deepseek',selectionTranslationService:'google'},{name:'OpenAI',model:'gpt-4.1-mini',assigned:true}],
             ]) {
                 const page=await capture(`${language}-dark-${id}`,{...common,hoverTranslationService:'',selectionTranslationService:'',...values},expectation);await closePage(page);
             }

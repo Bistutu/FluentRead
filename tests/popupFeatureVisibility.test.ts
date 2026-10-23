@@ -440,7 +440,6 @@ describe('popup feature visibility', () => {
         expect(popup).toContain('findEnabledQuickTranslationHotkeyConflict');
         expect(popup).not.toContain('CustomHotkeyInput');
         expect(styles).toContain('.quick-profile-preview-row');
-        expect(styles).toContain('.setting-row small.independent-profile-note');
     });
 
     it('filters Chrome Translator but renders old synchronized selections as unavailable', () => {

@@ -20,8 +20,8 @@ defineProps<{modelValue: boolean; title: string; description?: string; disabled?
 const emit = defineEmits<{'update:modelValue': [value: boolean]}>();
 </script>
 <style scoped>
-.feature-enable-card { margin: 0 0 20px; border: 1px solid var(--line, #d7dce5); border-radius: 10px; background: var(--surface, #fff); overflow: hidden; }
-.feature-enable-card.enabled { border-color: color-mix(in srgb, var(--brand, #ef4776) 35%, var(--line, #d7dce5)); background: color-mix(in srgb, var(--brand, #ef4776) 4%, var(--surface, #fff)); }
+.feature-enable-card { margin: 0 0 var(--fr-card-gap, 20px); border: 1px solid var(--fr-card-border, var(--line, #d7dce5)); border-radius: var(--fr-card-radius, 14px); background: var(--fr-card-background, var(--surface, #fff)); box-shadow: var(--fr-card-shadow, none); overflow: hidden; }
+.feature-enable-card.enabled { border-color: var(--fr-card-border, var(--line, #d7dce5)); background: var(--fr-card-background, var(--surface, #fff)); }
 .feature-enable-card button { display: flex; align-items: center; justify-content: space-between; gap: 24px; width: 100%; min-height: 76px; padding: 18px 20px; border: 0; color: var(--ink, #172033); background: transparent; font: inherit; text-align: start; cursor: pointer; }
 .feature-enable-card button:hover:not(:disabled) { background: color-mix(in srgb, var(--brand, #ef4776) 5%, transparent); }
 .feature-enable-card button:focus-visible { outline: 2px solid var(--brand, #ef4776); outline-offset: -3px; }

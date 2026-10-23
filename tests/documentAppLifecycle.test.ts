@@ -117,11 +117,14 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
     };
     const restartConfirmation = () => walkHost(root).find(entry => entry.type === 'dialog' && entry.props['aria-labelledby'] === 'confirm-document-heading')!;
     const confirmButton = (label: string) => walkHost(restartConfirmation()).find(entry => entry.type === 'button' && hostText(entry) === label)!;
+    const primaryTaskAction = () => walkHost(root).find(entry => entry.props.class === 'toolbar-primary-actions')?.props['data-primary-action'];
 
     it('keeps PDF retranslation and download available after completion, preserving the result until restart is confirmed', async () => {
         await state.loadFiles([file('repeat.pdf')]); await flush();
+        expect(primaryTaskAction()).toBe('translate');
         await taskButton('开始翻译').props.onClick();
         await vi.waitFor(() => expect(state.translationComplete).toBe(true)); await flush();
+        expect(primaryTaskAction()).toBe('download');
         expect(ports.batch).toHaveBeenCalledOnce();
         expect(ports.batch.mock.calls[0][2].useCache).toBeUndefined();
         state.editSegment(0, '人工校订保留到确认'); await flush();
@@ -140,6 +143,19 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         expect(ports.batch).toHaveBeenCalledOnce();
         expect(state.translatedSegments).toEqual(['人工校订保留到确认']);
         expect(taskButton('重新翻译').props.disabled).toBe(false);
+        expect(primaryTaskAction()).toBe('download');
+
+        const previousTarget = state.config.to;
+        state.config.to = 'fr'; await flush();
+        expect(primaryTaskAction()).toBe('translate');
+        expect(taskButton('按新设置翻译').props.disabled).toBe(false);
+        await taskButton('按新设置翻译').props.onClick(); await flush();
+        await confirmButton('返回文档').props.onClick();
+        restartConfirmation().props.onClose(new Event('close')); await flush();
+        expect(ports.batch).toHaveBeenCalledOnce();
+        expect(state.translatedSegments).toEqual(['人工校订保留到确认']);
+        state.config.to = previousTarget; await flush();
+        expect(primaryTaskAction()).toBe('download');
 
         ports.batch.mockResolvedValueOnce(['第二次译文']);
         await taskButton('重新翻译').props.onClick(); await flush();
@@ -159,11 +175,13 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         await state.loadFiles([file('switch.pdf')]); await flush();
         await taskButton('开始翻译').props.onClick();
         await vi.waitFor(() => expect(state.translationComplete).toBe(true)); await flush();
+        expect(primaryTaskAction()).toBe('download');
         expect(ports.batch).toHaveBeenCalledOnce();
         const field = walkHost(root).find(entry => entry.type === 'select' && entry.props['aria-label'] === (change === 'service' ? '翻译服务' : '模型'))!;
         field.props.onChange({target: {value: change === 'service' ? 'deepseek' : 'gpt-5'}}); await flush();
         // 服务和模型切换允许未完成任务续译；已完成任务仍必须保留完整重译入口。
         expect(state.settingsChanged).toBe(false);
+        expect(primaryTaskAction()).toBe('translate');
         expect(taskButton('重新翻译').props.disabled).toBe(false);
         await taskButton('重新翻译').props.onClick(); await flush();
         expect(ports.batch).toHaveBeenCalledOnce();
@@ -176,6 +194,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         });
         expect(taskButton('重新翻译').props.disabled).toBe(false);
         expect(taskButton('下载文件 ↓').props.disabled).toBe(false);
+        expect(primaryTaskAction()).toBe('download');
     });
 
     it.each([
@@ -215,6 +234,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         expect(state.runState).toBe('paused');
         expect(state.statusLabel).toBe('已暂停');
         expect(taskButton('继续翻译').props.disabled).toBe(false);
+        expect(primaryTaskAction()).toBe('translate');
         expect(state.translatedSegments[0]).toBe('保留人工校订');
         expect(state.confirmedTranslationIds).toEqual([0]);
         expect(state.settingsChanged).toBe(false);

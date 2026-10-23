@@ -1,7 +1,7 @@
 <!--
  * @file src/features/settings/ui/InterfaceSettings.vue
  * 文件职责：组织译文样式、界面风格、动画加载效果、菜单栏布局与界面字体及逐句高亮、完整句学习外观分组，其中网页译文样式排在第一位，完整句学习外观紧随菜单栏布局。
- * 主要内容：连续展示译文样式、与真实菜单栏同宽的皮肤预览、菜单栏布局、动画及紧凑字体卡片，风格卡片的缩略图用各皮肤登记的配色画出一个极简菜单栏，单选组只保留选中项的 Tab 入口并支持方向键及首尾定位，通过预览和显隐列表编排区域与快捷入口；字体标题、描述和样例使用包内字形子集，未下载和离线时也可预览真实样式；字体下载、重试和逐项清除都在对应字体卡片内完成，清除按钮展示排除共享文件后的可释放容量；清除确认框绑定当前页面、配置及选中字体，隐藏、缓存停用或配置变更时关闭，迟到结果不写回新配置或显示旧反馈。
+ * 主要内容：连续展示译文样式、与真实菜单栏同宽的皮肤预览、菜单栏布局、动画及紧凑字体卡片，风格选择以名称和配色缩略图组成可比较网格，仅单独展示当前选择的说明，其余说明保留在可访问名称与悬停提示中；单选组只保留选中项的 Tab 入口并支持方向键及首尾定位，窄屏优先展示选择网格再展示完整预览，通过预览和显隐列表编排区域与快捷入口；字体标题、描述和样例使用包内字形子集，未下载和离线时也可预览真实样式；字体下载、重试和逐项清除都在对应字体卡片内完成，清除按钮展示排除共享文件后的可释放容量；清除确认框绑定当前页面、配置及选中字体，隐藏、缓存停用或配置变更时关闭，迟到结果不写回新配置或显示旧反馈。
  * 模块边界：本组件只负责界面配置的展示与双向绑定，不直接读写浏览器存储、不负责主题模式，也不关闭翻译功能本身；界面皮肤由 Options composition root 统一应用，译文样式的细节由 TranslationStyleSettings 负责。
 -->
 <template>
@@ -11,10 +11,7 @@
 </SettingsPanel>
 
   <SettingsPanel name="skin" :active="props.activePanel">
-<SettingsGroup
-    :title="translateLegacy('界面与弹窗')"
-    :description="translateLegacy('从效率布局到传统色配色，选择适合自己的界面；也可以只留下常用栏目')"
-  >
+<SettingsGroup :title="translateLegacy('界面与弹窗')">
     <SettingsItem
       class="interface-appearance-settings"
       :label="translateLegacy('弹窗风格')"
@@ -28,6 +25,10 @@
         />
       </template>
       <div class="interface-skin-picker" role="radiogroup" :aria-label="translateLegacy('弹窗风格')" @keydown="handleSkinKeydown">
+        <div class="interface-skin-current">
+          <strong>{{ translateLegacy(selectedSkinOption.label) }}</strong>
+          <p>{{ translateLegacy(selectedSkinOption.description).replace('FluentRead', t('common.brand')) }}</p>
+        </div>
         <div
           v-for="group in groupedSkinOptions"
           :key="group.value"
@@ -37,7 +38,6 @@
         >
           <div class="interface-skin-group-heading">
             <strong :id="`interface-skin-group-${group.value}`">{{ translateLegacy(group.label) }}</strong>
-            <small>{{ translateLegacy(group.description) }}</small>
           </div>
           <div class="interface-skin-grid">
             <button
@@ -50,6 +50,7 @@
               :aria-checked="props.config.interfaceSkin === skin.value"
               :tabindex="props.config.interfaceSkin === skin.value ? 0 : -1"
               :aria-label="`${translateLegacy(skin.label)}: ${translateLegacy(skin.description).replace('FluentRead', t('common.brand'))}`"
+              :title="translateLegacy(skin.description).replace('FluentRead', t('common.brand'))"
               :data-skin="skin.value"
               @click="selectInterfaceSkin(skin.value)"
             >
@@ -73,7 +74,6 @@
               </span>
               <span class="interface-skin-copy">
                 <strong>{{ translateLegacy(skin.label) }}</strong>
-                <small>{{ translateLegacy(skin.description).replace('FluentRead', t('common.brand')) }}</small>
               </span>
               <span class="interface-skin-radio" aria-hidden="true"><i /></span>
             </button>
@@ -582,6 +582,10 @@ function setPopupQuickFeatureVisibility(featureId: string, visible: boolean) {
   gap: 12px;
 }
 
+.interface-skin-current { display: grid; gap: 4px; padding: 0 2px 4px; }
+.interface-skin-current strong { color: var(--ink); font-size: 13px; font-weight: 600; line-height: 1.45; }
+.interface-skin-current p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.55; overflow-wrap: anywhere; }
+
 .popup-layout-workbench {
   display: grid;
   grid-template-columns: minmax(260px, 1fr) minmax(290px, 1fr);
@@ -722,35 +726,27 @@ function setPopupQuickFeatureVisibility(featureId: string, visible: boolean) {
   font-size: 12px;
 }
 
-.interface-skin-group-heading small {
-  min-width: 0;
-  overflow: visible;
-  color: var(--muted);
-  font-size: 10px;
-  line-height: 1.5;
-  white-space: normal;
-}
-
 .interface-skin-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 152px), 1fr));
   gap: 7px;
 }
 
 .interface-skin-option {
   position: relative;
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr) 14px;
+  grid-template-columns: 40px minmax(0, 1fr) 14px;
   align-items: center;
   gap: 8px;
   min-width: 0;
-  min-height: 82px;
-  padding: 10px;
+  min-height: 64px;
+  padding: 8px;
   border: 1px solid var(--line);
-  border-radius: 11px;
+  border-radius: 8px;
   color: var(--ink);
   background: var(--surface);
-  text-align: left;
+  font: inherit;
+  text-align: start;
   cursor: pointer;
   transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
 }
@@ -759,6 +755,8 @@ function setPopupQuickFeatureVisibility(featureId: string, visible: boolean) {
   border-color: var(--brand);
   background: var(--surface-soft);
 }
+
+.interface-skin-option:focus-visible { outline: 2px solid var(--brand-strong); outline-offset: 2px; }
 
 .interface-skin-option.selected {
   border-color: var(--brand);
@@ -769,15 +767,15 @@ function setPopupQuickFeatureVisibility(featureId: string, visible: boolean) {
 /* 缩略图是一个极简菜单栏：画布背景、品牌行、一张卡片和主按钮；卡片的描边与圆角体现各风格的造型，取值来自注册表而不是当前皮肤。 */
 .interface-skin-preview {
   display: flex;
-  width: 56px;
-  height: 60px;
+  width: 40px;
+  height: 46px;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   justify-content: center;
-  padding: 8px 7px;
+  padding: 5px;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--skin-preview-ink) 16%, transparent);
-  border-radius: 9px;
+  border-radius: 6px;
   background: var(--skin-preview-backdrop);
 }
 
@@ -792,8 +790,8 @@ function setPopupQuickFeatureVisibility(featureId: string, visible: boolean) {
 .interface-skin-preview-card {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  padding: 6px 5px;
+  gap: 3px;
+  padding: 4px 3px;
   border: 1px solid var(--skin-preview-border);
   border-radius: var(--skin-preview-radius);
   background: var(--skin-preview-surface);
@@ -822,13 +820,6 @@ function setPopupQuickFeatureVisibility(featureId: string, visible: boolean) {
 .interface-skin-copy strong {
   font-size: 13px;
   line-height: 1.4;
-  overflow-wrap: anywhere;
-}
-
-.interface-skin-copy small {
-  color: var(--muted);
-  font-size: 10.5px;
-  line-height: 1.5;
   overflow-wrap: anywhere;
 }
 
@@ -861,8 +852,8 @@ function setPopupQuickFeatureVisibility(featureId: string, visible: boolean) {
 
 @media (max-width: 1100px) {
   .interface-appearance-settings { grid-template-columns: minmax(0, 1fr); }
-  .interface-appearance-settings :deep(.settings-item-copy) { position: static; }
-  .interface-appearance-settings :deep(.settings-item-control) { justify-content: stretch; }
+  .interface-appearance-settings :deep(.settings-item-copy) { position: static; order: 2; }
+  .interface-appearance-settings :deep(.settings-item-control) { justify-content: stretch; order: 1; }
 }
 
 @media (max-width: 520px) {
@@ -871,20 +862,15 @@ function setPopupQuickFeatureVisibility(featureId: string, visible: boolean) {
   }
 
   .interface-skin-grid {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .interface-skin-group-heading {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 2px;
-  }
+  .interface-skin-option { gap: 6px; }
+  .interface-skin-copy strong { font-size: 12px; }
+}
 
-  .interface-skin-group-heading small {
-    overflow: visible;
-    text-overflow: clip;
-    white-space: normal;
-  }
+@media (prefers-reduced-motion: reduce) {
+  .interface-skin-option { transition: none; }
 }
 
 @media (min-width: 521px) and (max-width: 900px) {

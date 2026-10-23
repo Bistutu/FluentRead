@@ -1,7 +1,7 @@
 <!--
  * @file src/features/settings/ui/LearningMemoryManager.vue
  * 文件职责：让用户查看和维护主动保存的本机学习笔记，区分保存笔记与允许 AI 参考的开关。
- * 主要内容：提供本地搜索、类型选择、单条添加编辑、删除和清空；按 200 条与每条 2000 字限制提示容量，并隔离迟到读取；日期格式器在本组件每轮同步模板渲染内复用，下轮重新读取系统默认语言与时区。
+ * 主要内容：提供本地搜索、类型选择、单条添加编辑、删除和清空；长笔记使用原生折叠容器原位阅读全文，阅读无需进入编辑；按 200 条与每条 2000 字限制提示容量，并隔离迟到读取；日期格式器在本组件每轮同步模板渲染内复用，下轮重新读取系统默认语言与时区。
  * 模块边界：只通过 reading-assistant 无 UI 的公共客户端管理记忆，不加载阅读卡、不检索模型、不直接访问数据库、不自动收集网页或学习信息。
  -->
 <template>
@@ -42,8 +42,12 @@
       <div class="fr-memory-list">
         <article v-for="memory in filteredMemories" :key="memory.id" class="fr-memory-item">
           <header><span>{{ kindLabel(memory.kind) }}</span><small>{{ formatDate(memory.updatedAt) }}</small></header>
-          <p data-i18n-ignore>{{ memory.content }}</p>
-          <footer><button type="button" class="fr-memory-link" :disabled="mutating" @click="editMemory(memory)">{{ t('learning.memoryViewEdit') }}</button><button type="button" class="fr-memory-link" :disabled="mutating" @click="removeMemory(memory.id)">{{ translateLegacy('删除') }}</button></footer>
+          <details v-if="memory.content.length > 180 || memory.content.split('\n').length > 3" class="fr-memory-content" @keydown.esc.stop.prevent="($event.currentTarget as HTMLDetailsElement).open = false">
+            <summary><span class="fr-memory-preview" data-i18n-ignore>{{ memory.content }}</span><span class="fr-memory-expand">{{ translateLegacy('展开') }}</span><span class="fr-memory-collapse">{{ translateLegacy('收起') }}</span></summary>
+            <p data-i18n-ignore>{{ memory.content }}</p>
+          </details>
+          <p v-else data-i18n-ignore>{{ memory.content }}</p>
+          <footer><button type="button" class="fr-memory-link" :disabled="mutating" @click="editMemory(memory)">{{ translateLegacy('编辑') }}</button><button type="button" class="fr-memory-link" :disabled="mutating" @click="removeMemory(memory.id)">{{ translateLegacy('删除') }}</button></footer>
         </article>
       </div>
       <div v-if="memories.length" class="fr-memory-bottom"><small v-if="memories.length >= 200">{{ t('learning.memoryLimit') }}</small><span v-else /><button type="button" class="fr-memory-link" :disabled="mutating" @click="clearMemories">{{ t('learning.memoryClear') }}</button></div>
@@ -192,7 +196,15 @@ onBeforeUnmount(() => { active = false; generation += 1 })
 .fr-memory-item { min-width:0; padding:14px; border:1px solid var(--line); border-radius:12px; background:var(--surface); }
 .fr-memory-item header { display:flex; gap:12px; align-items:center; justify-content:space-between; color:var(--muted); font-size:11px; }
 .fr-memory-item header small { flex-shrink:0; font-size:10px; }
-.fr-memory-item > p { display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; margin:10px 0; font-size:13px; line-height:1.75; white-space:pre-wrap; overflow-wrap:anywhere; }
+.fr-memory-item > p,.fr-memory-content p,.fr-memory-preview { margin:10px 0; font-size:13px; line-height:1.75; white-space:pre-wrap; overflow-wrap:anywhere; }
+.fr-memory-content > summary { display:block; margin:0; padding:0; border:0; border-radius:0; background:transparent; color:var(--ink); font:inherit; font-weight:400; list-style:none; cursor:pointer; }
+.fr-memory-content > summary::-webkit-details-marker { display:none; }
+.fr-memory-content > summary::after { display:none; content:none; }
+.fr-memory-content > summary:focus-visible { outline:2px solid var(--brand); outline-offset:3px; }
+.fr-memory-preview { display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+.fr-memory-expand,.fr-memory-collapse { color:var(--brand-strong); font-size:12px; line-height:1.8; }
+.fr-memory-collapse,.fr-memory-content[open] .fr-memory-preview,.fr-memory-content[open] .fr-memory-expand { display:none; }
+.fr-memory-content[open] .fr-memory-collapse { display:inline; }
 .fr-memory-item footer { display:flex; justify-content:space-between; gap:12px; }
 .fr-memory-editor { margin-top:16px; padding:18px; border:1px solid var(--line); border-radius:12px; background:var(--surface); }
 .fr-memory-editor h3 { margin:0 0 16px; font-size:14px; }

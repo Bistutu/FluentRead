@@ -114,6 +114,7 @@
 }
 
 :deep(.settings-navigation-link) { padding: 6px 0; }
+:deep(.settings-heading-link) { margin-left: auto; min-height: 32px; flex-shrink: 0; }
 :deep(.settings-navigation-link:hover),
 .settings-inline-link:hover { color: var(--brand); text-decoration: underline; text-underline-offset: 3px; }
 :deep(.settings-navigation-link:focus-visible),

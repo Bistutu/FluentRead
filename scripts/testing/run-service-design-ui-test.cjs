@@ -250,6 +250,7 @@ async function main() {
       await selectService(service);
       await shot(`service-design-${service}-1440`);
     }
+    await page.locator('[data-free-provider-disclosure] > summary').click();
     const measureFreeColumns = () => page.locator('.provider-section > .fallback-list > [data-fallback-provider]').evaluateAll(nodes => {
       const boxes = nodes.map(node => node.getBoundingClientRect());
       return boxes.filter(box => Math.abs(box.top - boxes[0].top) < 1).length;
@@ -267,6 +268,7 @@ async function main() {
     assert.equal(await page.locator('[data-free-translation-settings] .provider-settings input[type="email"]').isVisible(), true);
     for (const service of ['minimax', 'freeTranslation']) {
       await selectService(service);
+      if (service === 'freeTranslation') await page.locator('[data-free-provider-disclosure] > summary').click();
       for (const width of [820, 390]) {
         await page.setViewportSize({width, height: 1000});
         assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${service} horizontal overflow at ${width}`);

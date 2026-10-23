@@ -364,19 +364,16 @@ describe('Popup configured model overview', () => {
     expect(root.querySelector('[data-feature-service="default"] .assignment-follow')).toBeNull();
     await click('[data-feature-service="default"]');
     const choices = () => [...root.querySelectorAll('[data-service-choice]')].map(node => node.getAttribute('data-service-choice'));
-    // 默认服务 youdao 正在使用，与填过密钥的 AI 服务一起紧跟免费翻译；更多服务默认展开，待配置的服务都在其中。
-    expect(choices()).toEqual(['freeTranslation', 'youdao', 'deepseek', 'openai', 'claude', 'microsoft', 'google', 'bilibili', 'deepL', 'tencent', 'tongyi', 'gemini']);
-    expect(find('.service-picker-more').getAttribute('aria-expanded')).toBe('true');
+    // 当前选择即使缺少配置也留在常用区；其余待配置服务初始收起，搜索仍能直接找到。
+    expect(choices()).toEqual(['freeTranslation', 'youdao', 'deepseek', 'openai', 'claude', 'microsoft', 'google', 'bilibili']);
+    expect(find('.service-picker-more').getAttribute('aria-expanded')).not.toBe('true');
     expect(find('.service-picker-more small').textContent).toBe('4');
     expect(find('[data-service-choice="youdao"]').getAttribute('aria-selected')).toBe('true');
     expect(find('[data-service-choice="youdao"] small').textContent).toBe('待配置');
     expect(find('[data-service-choice="deepseek"] small').textContent).toBe('saved-deepseek-model');
     expect(root.querySelector('[data-service-choice="microsoft"] small')).toBeNull();
     await click('.service-picker-more');
-    // 测试渲染器把 false 属性直接移除，这里只断言已收起。
-    expect(find('.service-picker-more').getAttribute('aria-expanded')).not.toBe('true');
-    expect(choices()).toHaveLength(8);
-    await click('.service-picker-more');
+    expect(find('.service-picker-more').getAttribute('aria-expanded')).toBe('true');
     expect(choices().slice(8)).toEqual(['deepL', 'tencent', 'tongyi', 'gemini']);
     expect([...root.querySelectorAll('.service-choice-group-label')].map(node => node.textContent)).toEqual(['常用服务', '机器翻译', '云服务厂商', 'AI 翻译']);
     expect(find('[data-service-choice="tongyi"] small').textContent).toBe('待配置');
