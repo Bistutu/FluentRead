@@ -96,3 +96,10 @@ Vue 验证归属门禁补充词法作用域内 const 组件别名追踪，允许
 - 本轮只读审阅 CollectionEntry 完整源码及调用点，并将当前SHA与旧记录并存。七份台账核对S8自有1,149源码均有当前匹配；生成vendor的3,044 AST函数体未宣称人工全体逐函数审阅。
 
 证据：`checkpoint8-global-coverage.log`、`checkpoint8-global-gap-summary.json`、`checkpoint8-{web,media}-build-results.json`、`checkpoint8-compression-comparison.json`、`web/s8-browser-readonly-diagnosis.json`、`root-final-ui-controls.log`、`root-final-ui-coverage/`。S9将启用可取得原始输入的PDF条件用例；缺少Harness原件及两份旧布局时仍明确记为未执行，不制造替代输入。
+
+
+## 21:50 最终 GM 提交协议复核
+
+S9 交叉探针复现笔记编辑 ACK 等待期间，另一页面 list/GC 与无关删除导致已确认旧正文和新正文同时丢失。修复改为不可见 pending 与不可回滚、自包含 v2 commit；每项最多保留一份此前已确认正文，不积累版本链。根审再次追到第三 ID 被 fallback 抢占去重身份、以及内容删除触发 fallback 后来源标识丢失两种交错，均新增正式回归并由独立公开 API 探针复现、验证。最终 readingStorage.ts SHA256 为 508fb8ea2ddffba068381cd646cb72e7569a45211cca1aca04dfec69de291364。
+
+正式 50 项存储测试通过，模块 S/L347/347、F33/33、B371/371；另 14 项独立交错探针全部通过。根审全文读取生产模块与最终增量，核对准备/提交点、原始删除 fence、fallback 来源、已确认 ID、稳定回收与无墓碑短路；结果 root-final-gm-review.json。该模块为本次新增，主线无 v1 版本，旧草案仅有列举的局部防护，不承诺混跑安全。永久墓碑增长、GM 无跨标签事务、实际脚本管理器未验收仍属边界。上述专项通过不替代 S10 全源覆盖和发版门禁。

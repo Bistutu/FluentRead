@@ -363,3 +363,174 @@ describe('阅读存储边界', () => {
         await two.memories.clear(); expect(await one.memories.list()).toEqual([]);
     });
 });
+
+describe('跨页面读取GC与保存确认的交错', () => {
+    it('未确认编辑被无关删除取消时保留早已确认的原笔记', async () => {
+        const f = fixture(), a = f.create(), b = f.create(); await Promise.all([a.ready, b.ready]);
+        const first = await a.memories.save({kind: 'note', content: 'confirmed original'});
+        const unrelated = await a.memories.save({kind: 'note', content: 'unrelated'});
+        const entered = deferred(), release = deferred(), originalSet = f.storage.set;
+        let intercepted = false;
+        f.storage.set = vi.fn(async (key, value: any) => {
+            await originalSet(key, value);
+            if (!intercepted && value.memory?.content === 'pending edit') {intercepted = true; entered.resolve(); await release.promise;}
+        });
+        const edit = a.memories.save({id: first.id, kind: 'note', content: 'pending edit'}).catch(error => error);
+        await entered.promise;
+        await b.memories.list(); // 另一个页面在确认前读取，不能把可能回滚的正文当作GC依据。
+        await b.memories.delete(unrelated.id);
+        release.resolve(); expect(await edit).toBeInstanceOf(Error);
+        expect(await b.memories.list()).toEqual([first]);
+    });
+
+    it.each(['prepare', 'commit'] as const)('different existing IDs retain their confirmed original after concurrent duplicate edits at %s ACK', async stage => {
+        const f = fixture(), a = f.create(), b = f.create(), reader = f.create(); await Promise.all([a.ready, b.ready, reader.ready]);
+        const first = await a.memories.save({kind: 'note', content: 'original A'});
+        const second = await b.memories.save({kind: 'note', content: 'original B'});
+        const both = deferred(), committed = deferred(), release = deferred(), originalSet = f.storage.set;
+        const held = new Set<string>(); let committedCount = 0;
+        f.storage.set = vi.fn(async (key, value: any) => {
+            if (value.memory?.content !== 'shared edited' || held.has(value.memory.id)
+                || stage === 'commit' && !(value.kind === 'memory-save' && value.version === 2)) return originalSet(key, value);
+            held.add(value.memory.id); if (held.size === 2) both.resolve(); await both.promise;
+            await originalSet(key, value); if (++committedCount === 2) committed.resolve(); await release.promise;
+        });
+        const edits = [a.memories.save({id: first.id, kind: 'note', content: 'shared edited'}), b.memories.save({id: second.id, kind: 'note', content: 'shared edited'})];
+        const settled = Promise.allSettled(edits);
+        await committed.promise; await reader.memories.list(); release.resolve(); await settled;
+        const after = await reader.memories.list();
+        expect(new Set(after.map(item => item.id))).toEqual(new Set([first.id, second.id]));
+        expect(after.filter(item => item.content === 'shared edited')).toHaveLength(1);
+        const unchanged = after.find(item => item.content !== 'shared edited')!;
+        expect(unchanged.content).toBe(unchanged.id === first.id ? 'original A' : 'original B');
+        await reader.memories.delete(after.find(item => item.content === 'shared edited')!.id);
+        expect(await reader.memories.list()).toEqual([unchanged]);
+        await reader.memories.delete(unchanged.id); expect(await reader.memories.list()).toEqual([]);
+    });
+});
+
+describe('GM不可回滚发布与旧标签兼容', () => {
+    it('已发布commit的ACK等待中发生无关删除仍成功，ACK失败也不能撤销已发布正文', async () => {
+        const f = fixture(), a = f.create(), b = f.create(); await Promise.all([a.ready, b.ready]);
+        const first = await a.memories.save({kind: 'note', content: 'first'}), other = await a.memories.save({kind: 'note', content: 'other'});
+        const entered = deferred(), release = deferred(), originalSet = f.storage.set;
+        f.storage.set = vi.fn(async (key, value: any) => {await originalSet(key, value);
+            if (value.kind === 'memory-save' && value.memory.content === 'published') {entered.resolve(); await release.promise;}
+            if (value.kind === 'memory-save' && value.memory.content === 'ack failed') throw new Error('lost acknowledgment');
+        });
+        const edit = a.memories.save({id: first.id, kind: 'note', content: 'published'});
+        await entered.promise; expect((await b.memories.list()).find(item => item.id === first.id)?.content).toBe('published');
+        await b.memories.delete(other.id); release.resolve(); await expect(edit).resolves.toMatchObject({id: first.id, content: 'published'});
+        await expect(a.memories.save({id: first.id, kind: 'note', content: 'ack failed'})).rejects.toThrow('lost acknowledgment');
+        expect(await b.memories.list()).toMatchObject([{id: first.id, content: 'ack failed'}]);
+    });
+
+    it('准备副本过期被其他页面回收不影响RAM候选，顺序编辑只保留一个正文及一层前值', async () => {
+        const f = fixture(), a = f.create(), b = f.create(); await Promise.all([a.ready, b.ready]);
+        const first = await a.memories.save({kind: 'note', content: 'first'});
+        const entered = deferred(), release = deferred(), originalSet = f.storage.set;
+        f.storage.set = vi.fn(async (key, value: any) => {await originalSet(key, value);
+            if (value.kind === 'memory-pending' && value.memory.content === 'slow') {entered.resolve(); await release.promise;}
+        });
+        const edit = a.memories.save({id: first.id, kind: 'note', content: 'slow'});
+        await entered.promise; f.time(NOW + 300_001); expect(await b.memories.list()).toEqual([first]);
+        expect([...f.values.values()].some((row: any) => row.kind === 'memory-pending')).toBe(false);
+        release.resolve(); await expect(edit).resolves.toMatchObject({content: 'slow'});
+        for (let index = 0; index < 10; index++) await a.memories.save({id: first.id, kind: 'note', content: 'edit ' + index});
+        const bodies = [...f.values.values()].filter((row: any) => row.kind === 'memory-save') as any[];
+        expect(bodies).toHaveLength(1); expect(bodies[0]).toMatchObject({version: 2, memory: {content: 'edit 9'}, previous: {memory: {content: 'edit 8'}}});
+        expect(bodies[0].previous.previous).toBeUndefined();
+    });
+
+    it('v1可回滚新版不能让新reader删除v1或v2已确认前值，v2后继可安全回收legacy', async () => {
+        const f = fixture(), api = f.create(); await api.ready;
+        const first = await api.memories.save({kind: 'note', content: 'stable v2'});
+        const stable = [...f.values.entries()].find(([, row]: any) => row.kind === 'memory-save')!;
+        const draft = {...structuredClone(stable[1]) as any, version: 1, id: 'legacy-draft', clock: 100,
+            memory: {...first, content: 'unconfirmed v1'}, previous: undefined};
+        const key = prefix + 'memory-save:' + first.id + ':legacy-draft'; f.values.set(key, draft);
+        await api.memories.list(); expect(f.values.has(stable[0])).toBe(true);
+        f.values.delete(key); expect(await api.memories.list()).toEqual([first]);
+        (stable[1] as any).version = 1; f.values.set(stable[0], stable[1]); f.values.set(key, draft);
+        await api.memories.list(); expect(f.values.has(stable[0])).toBe(true);
+        f.values.delete(key); expect(await api.memories.list()).toEqual([first]);
+        await api.memories.save({id: first.id, kind: 'note', content: 'converted'});
+        expect(f.values.has(stable[0])).toBe(false); expect(await api.memories.list()).toMatchObject([{content: 'converted'}]);
+    });
+});
+
+describe('GM发布前复验与已确认回退身份', () => {
+    it.each([false, true])('prepare等待中相同内容被另一ID先提交时只取消未发布写入（编辑=%s）', async editing => {
+        const f = fixture(), a = f.create(), b = f.create(); await Promise.all([a.ready, b.ready]);
+        const first = editing ? await a.memories.save({kind: 'note', content: 'original'}) : undefined;
+        const entered = deferred(), release = deferred(), originalSet = f.storage.set; let held = false;
+        f.storage.set = vi.fn(async (key, value: any) => {await originalSet(key, value);
+            if (!held && value.kind === 'memory-pending' && value.memory.content === 'collision') {held = true; entered.resolve(); await release.promise;}
+        });
+        const saving = a.memories.save({kind: 'note', content: 'collision', ...(first ? {id: first.id} : {})}).catch(error => error);
+        await entered.promise; const winner = await b.memories.save({kind: 'note', content: 'collision'}); release.resolve();
+        const result = await saving;
+        if (editing) {expect(result).toBeInstanceOf(Error); expect(await b.memories.list()).toEqual(expect.arrayContaining([first, winner]));}
+        else expect(result).toEqual(winner);
+        expect([...f.values.values()].some((row: any) => row.kind === 'memory-pending')).toBe(false);
+    });
+
+    it('准备等待中最后一个名额被提交时拒绝新笔记且保留全部已确认项', async () => {
+        const f = fixture(), a = f.create(), b = f.create(); await Promise.all([a.ready, b.ready]);
+        for (let i = 0; i < 199; i++) await a.memories.save({kind: 'note', content: 'existing ' + i});
+        const entered = deferred(), release = deferred(), originalSet = f.storage.set;
+        f.storage.set = vi.fn(async (key, value: any) => {await originalSet(key, value);
+            if (value.kind === 'memory-pending' && value.memory.content === 'too late') {entered.resolve(); await release.promise;}
+        });
+        const pending = a.memories.save({kind: 'note', content: 'too late'}).catch(error => error);
+        await entered.promise; const last = await b.memories.save({kind: 'note', content: 'last accepted'}); release.resolve();
+        expect(await pending).toBeInstanceOf(Error); const all = await a.memories.list(); expect(all).toHaveLength(200); expect(all).toContainEqual(last);
+    });
+
+    it.each(['created', 'edited', 'delete-winner-first'] as const)('迟到编辑出现fallback不能删除第三个已确认ID（%s），删除相同内容只删除指定ID', async mode => {
+        const f = fixture(), a = f.create(), b = f.create(), c = f.create(); await Promise.all([a.ready, b.ready, c.ready]);
+        const existingThird = mode === 'edited' ? await c.memories.save({kind: 'note', content: 'original C'}) : undefined;
+        const first = await a.memories.save({kind: 'note', content: 'original A'}), second = await b.memories.save({kind: 'note', content: 'original B'});
+        const entered = deferred(), release = deferred(), originalSet = f.storage.set;
+        f.storage.set = vi.fn(async (key, value: any) => {
+            if (value.kind === 'memory-save' && value.version === 2 && value.memory.id === first.id && value.memory.content === 'shared') {entered.resolve(); await release.promise;}
+            await originalSet(key, value);
+        });
+        const slow = a.memories.save({id: first.id, kind: 'note', content: 'shared'}).catch(error => error);
+        await entered.promise; await b.memories.save({id: second.id, kind: 'note', content: 'shared'});
+        const third = await c.memories.save({kind: 'note', content: 'original B', ...(existingThird ? {id: existingThird.id} : {})});
+        release.resolve(); await slow;
+        const after = await c.memories.list(); expect(new Set(after.map(item => item.id))).toEqual(new Set([first.id, second.id, third.id]));
+        expect(after.filter(item => item.content === 'original B')).toHaveLength(2);
+        if (mode === 'delete-winner-first') {
+            await c.memories.delete(first.id);
+            expect(new Set((await c.memories.list()).map(item => item.id))).toEqual(new Set([second.id, third.id]));
+            await c.memories.delete(third.id); expect(await c.memories.list()).toMatchObject([{id: second.id, content: 'original B'}]); return;
+        }
+        await c.memories.delete(third.id); expect((await c.memories.list()).map(item => item.id)).toEqual(expect.arrayContaining([first.id, second.id]));
+        await c.memories.delete(first.id); expect(await c.memories.list()).toMatchObject([{id: second.id, content: 'original B'}]);
+        await c.memories.delete(second.id); expect(await c.memories.list()).toEqual([]);
+    });
+
+    it.each(['previous-fence', 'pending-time'] as const)('损坏的%s不会被解析成确认记录或误删现有正文', async field => {
+        const f = fixture(), api = f.create(); await api.ready; const saved = await api.memories.save({kind: 'note', content: 'stable'});
+        const row = structuredClone([...f.values.values()].find((item: any) => item.kind === 'memory-save')) as any;
+        row.id = 'damaged'; row.clock += 100;
+        if (field === 'previous-fence') row.previous = {memory: saved, fence: ['invalid fence']};
+        else {row.kind = 'memory-pending'; row.version = 1; row.pendingAt = -1;}
+        f.values.set(prefix + row.kind + ':' + saved.id + ':damaged', row);
+        expect(await api.memories.list()).toEqual([saved]);
+    });
+});
+
+it('准备等待期间同ID新编辑已经发布时，旧候选不再覆盖已确认的新正文', async () => {
+    const f = fixture(), a = f.create(), b = f.create(); await Promise.all([a.ready, b.ready]);
+    const first = await a.memories.save({kind: 'note', content: 'original'});
+    const entered = deferred(), release = deferred(), originalSet = f.storage.set;
+    f.storage.set = vi.fn(async (key, value: any) => {await originalSet(key, value);
+        if (value.kind === 'memory-pending' && value.memory.content === 'older candidate') {entered.resolve(); await release.promise;}
+    });
+    const older = a.memories.save({id: first.id, kind: 'note', content: 'older candidate'}).catch(error => error);
+    await entered.promise; const newer = await b.memories.save({id: first.id, kind: 'note', content: 'newer confirmed'}); release.resolve();
+    expect(await older).toBeInstanceOf(Error); expect(await a.memories.list()).toEqual([newer]);
+});
