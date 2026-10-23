@@ -1219,6 +1219,7 @@ export const jaJPMessages = {
     'settings.translationStyle.presetsTitle': 'スタイルを選択',
     'settings.translationStyle.categoryLabel': 'スタイルの分類',
     'settings.translationStyle.category.text': '文字',
+    'settings.translationStyle.category.color': '色',
     'settings.translationStyle.category.line': '線',
     'settings.translationStyle.category.mark': 'マーカー',
     'settings.translationStyle.category.card': 'カード',

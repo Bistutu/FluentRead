@@ -27,16 +27,17 @@ import {
 } from '@/src/core/config/translationAppearance';
 
 describe('译文样式预设注册表', () => {
-    it('保持稳定编号与唯一类名，并按五个分类组织全部预设', () => {
+    it('保持稳定编号与唯一类名，并按六个分类组织全部预设', () => {
         const values = TRANSLATION_STYLE_PRESETS.map((preset) => preset.value);
         expect([...values].sort((left, right) => left - right)).toEqual(Array.from({length: 55}, (_, index) => index));
         expect(new Set(TRANSLATION_STYLE_PRESETS.map((preset) => preset.className)).size).toBe(55);
         expect(TRANSLATION_STYLE_PRESETS.every((preset) => preset.className.startsWith('fluent-display-'))).toBe(true);
+        expect(TRANSLATION_STYLE_CATEGORIES.map(({value}) => value)).toEqual(['text', 'color', 'line', 'mark', 'card', 'fun']);
         const counts = Object.fromEntries(TRANSLATION_STYLE_CATEGORIES.map((category) => [
             category.value,
             TRANSLATION_STYLE_PRESETS.filter((preset) => preset.category === category.value).length,
         ]));
-        expect(counts).toEqual({text: 18, line: 14, mark: 9, card: 5, fun: 9});
+        expect(counts).toEqual({text: 12, color: 6, line: 14, mark: 9, card: 5, fun: 9});
         const groups = new Set(TRANSLATION_STYLE_LEGACY_GROUPS.map((group) => group.value));
         expect(TRANSLATION_STYLE_PRESETS.every((preset) => groups.has(preset.legacyGroup))).toBe(true);
         expect(TRANSLATION_STYLE_PRESETS.filter((preset) => preset.category === 'line').every((preset) => preset.usesLine)).toBe(true);
@@ -44,10 +45,9 @@ describe('译文样式预设注册表', () => {
         expect(TRANSLATION_STYLE_PRESETS.filter((preset) => preset.category === 'text').some((preset) => preset.usesLine || preset.usesFill)).toBe(false);
     });
 
-    it('追加的彩色文字直接出现在文字分类前排，旧样式与默认外观保持原意', () => {
-        const text = TRANSLATION_STYLE_PRESETS.filter((preset) => preset.category === 'text');
-        expect(text.slice(0, 7).map(({value, className, label}) => ({value, className, label}))).toEqual([
-            {value: 0, className: 'fluent-display-default', label: '朴素模式'},
+    it('追加的彩色文字单列在颜色分类，旧样式与默认外观保持原意', () => {
+        const colors = TRANSLATION_STYLE_PRESETS.filter((preset) => preset.category === 'color');
+        expect(colors.map(({value, className, label}) => ({value, className, label}))).toEqual([
             {value: 49, className: 'fluent-display-text-green', label: '森林绿'},
             {value: 50, className: 'fluent-display-text-blue', label: '澄澈蓝'},
             {value: 51, className: 'fluent-display-text-purple', label: '优雅紫'},
@@ -55,6 +55,7 @@ describe('译文样式预设注册表', () => {
             {value: 53, className: 'fluent-display-text-teal', label: '青碧'},
             {value: 54, className: 'fluent-display-text-brand', label: 'FluentRead 粉'},
         ]);
+        expect(TRANSLATION_STYLE_PRESETS.filter(({category}) => category === 'text').every(({value}) => value < 49)).toBe(true);
         expect(normalizeConfig({}).style).toBe(1);
         expect(DEFAULT_TRANSLATION_APPEARANCE.textColor).toBe('');
         expect(TRANSLATION_TEXT_COLOR_SWATCHES.find(({id}) => id === 'brand')).toMatchObject({

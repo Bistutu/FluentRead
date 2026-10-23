@@ -1451,6 +1451,7 @@ export const enUSMessages = {
     'settings.translationStyle.presetsTitle': 'Choose a style',
     'settings.translationStyle.categoryLabel': 'Style category',
     'settings.translationStyle.category.text': 'Text',
+    'settings.translationStyle.category.color': 'Colors',
     'settings.translationStyle.category.line': 'Lines',
     'settings.translationStyle.category.mark': 'Highlights',
     'settings.translationStyle.category.card': 'Cards',

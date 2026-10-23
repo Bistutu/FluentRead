@@ -1219,6 +1219,7 @@ export const ruRUMessages = {
     'settings.translationStyle.presetsTitle': 'Выберите стиль',
     'settings.translationStyle.categoryLabel': 'Категория стиля',
     'settings.translationStyle.category.text': 'Текст',
+    'settings.translationStyle.category.color': 'Цвета',
     'settings.translationStyle.category.line': 'Линии',
     'settings.translationStyle.category.mark': 'Выделение',
     'settings.translationStyle.category.card': 'Карточки',

@@ -1219,6 +1219,7 @@ export const frFRMessages = {
     'settings.translationStyle.presetsTitle': 'Choisir un style',
     'settings.translationStyle.categoryLabel': 'Catégorie de style',
     'settings.translationStyle.category.text': 'Texte',
+    'settings.translationStyle.category.color': 'Couleurs',
     'settings.translationStyle.category.line': 'Lignes',
     'settings.translationStyle.category.mark': 'Surlignage',
     'settings.translationStyle.category.card': 'Cartes',

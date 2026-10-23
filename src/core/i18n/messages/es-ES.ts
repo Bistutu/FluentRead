@@ -1219,6 +1219,7 @@ export const esESMessages = {
     'settings.translationStyle.presetsTitle': 'Elige un estilo',
     'settings.translationStyle.categoryLabel': 'Categoría de estilo',
     'settings.translationStyle.category.text': 'Texto',
+    'settings.translationStyle.category.color': 'Colores',
     'settings.translationStyle.category.line': 'Líneas',
     'settings.translationStyle.category.mark': 'Resaltado',
     'settings.translationStyle.category.card': 'Tarjetas',

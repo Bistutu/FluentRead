@@ -9,7 +9,7 @@
 
 import {inputToRGB, rgbToHex} from '@ctrl/tinycolor';
 
-export type TranslationStyleCategory = 'text' | 'line' | 'mark' | 'card' | 'fun';
+export type TranslationStyleCategory = 'text' | 'color' | 'line' | 'mark' | 'card' | 'fun';
 export type TranslationStyleLegacyGroup = 'basic' | 'underline' | 'card' | 'highlight' | 'background' | 'special' | 'pro' | 'transparent' | 'fun';
 
 export interface TranslationStylePreset {
@@ -58,6 +58,7 @@ export const TRANSLATION_STYLE_LEGACY_GROUPS: ReadonlyArray<{readonly value: Tra
 
 export const TRANSLATION_STYLE_CATEGORIES: ReadonlyArray<{readonly value: TranslationStyleCategory; readonly labelKey: string}> = [
     {value: 'text', labelKey: 'settings.translationStyle.category.text'},
+    {value: 'color', labelKey: 'settings.translationStyle.category.color'},
     {value: 'line', labelKey: 'settings.translationStyle.category.line'},
     {value: 'mark', labelKey: 'settings.translationStyle.category.mark'},
     {value: 'card', labelKey: 'settings.translationStyle.category.card'},
@@ -67,16 +68,10 @@ export const TRANSLATION_STYLE_CATEGORIES: ReadonlyArray<{readonly value: Transl
 /**
  * 数组顺序即设置页卡片顺序；旧版下拉按分组内编号排序，已有预设的相对位置保持不变。
  * 24 以后的编号为新增预设，线条类改用 text-decoration，使多行译文逐行带线。
- * 29 以后的装饰预设以网页文字颜色调配线条与底色；49 至 54 号为直接可选的彩色文字，品牌粉沿用界面品牌源色，与图标保持同一色系。
+ * 29 以后的装饰预设以网页文字颜色调配线条与底色；49 至 54 号单列为“颜色”分类，品牌粉沿用界面品牌源色，与图标保持同一色系。
  */
 export const TRANSLATION_STYLE_PRESETS: readonly TranslationStylePreset[] = [
     {value: 0, className: 'fluent-display-default', label: '朴素模式', legacyGroup: 'basic', category: 'text', usesLine: false, usesFill: false},
-    {value: 49, className: 'fluent-display-text-green', label: '森林绿', legacyGroup: 'basic', category: 'text', usesLine: false, usesFill: false},
-    {value: 50, className: 'fluent-display-text-blue', label: '澄澈蓝', legacyGroup: 'basic', category: 'text', usesLine: false, usesFill: false},
-    {value: 51, className: 'fluent-display-text-purple', label: '优雅紫', legacyGroup: 'basic', category: 'text', usesLine: false, usesFill: false},
-    {value: 52, className: 'fluent-display-text-orange', label: '暖橙', legacyGroup: 'basic', category: 'text', usesLine: false, usesFill: false},
-    {value: 53, className: 'fluent-display-text-teal', label: '青碧', legacyGroup: 'basic', category: 'text', usesLine: false, usesFill: false},
-    {value: 54, className: 'fluent-display-text-brand', label: 'FluentRead 粉', legacyGroup: 'basic', category: 'text', usesLine: false, usesFill: false},
     {value: 1, className: 'fluent-display-bold', label: '加粗显示', legacyGroup: 'basic', category: 'text', usesLine: false, usesFill: false},
     {value: 2, className: 'fluent-display-italic', label: '优雅斜体', legacyGroup: 'basic', category: 'text', usesLine: false, usesFill: false},
     {value: 3, className: 'fluent-display-text-shadow', label: '立体阴影', legacyGroup: 'basic', category: 'text', usesLine: false, usesFill: false},
@@ -88,6 +83,13 @@ export const TRANSLATION_STYLE_PRESETS: readonly TranslationStylePreset[] = [
     {value: 30, className: 'fluent-display-kaiti', label: '楷体手札', legacyGroup: 'basic', category: 'text', usesLine: false, usesFill: false},
     {value: 31, className: 'fluent-display-airy', label: '宽松行距', legacyGroup: 'basic', category: 'text', usesLine: false, usesFill: false},
     {value: 32, className: 'fluent-display-indent', label: '首行缩进', legacyGroup: 'basic', category: 'text', usesLine: false, usesFill: false},
+
+    {value: 49, className: 'fluent-display-text-green', label: '森林绿', legacyGroup: 'basic', category: 'color', usesLine: false, usesFill: false},
+    {value: 50, className: 'fluent-display-text-blue', label: '澄澈蓝', legacyGroup: 'basic', category: 'color', usesLine: false, usesFill: false},
+    {value: 51, className: 'fluent-display-text-purple', label: '优雅紫', legacyGroup: 'basic', category: 'color', usesLine: false, usesFill: false},
+    {value: 52, className: 'fluent-display-text-orange', label: '暖橙', legacyGroup: 'basic', category: 'color', usesLine: false, usesFill: false},
+    {value: 53, className: 'fluent-display-text-teal', label: '青碧', legacyGroup: 'basic', category: 'color', usesLine: false, usesFill: false},
+    {value: 54, className: 'fluent-display-text-brand', label: 'FluentRead 粉', legacyGroup: 'basic', category: 'color', usesLine: false, usesFill: false},
 
     {value: 4, className: 'fluent-display-solid-underline', label: '蓝色实线', legacyGroup: 'underline', category: 'line', usesLine: true, usesFill: false},
     {value: 5, className: 'fluent-display-dot-underline', label: '优雅虚线', legacyGroup: 'underline', category: 'line', usesLine: true, usesFill: false},

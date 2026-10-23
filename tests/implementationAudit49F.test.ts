@@ -1496,7 +1496,7 @@ describe('49F actual userscript main module lifecycle ownership', () => {
 // 独立的 owned-root 准入夹具。实际 Vue 客户端模板、配置模型、i18n context 和扫描器保持真实；
 // 存储传输、MutationObserver delivery 及无关颜色控件是外部端口，不代替用户名称保存/选择算法。
 describe('49F owned settings i18n client admission', () => {
-    async function ownedStyleClient() {
+    async function ownedStyleClient(initialStyle?: number) {
         vi.doUnmock('@/src/ui/i18n');
         const bundleGates = new Map<string, ReturnType<typeof deferred<boolean>>>();
         vi.doMock('@/src/platform/i18n/uiLanguageBundles', () => ({ensureUiLanguageBundle: (language: string) => bundleGates.get(language)?.promise ?? Promise.resolve(true)}));
@@ -1528,6 +1528,7 @@ describe('49F owned settings i18n client admission', () => {
         vi.doMock('@/src/features/settings/ui/components/TranslationColorField.vue', () => ({default: colorPort}));
         const {default: Style} = await import('@/src/features/settings/ui/TranslationStyleSettings.vue');
         const config = Vue.reactive(new Config());
+        if (initialStyle !== undefined) config.style = initialStyle;
         const beforeMetadata = {lang: document.documentElement.getAttribute('lang'), title: document.title};
         document.documentElement.lang = 'fixture-host-language';document.title = 'Synthetic host title';
         const outside = document.createElement('aside');outside.innerHTML = '<p title="设置" aria-label="设置">设置</p>';document.body.append(outside);
@@ -1588,6 +1589,38 @@ describe('49F owned settings i18n client admission', () => {
             },
         };
     }
+
+    it('keeps colored styles in a separate category between Text and Lines and restores their selection', async () => {
+        const client = await ownedStyleClient(54);
+        let savedStyle: number;
+        try {
+            expect([...client.root.querySelectorAll('.translation-style-categories button')].map(button => button.textContent!.trim()))
+                .toEqual(['文字', '颜色', '线条', '标记', '卡片', '趣味']);
+            expect(client.root.querySelector('.translation-style-categories button[aria-checked="true"]')!.textContent!.trim()).toBe('颜色');
+            expect([...client.root.querySelectorAll('.translation-style-card')].map(card => Number(card.getAttribute('data-style-value'))))
+                .toEqual([49, 50, 51, 52, 53, 54]);
+            expect(client.root.querySelector('[data-style-value="54"]')!.getAttribute('aria-checked')).toBe('true');
+            await client.click('.translation-style-categories button[data-option-index="0"]');
+            expect(client.root.querySelectorAll('.translation-style-card')).toHaveLength(12);
+            expect(client.root.querySelector('[data-style-value="49"]')).toBeNull();
+            expect(client.config.style).toBe(54);
+            await client.click('.translation-style-categories button[data-option-index="1"]');
+            await client.click('[data-style-value="49"]');
+            expect(client.config.style).toBe(49);
+            await client.click('.translation-style-categories button[data-option-index="2"]');
+            expect(client.root.querySelectorAll('.translation-style-card')).toHaveLength(14);
+            expect(client.config.style).toBe(49);
+            savedStyle = JSON.parse(JSON.stringify(client.config)).style;
+            expect(client.errors).toEqual([]);
+        } finally {await client.close();}
+        const restored = await ownedStyleClient(savedStyle!);
+        try {
+            expect(restored.root.querySelector('.translation-style-categories button[aria-checked="true"]')!.textContent!.trim()).toBe('颜色');
+            expect(restored.root.querySelectorAll('.translation-style-card')).toHaveLength(6);
+            expect(restored.root.querySelector('[data-style-value="49"]')!.getAttribute('aria-checked')).toBe('true');
+            expect(restored.errors).toEqual([]);
+        } finally {await restored.close();}
+    });
 
     it('applies native appearance controls, category and preview choices, then restores appearance defaults',async()=>{
         const client=await ownedStyleClient();

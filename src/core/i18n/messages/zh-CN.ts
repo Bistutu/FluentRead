@@ -1446,6 +1446,7 @@ export const zhCNMessages = {
     'settings.translationStyle.presetsTitle': '选择样式',
     'settings.translationStyle.categoryLabel': '样式分类',
     'settings.translationStyle.category.text': '文字',
+    'settings.translationStyle.category.color': '颜色',
     'settings.translationStyle.category.line': '线条',
     'settings.translationStyle.category.mark': '标记',
     'settings.translationStyle.category.card': '卡片',

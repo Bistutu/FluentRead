@@ -1219,6 +1219,7 @@ export const koKRMessages = {
     'settings.translationStyle.presetsTitle': '스타일 선택',
     'settings.translationStyle.categoryLabel': '스타일 분류',
     'settings.translationStyle.category.text': '글자',
+    'settings.translationStyle.category.color': '색상',
     'settings.translationStyle.category.line': '선',
     'settings.translationStyle.category.mark': '강조',
     'settings.translationStyle.category.card': '카드',
