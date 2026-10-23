@@ -5,6 +5,7 @@ import {isReadingAnnotationWorkerRequest, isReadingAnnotationWorkerResponse, par
 import {parseOffscreenRequest, parseOffscreenResponse} from '@/src/core/messaging/offscreen';
 import {createOffscreenMessageListener, type OffscreenMessageDependencies} from '@/src/app/offscreen/messageRouter';
 import type {OffscreenClient} from '@/src/platform/offscreen/client';
+import {READING_ANNOTATION_REQUEST_TIMEOUT_MS, READING_ANNOTATION_WORKER_TIMEOUT_MS} from '@/src/core/readingAnnotation';
 
 const reading = {text: 'konnichiwa', language: 'ja', scheme: 'hepburn'};
 const input = {text: 'こんにちは', language: 'ja'};
@@ -63,23 +64,47 @@ describe('离屏读音Worker资源归属', () => {
     second.fail(); expect(second.instance.terminate).toHaveBeenCalledOnce(); runtime.dispose();
   });
 
-  it('取消旧句不重启冷词典，取消排队句不再派发，销毁后拒绝迟到和新任务', async () => {
+  it('慢下载超过旧预算后换句不重启共享词典，取消句不派发或泄漏迟到结果', async () => {
+    vi.useFakeTimers();
     const worker = fakeWorker(); const createWorker = vi.fn(() => worker.instance);
     const runtime = createReadingAnnotationRuntime({createWorker});
     const oldAbort = new AbortController(), queuedAbort = new AbortController();
     const old = runtime.annotate(input, oldAbort.signal), queued = runtime.annotate(input, queuedAbort.signal);
     const oldRejected = expect(old).rejects.toMatchObject({name: 'AbortError'}), queuedRejected = expect(queued).rejects.toMatchObject({name: 'AbortError'});
+    await vi.advanceTimersByTimeAsync(45_000);
+    expect(worker.instance.terminate).not.toHaveBeenCalled();
     oldAbort.abort(); queuedAbort.abort(); await oldRejected; await queuedRejected;
-    const latest = runtime.annotate(input);
+    const latest = runtime.annotate({...input, text: '次の文'});
     expect(worker.instance.postMessage).toHaveBeenCalledTimes(1); expect(worker.instance.terminate).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(60_000);
     worker.reply({id: 1, ok: true, result: reading});
-    expect(worker.instance.postMessage).toHaveBeenLastCalledWith({id: 3, ...input});
-    const rejected = expect(latest).rejects.toMatchObject({name: 'AbortError'});
+    expect(worker.instance.postMessage).toHaveBeenLastCalledWith({id: 3, text: '次の文', language: 'ja'});
+    const latestReading = {...reading, text: 'tsugi no bun'};
+    worker.reply({id: 1, ok: true, result: reading});
+    worker.reply({id: 3, ok: true, result: latestReading});
+    await expect(latest).resolves.toEqual(latestReading);
+    expect(createWorker).toHaveBeenCalledOnce();
     const pending = runtime.annotate(input); const pendingRejected = expect(pending).rejects.toMatchObject({name: 'AbortError'});
-    runtime.dispose(); await rejected; await pendingRejected;
+    const queuedOnDispose = runtime.annotate(input); const queuedOnDisposeRejected = expect(queuedOnDispose).rejects.toMatchObject({name: 'AbortError'});
+    runtime.dispose(); await pendingRejected; await queuedOnDisposeRejected;
     await expect(runtime.annotate(input)).rejects.toMatchObject({name: 'AbortError'});
     const stopped = new AbortController(); stopped.abort();
     await expect(createReadingAnnotationRuntime({createWorker}).annotate(input, stopped.signal)).rejects.toMatchObject({name: 'AbortError'});
+  });
+
+  it('首次下载等待仍有总上限，到期回收Worker并允许重试', async () => {
+    vi.useFakeTimers(); const worker = fakeWorker(), retryWorker = fakeWorker();
+    const createWorker = vi.fn().mockReturnValueOnce(worker.instance).mockReturnValue(retryWorker.instance);
+    const runtime = createReadingAnnotationRuntime({createWorker});
+    const pending = runtime.annotate(input), rejected = expect(pending).rejects.toThrow('超时');
+    await vi.advanceTimersByTimeAsync(READING_ANNOTATION_WORKER_TIMEOUT_MS - 1);
+    expect(worker.instance.terminate).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1); await rejected;
+    expect(worker.instance.terminate).toHaveBeenCalledOnce();
+    const retry = runtime.annotate(input);
+    retryWorker.reply({id: 2, ok: true, result: reading});
+    await expect(retry).resolves.toEqual(reading);
+    runtime.dispose();
   });
 
   it('超时、损坏回包和Worker错误都回收实例，后续任务可以重试', async () => {
@@ -124,7 +149,7 @@ describe('后台读音发送方与取消隔离', () => {
       type: 'fluentReadAnnotateVideoReading', ...input, requestId: 'page:1', id: 999,
     };
     const pending = handlers[0].handle(envelope, owner()); await flush();
-    expect(send).toHaveBeenCalledWith({type: 'READING_ANNOTATION', ...input, requestId: 'offscreen:unique'}, expect.objectContaining({signal: expect.any(AbortSignal)}));
+    expect(send).toHaveBeenCalledWith({type: 'READING_ANNOTATION', ...input, requestId: 'offscreen:unique'}, expect.objectContaining({signal: expect.any(AbortSignal), timeoutMs: READING_ANNOTATION_REQUEST_TIMEOUT_MS}));
     expect(worker.instance.postMessage).toHaveBeenCalledWith({id: 1, ...input});
     worker.reply({id: 1, ok: true, result: reading});
     await expect(pending).resolves.toEqual({success: true, result: reading});

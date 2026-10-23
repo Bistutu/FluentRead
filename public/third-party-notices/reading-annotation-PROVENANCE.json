@@ -10,19 +10,46 @@
       "path": "node_modules/@budhash/gomanize/dist/gomanize.wasm",
       "bytes": 3419775,
       "sha256": "05e134e871127c086a6b713492218ce73011d1468d2ec92082e79134048c1abf",
-      "changes": "none; copied unchanged to reading-annotation/hi/gomanize.wasm"
+      "changes": "Historical parity oracle only; no longer included in extension output or loaded at runtime."
     },
     "goRuntime": {
       "path": "node_modules/@budhash/gomanize/dist/wasm_exec.js",
       "bytes": 16687,
       "sha256": "45ce9dfe7211247544ab6f4268eb8cb5b6f3d5ae602dc3b51447b7eada99c229",
-      "changes": "fixed compile-time side-effect import; bundled and minified; no eval or Function-constructor loading"
+      "changes": "Historical parity oracle only; no longer imported or included in extension output."
     },
-    "embeddedData": "Hindi lexicon.tsv, schwa_tree.json and roman_ngrams.tsv derive from Dakshina train data, CC BY-SA 4.0; see reading-annotation-NOTICE.md. The code MIT license does not replace the data licenses.",
+    "embeddedData": "Hindi lexicon.tsv, schwa_tree.json and roman_ngrams.tsv derive from Dakshina train data, CC BY-SA 4.0. Unmodified pinned data is now downloaded on demand, verified by exact size and SHA-256, and cached for offline use; no longer embedded in the extension. See reading-annotation-NOTICE.md.",
     "embeddedSourceBlobs": {
       "lang/hindi/lexicon.tsv": "fb7407601b540c7e21620af81d8146f6130d0f33",
       "lang/hindi/schwa_tree.json": "b6d3723b7507ef2a385c5d93476edc3bd3b9d311",
       "lang/hindi/roman_ngrams.tsv": "38db35287044aa9299c9ae1a118d7a364e5870c7"
+    },
+    "implementationChanges": {
+      "path": "src/features/video-subtitle/reading/hindiEngine.ts",
+      "kind": "MIT TypeScript port of the pinned Hindi parser, consonant runs, four rule phases, lexicon-first lookup, default/learned-schwa candidates and UTF-8 character-ngram reranking",
+      "options": "Equivalent to lexicon:true,rerank:true; rerank also evaluates the SchwaModel:true alternative; no Go runtime, WASM or downloaded code."
+    },
+    "onDemandData": {
+      "lexicon.tsv": {
+        "bytes": 208827,
+        "sha256": "6fc9955ed159d1237ae28efec2ce762bca44dd50c964f307944fb8d8a27aa517",
+        "changes": "none; exact bytes at npmGitHead; parsed only as data"
+      },
+      "roman_ngrams.tsv": {
+        "bytes": 228964,
+        "sha256": "29d9e05cde8aa5cb44ce79810479cf7df8b86baafcf27fa95a8f8d10fe052d16",
+        "changes": "none; exact bytes at npmGitHead; parsed only as data"
+      },
+      "schwa_tree.json": {
+        "bytes": 34463,
+        "sha256": "d071eeb37f1abdb4461e5fb5379ca47d8e4120865a11c8cb6a3716396a1334ff",
+        "changes": "none; exact bytes at npmGitHead; parsed only as data"
+      }
+    },
+    "testDataSubset": {
+      "path": "tests/fixtures/video-reading-hindi-parity.json",
+      "license": "CC BY-SA 4.0 for derived Hindi lexicon/ngram data and unchanged schwa tree",
+      "changes": "Only lexicon entries and ngram counts needed for the frozen parity corpus are retained; all unigrams retained to preserve score denominators. Not included in extension output. Expected outputs recorded from original @budhash/gomanize@1.2.1 WASM."
     }
   },
   "koroman": {

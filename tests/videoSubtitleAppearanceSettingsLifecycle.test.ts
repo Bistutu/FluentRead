@@ -211,6 +211,7 @@ describe('视频字幕外观设置实际客户端模板', () => {
     it('读音开关显示明确的演示数据，仅译文与隐藏字幕时收起读音且保留偏好', async () => {
         await mount(normalizeConfig({videoTranslationEnabled: true}));
         expect(control<HTMLInputElement>(readingSelector).checked).toBe(false);
+        expect(control('.subtitle-reading-item').textContent).toContain('日语约 17.8 MB / 印地语约 0.5 MB，首次使用下载，缓存后离线');
         expect(root.querySelector(readingPreviewSelector)).toBeNull();
         expect(root.querySelector('[data-video-subtitle-reading-sample]')).toBeNull();
         await check(readingSelector, true);
@@ -257,6 +258,9 @@ describe('视频字幕外观设置实际客户端模板', () => {
             expect(checkbox.getAttribute('aria-label')).toBe(label);
             expect(control('.subtitle-reading-item .settings-item-label').textContent).toContain(label);
             expect(control('.subtitle-reading-item').textContent).toContain(translate('video.readingAnnotation.originalRequired', language));
+            props.config.videoSubtitleDisplayMode = 'bilingual'; await settle();
+            expect(control('.subtitle-reading-item').textContent).toContain(translate('video.readingAnnotation.description', language));
+            props.config.videoSubtitleDisplayMode = 'translation-only'; await settle();
             expect(control('[data-video-subtitle-reading-sample]').textContent).toBe(translate('video.readingAnnotation.previewSample', language));
             expect(root.querySelector(readingPreviewSelector)).toBeNull();
             expect(JSON.stringify(props.config.videoSubtitleAppearance)).toBe(saved);

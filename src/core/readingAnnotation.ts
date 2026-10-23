@@ -1,10 +1,13 @@
 /**
  * @file src/core/readingAnnotation.ts
  * 文件职责：识别视频原文可用的读音标注语言与稳定转写方案。
- * 主要内容：规范化字幕轨语言，区分普通话与粤语、日语与纯汉字歧义，拒绝英语音标及未知语言误转写；提供轻量脚本判断供内容端在启动 Worker 前过滤无效请求。
+ * 主要内容：规范化字幕轨语言，区分普通话与粤语、日语与纯汉字歧义，拒绝英语音标及未知语言误转写；提供轻量脚本判断与首次词典下载的有界等待预算，供内容、后台及离屏端共用。
  * 模块边界：仅纯字符串与元数据，不加载词典、浏览器、配置或任何转写依赖。
  */
 export type ReadingAnnotationLanguage = 'ja' | 'ko' | 'zh' | 'ru' | 'el' | 'ar' | 'hi' | 'th';
+// 数据下载最多两分钟；额外时间用于校验、缓存和初始化，外层再为离屏准备与回包留出余量。
+export const READING_ANNOTATION_WORKER_TIMEOUT_MS = 180_000;
+export const READING_ANNOTATION_REQUEST_TIMEOUT_MS = READING_ANNOTATION_WORKER_TIMEOUT_MS + 10_000;
 export const READING_ANNOTATION_SCHEMES: Record<ReadingAnnotationLanguage, string> = {
   ja: 'hepburn-ipadic-v1', ko: 'revised-romanization-v1', zh: 'hanyu-pinyin-tone-v1',
   ru: 'scientific-cyrillic-v1', el: 'modern-greek-romanization-v1', ar: 'arabic-written-transliteration-v1',

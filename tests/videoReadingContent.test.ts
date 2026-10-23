@@ -152,12 +152,12 @@ describe('读音Worker入口', () => {
     startReadingAnnotationWorker(scope);
     return {scope, send: (data: unknown) => listener({data} as MessageEvent)};
   }
-  it('无效请求不加载引擎，合法请求只采用扩展包内固定词典路径并保持编号', async () => {
+  it('无效请求不加载引擎，合法请求只采用Worker固定词典标识并保持编号', async () => {
     const {scope, send} = setup();
     for (const value of [null, {}, {id: 0, text: 'こんにちは', language: 'ja'}, {id: 1, text: '', language: 'ja'}, {id: 2, text: 'hello', language: 'en'}, {id: 3, text: 'あ'.repeat(3001), language: 'ja'}]) send(value);
     expect(mocks.annotate).not.toHaveBeenCalled(); expect(scope.postMessage).not.toHaveBeenCalled();
     mocks.annotate.mockResolvedValue(reading); send({id: 4, text: 'こんにちは', language: 'ja', dictionaryUrl: 'https://untrusted.test/dict'}); await flush();
-    expect(mocks.annotate).toHaveBeenCalledWith('こんにちは', 'ja', 'chrome-extension://extension/reading-annotation/ja/');
+    expect(mocks.annotate).toHaveBeenCalledWith('こんにちは', 'ja', 'chrome-extension://extension/reading-dictionary/ja/');
     expect(scope.postMessage).toHaveBeenCalledWith({id: 4, ok: true, result: reading});
   });
   it('空结果正常回复，失败只回通用错误且不终止后续消息', async () => {

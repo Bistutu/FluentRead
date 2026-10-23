@@ -72,7 +72,6 @@
     "@ai-sdk/anthropic": "3.0.116",
     "@ai-sdk/google": "3.0.121",
     "@ai-sdk/openai-compatible": "2.0.70",
-    "@budhash/gomanize": "1.2.1",
     "@ctrl/tinycolor": "3.6.1",
     "@deeplx/core": "0.3.1",
     "@element-plus/icons-vue": "^2.3.1",

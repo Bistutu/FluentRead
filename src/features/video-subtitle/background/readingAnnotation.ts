@@ -9,6 +9,7 @@ import {parseMessage} from '@/src/core/messaging/validation';
 import {sendOffscreenRequest} from '@/src/platform/offscreen/requests';
 import type {OffscreenClient} from '@/src/platform/offscreen/client';
 import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
+import {READING_ANNOTATION_REQUEST_TIMEOUT_MS} from '@/src/core/readingAnnotation';
 
 interface Context {sender?: {id?: string; tab?: {id?: number}; frameId?: number; documentId?: string}}
 interface Dependencies {offscreen: OffscreenClient; runtimeId: string; createRequestId?: () => string}
@@ -35,7 +36,7 @@ export function createVideoReadingAnnotationHandlers(dependencies: Dependencies)
       try {
         // 校验器保留信封中的额外字段；只挑选业务载荷，不能让 content 的 type 覆盖离屏路由。
         const response = await sendOffscreenRequest(dependencies.offscreen, {type: 'READING_ANNOTATION', text: request.text, language: request.language, requestId: offscreenId},
-          {signal: controller.signal, timeoutMs: 30_000, cancelMessage: {type: 'READING_ANNOTATION_CANCEL', requestId: offscreenId}});
+          {signal: controller.signal, timeoutMs: READING_ANNOTATION_REQUEST_TIMEOUT_MS, cancelMessage: {type: 'READING_ANNOTATION_CANCEL', requestId: offscreenId}});
         if (controller.signal.aborted) return {success: false, error: '读音标注已取消'};
         return response;
       } finally { if (pending.get(key) === controller) pending.delete(key); }
