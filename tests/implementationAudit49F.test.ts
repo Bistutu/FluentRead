@@ -1496,7 +1496,7 @@ describe('49F actual userscript main module lifecycle ownership', () => {
 // 独立的 owned-root 准入夹具。实际 Vue 客户端模板、配置模型、i18n context 和扫描器保持真实；
 // 存储传输、MutationObserver delivery 及无关颜色控件是外部端口，不代替用户名称保存/选择算法。
 describe('49F owned settings i18n client admission', () => {
-    async function ownedStyleClient() {
+    async function ownedStyleClient(initialStyle?: number) {
         vi.doUnmock('@/src/ui/i18n');
         const bundleGates = new Map<string, ReturnType<typeof deferred<boolean>>>();
         vi.doMock('@/src/platform/i18n/uiLanguageBundles', () => ({ensureUiLanguageBundle: (language: string) => bundleGates.get(language)?.promise ?? Promise.resolve(true)}));
@@ -1528,6 +1528,7 @@ describe('49F owned settings i18n client admission', () => {
         vi.doMock('@/src/features/settings/ui/components/TranslationColorField.vue', () => ({default: colorPort}));
         const {default: Style} = await import('@/src/features/settings/ui/TranslationStyleSettings.vue');
         const config = Vue.reactive(new Config());
+        if (initialStyle !== undefined) config.style = initialStyle;
         const beforeMetadata = {lang: document.documentElement.getAttribute('lang'), title: document.title};
         document.documentElement.lang = 'fixture-host-language';document.title = 'Synthetic host title';
         const outside = document.createElement('aside');outside.innerHTML = '<p title="设置" aria-label="设置">设置</p>';document.body.append(outside);
@@ -1548,7 +1549,11 @@ describe('49F owned settings i18n client admission', () => {
                     const name = key.slice(2).toLowerCase(), previous = target.__ownedEvents.get(name);if (previous) element.removeEventListener(name, previous);
                     if (value) {const listener: EventListener = event => {for (const handler of Array.isArray(value) ? value : [value]) handler(event);};target.__ownedEvents.set(name, listener);element.addEventListener(name, listener);}
                 } else if (key === 'value') (element as HTMLInputElement).value = value ?? '';
-                else if (key === 'style' && value && typeof value === 'object') Object.assign((element as HTMLElement).style, value);
+                else if (key === 'style' && value && typeof value === 'object') {
+                    const style = (element as HTMLElement).style;
+                    for (const property of Object.keys(_before ?? {})) if (!(property in value)) style.removeProperty(property);
+                    Object.assign(style, value);
+                }
                 else if (key.startsWith('aria-') && value != null) element.setAttribute(key, String(value));
                 else if (value == null || value === false) element.removeAttribute(key);
                 else element.setAttribute(key, value === true ? '' : String(value));
@@ -1588,6 +1593,76 @@ describe('49F owned settings i18n client admission', () => {
             },
         };
     }
+
+    it('keeps colored styles in a separate category between Text and Lines and restores their selection', async () => {
+        const client = await ownedStyleClient(54);
+        let savedStyle: number;
+        try {
+            expect([...client.root.querySelectorAll('.translation-style-categories button')].map(button => button.textContent!.trim()))
+                .toEqual(['文字', '颜色', '线条', '标记', '卡片', '趣味']);
+            expect(client.root.querySelector('.translation-style-categories button[aria-checked="true"]')!.textContent!.trim()).toBe('颜色');
+            expect([...client.root.querySelectorAll('.translation-style-card')].map(card => Number(card.getAttribute('data-style-value'))))
+                .toEqual([49, 50, 51, 52, 53, 54, 55, 56, 57, 40, 41, 42]);
+            expect(client.root.querySelector('[data-style-value="54"]')!.getAttribute('aria-checked')).toBe('true');
+            await client.click('.translation-style-categories button[data-option-index="0"]');
+            expect(client.root.querySelectorAll('.translation-style-card')).toHaveLength(12);
+            expect(client.root.querySelector('[data-style-value="49"]')).toBeNull();
+            expect(client.config.style).toBe(54);
+            await client.click('.translation-style-categories button[data-option-index="1"]');
+            await client.click('[data-style-value="49"]');
+            expect(client.config.style).toBe(49);
+            await client.click('.translation-style-categories button[data-option-index="2"]');
+            expect(client.root.querySelectorAll('.translation-style-card')).toHaveLength(14);
+            expect(client.config.style).toBe(49);
+            savedStyle = JSON.parse(JSON.stringify(client.config)).style;
+            expect(client.errors).toEqual([]);
+        } finally {await client.close();}
+        const restored = await ownedStyleClient(savedStyle!);
+        try {
+            expect(restored.root.querySelector('.translation-style-categories button[aria-checked="true"]')!.textContent!.trim()).toBe('颜色');
+            expect(restored.root.querySelectorAll('.translation-style-card')).toHaveLength(12);
+            expect(restored.root.querySelector('[data-style-value="49"]')!.getAttribute('aria-checked')).toBe('true');
+            expect(restored.errors).toEqual([]);
+        } finally {await restored.close();}
+    });
+
+    it('shows native color cards despite old pink overrides and applies a selected hue without losing font tweaks', async () => {
+        const client = await ownedStyleClient(54);
+        try {
+            client.config.translationAppearance = {...client.config.translationAppearance, textColor: '#ef4776', fontScale: 117,
+                fontWeight: 'bold', fontFamily: 'serif', customCss: 'color: pink; -webkit-text-fill-color: pink; font-size: 123%; border-radius: 6px'};
+            await client.settle();
+            const nativeCards = () => {
+                const samples = [...client.root.querySelectorAll<HTMLElement>('.translation-style-card .fluent-read-bilingual-content')];
+                expect(samples).toHaveLength(12);
+                for (const sample of samples) {
+                    expect(sample.style.getPropertyValue('color')).toBeFalsy();
+                    expect(sample.style.getPropertyValue('-webkit-text-fill-color')).toBeFalsy();
+                    expect(sample.style.getPropertyValue('font-family')).toContain('serif');
+                    expect(sample.style.getPropertyValue('font-size')).toBe('123%');
+                }
+            };
+            nativeCards();
+            const preview = () => client.root.querySelector<HTMLElement>('[data-testid="bilingual-highlight-preview-translation"]')!;
+            expect(preview().style.getPropertyValue('color')).toBe('pink');
+            await client.click('[data-style-value="49"]');
+            expect(client.config.style).toBe(49);
+            expect(client.config.translationAppearance).toMatchObject({textColor: '', fontScale: 117, fontWeight: 'bold', fontFamily: 'serif',
+                customCss: ' font-size: 123%; border-radius: 6px'});
+            expect(preview().classList.contains(client.preset(49)!.className)).toBe(true);
+            expect(preview().style.getPropertyValue('color')).toBeFalsy();
+            nativeCards();
+            await client.click('.translation-appearance-disclosure');
+            await client.input('[data-color-port="translation-text-color"]', '#1d4ed8');
+            expect(client.config.translationAppearance.textColor).toBe('#1d4ed8');
+            expect(preview().style.getPropertyValue('color')).toBe('#1d4ed8');
+            expect(preview().style.getPropertyValue('-webkit-text-fill-color')).toBe('currentColor');
+            nativeCards();
+            await client.click('.translation-style-categories button[data-option-index="0"]');
+            expect(client.root.querySelector<HTMLElement>('.translation-style-card .fluent-read-bilingual-content')!.style.getPropertyValue('color')).toBe('#1d4ed8');
+            expect(client.errors).toEqual([]);
+        } finally {await client.close();}
+    });
 
     it('applies native appearance controls, category and preview choices, then restores appearance defaults',async()=>{
         const client=await ownedStyleClient();

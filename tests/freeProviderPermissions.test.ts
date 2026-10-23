@@ -1,7 +1,7 @@
 /**
  * @file tests/freeProviderPermissions.test.ts
  * 文件职责：验证 Safari 免费池精确域授权端口及同步用户手势入口。
- * 主要内容：覆盖十七个 provider 的域范围、完整多域授权、拒绝与撤权、API 缺失或失败、非 Safari 旁路和请求顺序。
+ * 主要内容：覆盖十六个 provider 的域范围、退役节点过滤、完整多域授权、拒绝与撤权、API 缺失或失败、非 Safari 旁路和请求顺序。
  * 模块边界：仅替换浏览器权限 API，不发起网络请求、不修改任何真实浏览器权限。
  */
 import {afterEach, describe, expect, it, vi} from 'vitest';
@@ -20,10 +20,11 @@ function safari(permissions: unknown): void {
 }
 
 describe('Safari 免费池授权端口', () => {
-    it('目录完整且只列当前匿名请求的二十一个精确 HTTPS 主机，含 bootstrap 和内部备用域', () => {
+    it('目录完整且只列当前匿名请求的二十个精确 HTTPS 主机，含 bootstrap 和内部备用域', () => {
         expect(Object.keys(FREE_PROVIDER_ORIGINS).sort()).toEqual(FREE_TRANSLATION_PROVIDERS.map(item => item.id).sort());
         const origins = Object.values(FREE_PROVIDER_ORIGINS).flat();
-        expect(new Set(origins).size).toBe(21);
+        expect(new Set(origins).size).toBe(20);
+        expect(FREE_PROVIDER_ORIGINS).not.toHaveProperty('sogouFree');
         expect(origins.every(origin => /^https:\/\/[a-z0-9.-]+\/\*$/u.test(origin))).toBe(true);
         expect(FREE_PROVIDER_ORIGINS.microsoft).toEqual(['https://edge.microsoft.com/*']);
         expect(FREE_PROVIDER_ORIGINS.google).toEqual(['https://translate.google.com/*', 'https://translate.google.co.uk/*',
@@ -38,7 +39,7 @@ describe('Safari 免费池授权端口', () => {
         const groups: [string, FreeTranslationProviderId[]][] = [
             ['microsoftTransport', ['microsoft']], ['google', ['google']], ['doubao-web', ['doubaoWeb']],
             ['free-web', ['transmart', 'yandexFree', 'volcengineFree']], ['free-chinese-web', ['youdaoFree', 'icibaFree']],
-            ['mymemory', ['myMemory']], ['free-extra-web', ['sogouFree', 'reversoFree', 'apertiumFree']],
+            ['mymemory', ['myMemory']], ['free-extra-web', ['reversoFree', 'apertiumFree']],
             ['free-official-web', ['alibabaFree', 'modernMtFree', 'laraFree', 'lingvanexFree']],
         ];
         for (const [file, ids] of groups) {
@@ -55,7 +56,7 @@ describe('Safari 免费池授权端口', () => {
         vi.stubEnv('BROWSER', target);
         const contains = vi.fn(); const request = vi.fn();
         vi.stubGlobal('browser', {permissions: {contains, request}});
-        const access = await readFreePoolAccess(['google', 'unknown', 'microsoft', 'google']);
+        const access = await readFreePoolAccess(['sogouFree', 'google', 'unknown', 'microsoft', 'google']);
         expect(access).toEqual({supported: false, grantedIds: ['google', 'microsoft'], preferredGrant: null});
         expect(isFreeProviderAllowed(access, 'alibabaFree')).toBe(true);
         expect(() => requireFreeProviderAccess(access)).not.toThrow();
@@ -67,13 +68,13 @@ describe('Safari 免费池授权端口', () => {
     it('按完整 origin 集查询，保持输入不变、去重并首选第一个缺授权候选', async () => {
         const contains = vi.fn(async ({origins}: {origins: string[]}) => origins[0] === 'https://edge.microsoft.com/*');
         safari({contains});
-        const order = Object.freeze(['google', 'microsoft', 'google', 'lingvanexFree', 'invalid']);
+        const order = Object.freeze(['sogouFree', 'google', 'microsoft', 'google', 'lingvanexFree', 'invalid']);
         const access = await readFreePoolAccess(order);
         expect(access).toEqual({supported: true, grantedIds: ['microsoft'], preferredGrant: {id: 'google', origins: FREE_PROVIDER_ORIGINS.google}});
         expect(contains.mock.calls.map(([arg]) => arg.origins)).toEqual([
             [...FREE_PROVIDER_ORIGINS.google], [...FREE_PROVIDER_ORIGINS.microsoft], [...FREE_PROVIDER_ORIGINS.lingvanexFree],
         ]);
-        expect(order).toEqual(['google', 'microsoft', 'google', 'lingvanexFree', 'invalid']);
+        expect(order).toEqual(['sogouFree', 'google', 'microsoft', 'google', 'lingvanexFree', 'invalid']);
         expect(isFreeProviderAllowed(access, 'microsoft')).toBe(true);
         expect(isFreeProviderAllowed(access, 'google')).toBe(false);
         expect(() => requireFreeProviderAccess(access)).not.toThrow();
@@ -231,6 +232,7 @@ describe('Safari 免费池授权端口', () => {
         safari({request: vi.fn(() => Promise.reject(error))});
         await expect(requestFreeProviderAccess('microsoft')).rejects.toBe(error);
         expect(() => requestFreeProviderAccess('unknown' as FreeTranslationProviderId)).toThrow('无效的免费翻译服务');
+        expect(() => requestFreeProviderAccess('sogouFree' as FreeTranslationProviderId)).toThrow('无效的免费翻译服务');
     });
 
     it('未授权错误通过现有翻译消息序列化保留独立 code 和不可重试语义', async () => {

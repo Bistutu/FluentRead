@@ -26,7 +26,7 @@
           <label><span>源语言</span><UiSelect v-model="draft.from" :append-to="menuContainer" filterable aria-label="源语言"><ElOption v-for="item in options.from" :key="item.value" :value="item.value" :label="item.label" /></UiSelect></label>
           <label><span>目标语言</span><UiSelect v-model="draft.to" :append-to="menuContainer" filterable aria-label="目标语言"><ElOption v-for="item in options.to" :key="item.value" :value="item.value" :label="item.label" /></UiSelect></label>
           <label><span>译文显示</span><UiSelect v-model="draft.display" :append-to="menuContainer" aria-label="译文显示"><ElOption v-for="item in options.display" :key="item.value" :value="item.value" :label="item.label" /></UiSelect></label>
-          <label><span>双语样式</span><UiSelect v-model="draft.style" :append-to="menuContainer" aria-label="双语样式"><ElOption v-for="item in styleOptions" :key="item.value" :value="item.value" :label="item.label" /></UiSelect></label>
+          <label><span>双语样式</span><UiSelect :model-value="draft.style" :append-to="menuContainer" aria-label="双语样式" @update:model-value="selectTranslationStyle"><ElOption v-for="item in styleOptions" :key="item.value" :value="item.value" :label="item.label" /></UiSelect></label>
           <label class="toggle"><span>打开网页后自动翻译</span><input v-model="draft.autoTranslate" type="checkbox" /></label>
           <label class="toggle"><span>使用翻译缓存</span><input v-model="draft.useCache" type="checkbox" /></label>
         </fieldset>
@@ -183,6 +183,7 @@ import {Config, MIN_AI_REQUEST_TIMEOUT_MS, MAX_AI_REQUEST_TIMEOUT_MS, normalizeA
 import {useUiI18n} from '@/src/ui/i18n';
 import {useSettingsActionContext} from '@/src/features/settings/model/useSettingsActionContext';
 import {applyTranslationLoadingStyleChoice, getTranslationLoadingStyleChoice, translationLoadingStyleChoices} from '@/src/core/config/translationLoadingStyle';
+import {getTranslationPresetAppearance, getTranslationStylePreset} from '@/src/core/config/translationAppearance';
 import TranslationLoadingPreview from '@/src/ui/components/TranslationLoadingPreview.vue';
 import UiSelect from '@/src/ui/components/UiSelect.vue';
 import {ElOption} from 'element-plus';
@@ -257,6 +258,17 @@ const customModelDraft = ref('');
 const customModelError = ref('');
 
 const styleOptions = options.styles.filter(item => !item.disabled && typeof item.value === 'number');
+function selectTranslationStyle(value: unknown): void {
+  const style = typeof value === 'string' ? Number(value) : value;
+  const preset = getTranslationStylePreset(style);
+  if (!preset) return;
+  draft.value.style = preset.value;
+  // 只处理用户在下拉中的选择；配置载入、导入和命名样式的外观不经过此处。
+  if (preset.category === 'color') {
+    draft.value.translationAppearance = getTranslationPresetAppearance(preset.value, draft.value.translationAppearance);
+    draft.value.activeTranslationStyleProfileId = '';
+  }
+}
 const hoverOptions = options.keys.filter(item => !item.disabled);
 const selectedLoadingStyle = computed({
   get: () => getTranslationLoadingStyleChoice(draft.value),

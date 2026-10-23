@@ -13,9 +13,9 @@ const extensionDir = path.resolve(arg('extension-dir', '.output/chrome-mv3'));
 const artifactsDir = path.resolve(arg('artifacts-dir', '/private/tmp/fluentread-free-service-settings'));
 const {chromium} = require(path.join(arg('playwright-root'), 'playwright'));
 const {launchFocusSafePersistentContext, newPageWithoutForeground} = require(arg('focus-safe-helper'));
-const ids = ['microsoft', 'bilibiliFree', 'transmart', 'volcengineFree', 'doubaoWeb', 'google', 'youdaoFree', 'icibaFree', 'yandexFree', 'myMemory', 'sogouFree', 'reversoFree', 'apertiumFree', 'alibabaFree', 'modernMtFree', 'laraFree', 'lingvanexFree'];
+const ids = ['microsoft', 'bilibiliFree', 'transmart', 'volcengineFree', 'doubaoWeb', 'google', 'youdaoFree', 'icibaFree', 'yandexFree', 'myMemory', 'reversoFree', 'apertiumFree', 'alibabaFree', 'modernMtFree', 'laraFree', 'lingvanexFree'];
 const defaultIds = ids;
-const report = {ok: false, extensionDir, evidenceBoundary: process.argv.includes('--bilibili-live') ? 'Production extension Bilibili-only real connection check on a synthetic sentence; verifies installed DNR and provider transport, not all-site translation quality.' : live ? 'Real anonymous connection tests on a fixed synthetic sentence; one network and one run.' : 'Production extension UI with controlled connection-message results; provider behavior is tested separately.', caseCoverage: [], screenshots: [], consoleErrors: [], layouts: []};
+const report = {ok: false, extensionDir, evidenceBoundary: process.argv.includes('--bilibili-live') ? 'Production extension Bilibili-only real connection check on a synthetic sentence; verifies installed DNR and provider transport, not all-site translation quality.' : live ? 'Real anonymous connection tests on a fixed synthetic sentence; one network and one run.' : 'Production extension UI with controlled connection-message results; provider behavior is tested separately.', caseCoverage: [], screenshots: [], consoleErrors: [], layouts: [], removedProviderRequests: []};
 fs.mkdirSync(artifactsDir, {recursive: true});
 (async () => {
   let launched, profileDir;
@@ -27,6 +27,10 @@ fs.mkdirSync(artifactsDir, {recursive: true});
     Object.assign(report, {browserPath: arg('browser-path', '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge'), launchMode: launched.launchMode, focusPolicy: launched.focusPolicy, windowPlacement: launched.windowPlacement});
     assert.equal(report.windowPlacement.browserFrontmost, false);
     const context = launched.context;
+    context.on('request', request => {
+      const url = new URL(request.url());
+      if (url.hostname === 'sogou.com' || url.hostname.endsWith('.sogou.com')) report.removedProviderRequests.push({host: url.hostname, path: url.pathname});
+    });
     let origin;
     if (loadViaCdp) {
       const session = await context.browser().newBrowserCDPSession();
@@ -36,13 +40,14 @@ fs.mkdirSync(artifactsDir, {recursive: true});
       const worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker', {timeout: 30000});
       origin = /^chrome-extension:\/\/[^/]+/u.exec(worker.url())[0];
     }
-    const create = async url => {const p = await newPageWithoutForeground(context, 30000); p.on('pageerror', e => report.consoleErrors.push(e.message)); await p.goto(url, {waitUntil: 'domcontentloaded'}); return p;};
+    const create = async url => {const p = await newPageWithoutForeground(context, 30000); p.on('pageerror', e => report.consoleErrors.push(e.message)); p.on('console', message => {if (message.type() === 'error') report.consoleErrors.push(message.text());}); await p.goto(url, {waitUntil: 'domcontentloaded'}); return p;};
     const popup = await create(`${origin}/popup.html`);
     const readConfig = () => popup.evaluate(async () => {const r = await chrome.runtime.sendMessage({type: 'configStorageRead', key: 'local:config'}); return typeof r.value === 'string' ? JSON.parse(r.value) : r.value;});
     await waitForAsyncCondition(() => popup.evaluate(async () => {const r = await chrome.runtime.sendMessage({type: 'configStorageRead', key: 'local:config'}); return typeof r.value === 'string' ? JSON.parse(r.value)?.service : r.value?.service;}), {timeoutMs: 30000, message: "免费服务测试默认服务配置尚未就绪"});
     const existing = await readConfig();
     assert.deepEqual(existing.freeTranslationOrder, defaultIds);
-    report.caseCoverage.push('fresh configuration enables 17 registered providers');
+    assert.equal(existing.freeTranslationOrder.includes('sogouFree'), false);
+    report.caseCoverage.push('fresh configuration enables 16 registered providers');
     const patch = {uiLanguage: 'zh-CN', uiLanguageSetupCompleted: true, service: 'freeTranslation', from: 'en', to: 'zh-Hans', freeTranslationMode: 'balanced', freeTranslationOrder: defaultIds, freeTranslationTimeoutMs: 5000};
     assert.equal((await popup.evaluate(({patch, expected}) => chrome.runtime.sendMessage({type: 'persistConfig', mode: 'patch', config: patch, expected, clientId: `free-settings-${crypto.randomUUID()}`, sequence: 1}), {patch, expected: Object.fromEntries(Object.keys(patch).map(k => [k, existing[k]]))})).success, true);
     let page = await create(`${origin}/options.html`);
@@ -54,10 +59,11 @@ fs.mkdirSync(artifactsDir, {recursive: true});
       if (!await details.evaluate(node => node.open)) await details.locator(':scope > summary').click();
     };
     await basic().locator('[data-fallback-provider]').last().waitFor({state: 'attached'});
-    assert.equal(await basic().locator('[data-free-provider-disclosure]').evaluate(node => node.open), false);
-    assert.equal(await basic().locator('[data-fallback-provider]:visible').count(), 0);
-    assert.equal(await basic().locator('input[type="email"]').isVisible(), false);
-    await shot('free-default-collapsed'); await openProviders();
+    assert.equal(await basic().locator('[data-free-provider-disclosure]').evaluate(node => node.open), true);
+    assert.equal(await page.locator('[data-service-request-disclosure]').evaluate(node => node.open), true);
+    assert.equal(await basic().locator('[data-fallback-provider]:visible').count(), ids.length);
+    assert.equal(await basic().locator('input[type="email"]').isVisible(), true);
+    await shot('free-default-expanded');
     await basic().locator('[data-fallback-provider]').last().waitFor();
     assert.equal(await basic().locator('[data-fallback-provider]').count(), ids.length);
     assert.equal(await basic().locator('[data-free-provider-disclosure]').count(), 1);
@@ -66,9 +72,10 @@ fs.mkdirSync(artifactsDir, {recursive: true});
     assert.equal(await basic().locator('input[type="email"]').isVisible(), true);
     assert.equal(await basic().locator('[data-fallback-provider="deeplx"]').count(), 0);
     assert.equal(await basic().locator('[data-fallback-provider="lingvaFree"]').count(), 0);
+    assert.equal(await basic().locator('[data-fallback-provider="sogouFree"]').count(), 0);
     assert.deepEqual(await basic().locator('[data-fallback-provider]').evaluateAll(nodes => nodes.slice(0, 2).map(node => node.dataset.fallbackProvider)), ['microsoft', 'bilibiliFree']);
     assert.equal(await basic().locator('[data-service-nature-badge="bilibiliFree"]').textContent(), '免费');
-    report.caseCoverage.push('17 service controls remain mounted but hidden until disclosure opens; optional email and diagnostics share the expanded area');
+    report.caseCoverage.push('16 service controls are expanded by default; optional email and diagnostics share the expanded area');
     if (process.argv.includes('--bilibili-live')) {
       const rules = await popup.evaluate(() => chrome.declarativeNetRequest.getDynamicRules());
       const rule = rules.find(rule => rule.condition.regexFilter?.includes('index-translate'));
@@ -105,7 +112,7 @@ fs.mkdirSync(artifactsDir, {recursive: true});
         const fixture = window.__freeChecks;
         fixture.calls.push(message.freeProviderId); fixture.active++; fixture.peak = Math.max(fixture.peak, fixture.active);
         const id = message.freeProviderId;
-        const error = {yandexFree: 'Yandex 网络连接失败，请检查网络后重试或停用此服务', sogouFree: '搜狗翻译未返回译文（错误码 s10）；请稍后重试或停用此服务', lingvanexFree: 'Lingvanex 官网拒绝自动访问，请稍后重试或停用此服务: 403'}[id];
+        const error = {yandexFree: 'Yandex 网络连接失败，请检查网络后重试或停用此服务', lingvanexFree: 'Lingvanex 官网拒绝自动访问，请稍后重试或停用此服务: 403'}[id];
         const promise = new Promise(resolve => setTimeout(() => {fixture.active--; resolve(error ? {success: false, error} : {success: true, durationMs: id === 'microsoft' ? 35 : 1200});}, fixture.delay));
         const callback = args.find(a => typeof a === 'function');
         if (callback) {promise.then(callback); return;}
@@ -119,11 +126,12 @@ fs.mkdirSync(artifactsDir, {recursive: true});
     assert.deepEqual((await readConfig()).freeTranslationOrder, before);
     assert.equal(report.results.every(r => /^\d+ ms$/u.test(r.duration)), true);
     if (!live) {
-      assert.equal(report.results.filter(r => r.status === 'error').length, 3);
+      assert.equal(report.results.filter(r => r.status === 'error').length, 2);
       const fixture = await page.evaluate(() => ({calls: window.__freeChecks.calls, peak: window.__freeChecks.peak}));
       assert.deepEqual(fixture.calls, ids); assert.equal(fixture.peak, 3);
+      assert.equal(fixture.calls.includes('sogouFree'), false); report.controlledCheckCalls = fixture.calls;
       assert.equal(report.results.find(r => r.id === 'microsoft').duration, '35 ms');
-      assert.equal(await basic().locator('[data-provider-error="sogouFree"]').isVisible(), true);
+      assert.equal(await basic().locator('[data-provider-error="yandexFree"]').isVisible(), true);
       const lingvaSwitch = basic().locator('[data-fallback-provider="lingvanexFree"] .el-switch');
       await lingvaSwitch.click();
       assert.equal(await basic().locator('[data-provider-state="lingvanexFree"]').getAttribute('data-provider-check-status'), 'error');
@@ -134,7 +142,7 @@ fs.mkdirSync(artifactsDir, {recursive: true});
     await basic().locator('[data-free-provider-disclosure] > summary').click();
     assert.equal(await basic().locator('[data-fallback-provider]:visible').count(), 0);
     assert.equal(await basic().locator('[data-provider-duration]').count(), ids.length, 'Closing keeps connection results mounted');
-    assert.match(await basic().locator('[data-free-provider-disclosure] > summary').innerText(), /17/u);
+    assert.match(await basic().locator('[data-free-provider-disclosure] > summary').innerText(), /16/u);
     await shot('free-results-collapsed'); await openProviders();
     await basic().locator('[data-free-provider-disclosure] > summary').scrollIntoViewIfNeeded();
     await shot(live ? 'live-checks-desktop' : 'checks-desktop');
@@ -212,6 +220,8 @@ fs.mkdirSync(artifactsDir, {recursive: true});
     }
     report.caseCoverage.push('separate DeepLX nature badges in the standalone service directory and details; Chinese/English desktop, narrow and dark layouts');
     report.caseCoverage.push('equal card heights in Chinese/English at desktop and narrow widths');
+    assert.deepEqual(report.removedProviderRequests, []);
+    report.caseCoverage.push('removed Sogou provider is absent from default configuration, provider controls, connection-check calls and observed domain requests');
     assert.deepEqual(report.consoleErrors, []);
     report.ok = true;
   } catch (error) {report.error = error.stack || String(error); process.exitCode = 1;}
@@ -222,6 +232,7 @@ fs.mkdirSync(artifactsDir, {recursive: true});
       try {await launched.close(); browserClosed = true;}
       catch (error) {report.cleanupErrors.push(`session close: ${error.message}`);}
     }
+    report.browserClosed = browserClosed;
     if (profileDir) {
       if (browserClosed) {
         try {fs.rmSync(profileDir, {recursive: true, force: true}); report.profileRemoved = true;}

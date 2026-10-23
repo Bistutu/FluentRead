@@ -15,7 +15,6 @@ const scalarEndpoints = new Map([
   ['dict.youdao.com/jsonapi_s', 'youdao'],
   ['ifanyi.iciba.com/index.php', 'iciba'],
   ['api.mymemory.translated.net/get', 'mymemory'],
-  ['translate.sogou.com/api/transpc/text/result', 'sogou'],
   ['api.reverso.net/translate/v1/translation', 'reverso'],
   ['apertium.org/apy/translate', 'apertium'],
   ['translate.alibaba.com/api/translate/text', 'alibaba'],
@@ -80,7 +79,7 @@ function decodeHttpTranslationRequest({url: rawUrl, method = 'GET', postData = n
   let text;
   if (endpoint === 'transmart') text = strings(body?.source?.text_list) && body.source.text_list.length === 1 ? body.source.text_list[0] : undefined;
   else if (endpoint === 'reverso') text = body?.input;
-  else if (['volcengine', 'sogou', 'lingvanex'].includes(endpoint)) text = body?.text;
+  else if (['volcengine', 'lingvanex'].includes(endpoint)) text = body?.text;
   else if (['modernmt', 'lara'].includes(endpoint)) text = body?.q;
   else if (['mymemory', 'apertium'].includes(endpoint)) {const values = url.searchParams.getAll('q'); if (values.length === 1) text = values[0];}
   else if (endpoint === 'yandex') {const values = url.searchParams.getAll('text'); if (values.length === 1) text = values[0];}
@@ -138,7 +137,6 @@ function decodeHttpTranslationResponse(request, value) {
     else if (request.endpoint === 'volcengine') text = value?.translation;
     else if (request.endpoint === 'youdao') text = value?.fanyi?.tran;
     else if (request.endpoint === 'mymemory' || request.endpoint === 'apertium') text = value?.responseData?.translatedText;
-    else if (request.endpoint === 'sogou') text = value?.data?.translate?.dit;
     else if (request.endpoint === 'reverso') text = strings(value?.translation) ? value.translation.join('') : undefined;
     else if (request.endpoint === 'alibaba') text = value?.data?.translateText;
     else if (request.endpoint === 'modernmt') text = value?.data?.translation;

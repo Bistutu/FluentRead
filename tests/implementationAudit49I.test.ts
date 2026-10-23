@@ -333,6 +333,12 @@ exports.launchFocusSafePersistentContext = async options => {
   };
 };
 exports.activateExtensionTabWithoutForeground = async () => { throw Error('UNEXPECTED_ACTIVATION'); };
+let foregroundQueries = 0;
+exports.queryMacFrontmostApplication = async () => {
+  log('helper-foreground-query', {attempt: ++foregroundQueries});
+  if (process.env.AUDIT_FAULT === 'focus-after' && foregroundQueries === 2) throw Error('CONTROLLED_FOREGROUND_QUERY_FAILURE');
+  return {pid: 999999, name: 'controlled foreground port'};
+};
 exports.newPageWithoutForeground = async () => ({
   on() {}, setDefaultTimeout() {}, async setViewportSize() {},
   isClosed: () => false,
@@ -1049,6 +1055,19 @@ for (const file of cleanupTools.filter(file => file !== kofi)) {
         expect(count(result, 'report-write-failed')).toBe(1);
     }, 12000);
 }
+it('run-translation-style-ui-test.cjs preserves its primary failure and releases resources when the final foreground query rejects', async () => {
+    const result = await invoke(translationStyle, 'focus-after');
+    expect(result.code).toBe(1);
+    expect(result.report.error).toContain('CONTROLLED_PAGE_FAILURE');
+    expect(result.report.cleanupErrors).toContain('foreground observation: CONTROLLED_FOREGROUND_QUERY_FAILURE');
+    expect(count(result, 'helper-foreground-query')).toBe(2);
+    expect(count(result, 'session-close')).toBe(1);
+    expect(count(result, 'server-closed')).toBe(count(result, 'server-created'));
+    expect(result.report.browserClosed).toBe(true);
+    expect(result.report.profileRemoved).toBe(true);
+    expect(result.directories).toHaveLength(1);
+    expect(result.directories.every(directory => !directory.exists)).toBe(true);
+}, 12000);
 for (const file of cleanupTools) {
     it(`${path.basename(file)} keeps primary failure and continues independent cleanup after close rejection`, async () => {
         const result = await invoke(file, 'close');

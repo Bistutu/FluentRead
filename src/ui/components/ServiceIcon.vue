@@ -28,7 +28,7 @@
     </svg>
     <svg v-else-if="service === 'yandexFree'" viewBox="0 0 24 24" role="img"><path d="M15 4h-3a5 5 0 0 0 0 10h3M15 4v16M12 14l-5 6" /></svg>
     <svg v-else-if="service === 'volcengineFree'" viewBox="0 0 24 24" role="img"><path d="m4 19 7-14 2 7 3-4 4 11H4Z" /></svg>
-    <svg v-else-if="['youdaoFree', 'sogouFree', 'reversoFree', 'lingvaFree', 'apertiumFree'].includes(service)" viewBox="0 0 24 24" role="img">
+    <svg v-else-if="['youdaoFree', 'reversoFree', 'lingvaFree', 'apertiumFree'].includes(service)" viewBox="0 0 24 24" role="img">
       <path d="M5 6h14M7 6v3a5 5 0 0 0 10 0V6M12 4v16M8 20h8" />
     </svg>
     <svg v-else-if="service === 'myMemory'" viewBox="0 0 24 24" role="img">

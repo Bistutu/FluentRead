@@ -86,7 +86,6 @@ const providerTranslators: Record<FreeProviderId, (request: TranslationProviderR
     volcengineFree: request => translateFreeWebText('volcengineFree', request.origin, request.sourceLanguage!, request.targetLanguage!, request.abortSignal),
     youdaoFree: request => translateFreeChineseWebText('youdaoFree', request.origin, request.sourceLanguage!, request.targetLanguage!, request.abortSignal),
     icibaFree: request => translateFreeChineseWebText('icibaFree', request.origin, request.sourceLanguage!, request.targetLanguage!, request.abortSignal),
-    sogouFree: request => translateExtraFreeWebText('sogouFree', request.origin, request.sourceLanguage!, request.targetLanguage!, request.abortSignal),
     reversoFree: request => translateExtraFreeWebText('reversoFree', request.origin, request.sourceLanguage!, request.targetLanguage!, request.abortSignal),
     apertiumFree: request => translateExtraFreeWebText('apertiumFree', request.origin, request.sourceLanguage!, request.targetLanguage!, request.abortSignal),
     alibabaFree: request => translateOfficialFreeWebProvider('alibabaFree', request),

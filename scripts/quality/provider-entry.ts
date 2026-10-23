@@ -17,7 +17,7 @@ export async function translate(provider: string, text: string, source: string, 
     if (provider === 'transmart' || provider === 'yandexFree' || provider === 'volcengineFree') return translateFreeWebText(provider, text, source, target, signal);
     if (provider === 'youdaoFree' || provider === 'icibaFree') return translateFreeChineseWebText(provider, text, source, target, signal);
     if (provider === 'alibabaFree' || provider === 'modernMtFree' || provider === 'laraFree' || provider === 'lingvanexFree') return translateOfficialFreeWebText(provider, text, source, target, signal);
-    if (provider === 'sogouFree' || provider === 'reversoFree' || provider === 'apertiumFree') return translateExtraFreeWebText(provider, text, source, target, signal);
+    if (provider === 'reversoFree' || provider === 'apertiumFree') return translateExtraFreeWebText(provider, text, source, target, signal);
     const request = {origin: text, sourceLanguage: source, targetLanguage: target, abortSignal: signal};
     if (provider === 'bilibiliFree') return translateBilibiliFree(request);
     if (provider === 'doubaoWeb') return translateDoubaoWeb(request);

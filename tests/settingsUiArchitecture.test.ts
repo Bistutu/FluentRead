@@ -1175,7 +1175,7 @@ describe('options UI composition architecture', () => {
     // 朴素模式不需要规则；其余预设都必须在共享样式表中有对应类，逐行绘制的预设还要有行内译文规则。
     const presetSource = source('src/core/config/translationAppearance.ts')
     const presetClasses = [...presetSource.matchAll(/className: '(fluent-display-[a-z-]+)'[^\n]*/gu)]
-    expect(presetClasses).toHaveLength(49)
+    expect(presetClasses).toHaveLength(58)
     for (const [line, className] of presetClasses) {
       if (className === 'fluent-display-default') continue
       expect(displayCss, className).toMatch(new RegExp(`\\.${className}[\\s\\[:>{]`, 'u'))

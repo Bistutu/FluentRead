@@ -3,8 +3,8 @@
 
 /**
  * @file scripts/testing/run-service-learning-hierarchy-test.cjs
- * 文件职责：用生产扩展的单一自有页签验收免费服务渐进展开、默认服务标记及学习材料与笔记层级。
- * 主要内容：隔离 profile、焦点保护、真实配置保存与笔记 UI 操作；覆盖服务启停重开、单一请求配置默认收起与自定义保存、空库管理恢复、八行笔记原位阅读与取消编辑，并生成 1440/390 浅深色截图。
+ * 文件职责：用生产扩展的单一自有页签验收免费服务默认展开与手动收起、默认服务标记及学习材料与笔记层级。
+ * 主要内容：隔离 profile、焦点保护、真实配置保存与笔记 UI 操作；覆盖服务启停重开、单一请求配置默认展开与自定义保存、空库管理恢复、八行笔记原位阅读与取消编辑，并生成 1440/390 浅深色截图。
  * 模块边界：复用 focus-safe helper 的首个页签与所有权清理；不调用翻译或连接检查，HTTP(S) 在页面及当前扩展 worker 边界被阻断；不声明真实供应商、Firefox 或移动设备已验收。
  */
 const assert = require('node:assert/strict');
@@ -20,7 +20,7 @@ const artifactsDir = path.resolve(arg('artifacts-dir', '/private/tmp/fluentread-
 const browserPath = arg('browser-path', '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge');
 const helperPath = path.resolve(arg('focus-safe-helper', path.join(__dirname, 'focus-safe-browser.cjs')));
 const playwrightRoot = arg('playwright-root', '/Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules');
-const PROVIDERS = ['microsoft', 'bilibiliFree', 'transmart', 'volcengineFree', 'doubaoWeb', 'google', 'youdaoFree', 'icibaFree', 'yandexFree', 'myMemory', 'sogouFree', 'reversoFree', 'apertiumFree', 'alibabaFree', 'modernMtFree', 'laraFree', 'lingvanexFree'];
+const PROVIDERS = ['microsoft', 'bilibiliFree', 'transmart', 'volcengineFree', 'doubaoWeb', 'google', 'youdaoFree', 'icibaFree', 'yandexFree', 'myMemory', 'reversoFree', 'apertiumFree', 'alibabaFree', 'modernMtFree', 'laraFree', 'lingvanexFree'];
 const NOTE = ['阅读层级验收笔记', '第二行：原文优先', '第三行：关键操作清晰', '第四行：按需显示细节', '第五行：保留阅读上下文', '第六行：取消不覆盖内容', '第七行：窄屏可完整阅读', '第八行：这是笔记末尾'].join('\n');
 
 async function until(check, label) {
@@ -107,7 +107,7 @@ async function main() {
   const rows = () => page.locator('[data-fallback-provider]');
   async function providerOpen(open) {
     if ((await disclosure().getAttribute('open') !== null) !== open) await disclosure().locator(':scope > summary').click();
-    await until(async () => await page.locator('[data-fallback-provider]:visible').count() === (open ? 17 : 0), `provider rows ${open ? 'open' : 'closed'}`);
+    await until(async () => await page.locator('[data-fallback-provider]:visible').count() === (open ? 16 : 0), `provider rows ${open ? 'open' : 'closed'}`);
   }
   async function selectService(id) {
     const toggle = page.locator('.mobile-directory-toggle');
@@ -190,25 +190,28 @@ async function main() {
     await patchFixture({uiLanguageSetupCompleted: true, uiLanguage: 'zh-CN', theme: 'light', interfaceSkin: 'default', interfaceFont: 'system', animations: false, service: 'freeTranslation', freeTranslationMode: 'balanced', freeTranslationOrder: PROVIDERS});
 
     currentCase = 'provider-persistence'; await openOptions('settings-services'); await disclosure().waitFor(); await defaultAction('freeTranslation');
-    assert.equal(await disclosure().getAttribute('open'), null); assert.equal(await rows().count(), 17); assert.equal(await page.locator('[data-fallback-provider]:visible').count(), 0);
+    assert.notEqual(await disclosure().getAttribute('open'), null); assert.equal(await rows().count(), 16); assert.equal(await page.locator('[data-fallback-provider]:visible').count(), 16);
     assert.match(await disclosure().locator(':scope > summary').textContent(), /参与翻译的服务/u);
+    await providerOpen(false);
     await providerOpen(true);
     assert.deepEqual((await rows().evaluateAll(nodes => nodes.map(node => node.dataset.fallbackProvider))).sort(), [...PROVIDERS].sort());
     const targetSwitch = () => page.locator('[data-fallback-provider="microsoft"]').getByRole('switch');
     assert.equal(await targetSwitch().getAttribute('aria-checked'), 'true'); await page.locator('[data-fallback-provider="microsoft"] .el-switch').click();
     await until(async () => !(await readConfig()).freeTranslationOrder.includes('microsoft'), 'provider disable saved');
-    await openOptions('settings-services'); assert.equal(await disclosure().getAttribute('open'), null); await providerOpen(true);
+    await openOptions('settings-services'); assert.notEqual(await disclosure().getAttribute('open'), null);
     assert.equal(await targetSwitch().getAttribute('aria-checked'), 'false'); await shot('provider-disabled-reopened', 'light');
     await page.locator('[data-fallback-provider="microsoft"] .el-switch').click(); await until(async () => (await readConfig()).freeTranslationOrder.includes('microsoft'), 'provider enable saved');
     await openOptions('settings-services'); await providerOpen(true); assert.equal(await targetSwitch().getAttribute('aria-checked'), 'true');
     await selectService('microsoft'); await defaultAction('microsoft'); await selectService('freeTranslation'); await defaultAction('freeTranslation');
-    report.cases.push({name: 'provider-persistence', rows: 17, defaultCollapsed: true, disabledAndEnabledReopened: true, defaultUnchangedByBrowsing: true});
+    report.cases.push({name: 'provider-persistence', rows: 16, defaultExpanded: true, disabledAndEnabledReopened: true, defaultUnchangedByBrowsing: true});
 
     currentCase = 'request-limit-disclosure';
     const limits = () => requestDisclosure().getByTestId('request-limit-settings');
     const requestSummary = () => requestDisclosure().locator(':scope > summary');
-    assert.equal(await requestDisclosure().count(), 1); assert.equal(await requestDisclosure().getAttribute('open'), null);
+    assert.equal(await requestDisclosure().count(), 1); assert.notEqual(await requestDisclosure().getAttribute('open'), null);
     assert.match(await requestSummary().innerText(), /请求限制/u); assert.match(await requestSummary().innerText(), /跟随全局设置/u);
+    assert.equal(await limits().isVisible(), true);
+    await requestSummary().click();
     assert.equal(await limits().count(), 1, 'Closed disclosure keeps the form mounted'); assert.equal(await limits().isVisible(), false);
     await requestSummary().click();
     await limits().locator('[data-request-limit-mode]').getByRole('radio', {name: '自定义', exact: true}).click();
@@ -217,16 +220,16 @@ async function main() {
     await until(async () => {const value = (await readConfig()).serviceRequestLimits.freeTranslation; return value?.enabled === true && value.limits.maxConcurrentTranslations === 2;}, 'custom service request limit saved');
     await requestSummary().click(); assert.match(await requestSummary().innerText(), /自定义/u);
     assert.equal(await limits().count(), 1); assert.equal(await limits().isVisible(), false);
-    await openOptions('settings-services'); assert.equal(await requestDisclosure().getAttribute('open'), null);
-    assert.match(await requestSummary().innerText(), /自定义/u); await requestSummary().click();
+    await openOptions('settings-services'); assert.notEqual(await requestDisclosure().getAttribute('open'), null);
+    assert.match(await requestSummary().innerText(), /自定义/u);
     assert.equal(await limits().getByLabel('翻译并发数', {exact: true}).inputValue(), '2');
     await requestSummary().scrollIntoViewIfNeeded(); await shot('request-limits-custom-reopened', 'light');
     await limits().locator('[data-request-limit-mode]').getByRole('radio', {name: '跟随全局设置', exact: true}).click();
     await until(async () => (await readConfig()).serviceRequestLimits.freeTranslation?.enabled === false, 'global inheritance restored');
-    await openOptions('settings-services'); assert.equal(await requestDisclosure().getAttribute('open'), null);
+    await openOptions('settings-services'); assert.notEqual(await requestDisclosure().getAttribute('open'), null);
     assert.match(await requestSummary().innerText(), /跟随全局设置/u);
     assert.equal((await readConfig()).serviceRequestLimits.freeTranslation.limits.maxConcurrentTranslations, 2, 'Disabled custom values remain available');
-    report.cases.push({name: 'request-limit-disclosure', defaultCollapsed: true, formRemainsMounted: true, customConcurrency: 2, reopenedCustom: true, inheritanceRestored: true, disabledValuesRetained: true});
+    report.cases.push({name: 'request-limit-disclosure', defaultExpanded: true, formRemainsMounted: true, customConcurrency: 2, reopenedCustom: true, inheritanceRestored: true, disabledValuesRetained: true});
 
     currentCase = 'empty-material-management'; await openOptions('settings-vocabulary'); await materialEmpty();
     await page.locator('.fr-material-menu > summary').click();
@@ -262,10 +265,10 @@ async function main() {
     for (const theme of ['light', 'dark']) for (const width of [1440, 390]) {
       const suffix = `${theme}-${width}`, viewport = {width, height: width === 390 ? 844 : 960};
       await patchFixture({theme}); await openOptions('settings-services', viewport); await disclosure().waitFor(); await defaultAction('freeTranslation');
-      assert.equal(await requestDisclosure().getAttribute('open'), null); assert.match(await requestSummary().innerText(), /跟随全局设置/u);
-      assert.equal(await disclosure().getAttribute('open'), null); await disclosure().scrollIntoViewIfNeeded(); await shot(`services-collapsed-${suffix}`, theme);
+      assert.notEqual(await requestDisclosure().getAttribute('open'), null); assert.match(await requestSummary().innerText(), /跟随全局设置/u);
+      assert.notEqual(await disclosure().getAttribute('open'), null); await providerOpen(false); await disclosure().scrollIntoViewIfNeeded(); await shot(`services-collapsed-${suffix}`, theme);
       await providerOpen(true); await disclosure().locator(':scope > summary').scrollIntoViewIfNeeded(); await shot(`services-expanded-${suffix}`, theme);
-      await providerOpen(false); await requestSummary().click(); await requestSummary().scrollIntoViewIfNeeded();
+      await providerOpen(false); await requestSummary().scrollIntoViewIfNeeded();
       await requestSummary().hover();
       const corners = await requestDisclosure().evaluate(element => {
         const card = getComputedStyle(element), summary = getComputedStyle(element.querySelector(':scope > summary'));

@@ -50,9 +50,7 @@ async function mountComponent(advanced: boolean): Promise<void> {
   await runtime.nextTick();
   if (!advanced) {
     const disclosure = elements.find(node => node.tag === 'details' && node.props['data-free-provider-disclosure'] !== undefined)!;
-    expect(disclosure.props.open).toBe(false);
-    disclosure.props.onToggle({currentTarget: {open: true}});
-    await runtime.nextTick();
+    expect(disclosure.props.open).toBe(true);
   }
 }
 
@@ -330,7 +328,7 @@ describe('free translation settings actual client component', () => {
     expect(details).toBeUndefined();
     expect(elements.filter(element => element.tag === 'details')).toHaveLength(1);
     expect(elements.find(element => element.tag === 'details')?.props['data-free-provider-disclosure']).toBeDefined();
-    expect(elements.find(element => element.props['data-provider-weight'] === 'microsoft')?.text).toBe('12.8%');
+    expect(elements.find(element => element.props['data-provider-weight'] === 'microsoft')?.text).toBe('13.6%');
     expect(control('启用 阿里翻译').props['model-value']).toBe(true);
     state.toggle('alibabaFree', false);
     await runtime.nextTick();

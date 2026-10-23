@@ -1,7 +1,7 @@
 <!--
  * @file src/features/settings/ui/services/FreeTranslationSettings.vue
  * 文件职责：编辑免费翻译服务的启停、选择策略、邮箱与等待时间。
- * 主要内容：策略选择与启用数量默认可见，全部服务的启停、连接结果、耗时、分流参考和可选邮箱放在按需展开的设置卡片中，收起保留表单；B站翻译仅标注免费；Safari 单独呈现实际域授权并在真实点击中逐线路申请，权限查询有界且切换时取消等待；撤权与重新激活时复查域权限，自己授权后的事件不取消原点击；错误保留翻译键；仅展开且活跃的分流视图合并读取后台快照，收起或切换时取消等待和旧事件，邮箱草稿只在所属配置提交。
+ * 主要内容：策略选择与启用数量默认可见，全部服务的启停、连接结果、耗时、分流参考和可选邮箱放在默认展开且可手动收起的设置卡片中，收起保留表单；B站翻译仅标注免费；Safari 单独呈现实际域授权并在真实点击中逐线路申请，权限查询有界且切换时取消等待；撤权与重新激活时复查域权限，自己授权后的事件不取消原点击；错误保留翻译键；仅展开且活跃的分流视图合并读取后台快照，收起或切换时取消等待和旧事件，邮箱草稿只在所属配置提交。
  * 模块边界：只修改传入的配置，由设置页统一持久化；通过平台端口管理 Safari 授权，只读取不含凭据的后台权重快照，不请求翻译或更改启用顺序。
  -->
 <template>
@@ -14,7 +14,7 @@
       </div>
       <p class="mode-help">{{ mode === 'balanced' ? t('settings.services.freeWeights.strategy') : translateLegacy('依次调用启用的免费接口；可使用上下按钮调整顺序') }}</p>
       <p v-if="!isSequential && displayedWeightSnapshot.total === 0 && (!safariPermissions || permissionAccess?.grantedIds.length)" class="service-unavailable" role="status">{{ t('settings.services.freeWeights.unavailable') }}</p>
-      <SettingsDisclosure class="free-provider-details" :title="t('settings.services.freeWeights.services')" :status="providerSummary" :status-tone="failedProviders.length ? 'warning' : 'neutral'" data-free-provider-disclosure :onToggle="actions.toggleProviders">
+      <SettingsDisclosure class="free-provider-details" :title="t('settings.services.freeWeights.services')" :status="providerSummary" :status-tone="failedProviders.length ? 'warning' : 'neutral'" default-open data-free-provider-disclosure :onToggle="actions.toggleProviders">
       <section class="provider-section" :aria-label="translateLegacy(isSequential ? '免费翻译优先顺序' : '免费翻译服务')">
         <div v-if="!isSequential" class="routing-summary" data-testid="free-translation-weight-summary" :data-weight-total="displayedWeightSnapshot.total" :data-weight-observed-at="displayedWeightSnapshot.observedAt">
           <span>{{ t('settings.services.freeWeights.description') }}</span>
@@ -108,8 +108,8 @@ const isSequential = computed(() => mode.value === 'sequential')
 const order = computed(() => normalizeFreeTranslationOrder(config.value.freeTranslationOrder))
 const providers = computed(() => mode.value === 'sequential' ? [...order.value.flatMap(id => FREE_TRANSLATION_PROVIDERS.filter(provider => provider.id === id)), ...FREE_TRANSLATION_PROVIDERS.filter(provider => !order.value.includes(provider.id))] : [...FREE_TRANSLATION_PROVIDERS])
 const failedProviders = computed(() => providers.value.filter(provider => props.checks?.[provider.id]?.status === 'error' && props.checks[provider.id]?.error))
-const providerListOpen = ref(false)
-watch(advanced, value => {if (value) providerListOpen.value = false}, {flush: 'sync'})
+const providerListOpen = ref(!advanced.value)
+watch(advanced, value => {providerListOpen.value = !value}, {flush: 'sync'})
 const providerSummary = computed(() => {
   const states = providers.value.map(provider => props.checks?.[provider.id]?.status)
   const enabled = t('settings.services.freeWeights.enabledCount', {count: order.value.length})

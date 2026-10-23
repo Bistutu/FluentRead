@@ -359,17 +359,14 @@ describe('audit48F: bounded production performance and output contracts', () => 
         expect(output).toBe(expected);
         expect(requests.map(q => Buffer.byteLength(q))).toEqual([499, 499, 5]);
     });
-    it('Sogou reuses its bootstrap only within one request across chunks and slots', async () => {
-        const bootstrap = vi.fn(() => new Response('"secretCode":1234'));
-        fetchPort.mockImplementation(async (url, init) => String(url).endsWith('/') ? bootstrap() : json({status: 0, data: {translate: {dit: '译:' + JSON.parse(String(init?.body)).text}}}));
+    it('Reverso preserves chunk and slot boundaries without shared bootstrap state', async () => {
+        fetchPort.mockImplementation(async (_url, init) => json({translation: ['译:' + JSON.parse(String(init?.body)).input]}));
         const slots = serializeTranslationSlots(['a'.repeat(1001), '  b\r\nc  '], 'audit-f');
-        const start = performance.now();
-        const output = await translateExtraFreeWebText('sogouFree', slots.payload, 'en', 'zh-Hans');
-        if (process.env.AUDIT_F_SOGOU_PERF) writeFileSync(process.env.AUDIT_F_SOGOU_PERF, JSON.stringify({inputCodeUnits: slots.payload.length, durationMs: performance.now() - start, bootstrapRequests: bootstrap.mock.calls.length, totalRequests: fetchPort.mock.calls.length, outputSHA256: createHash('sha256').update(output).digest('hex')}, null, 2));
+        const output = await translateExtraFreeWebText('reversoFree', slots.payload, 'en', 'zh-Hans');
         expect(parseTranslationSlots(slots, output)).toEqual(['译:' + 'a'.repeat(1000) + '译:a', '  译:b\r\n译:c  ']);
-        expect(bootstrap).toHaveBeenCalledOnce();
-        await translateExtraFreeWebText('sogouFree', 'next request', 'en', 'zh-Hans');
-        expect(bootstrap).toHaveBeenCalledTimes(2);
+        expect(fetchPort).toHaveBeenCalledTimes(4);
+        await translateExtraFreeWebText('reversoFree', 'next request', 'en', 'zh-Hans');
+        expect(fetchPort).toHaveBeenCalledTimes(5);
     });
     it('Apertium reuses the validated pair only within one request across chunks', async () => {
         const list = vi.fn(() => json(['eng-spa']));
@@ -391,14 +388,14 @@ describe('audit48F: bounded production performance and output contracts', () => 
         expect(list).toHaveBeenCalledTimes(2);
     });
     it('empty extra-web text performs no bootstrap work', async () => {
-        await expect(translateExtraFreeWebText('sogouFree', ' \r\n ', 'en', 'zh-Hans')).resolves.toBe(' \r\n ');
+        await expect(translateExtraFreeWebText('reversoFree', ' \r\n ', 'en', 'zh-Hans')).resolves.toBe(' \r\n ');
         expect(fetchPort).not.toHaveBeenCalled();
     });
-    it('Sogou bootstrap failure remains visible and a later request can retry', async () => {
+    it('Apertium pair-list failure remains visible and a later request can retry', async () => {
         fetchPort.mockResolvedValueOnce(new Response('', {status: 503}));
-        await expect(translateExtraFreeWebText('sogouFree', 'hello', 'en', 'zh-Hans')).rejects.toMatchObject({statusCode: 503});
-        fetchPort.mockResolvedValueOnce(new Response('"secretCode":5678')).mockResolvedValueOnce(json({status: 0, data: {translate: {dit: '你好'}}}));
-        await expect(translateExtraFreeWebText('sogouFree', 'hello', 'en', 'zh-Hans')).resolves.toBe('你好');
+        await expect(translateExtraFreeWebText('apertiumFree', 'hello', 'en', 'es')).rejects.toMatchObject({statusCode: 503});
+        fetchPort.mockResolvedValueOnce(json(['eng-spa'])).mockResolvedValueOnce(json({responseStatus: 200, responseData: {translatedText: 'Hola'}}));
+        await expect(translateExtraFreeWebText('apertiumFree', 'hello', 'en', 'es')).resolves.toBe('Hola');
     });
     it('a cancelled Apertium list read cannot start the translation request', async () => {
         const controller = new AbortController();

@@ -743,7 +743,7 @@ describe('免费翻译服务', () => {
         const calls = [microsoftMock, officialMock, bilibiliMock, doubaoMock, googleMock, myMemoryMock, webMock, chineseMock, extraMock].reduce((total, mock) => total + mock.mock.calls.length, 0);
         expect(calls).toBe(1);
         const families = {transmart: webMock, yandexFree: webMock, volcengineFree: webMock, youdaoFree: chineseMock, icibaFree: chineseMock,
-            sogouFree: extraMock, reversoFree: extraMock, apertiumFree: extraMock};
+            reversoFree: extraMock, apertiumFree: extraMock};
         if (id in families) expect(families[id as keyof typeof families]).toHaveBeenCalledWith(id, 'Hello from FluentRead.', 'en', 'zh-Hans', undefined);
         if (['alibabaFree', 'modernMtFree', 'laraFree', 'lingvanexFree'].includes(id)) expect(officialMock).toHaveBeenCalledWith(id, expect.objectContaining({origin: 'Hello from FluentRead.', sourceLanguage: 'en', targetLanguage: 'zh-Hans'}));
         if (id === 'bilibiliFree') expect(bilibiliMock).toHaveBeenCalledWith(expect.objectContaining({origin: 'Hello from FluentRead.', sourceLanguage: 'en', targetLanguage: 'zh-Hans'}));
@@ -965,7 +965,7 @@ describe('免费翻译服务', () => {
         mockConfig.token = {azureTranslator: 'configured-key', deepL: 'free-key:fx'};
         myMemoryMock.mockResolvedValue('备用');
         await expect(settle(translateFreeText('Hello'))).resolves.toBe('备用');
-        expect(readSnapshot(myMemoryMock.mock.calls[0][0]).freeTranslationOrder).toEqual(['microsoft', 'bilibiliFree', 'transmart', 'volcengineFree', 'doubaoWeb', 'google', 'youdaoFree', 'icibaFree', 'yandexFree', 'myMemory', 'sogouFree', 'reversoFree', 'apertiumFree', 'alibabaFree', 'modernMtFree', 'laraFree', 'lingvanexFree']);
+        expect(readSnapshot(myMemoryMock.mock.calls[0][0]).freeTranslationOrder).toEqual(['microsoft', 'bilibiliFree', 'transmart', 'volcengineFree', 'doubaoWeb', 'google', 'youdaoFree', 'icibaFree', 'yandexFree', 'myMemory', 'reversoFree', 'apertiumFree', 'alibabaFree', 'modernMtFree', 'laraFree', 'lingvanexFree']);
     });
 
     it('上游挂起时局部超时继续降级，下一段跳过正在冷却的上游', async () => {
@@ -1282,7 +1282,7 @@ it('falls back and cools down a failed new route while keeping language errors r
 
 it.each([
     ['youdaoFree', 'chinese'], ['icibaFree', 'chinese'],
-    ['sogouFree', 'extra'], ['reversoFree', 'extra'], ['apertiumFree', 'extra'],
+    ['reversoFree', 'extra'], ['apertiumFree', 'extra'],
 ] as const)('routes %s through the dedicated adapter with frozen language and cancellation', async (id, kind) => {
     mockConfig.freeTranslationOrder = [id];
     const mock = kind === 'chinese' ? chineseMock : extraMock;
@@ -1294,9 +1294,9 @@ it.each([
 });
 
 it('passes balanced mode while excluding supplied manual weights from the frozen request', async () => {
-    mockConfig.freeTranslationOrder = ['microsoft', 'sogouFree'];
+    mockConfig.freeTranslationOrder = ['microsoft', 'reversoFree'];
     mockConfig.freeTranslationMode = 'balanced';
-    mockConfig.freeTranslationWeights = {microsoft: 7, sogouFree: 2};
+    mockConfig.freeTranslationWeights = {microsoft: 7, reversoFree: 2};
     microsoftMock.mockRejectedValue(httpFailure(429));
     extraMock.mockResolvedValue('均衡译文');
     await expect(settle(translateFreeText('Hello'))).resolves.toBe('均衡译文');
@@ -1304,7 +1304,7 @@ it('passes balanced mode while excluding supplied manual weights from the frozen
     expect(request).toBeInstanceOf(AbortSignal);
     const snapshot = createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig));
     expect(mockConfig.freeTranslationMode).toBe('balanced');
-    expect(mockConfig.freeTranslationWeights).toEqual({microsoft: 7, sogouFree: 2});
+    expect(mockConfig.freeTranslationWeights).toEqual({microsoft: 7, reversoFree: 2});
     expect(Object.isFrozen(snapshot.freeTranslationOrder)).toBe(true);
     expect(snapshot).not.toHaveProperty('freeTranslationWeights');
 });

@@ -565,7 +565,7 @@ async function mountServiceClient(initialService = 'freeTranslation', developmen
 }
 
 describe('实际服务父模板的本地子模块按需加载', () => {
-  it('单请求页签默认收起但保留表单与响应式摘要，多页签保持原 section', async () => {
+  it('单请求页签默认展开并保留表单与响应式摘要，多页签保持原 section', async () => {
     const h = await mountServiceClient('freeTranslation')
     try {
       const disclosure = () => h.allNodes().find(n => Object.hasOwn(n.props, 'data-service-request-disclosure'))!
@@ -573,7 +573,7 @@ describe('实际服务父模板的本地子模块按需加载', () => {
       const mode = () => h.allNodes().find(n => Object.hasOwn(n.props, 'data-request-limit-mode'))!
       const text = (n: ServiceClientNode): string => (n.value || '') + n.children.map(text).join('')
       const initialForm = fields(), initialDisclosure = disclosure()
-      expect(initialDisclosure.tag).toBe('details');expect(initialDisclosure.props.open).toBe(false)
+      expect(initialDisclosure.tag).toBe('details');expect(initialDisclosure.props.open).toBe(true)
       expect(initialForm).toBeDefined();expect(text(initialDisclosure)).toContain('settings.requestLimits.followGlobal')
       ;(mode().props['onUpdate:modelValue'] as (value: unknown) => void)('custom');await settle()
       expect(h.source.config.serviceRequestLimits.freeTranslation.enabled).toBe(true)
@@ -583,7 +583,7 @@ describe('实际服务父模板的本地子模块按需加载', () => {
       expect(text(disclosure())).toContain('settings.requestLimits.followGlobal')
       expect(fields()).toBe(initialForm)
       h.source.service = 'google';await settle()
-      expect(disclosure()).not.toBe(initialDisclosure);expect(disclosure().props.open).toBe(false)
+      expect(disclosure()).not.toBe(initialDisclosure);expect(disclosure().props.open).toBe(true)
       h.source.service = 'deepseek';h.source.compute = {...h.source.compute, showAI: true, showModel: true};await settle()
       expect(h.allNodes().some(n => Object.hasOwn(n.props, 'data-service-request-disclosure'))).toBe(false)
       expect(h.allNodes().find(n => n.props.id === 'service-requests-settings')?.tag).toBe('section')

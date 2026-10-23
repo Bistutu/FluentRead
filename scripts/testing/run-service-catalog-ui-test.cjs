@@ -48,7 +48,7 @@ const expectedPlatformServices = [
 ];
 const expectedFreeCandidates = [
   'microsoft', 'transmart', 'volcengineFree', 'google', 'youdaoFree', 'icibaFree', 'yandexFree', 'deeplx', 'myMemory',
-  'sogouFree', 'reversoFree', 'lingvaFree', 'apertiumFree',
+  'reversoFree', 'lingvaFree', 'apertiumFree',
 ];
 const defaultDisabledFreeCandidates = ['deeplx'];
 const expectedEnabledFreeCandidates = expectedFreeCandidates.filter(id => !defaultDisabledFreeCandidates.includes(id));
@@ -281,7 +281,7 @@ async function main() {
     await modeRadio('sequential').check();
     await freeSettings.getByRole('button', {name: '上移 DeepLX', exact: true}).click();
     await freeSettings.locator('[data-fallback-provider="yandexFree"] .el-switch').click();
-    const expectedOrder = ['microsoft', 'transmart', 'volcengineFree', 'google', 'youdaoFree', 'icibaFree', 'myMemory', 'sogouFree', 'reversoFree', 'lingvaFree', 'deeplx', 'apertiumFree'];
+    const expectedOrder = ['microsoft', 'transmart', 'volcengineFree', 'google', 'youdaoFree', 'icibaFree', 'myMemory', 'reversoFree', 'lingvaFree', 'deeplx', 'apertiumFree'];
     const sequentialCandidates = await readCandidates();
     assertSameOrder(sequentialCandidates.filter(row => row.enabled).map(row => row.id), expectedOrder, '优先顺序');
     assertSameOrder(sequentialCandidates.map(row => row.id).slice(0, expectedOrder.length), expectedOrder, '优先顺序中启用候选置顶');
@@ -290,7 +290,7 @@ async function main() {
       throw new Error(`优先顺序序号异常：${JSON.stringify(positions)}`);
     }
     if (!await freeSettings.getByRole('button', {name: '上移 微软翻译', exact: true}).isDisabled()) throw new Error('首个候选仍可上移');
-    await freeSettings.locator('[data-fallback-provider="sogouFree"]').scrollIntoViewIfNeeded();
+    await freeSettings.locator('[data-fallback-provider="reversoFree"]').scrollIntoViewIfNeeded();
     await screenshot(page, 'free-candidates-sequential.png', report);
     const stored = await waitForStoredFreeTranslation(page, {mode: 'sequential', order: expectedOrder});
 
@@ -311,7 +311,7 @@ async function main() {
     await page.setViewportSize({width: 390, height: 844});
     await page.waitForTimeout(150);
     if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) throw new Error('免费候选在窄屏横向溢出');
-    await freeSettings.locator('[data-fallback-provider="sogouFree"]').scrollIntoViewIfNeeded();
+    await freeSettings.locator('[data-fallback-provider="reversoFree"]').scrollIntoViewIfNeeded();
     await screenshot(page, 'free-candidates-390.png', report);
 
     if (argument('live', 'false') === 'true') {

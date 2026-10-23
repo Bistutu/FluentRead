@@ -21,7 +21,7 @@ describe('keyless free translation configuration', () => {
             .toEqual(['myMemory', 'google']);
         expect(normalizeConfig({freeTranslationOrder: ['myMemory']}).freeTranslationOrder).toEqual(['bilibiliFree', 'myMemory']);
         expect(FREE_TRANSLATION_PROVIDERS.find(item => item.id === 'myMemory')?.official).toBe(true);
-        expect(FREE_TRANSLATION_PROVIDERS.map(item => item.id)).toEqual(['microsoft', 'bilibiliFree', 'transmart', 'volcengineFree', 'doubaoWeb', 'google', 'youdaoFree', 'icibaFree', 'yandexFree', 'myMemory', 'sogouFree', 'reversoFree', 'apertiumFree', 'alibabaFree', 'modernMtFree', 'laraFree', 'lingvanexFree']);
+        expect(FREE_TRANSLATION_PROVIDERS.map(item => item.id)).toEqual(['microsoft', 'bilibiliFree', 'transmart', 'volcengineFree', 'doubaoWeb', 'google', 'youdaoFree', 'icibaFree', 'yandexFree', 'myMemory', 'reversoFree', 'apertiumFree', 'alibabaFree', 'modernMtFree', 'laraFree', 'lingvanexFree']);
         expect(normalizeFreeTranslationOrder(['azureTranslator', 'myMemory', 'deepL', 'openai'])).toEqual(['myMemory']);
         expect(normalizeFreeTranslationOrder(['azureTranslator', 'deepL'])).toEqual(DEFAULT_FREE_TRANSLATION_ORDER);
     });
@@ -50,6 +50,36 @@ describe('keyless free translation configuration', () => {
         expect(imported.freeTranslationOrder).toEqual(['bilibiliFree', 'google']);
         expect(imported.deeplx).toBe('https://user.example/translate');
         expect(normalizeFreeTranslationOrder(['alibabaFree'])).toEqual(['alibabaFree']);
+    });
+
+    it.each([
+        {order: ['sogouFree', 'microsoft'], expected: ['microsoft']},
+        {order: ['sogouFree'], expected: DEFAULT_FREE_TRANSLATION_ORDER},
+    ])('已保存的搜狗节点在加载、导入和再次保存后不恢复：$order', ({order, expected}) => {
+        const previous = {...new Config(), service: 'freeTranslation', freeTranslationOrder: order};
+        expect(normalizeFreeTranslationOrder(order)).toEqual(expected);
+        const loaded = normalizeConfig(previous);
+        expect(loaded.freeTranslationOrder).toEqual(expected);
+        expect(normalizeConfig(JSON.parse(JSON.stringify(loaded))).freeTranslationOrder).toEqual(expected);
+        expect(prepareConfigForImport(previous, new Config()).freeTranslationOrder).toEqual(expected);
+        const exported = prepareConfigForExport(previous);
+        expect(exported.freeTranslationOrder).toEqual(expected);
+        expect(prepareConfigForImport(exported, new Config()).freeTranslationOrder).toEqual(expected);
+        expect(loaded.service).toBe('freeTranslation');
+        expect(loaded.freeTranslationOrder).not.toContain('sogouFree');
+    });
+
+    it('旧搜狗服务选择不能在加载或备份恢复后重新成为翻译入口', () => {
+        const previous = {...new Config(), service: 'sogouFree', documentService: 'sogouFree',
+            hoverTranslationService: 'sogouFree', selectionTranslationService: 'sogouFree',
+            imageTranslationService: 'sogouFree', areaTranslationService: 'sogouFree'};
+        const loaded = normalizeConfig(previous);
+        expect(loaded.service).toBe(new Config().service);
+        for (const field of ['documentService', 'hoverTranslationService', 'selectionTranslationService',
+            'imageTranslationService', 'areaTranslationService'] as const) expect(loaded[field]).toBe('');
+        const restored = prepareConfigForImport(prepareConfigForExport(previous), new Config());
+        expect(restored.service).toBe(loaded.service);
+        expect(restored.selectionTranslationService).toBe('');
     });
 
     it('旧配置只补一次 B站默认节点，并保留其他选择与顺序', () => {

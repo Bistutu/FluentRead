@@ -19,8 +19,17 @@ describe('free translation weight snapshots', () => {
         expect(snapshot.total).toBe(100);
         expect(enabled.reduce((sum, item) => sum + item.weight, 0)).toBeCloseTo(100, 10);
         expect(entry('microsoft', snapshot)).toMatchObject({weight: 21.7, status: 'ready'});
-        expect(entry('sogouFree', snapshot)).toMatchObject({weight: 0, status: 'disabled'});
+        expect(entry('reversoFree', snapshot)).toMatchObject({weight: 0, status: 'disabled'});
         expect(entry('microsoft', snapshot).weight.toString()).toMatch(/^\d+\.\d$/u);
+    });
+
+    it('ignores retired candidates and their saved health when allocating current providers', () => {
+        const snapshot = calculateFreeTranslationWeightSnapshot(['sogouFree', 'microsoft'], [{
+            providerId: 'sogouFree', retryAt: 9_000, failures: 1, category: 'unavailable',
+        }], 1_000);
+        expect(snapshot.total).toBe(100);
+        expect(entry('microsoft', snapshot)).toMatchObject({weight: 100, status: 'ready'});
+        expect(snapshot.entries.some(item => item.providerId === 'sogouFree')).toBe(false);
     });
 
     it('drops a failed service to zero during its cooldown and renormalizes the rest', () => {
