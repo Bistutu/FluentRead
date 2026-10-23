@@ -985,6 +985,9 @@ describe('options UI composition architecture', () => {
       const attributeStart = serviceConfiguration.indexOf(`data-configuration-group="${group}"`)
       expect(attributeStart).toBeGreaterThanOrEqual(0)
       const start = serviceConfiguration.lastIndexOf('<', attributeStart)
+      if (serviceConfiguration.startsWith('<component', start)) {
+        return serviceConfiguration.slice(start, serviceConfiguration.indexOf('</component>', start) + '</component>'.length)
+      }
       return sectionAt(serviceConfiguration, start)
     }
     const connectionGroup = configurationGroup('connection')
@@ -1012,8 +1015,10 @@ describe('options UI composition architecture', () => {
     expect(customRequestGroup).toContain('v-if="compute.showCustomBody"')
     expect(serviceConfiguration).not.toContain('data-configuration-group="advanced"')
     expect(serviceConfiguration).not.toContain('class="advanced-groups"')
+    expect(requestsGroup).toMatch(/^<component\b/u)
+    expect(requestsGroup).toContain(':is="singleSettingsTab ? SettingsDisclosure : \'section\'"')
     for (const group of [translationGroup, promptsGroup, requestsGroup, customRequestGroup]) {
-      expect(group).toMatch(/^<section\b/u)
+      if (group !== requestsGroup) expect(group).toMatch(/^<section\b/u)
       expect(group).toContain('class="service-settings-panel"')
       expect(group.match(/data-configuration-group=/gu)).toHaveLength(1)
       expect(connectionGroup).not.toContain(group)

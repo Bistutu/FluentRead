@@ -378,29 +378,11 @@
   box-shadow: none;
 }
 
-/* 分组卡片承接风格的描边、圆角与投影；圆角上限与默认设置页接近，保持各风格下的版面稳定。 */
-:root[data-interface-skin-kind="palette"][data-interface-skin] .settings-group {
-  --skin-group-radius: min(var(--skin-panel-radius, 12px), 14px);
-  border: var(--skin-group-border, 1px solid var(--line));
-  border-radius: var(--skin-group-radius);
-  background: var(--surface);
-  box-shadow: var(--skin-group-shadow, none);
-}
-
-:root[data-interface-skin-kind="palette"][data-interface-skin] .settings-group-heading {
-  border-color: var(--line);
-  border-radius: calc(var(--skin-group-radius) - 1px) calc(var(--skin-group-radius) - 1px) 0 0;
-}
-
-:root[data-interface-skin-kind="palette"][data-interface-skin] .settings-group-body {
-  border-radius: calc(var(--skin-group-radius) - 1px);
-  background: transparent;
-  box-shadow: none;
-}
-
-:root[data-interface-skin-kind="palette"][data-interface-skin] .settings-group-heading + .settings-group-body {
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
+/* 普通分组与折叠卡片共同承接原皮肤造型：例如乌金的 2px 棱角、藕荷的无描边浅色卡片。 */
+:root[data-interface-skin-kind="palette"][data-interface-skin] {
+  --fr-card-radius: min(var(--skin-panel-radius, 12px), 14px);
+  --fr-card-outline: var(--skin-group-border, 1px solid var(--line));
+  --fr-card-shadow: var(--skin-group-shadow, none);
 }
 
 :root[data-interface-skin-kind="palette"][data-interface-skin] .settings-card .settings-control-row {

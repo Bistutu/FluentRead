@@ -20,7 +20,7 @@
 .rule-field .fluentread-select { width:100%; min-width:0; }
 .rule-field input:not(.el-select__input), .rule-field textarea { box-sizing: border-box; width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-soft); color: var(--ink); font: inherit; }
 .rule-field textarea { resize: vertical; line-height: 1.65; }
-.rule-field input[aria-invalid=true], .rule-field textarea[aria-invalid=true] { border-color: var(--danger, #bb233b); }
+.rule-field input[aria-invalid=true], .rule-field textarea[aria-invalid=true] { border-color: var(--fr-danger); }
 .rule-workspace button { min-height: 36px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); font: inherit; font-size: 12px; cursor: pointer; }
 .rule-workspace button:hover:not(:disabled) { border-color: var(--brand-strong); background: var(--surface-soft); }
 .rule-workspace button:disabled { opacity: .5; cursor: default; }
@@ -29,7 +29,7 @@
 .rule-workspace button:focus-visible, .rule-workspace input:focus-visible, .rule-workspace textarea:focus-visible, .rule-workspace select:focus-visible, .rule-workspace summary:focus-visible { outline: 2px solid var(--brand-strong); outline-offset: 3px; }
 .rule-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .rule-hint { margin: 10px 0; color: var(--muted); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
-.rule-error { color: var(--danger, #bb233b); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+.rule-error { color: var(--fr-danger); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
 .rule-notice { padding: 12px 15px; border: 1px solid var(--line); border-radius: 9px; color: var(--muted); background: var(--surface-soft); font-size: 12px; line-height: 1.7; }
 .rule-empty { display: grid; justify-items: center; gap: 10px; padding: 30px 10px; text-align: center; color: var(--muted); }
 .rule-empty strong { color: var(--ink); font-size: 14px; }

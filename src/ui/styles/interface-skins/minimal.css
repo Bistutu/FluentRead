@@ -6,6 +6,11 @@
  */
 
 /* Popup：保留 FluentRead 的功能结构，采用参考风格中的留白、浅灰表面和圆角入口。 */
+:root[data-interface-skin="minimal"] {
+  --fr-card-radius: 9px;
+  --fr-card-shadow: none;
+}
+
 :root[data-interface-skin="minimal"] body.popup-page,
 :root[data-interface-skin="minimal"] body.popup-page #app {
   background: var(--surface);
@@ -418,7 +423,6 @@
 }
 
 :root[data-interface-skin="minimal"] .search-box,
-:root[data-interface-skin="minimal"] .settings-group-body,
 :root[data-interface-skin="minimal"] .settings-card .settings-control-row,
 :root[data-interface-skin="minimal"] .settings-card .el-collapse,
 :root[data-interface-skin="minimal"] .settings-card,
@@ -428,8 +432,7 @@
   box-shadow: none;
 }
 
-:root[data-interface-skin="minimal"] .settings-card .settings-control-row:hover,
-:root[data-interface-skin="minimal"] .settings-group-body {
+:root[data-interface-skin="minimal"] .settings-card .settings-control-row:hover {
   box-shadow: none;
 }
 

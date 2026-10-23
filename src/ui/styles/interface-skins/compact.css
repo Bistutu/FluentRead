@@ -7,6 +7,16 @@
 
 /* Popup 宽度由注册表写入 --interface-popup-width；本模块只负责窄版内部布局。 */
 
+:root[data-interface-skin="compact"] {
+  --fr-card-radius: 12px;
+  --fr-card-shadow: none;
+  --fr-card-gap: 16px;
+  --fr-card-padding-inline: 13px;
+  --fr-card-heading-padding-block: 12px;
+  --fr-settings-row-min-height: 56px;
+  --fr-settings-row-padding-block: 9px;
+}
+
 :root[data-interface-skin="compact"] .popup-shell {
   padding: 8px 12px 4px;
 }
@@ -256,19 +266,9 @@
   font-size: 25px;
 }
 
-:root[data-interface-skin="compact"] .settings-group {
-  margin-bottom: 16px;
-}
-
-:root[data-interface-skin="compact"] .settings-group-body,
 :root[data-interface-skin="compact"] .settings-card .settings-control-row {
   border-radius: 12px;
   box-shadow: none;
-}
-
-:root[data-interface-skin="compact"] .settings-item {
-  min-height: 56px;
-  padding: 9px 13px;
 }
 
 @media (max-width: 720px) {

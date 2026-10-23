@@ -20,9 +20,9 @@ defineProps<{modelValue: boolean; title: string; description?: string; disabled?
 const emit = defineEmits<{'update:modelValue': [value: boolean]}>();
 </script>
 <style scoped>
-.feature-enable-card { margin: 0 0 var(--fr-card-gap, 20px); border: 1px solid var(--fr-card-border, var(--line, #d7dce5)); border-radius: var(--fr-card-radius, 14px); background: var(--fr-card-background, var(--surface, #fff)); box-shadow: var(--fr-card-shadow, none); overflow: hidden; }
-.feature-enable-card.enabled { border-color: var(--fr-card-border, var(--line, #d7dce5)); background: var(--fr-card-background, var(--surface, #fff)); }
-.feature-enable-card button { display: flex; align-items: center; justify-content: space-between; gap: 24px; width: 100%; min-height: 76px; padding: 18px 20px; border: 0; color: var(--ink, #172033); background: transparent; font: inherit; text-align: start; cursor: pointer; }
+.feature-enable-card { margin: 0 0 var(--fr-card-gap, 20px); border: var(--fr-card-outline, 1px solid var(--line, #d7dce5)); border-radius: var(--fr-card-radius, 14px); background: var(--fr-card-background, var(--surface, #fff)); box-shadow: var(--fr-card-shadow, none); overflow: hidden; }
+.feature-enable-card.enabled { background: var(--fr-card-background, var(--surface, #fff)); }
+.feature-enable-card button { display: flex; align-items: center; justify-content: space-between; gap: 24px; width: 100%; min-height: 76px; padding: 18px var(--fr-card-padding-inline, 20px); border: 0; color: var(--ink, #172033); background: transparent; font: inherit; text-align: start; cursor: pointer; }
 .feature-enable-card button:hover:not(:disabled) { background: color-mix(in srgb, var(--brand, #ef4776) 5%, transparent); }
 .feature-enable-card button:focus-visible { outline: 2px solid var(--brand, #ef4776); outline-offset: -3px; }
 .feature-enable-copy { display: block; min-width: 0; flex: 1; }
@@ -35,6 +35,6 @@ const emit = defineEmits<{'update:modelValue': [value: boolean]}>();
 .enabled i { background: var(--brand, #ef4776); border-color: var(--brand, #ef4776); }
 .enabled b { transform: translateX(22px); }
 .feature-enable-card button:disabled { opacity: .55; cursor: not-allowed; }
-@media (max-width: 600px) { .feature-enable-card button { gap: 12px; padding: 15px 14px; } }
+@media (max-width: 600px) { .feature-enable-card button { gap: 12px; padding: 15px var(--fr-card-padding-inline, 16px); } }
 @media (prefers-reduced-motion: reduce) { .feature-enable-card b { transition: none; } }
 </style>

@@ -130,7 +130,7 @@ const referencePreviewLabel = computed(() => {
 .writing-settings>.feature-enable-card{margin:0 0 24px}
 .writing-description{margin:-12px 0 24px;color:var(--muted);font-size:12px;line-height:1.7}
 .writing-site-help{margin:0;padding:12px 18px 0;color:var(--muted);font-size:12px}.writing-disabled-site{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px;font-size:13px}.writing-disabled-site button{border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--brand);padding:6px 10px;font:inherit;cursor:pointer}.writing-disabled-site button:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
-.writing-settings small.writing-setup-message{color:var(--warning,#b26a00)}
+.writing-settings small.writing-setup-message{color:var(--fr-warning)}
 .writing-model-label button{border:0;padding:0;background:none;color:var(--brand-strong);font:inherit;font-weight:600;cursor:pointer}
 .writing-model-label button:hover{text-decoration:underline;text-underline-offset:3px}
 .writing-model-label button:focus-visible{outline:2px solid var(--brand);outline-offset:4px}

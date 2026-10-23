@@ -28,6 +28,7 @@
 
   --fr-card-radius: 14px;
   --fr-card-border: var(--line);
+  --fr-card-outline: 1px solid var(--fr-card-border);
   --fr-card-background: var(--surface);
   --fr-card-heading-background: var(--surface);
   --fr-card-shadow: 0 2px 8px rgba(23, 32, 51, .025);
@@ -46,6 +47,17 @@
   --fr-focus-color: var(--brand-strong);
 }
 
+/* 设置卡片的窄屏密度统一在变量层切换；具体皮肤可用同名变量保留自己的间距。 */
+@media (max-width: 700px) {
+  :root {
+    --fr-card-gap: 14px;
+    --fr-card-padding-inline: 16px;
+    --fr-card-heading-padding-block: 14px;
+    --fr-settings-row-min-height: 62px;
+    --fr-settings-row-padding-block: 12px;
+  }
+}
+
 /* 反馈色用于状态与提示，不把成功、警告或错误混作品牌强调。 */
 :root {
   --fr-success: #267260;
@@ -57,7 +69,9 @@
   --fr-info: #306ba3;
   --fr-info-soft: #eaf3ff;
 }
-:root.dark {
+:root.dark,
+:root[data-interface-skin="xuanqing"],
+:root[data-interface-skin="wujin"] {
   --fr-menu-shadow: 0 10px 32px rgba(0, 0, 0, .28);
   --fr-card-shadow: 0 2px 8px rgba(0, 0, 0, .12);
   --fr-success: #9edcc8;

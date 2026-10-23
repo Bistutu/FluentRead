@@ -219,7 +219,7 @@ onBeforeUnmount(() => { active = false; generation += 1 })
 .fr-memory-empty strong { font-size:13px; }
 .fr-memory-empty p { margin:8px auto 0; max-width:420px; color:var(--muted); font-size:12px; line-height:1.7; }
 .fr-memory-feedback { margin:14px 0; color:var(--muted); font-size:12px; line-height:1.6; }
-.fr-memory-feedback.is-error { color:var(--warning,#b26a00); }
+.fr-memory-feedback.is-error { color:var(--fr-danger); }
 .fr-memory-bottom { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:14px; }
 .fr-memory-bottom small { color:var(--muted); font-size:11px; }
 .fr-learning-memory > details.fr-memory-options[class] > summary { width:fit-content; min-height:0; margin:8px 0 0; padding:0; border:0; border-radius:0; color:var(--muted); background:transparent; font:inherit; font-size:11px; font-weight:400; cursor:pointer; }

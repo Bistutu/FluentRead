@@ -4,7 +4,7 @@
 /**
  * @file scripts/testing/run-document-action-hierarchy-test.cjs
  * 文件职责：用生产扩展和独立后台 Edge 验证文档翻译按钮随任务阶段切换主次。
- * 主要内容：真实导入小 TXT、调用本机确定性 HTTP 翻译、检查按钮计算样式并截图，验证重译确认的返回/Esc 不请求、目标语言变化及真实双语下载。
+ * 主要内容：在 390px 首次导入小 TXT，验证侧栏默认收起、展开后文件与添加入口可见且可滚动，收起恢复正文空间；调用本机确定性 HTTP 翻译、检查按钮计算样式并截图，验证校订器首次按需挂载及往返保留搜索、重译确认的返回/Esc 不请求、目标语言变化及真实双语下载；在 1440/900/390 宽测量任务提示与正文首行的位置，防止警告覆盖阅读内容。
  * 模块边界：只操作本次临时 profile；复用焦点保护与所属浏览器清理，不调用真实供应商，不改变产品运行时或扩大全量回归。
  */
 const assert = require('node:assert/strict');
@@ -68,8 +68,8 @@ async function fixtureServer() {
 async function main() {
   for (const name of ['extension-dir', 'playwright-root', 'artifacts-dir']) assert(argument(name), `--${name} is required`);
   const extensionDir = path.resolve(argument('extension-dir')), artifactsDir = path.resolve(argument('artifacts-dir'));
-  const widths = (argument('widths') || '1440,900').split(',').map(Number);
-  assert(widths.length && widths.every(width => Number.isInteger(width) && width >= 760 && width <= 1920), '--widths accepts comma-separated widths from 760 to 1920');
+  const widths = (argument('widths') || '1440,900,390').split(',').map(Number);
+  assert(widths.length && widths.every(width => Number.isInteger(width) && width >= 320 && width <= 1920), '--widths accepts comma-separated widths from 320 to 1920');
   assert(fs.existsSync(path.join(extensionDir, 'manifest.json')), 'A prebuilt extension manifest is required');
   assert(!extensionDir.endsWith('-dev'), 'This targeted delivery harness requires a production extension build');
   const {chromium} = createRequire(path.join(path.resolve(argument('playwright-root')), 'document-action-hierarchy.cjs'))('playwright');
@@ -77,7 +77,7 @@ async function main() {
   fs.writeFileSync(path.join(artifactsDir, FILE_NAME), SOURCE);
   const profileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fluentread-document-actions-'));
   const report = {ok: false, extensionDir, artifactsDir, artifactKind: 'production', widths, startedAt: new Date().toISOString(),
-    scope: 'One TXT document: initial/completed/changed-language action hierarchy, return/Escape confirmation cancellation, actual bilingual download.',
+    scope: 'One TXT document: initial 390 px import with a collapsed sidebar, accessible expanded file list and restored reading space, deferred editor mount and retained search, initial/completed/changed-language action hierarchy, toolbar notice/first-paragraph geometry down to 390 px, return/Escape confirmation cancellation, actual bilingual download.',
     limitations: ['Controlled loopback translation validates runtime and UI, not live provider quality.', 'Edge desktop viewport evidence only; no Firefox, Safari, physical mobile device or full document regression.'],
     cases: [], screenshots: [], downloads: [], consoleErrors: [], workerErrors: [], blockedRequests: [], cleanupErrors: [], focusSamples: [], singlePageReuse: true};
   let fixture, session, page, worker, browserPid, launched = false, focusViolation = false, currentCase = 'bootstrap';
@@ -131,6 +131,8 @@ async function main() {
     page.on('console', message => {if (message.type() === 'error') report.consoleErrors.push(message.text());});
     page.on('dialog', dialog => {if (dialog.type() === 'beforeunload') void dialog.accept(); else void dialog.dismiss();});
     await page.emulateMedia({colorScheme: 'light', reducedMotion: 'reduce'});
+    // 初次挂载与导入都必须真正处于窄屏，不能在桌面默认状态建立后再缩小窗口冒充验收。
+    await page.setViewportSize({width: 390, height: 960});
     await page.goto(`${origin}/document.html`, {waitUntil: 'domcontentloaded'}); await activateExtensionTabWithoutForeground(context, page);
     await focusCheck('document-opened');
     await page.locator('.file-drop-zone').waitFor();
@@ -161,7 +163,8 @@ async function main() {
       for (const width of widths) {
         await page.setViewportSize({width, height: 960}); await page.mouse.move(4, 4);
         await page.locator(`.toolbar-primary-actions[data-primary-action="${expected}"]`).waitFor();
-        const evidence = await page.evaluate(() => {
+        await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+        const evidence = await page.evaluate(source => {
           const root = document.querySelector('.document-app'), group = document.querySelector('.toolbar-primary-actions');
           const brand = document.createElement('span'); brand.style.color = getComputedStyle(root).getPropertyValue('--brand');
           document.body.appendChild(brand); const brandColor = getComputedStyle(brand).color; brand.remove();
@@ -170,9 +173,22 @@ async function main() {
             return {text: button.textContent.trim(), disabled: button.disabled, background: style.backgroundColor, color: style.color,
               rect: {x: rect.x, y: rect.y, width: rect.width, height: rect.height, right: rect.right, bottom: rect.bottom}};
           };
-          return {primary: group.dataset.primaryAction, brand: brandColor, translate: inspect('.translate-document-button'), download: inspect('.download-button'),
+          const rect = node => {const r = node.getBoundingClientRect(); return {x: r.x, y: r.y, width: r.width, height: r.height, right: r.right, bottom: r.bottom};};
+          const pane = rect(document.querySelector('.document-reading-pane'));
+          const notices = [...document.querySelectorAll('.taskbar-notices > *')].filter(node => node.getClientRects().length).map(node => ({text: node.textContent, ...rect(node)}));
+          const frame = document.querySelector('.rich-preview-frame'), documentInFrame = frame?.contentDocument;
+          let firstLine = null;
+          if (documentInFrame?.body) {
+            const walker = documentInFrame.createTreeWalker(documentInFrame.body, NodeFilter.SHOW_TEXT);
+            for (let node = walker.nextNode(); node; node = walker.nextNode()) if (node.textContent.includes(source)) {
+              const range = documentInFrame.createRange(); range.selectNodeContents(node); const line = range.getClientRects()[0];
+              if (line) firstLine = {top: frame.getBoundingClientRect().top + line.top, bottom: frame.getBoundingClientRect().top + line.bottom};
+              break;
+            }
+          }
+          return {primary: group.dataset.primaryAction, brand: brandColor, translate: inspect('.translate-document-button'), download: inspect('.download-button'), pane, notices, firstLine,
             viewport: {width: innerWidth, height: innerHeight}, overflow: document.documentElement.scrollWidth > innerWidth};
-        });
+        }, SOURCE);
         const primary = evidence[expected], secondary = evidence[expected === 'download' ? 'translate' : 'download'];
         assert.equal(primary.disabled, false); assert.equal(secondary.disabled, false);
         assert.equal(primary.background, evidence.brand, 'The current main action must use the solid brand background');
@@ -180,6 +196,11 @@ async function main() {
         assert.equal(evidence.overflow, false, 'Document page must not overflow horizontally');
         for (const action of [primary, secondary]) assert(action.rect.width > 0 && action.rect.height > 0 && action.rect.x >= 0 && action.rect.right <= width + 1 && action.rect.bottom <= 960, 'Both actions must remain visible');
         assert(primary.rect.right <= secondary.rect.x || secondary.rect.right <= primary.rect.x || primary.rect.bottom <= secondary.rect.y || secondary.rect.bottom <= primary.rect.y, 'Action buttons must not overlap');
+        assert(evidence.firstLine && evidence.firstLine.top >= evidence.pane.y - 1 && evidence.firstLine.bottom <= 960, 'Original first line remains visible inside the reading pane');
+        assert(evidence.notices.every(notice => notice.bottom <= evidence.pane.y + 1 && notice.bottom <= evidence.firstLine.top + 1 && notice.x >= 0 && notice.right <= width + 1), 'Toolbar notices must occupy their own layout row above the reading pane and original text');
+        if (name === '04-language-changed') {
+          assert.equal(evidence.notices.filter(notice => notice.text.includes('设置已更改')).length, 1, 'Exactly one retained-result warning');
+        }
         report.cases.push({name: `${name}-${width}`, ok: true, ...evidence, screenshot: await shot(`${name}-${width}`)});
       }
       await page.setViewportSize({width: 1440, height: 960});
@@ -192,13 +213,72 @@ async function main() {
     await page.locator('input[type=file]').setInputFiles({name: FILE_NAME, mimeType: 'text/plain', buffer: Buffer.from(SOURCE)});
     await page.locator('.workspace-heading h1').filter({hasText: FILE_NAME}).waitFor();
     await page.waitForFunction(source => document.querySelector('.rich-preview-frame')?.contentDocument?.body?.innerText.includes(source), SOURCE);
-    await translationButton.filter({hasText: '开始翻译'}).waitFor(); await snapshotHierarchy('01-start', 'translate');
+    await translationButton.filter({hasText: '开始翻译'}).waitFor();
+    step('initial narrow sidebar is collapsed and the expanded list remains accessible');
+    assert.equal(await page.evaluate(() => innerWidth), 390, 'First document import must happen at 390 px');
+    const sidebar = page.locator('.document-sidebar'), sidebarToggle = taskbar.locator('.sidebar-toggle');
+    const readingPane = page.locator('.document-reading-pane');
+    assert.equal(await sidebarToggle.getAttribute('aria-expanded'), 'false');
+    await sidebar.waitFor({state: 'hidden'});
+    const initialReading = await readingPane.boundingBox();
+    await shot('00-sidebar-collapsed-390');
+    await sidebarToggle.click(); await sidebar.waitFor();
+    assert.equal(await sidebarToggle.getAttribute('aria-expanded'), 'true');
+    assert.equal(await sidebar.locator('.document-settings-button').isVisible(), false, 'Narrow sidebar omits the duplicate settings entry');
+    assert.equal(await taskbar.getByRole('button', {name: '翻译设置', exact: true}).isVisible(), true, 'The toolbar retains the settings entry');
+    const expandedReading = await readingPane.boundingBox();
+    const queue = sidebar.locator('.document-batch');
+    const inspectSidebarControl = async (control, name) => {
+      await control.scrollIntoViewIfNeeded();
+      const evidence = await control.evaluate(element => {
+        const rect = element.getBoundingClientRect(), list = element.closest('.document-batch'), pane = list.getBoundingClientRect();
+        return {control: {top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height},
+          list: {top: pane.top, bottom: pane.bottom, height: pane.height, clientHeight: list.clientHeight, scrollHeight: list.scrollHeight, scrollTop: list.scrollTop, overflowY: getComputedStyle(list).overflowY}};
+      });
+      assert(evidence.control.width > 0 && evidence.control.height > 0 && evidence.list.height > 0, `${name} must have visible content space`);
+      assert(evidence.control.top >= evidence.list.top - 1 && evidence.control.bottom <= evidence.list.bottom + 1, `${name} must be fully reachable inside the scrollable file list`);
+      assert.equal(evidence.list.overflowY, 'auto');
+      return evidence;
+    };
+    const fileEvidence = await inspectSidebarControl(queue.locator('.batch-file').filter({hasText: FILE_NAME}), 'Current file');
+    await shot('00-sidebar-expanded-390');
+    const addEvidence = await inspectSidebarControl(queue.getByRole('button', {name: '添加文件', exact: true}), 'Add file');
+    await shot('00-sidebar-add-file-390');
+    const sidebarBounds = await sidebar.boundingBox();
+    assert(sidebarBounds.height <= 201, 'Expanded narrow sidebar must retain its 200 px height limit');
+    if (addEvidence.list.scrollHeight > addEvidence.list.clientHeight + 1) assert(addEvidence.list.scrollTop > 0, 'Overflowing file controls must remain reachable by internal scrolling');
+    await sidebarToggle.click(); await sidebar.waitFor({state: 'hidden'});
+    const collapsedReading = await readingPane.boundingBox();
+    assert(collapsedReading.height > expandedReading.height && collapsedReading.y < expandedReading.y, 'Collapsing the sidebar returns its space to the document');
+    assert(Math.abs(collapsedReading.height - initialReading.height) <= 1, 'Closing the sidebar restores the original reading height');
+    await page.setViewportSize({width: 1440, height: 960});
+    assert.equal(await sidebarToggle.getAttribute('aria-expanded'), 'false', 'Resize must preserve the user choice');
+    await sidebar.waitFor({state: 'hidden'});
+    report.cases.push({name: 'narrow-sidebar-initial-and-user-toggle', ok: true, initialReading, expandedReading, collapsedReading, fileEvidence, addEvidence, sidebarBounds});
+    await snapshotHierarchy('01-start', 'translate');
+    assert.equal(await page.locator('.segment-editor').count(), 0, 'Reading alone must not mount the hidden full-document editor');
+    report.cases.push({name: 'editor-not-mounted-during-reading', ok: true, editorNodes: 0});
     assert.equal(fixture.requests.length, 0);
     step('actual loopback translation and completed download priority');
     await translationButton.click(); await page.locator('.document-status').filter({hasText: '翻译完成'}).waitFor();
     assert.equal(fixture.requests.length, 1, 'One small paragraph must complete through one real loopback request');
     await page.waitForFunction(translation => document.querySelector('.rich-preview-frame')?.contentDocument?.body?.innerText.includes(translation), TRANSLATION);
     await snapshotHierarchy('02-completed', 'download');
+    step('editor mounts on demand and preserves search across reading');
+    const editor = page.locator('.segment-editor'), editTab = taskbar.getByRole('button', {name: '校订译文', exact: true});
+    await editTab.click(); await editor.waitFor();
+    const search = editor.getByRole('searchbox');
+    await search.fill('no-matching-fragment');
+    assert.equal(await editor.locator('.segment-edit-row').count(), 0);
+    await taskbar.getByRole('button', {name: '阅读', exact: true}).click(); await editor.waitFor({state: 'hidden'});
+    assert.equal(await editor.count(), 1, 'An opened editor remains mounted for the current document');
+    await editTab.click(); await editor.waitFor();
+    assert.equal(await search.inputValue(), 'no-matching-fragment');
+    assert.equal(await editor.locator('.segment-edit-row').count(), 0);
+    await search.clear(); await editor.locator('.segment-edit-row').waitFor();
+    assert.equal(await editor.locator('textarea').inputValue(), TRANSLATION);
+    await taskbar.getByRole('button', {name: '阅读', exact: true}).click();
+    await assertQuiet(1, 'editor-search-retained-without-request');
     step('cancel retranslation using Return and Escape');
     const confirmation = page.locator('dialog[open][aria-labelledby="confirm-document-heading"]');
     for (const method of ['return', 'escape']) {

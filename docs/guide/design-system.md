@@ -57,13 +57,17 @@ pnpm docs:preview
 
 | 语义 | 变量与默认值 | 用途 |
 | --- | --- | --- |
-| 卡片边界 | `--fr-card-radius: 14px`、`--fr-card-border` | 区分内容组，颜色跟随当前皮肤 |
+| 卡片边界 | `--fr-card-radius: 14px`、`--fr-card-outline`、`--fr-card-border` | 前者为完整外描边，后者为内部分隔线颜色；跟随当前皮肤 |
 | 卡片层级 | `--fr-card-background`、`--fr-card-shadow` | 中性表面与轻阴影，浮层继续使用 `--fr-menu-shadow` |
 | 卡片留白 | `--fr-card-gap: 20px`、`--fr-card-padding-inline: 20px` | 页面节奏与标题、设置行共同对齐；窄屏内边距缩为 16px |
 | 设置行 | `--fr-settings-row-min-height: 66px`、`--fr-settings-row-padding-block: 14px` | 文案与控件对齐，内容较长时允许增高 |
 | 操作与焦点 | `--fr-action-gap: 8px`、`--fr-focus-width: 2px`、`--fr-focus-color` | 主次操作间距与可见键盘焦点 |
 
 标题说明放在同一文案区，右侧使用 `heading-extra` 插槽承载短操作。说明只解释用户需要作出的选择；完整技术说明收进已有帮助入口。卡片标题不添加粉色竖条，粉色用于选中状态与主操作。一个操作区域只设一个主按钮，其余使用中性色按钮或文字入口。
+
+皮肤通过同名卡片 token 调整造型与密度，普通分组、总开关与折叠卡片共同消费，不再单独覆盖某个组件的圆角。传统色保留原有形态，例如乌金的 2px 棱角与金色细边；紧凑风格让标题和设置行共同使用 13px 水平留白。窄屏默认值集中定义在 `tokens.css`，避免组件内部覆盖皮肤的密度选择。玄青、乌金始终使用深色语义反馈色，不依赖系统主题是否为深色。
+
+独立复用设置控件时，引入 `settings-controls.css` 并在容器添加 `fr-settings-controls`，即可获得与 Options 相同的开关尺寸、44px 命中区域及焦点反馈，无需挂载完整设置页骨架。Storybook 的设置组合与控件示例使用同一入口；帮助提示和数值输入直接引用 `SettingsItem` 与 `SettingsNumberInput`。卡片内贴边的折叠摘要使用内收焦点轮廓，避免被圆角裁剪。
 
 常用设置保持展开。次要配置使用 `SettingsDisclosure` 的 `title`、`description`、`status`、`statusTone` 和可选 `status` 插槽；待配置、失败等影响使用的状态必须留在摘要中。组件使用原生 `details/summary`，透传 `id`、锚点及 `toggle` 事件，默认插槽始终挂载，收起不会丢弃输入草稿。`defaultOpen` 只决定初始状态；业务控件是否活跃、配置保存与旧请求失效仍由调用方负责。
 

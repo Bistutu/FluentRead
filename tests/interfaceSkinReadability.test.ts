@@ -92,6 +92,29 @@ function eachMode(run: (skin: string, mode: string, tokens: Tokens, label: strin
 }
 
 describe('传统色风格的可读性', () => {
+  it('警告和错误在各皮肤表面及语义反馈底色上保持可读，始终深色皮肤不依赖主题开关', () => {
+    const sharedTokens = source('src/ui/styles/tokens.css')
+    const light = declarations(sharedTokens, ':root {\n  --fr-success:')
+    const dark = declarations(sharedTokens, ':root.dark,')
+    eachMode((skin, mode, tokens, label) => {
+      const feedback = mode === 'dark' ? dark : light
+      for (const kind of ['warning', 'danger']) {
+        const foreground = feedback[`--fr-${kind}`]
+        for (const surface of ['--surface', '--surface-soft', '--skin-workspace', '--skin-sidebar']) {
+          expectContrast(foreground, parseHex(tokens[surface]), 4.5, `${label} ${kind} on ${surface}`)
+        }
+        expectContrast(foreground, parseHex(feedback[`--fr-${kind}-soft`]), 4.5, `${label} ${kind} feedback`)
+      }
+      if (Object.keys(skinModes(skin)).length === 1) {
+        // 亮色主题也必须命中同一份深色反馈变量，不能只测试带 .dark 的选择器。
+        const alwaysDark = declarations(sharedTokens, `:root[data-interface-skin="${skin}"]`)
+        for (const name of ['--fr-warning', '--fr-warning-soft', '--fr-danger', '--fr-danger-soft']) {
+          expect(alwaysDark[name], `${skin} light theme ${name}`).toBe(dark[name])
+        }
+      }
+    })
+  })
+
   it('设置页的文字、强调色与表面达到比正文标准更高的对比度', () => {
     eachMode((_skin, _mode, tokens, label) => {
       const solid = (name: string) => parseHex(tokens[name])

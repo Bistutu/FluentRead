@@ -4,7 +4,7 @@
 /**
  * @file scripts/testing/run-service-learning-hierarchy-test.cjs
  * 文件职责：用生产扩展的单一自有页签验收免费服务渐进展开、默认服务标记及学习材料与笔记层级。
- * 主要内容：隔离 profile、焦点保护、真实配置保存与笔记 UI 操作；覆盖服务启停重开、空库管理恢复、八行笔记原位阅读与取消编辑，并生成 1440/390 浅深色截图。
+ * 主要内容：隔离 profile、焦点保护、真实配置保存与笔记 UI 操作；覆盖服务启停重开、单一请求配置默认收起与自定义保存、空库管理恢复、八行笔记原位阅读与取消编辑，并生成 1440/390 浅深色截图。
  * 模块边界：复用 focus-safe helper 的首个页签与所有权清理；不调用翻译或连接检查，HTTP(S) 在页面及当前扩展 worker 边界被阻断；不声明真实供应商、Firefox 或移动设备已验收。
  */
 const assert = require('node:assert/strict');
@@ -67,7 +67,7 @@ async function main() {
   async function shot(label, theme) {
     currentCase = label; await settle(); cleanConsole(label); await focus(`before:${label}`);
     const metrics = await page.evaluate(() => {
-      const selectors = '.settings-card,.service-catalog,.service-detail,.free-provider-details,.provider-row,.fr-materials,.fr-memory-item,.fr-memory-content,.fr-memory-editor';
+      const selectors = '.settings-card,.service-catalog,.service-detail,.free-provider-details,.single-request-settings,.provider-row,.fr-materials,.fr-memory-item,.fr-memory-content,.fr-memory-editor';
       const containers = [...document.querySelectorAll(selectors)].filter(node => node.getClientRects().length && getComputedStyle(node).visibility !== 'hidden').map(node => ({className: node.className, width: node.clientWidth, scrollWidth: node.scrollWidth}));
       return {width: innerWidth, documentWidth: document.documentElement.scrollWidth, bodyWidth: document.body.scrollWidth, scrollX, dark: document.documentElement.classList.contains('dark'), containers};
     });
@@ -103,6 +103,7 @@ async function main() {
     await page.locator('.settings-app').waitFor(); await page.locator(`#${section}`).waitFor({state: 'visible'}); await settle();
   }
   const disclosure = () => page.locator('details[data-free-provider-disclosure]');
+  const requestDisclosure = () => page.locator('details[data-service-request-disclosure]');
   const rows = () => page.locator('[data-fallback-provider]');
   async function providerOpen(open) {
     if ((await disclosure().getAttribute('open') !== null) !== open) await disclosure().locator(':scope > summary').click();
@@ -203,6 +204,30 @@ async function main() {
     await selectService('microsoft'); await defaultAction('microsoft'); await selectService('freeTranslation'); await defaultAction('freeTranslation');
     report.cases.push({name: 'provider-persistence', rows: 17, defaultCollapsed: true, disabledAndEnabledReopened: true, defaultUnchangedByBrowsing: true});
 
+    currentCase = 'request-limit-disclosure';
+    const limits = () => requestDisclosure().getByTestId('request-limit-settings');
+    const requestSummary = () => requestDisclosure().locator(':scope > summary');
+    assert.equal(await requestDisclosure().count(), 1); assert.equal(await requestDisclosure().getAttribute('open'), null);
+    assert.match(await requestSummary().innerText(), /请求限制/u); assert.match(await requestSummary().innerText(), /跟随全局设置/u);
+    assert.equal(await limits().count(), 1, 'Closed disclosure keeps the form mounted'); assert.equal(await limits().isVisible(), false);
+    await requestSummary().click();
+    await limits().locator('[data-request-limit-mode]').getByRole('radio', {name: '自定义', exact: true}).click();
+    const concurrency = limits().getByLabel('翻译并发数', {exact: true});
+    await concurrency.fill('2'); await concurrency.press('Tab');
+    await until(async () => {const value = (await readConfig()).serviceRequestLimits.freeTranslation; return value?.enabled === true && value.limits.maxConcurrentTranslations === 2;}, 'custom service request limit saved');
+    await requestSummary().click(); assert.match(await requestSummary().innerText(), /自定义/u);
+    assert.equal(await limits().count(), 1); assert.equal(await limits().isVisible(), false);
+    await openOptions('settings-services'); assert.equal(await requestDisclosure().getAttribute('open'), null);
+    assert.match(await requestSummary().innerText(), /自定义/u); await requestSummary().click();
+    assert.equal(await limits().getByLabel('翻译并发数', {exact: true}).inputValue(), '2');
+    await requestSummary().scrollIntoViewIfNeeded(); await shot('request-limits-custom-reopened', 'light');
+    await limits().locator('[data-request-limit-mode]').getByRole('radio', {name: '跟随全局设置', exact: true}).click();
+    await until(async () => (await readConfig()).serviceRequestLimits.freeTranslation?.enabled === false, 'global inheritance restored');
+    await openOptions('settings-services'); assert.equal(await requestDisclosure().getAttribute('open'), null);
+    assert.match(await requestSummary().innerText(), /跟随全局设置/u);
+    assert.equal((await readConfig()).serviceRequestLimits.freeTranslation.limits.maxConcurrentTranslations, 2, 'Disabled custom values remain available');
+    report.cases.push({name: 'request-limit-disclosure', defaultCollapsed: true, formRemainsMounted: true, customConcurrency: 2, reopenedCustom: true, inheritanceRestored: true, disabledValuesRetained: true});
+
     currentCase = 'empty-material-management'; await openOptions('settings-vocabulary'); await materialEmpty();
     await page.locator('.fr-material-menu > summary').click();
     const restore = page.getByRole('button', {name: '恢复材料备份', exact: true});
@@ -237,8 +262,17 @@ async function main() {
     for (const theme of ['light', 'dark']) for (const width of [1440, 390]) {
       const suffix = `${theme}-${width}`, viewport = {width, height: width === 390 ? 844 : 960};
       await patchFixture({theme}); await openOptions('settings-services', viewport); await disclosure().waitFor(); await defaultAction('freeTranslation');
+      assert.equal(await requestDisclosure().getAttribute('open'), null); assert.match(await requestSummary().innerText(), /跟随全局设置/u);
       assert.equal(await disclosure().getAttribute('open'), null); await disclosure().scrollIntoViewIfNeeded(); await shot(`services-collapsed-${suffix}`, theme);
       await providerOpen(true); await disclosure().locator(':scope > summary').scrollIntoViewIfNeeded(); await shot(`services-expanded-${suffix}`, theme);
+      await providerOpen(false); await requestSummary().click(); await requestSummary().scrollIntoViewIfNeeded();
+      await requestSummary().hover();
+      const corners = await requestDisclosure().evaluate(element => {
+        const card = getComputedStyle(element), summary = getComputedStyle(element.querySelector(':scope > summary'));
+        return {card: [card.borderTopLeftRadius, card.borderTopRightRadius], summary: [summary.borderTopLeftRadius, summary.borderTopRightRadius]};
+      });
+      assert.deepEqual(corners.summary, corners.card, `Expanded hovered request summary must keep card top corners: ${JSON.stringify(corners)}`);
+      await shot(`request-limits-expanded-${suffix}`, theme);
       await openOptions('settings-vocabulary', viewport); await materialEmpty(); await page.locator('.fr-materials').scrollIntoViewIfNeeded(); await shot(`materials-empty-${suffix}`, theme);
       await memoryReady(); await content().scrollIntoViewIfNeeded(); await shot(`memory-collapsed-${suffix}`, theme);
       await content().locator(':scope > summary').click(); assert.equal(await content().locator(':scope > p').isVisible(), true); assert.equal(await page.locator('.fr-memory-editor').count(), 0); await shot(`memory-expanded-${suffix}`, theme);

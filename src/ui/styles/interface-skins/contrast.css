@@ -6,6 +6,10 @@
  */
 
 :root[data-interface-skin="contrast"] {
+  --fr-card-radius: 6px;
+  --fr-card-shadow: none;
+  --fr-focus-width: 4px;
+  --fr-focus-color: #146cff;
   --brand: #111;
   --brand-strong: #000;
   --brand-soft: #ffed63;
@@ -135,7 +139,6 @@
 }
 
 :root[data-interface-skin="contrast"] .search-box,
-:root[data-interface-skin="contrast"] .settings-group-body,
 :root[data-interface-skin="contrast"] .settings-card .settings-control-row,
 :root[data-interface-skin="contrast"] .settings-card .el-row,
 :root[data-interface-skin="contrast"] .settings-card .el-collapse,

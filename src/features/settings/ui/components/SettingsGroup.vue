@@ -33,7 +33,7 @@ defineProps<{
   width: min(100%, 1080px);
   min-width: 0;
   margin: 0 auto var(--fr-card-gap, 20px);
-  border: 1px solid var(--fr-card-border, var(--line));
+  border: var(--fr-card-outline, 1px solid var(--line));
   border-radius: var(--fr-card-radius, 14px);
   background: var(--fr-card-background, var(--surface));
   box-shadow: var(--fr-card-shadow, none);
@@ -76,8 +76,4 @@ defineProps<{
   transform: none !important;
 }
 
-@media (max-width: 700px) {
-  .settings-group { --fr-card-padding-inline: 16px; --fr-card-heading-padding-block: 14px; --fr-settings-row-padding-block: 12px; }
-  .settings-group { margin-bottom: 14px; }
-}
 </style>

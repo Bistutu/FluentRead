@@ -1,9 +1,11 @@
-import type { Preview } from '@storybook/vue3'
+import {setup, type Preview} from '@storybook/vue3'
+import {ElInputNumber} from 'element-plus'
 import { interfaceSkinOptions } from '../src/core/config/interfaceAppearance'
 import { previewLanguage } from '../storybook/preview-i18n'
 import 'element-plus/es/components/base/style/css'
 import 'element-plus/es/components/button/style/css'
 import 'element-plus/es/components/input/style/css'
+import 'element-plus/es/components/input-number/style/css'
 import 'element-plus/es/components/switch/style/css'
 import 'element-plus/es/components/dialog/style/css'
 import 'element-plus/es/components/tooltip/style/css'
@@ -11,6 +13,9 @@ import 'element-plus/es/components/tooltip/style/css'
 import '../src/features/settings/ui/settings-page.css'
 import '../src/ui/styles/interface-skins.css'
 import '../storybook/preview.css'
+
+// SettingsNumberInput 与 Options 使用同名全局控件，示例只注册展示所需的依赖。
+setup(app => { app.component('ElInputNumber', ElInputNumber) })
 
 const preview: Preview = {
   globalTypes: {

@@ -6,6 +6,7 @@
  */
 @import "../../../ui/styles/tokens.css";
 @import "../../../ui/styles/feedback.css";
+@import "./components/settings-controls.css";
 
 :root {
   --el-color-primary: #ef4776;
@@ -556,7 +557,6 @@ h1 { margin-bottom: 6px; font-size: 26px; line-height: 1.25; letter-spacing: -.0
 .settings-app .settings-card.services-view, .settings-app .settings-card.translation-center-view { width: calc(100% + 64px); margin-right: -32px; margin-left: -32px; padding: 0; scrollbar-gutter: auto; }
 .settings-page-panel { min-width: 0; }
 .settings-app .settings-card .el-row { box-shadow: none; border-radius: 10px; background: var(--surface); }
-.settings-app .settings-card .el-input__wrapper, .settings-app .settings-card .el-select__wrapper { border-radius: 8px; box-shadow: none; }
 .settings-app .settings-card .popup-text { font-size: 13px; font-weight: 550; }
 .settings-app .settings-card .feature-enable-card { margin: 0 0 var(--fr-card-gap, 20px); padding: 0; border-radius: var(--fr-card-radius, 14px); box-shadow: var(--fr-card-shadow, none); }
 .settings-app .settings-group-body > .feature-enable-card { margin: 0; border: 0; border-radius: 0; }
@@ -616,8 +616,10 @@ h1 { margin-bottom: 6px; font-size: 26px; line-height: 1.25; letter-spacing: -.0
 .settings-app .workspace .settings-card details:not(.settings-disclosure, .fr-memory-content) > summary:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .settings-app .workspace .settings-card details[open]:not(.settings-disclosure, .fr-memory-content) > summary { margin-bottom: 12px; }
 /* 设置分组内的折叠行与普通设置行齐平：不再画成嵌在分组里的独立圆角框。 */
-.settings-app .workspace .settings-card :is(.translation-cache-limits, .request-retry-settings) > summary { padding: 14px 20px; border: 0; border-radius: 0; font-weight: 550; }
-.settings-app .workspace .settings-card :is(.translation-cache-limits, .request-retry-settings)[open] > summary { margin-bottom: 0; border-bottom: 1px solid var(--line); }
+.settings-app .workspace .settings-card .settings-group-body :is(.translation-cache-limits, .request-retry-settings) > summary { padding: var(--fr-settings-row-padding-block, 14px) var(--fr-card-padding-inline, 20px); border: 0; border-radius: 0; font-weight: 550; }
+.settings-app .workspace .settings-card .settings-group-body :is(.translation-cache-limits, .request-retry-settings)[open] > summary { margin-bottom: 0; border-bottom: 1px solid var(--line); }
+/* 内嵌摘要贴着卡片裁剪边界，焦点向内描绘，避免两侧和底边被 settings-group-body 裁掉。 */
+.settings-app .workspace .settings-card .settings-group-body :is(.translation-cache-limits, .request-retry-settings) > summary:focus-visible { outline: var(--fr-focus-width, 2px) solid var(--fr-focus-color, var(--brand)); outline-offset: -4px; }
 .settings-app .settings-card summary :is(.advanced-chevron, .details-chevron) { width: 18px; height: 18px; color: var(--muted); opacity: 1; }
 .settings-app .settings-card .translation-appearance-disclosure { border-bottom: 1px solid var(--line); background: var(--surface); }
 .settings-app .settings-card .translation-appearance-chevron { color: var(--muted); }
@@ -631,15 +633,6 @@ h1 { margin-bottom: 6px; font-size: 26px; line-height: 1.25; letter-spacing: -.0
   .settings-app .workspace .settings-card details:not(.settings-disclosure, .fr-memory-content) > summary { padding: 12px; }
 }
 
-/* 开关保留原生语义与字段绑定，增加命中区域，状态由滑块位置及颜色表达。 */
-.settings-app .settings-card .el-switch { --el-switch-on-color: var(--brand); --el-switch-off-color: var(--muted); min-width: 52px; width: auto !important; height: 44px !important; gap: 8px; justify-content: flex-end; border-radius: 8px; }
-.settings-app .settings-card .el-switch__core { min-width: 48px !important; width: 48px !important; height: 28px !important; border-radius: 999px; }
-.settings-app .settings-card .el-switch__action { left: 3px; width: 20px; height: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.14); }
-.settings-app .settings-card .el-switch.is-checked .el-switch__action { left: calc(100% - 23px); }
-.settings-app .settings-card .el-switch:not(.is-disabled):hover { background: var(--surface-soft); }
-.settings-app .settings-card .el-switch:focus-within { outline: 2px solid var(--brand); outline-offset: 2px; }
-.settings-app .settings-item:has(> .settings-item-control > .el-switch:not(.is-disabled)) { cursor: pointer; }
-.settings-app .settings-item:has(> .settings-item-control > .el-switch:not(.is-disabled)):hover { background: var(--surface-soft); }
 .settings-app .settings-group-body > .feature-enable-card { margin: 0; }
 @media (max-width: 480px) {
   .settings-app .settings-item:has(> .settings-item-control > .el-switch) { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; }

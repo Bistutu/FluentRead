@@ -571,7 +571,7 @@ onBeforeUnmount(() => { active = false; generation++; detailGeneration++; browse
   margin-left:6px
 }
 .fr-material-feedback.error {
-  color:var(--danger,#c34b47)
+  color:var(--fr-danger)
 }
 .fr-material-empty {
   max-width:540px;

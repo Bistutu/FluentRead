@@ -37,7 +37,7 @@ const initiallyOpen = props.defaultOpen
   width: min(100%, 1080px);
   min-width: 0;
   margin: 0 auto var(--fr-card-gap, 20px);
-  border: 1px solid var(--fr-card-border, var(--line));
+  border: var(--fr-card-outline, 1px solid var(--line));
   border-radius: var(--fr-card-radius, 14px);
   background: var(--fr-card-background, var(--surface));
   box-shadow: var(--fr-card-shadow, none);
@@ -48,7 +48,7 @@ const initiallyOpen = props.defaultOpen
   gap: 12px;
   min-height: 64px;
   padding: var(--fr-card-heading-padding-block, 16px) var(--fr-card-padding-inline, 20px);
-  border-radius: inherit;
+  border-radius: var(--fr-card-radius, 14px);
   color: var(--ink);
   background: transparent;
   list-style: none;
@@ -71,7 +71,6 @@ const initiallyOpen = props.defaultOpen
 .settings-disclosure-body > :deep(.settings-group) { width: 100%; margin: 0; border: 0; border-start-start-radius: 0; border-start-end-radius: 0; box-shadow: none; }
 .settings-disclosure-body > :deep(.settings-item + .settings-item) { border-top: 1px solid var(--fr-card-border, var(--line)); }
 @media (max-width: 700px) {
-  .settings-disclosure { --fr-card-padding-inline: 16px; --fr-card-heading-padding-block: 14px; --fr-settings-row-padding-block: 12px; margin-bottom: 14px; }
   .settings-disclosure-summary { gap: 10px; }
 }
 </style>

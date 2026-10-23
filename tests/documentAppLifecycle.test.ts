@@ -119,6 +119,119 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
     const confirmButton = (label: string) => walkHost(restartConfirmation()).find(entry => entry.type === 'button' && hostText(entry) === label)!;
     const primaryTaskAction = () => walkHost(root).find(entry => entry.props.class === 'toolbar-primary-actions')?.props['data-primary-action'];
 
+    it.each([true, false])('sets the initial sidebar from narrow viewport %s and preserves the choice across resize', async narrow => {
+        app.unmount();
+        const viewport = Object.assign(new EventTarget(), {matches: narrow});
+        win.matchMedia = (query: string) => query === '(max-width: 760px)' ? viewport : Object.assign(new EventTarget(), {matches: false});
+        root = node('root'); app = renderer.createApp(DocumentApp); app.mount(root); state = app._instance.setupState;
+        await flush(); await state.loadFiles([file('reading.txt')]); await flush();
+        const toggle = () => walkHost(root).find(entry => String(entry.props.class).split(' ').includes('sidebar-toggle'))!;
+        expect(state.sidebarOpen).toBe(!narrow);
+        expect(toggle().props['aria-expanded']).toBe(!narrow);
+        viewport.matches = !narrow; viewport.dispatchEvent(new Event('change')); win.dispatchEvent(new Event('resize')); await flush();
+        expect(state.sidebarOpen).toBe(!narrow);
+        toggle().props.onClick(); await flush();
+        expect(state.sidebarOpen).toBe(narrow);
+        viewport.matches = narrow; viewport.dispatchEvent(new Event('change')); win.dispatchEvent(new Event('resize')); await flush();
+        expect(toggle().props['aria-expanded']).toBe(narrow);
+    });
+
+    it.each(['multiple-files', 'failed-import'] as const)('opens a narrow sidebar for %s even after it was initially collapsed', async reason => {
+        app.unmount();
+        win.matchMedia = (query: string) => Object.assign(new EventTarget(), {matches: query === '(max-width: 760px)'});
+        root = node('root'); app = renderer.createApp(DocumentApp); app.mount(root); state = app._instance.setupState;
+        await flush(); expect(state.sidebarOpen).toBe(false);
+        if (reason === 'multiple-files') {
+            await state.loadFiles([file('first.txt')]); await flush(); expect(state.sidebarOpen).toBe(false);
+            await state.loadFiles([file('second.txt')]);
+            expect(state.documentQueue).toHaveLength(2);
+        } else {
+            vi.spyOn(binaryService, 'parseDocumentFile').mockRejectedValueOnce(new Error('Cannot read this document'));
+            await state.loadFiles([file('failed.txt')]);
+            expect(state.documentQueue).toHaveLength(1);
+            expect(state.documentQueue[0].error).toContain('Cannot read this document');
+        }
+        await flush();
+        expect(state.sidebarOpen).toBe(true);
+        expect(state.sidebarTab).toBe('files');
+    });
+
+    it('prioritizes actionable toolbar notices without duplicating task warnings or hiding independent reading feedback', async () => {
+        await state.loadFiles([file('notices.pdf')]); await flush();
+        await taskButton('开始翻译').props.onClick();
+        await vi.waitFor(() => expect(state.translationComplete).toBe(true)); await flush();
+        state.config.to = 'fr';
+        state.downloadNotice = '原文位置已变化或无法唯一匹配，请核对阅读位置。';
+        await flush();
+        const notices = () => walkHost(root).find(entry => entry.props['data-testid'] === 'document-task-notices')!;
+        const taskNotices = () => notices().children.filter(entry => entry.type !== '#comment' && entry.type !== '#text' && entry.props.class !== 'taskbar-toast');
+        expect(taskNotices()).toHaveLength(1);
+        expect(hostText(notices())).toContain('设置已更改');
+
+        state.errorMessage = '503 service temporarily unavailable'; state.runState = 'failed'; await flush();
+        expect(taskNotices()).toHaveLength(1);
+        expect(taskNotices()[0].props['data-testid']).toBe('document-translation-recovery');
+        expect(hostText(notices())).not.toContain('设置已更改');
+        expect(hostText(notices())).toContain('原文位置已变化或无法唯一匹配');
+        expect(walkHost(notices()).some(entry => entry.type === 'button' && entry.props.class === 'recovery-service')).toBe(true);
+
+        state.configSaveError = '设置未能保存，请重新调整后再试。'; await flush();
+        expect(taskNotices()).toHaveLength(1);
+        expect(hostText(taskNotices()[0])).toContain(state.configSaveError);
+        expect(hostText(taskNotices()[0])).toContain('调整设置');
+        expect(hostText(taskNotices()[0])).not.toContain(state.errorMessage);
+
+        state.configSaveError = ''; state.runState = 'ready'; state.retryNotice = '503 retry pending'; await flush();
+        expect(taskNotices()).toHaveLength(1);
+        expect(taskNotices()[0].props.role).toBe('status');
+        expect(hostText(taskNotices()[0])).toContain('503 retry pending');
+        expect(hostText(taskNotices()[0])).not.toContain('503 service temporarily unavailable');
+
+        state.errorMessage = ''; state.retryNotice = ''; await flush();
+        expect(taskNotices()).toHaveLength(1);
+        expect(hostText(taskNotices()[0])).toContain('设置已更改');
+        expect(state.translatedSegments).toEqual(['译 Original']);
+        expect(ports.batch).toHaveBeenCalledOnce();
+        expect(taskButton('下载文件 ↓').props.disabled).toBe(false);
+    });
+
+    it.each(['credentials', 'config-save', 'translation-failure'] as const)('keeps import cancellation independent of an existing %s notice and preserves the reviewed document', async condition => {
+        await state.loadFiles([file('reviewed.txt')]);
+        state.editSegment(0, 'Keep this correction');
+        const reviewed = state.parsedDocument;
+        if (condition === 'credentials') {
+            state.config.documentService = 'openai';
+            state.config.token.openai = '';
+            await flush();
+            expect(state.credentialWarning).toBeTruthy();
+        } else if (condition === 'config-save') {
+            state.configSaveError = '设置未能保存，请重新调整后再试。';
+        } else {
+            state.errorMessage = '503 service temporarily unavailable';
+            state.runState = 'failed';
+        }
+        await flush();
+        const notices = () => walkHost(root).find(entry => entry.props['data-testid'] === 'document-task-notices')!;
+        const originalAlert = hostText(walkHost(notices()).find(entry => entry.props.role === 'alert')!);
+        const parsing = deferred<ParsedDocument>();
+        const parser = vi.spyOn(binaryService, 'parseDocumentFile').mockReturnValueOnce(parsing.promise);
+        const importing = state.loadFiles([file('pending.txt')]);
+        await flush();
+        expect(state.openingFile).toBe(true);
+        expect(walkHost(notices()).some(entry => entry.props.class === 'document-import-progress')).toBe(true);
+        expect(hostText(notices())).toContain(originalAlert);
+        taskButton('document.pdfReading.cancelImport').props.onClick();
+        expect(parser.mock.calls[0][1]!.signal!.aborted).toBe(true);
+        expect(state.openingFile).toBe(false);
+        parsing.resolve(parseDocument('pending.txt', 'Late source'));
+        await importing; await flush();
+        expect(state.parsedDocument).toBe(reviewed);
+        expect(state.translatedSegments).toEqual(['Keep this correction']);
+        expect(state.documentQueue.map((item: any) => item.name)).toEqual(['reviewed.txt']);
+        expect(walkHost(notices()).some(entry => entry.props.class === 'document-import-progress')).toBe(false);
+        expect(hostText(notices())).toContain(originalAlert);
+    });
+
     it('keeps PDF retranslation and download available after completion, preserving the result until restart is confirmed', async () => {
         await state.loadFiles([file('repeat.pdf')]); await flush();
         expect(primaryTaskAction()).toBe('translate');
@@ -1029,6 +1142,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         expect(state.translatedSegments).toEqual(['保留正文校订']);
         expect(state.completedSegments).toBe(1); expect(state.progress).toBe(100);
         expect(state.documentQueue[0].retainedRevisions).toEqual([previousRetained, conditionRetained]);
+        taskButton('校订译文').props.onClick(); await flush();
         const retained = walkHost(root).find(entry => entry.type === 'details' && entry.props.class === 'editor-retained')!;
         expect(retained).toBeDefined(); expect(retained.props.open).toBe(false);
         expect(hostText(retained)).toContain('document.retainedRevisions.title');
@@ -1723,6 +1837,31 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         expect(state.documentQueue).toHaveLength(0);
     });
 
+    it('defers the editor until requested, preserves its search across reading, and releases it when switching documents', async () => {
+        await state.loadFiles([file('one.txt', 'Original one\nAnother line'), file('two.txt', 'Second document')]); await flush();
+        const editor = () => walkHost(root).find(entry => entry.props.class === 'segment-editor');
+        expect(editor()).toBeUndefined();
+        expect(walkHost(root).filter(entry => entry.type === 'textarea')).toHaveLength(0);
+        taskButton('校订译文').props.onClick(); await flush();
+        const originalEditor = editor()!;
+        expect(originalEditor).toBeDefined();
+        const search = walkHost(originalEditor).find(entry => entry.type === 'input' && entry.props.type === 'search')!;
+        search.props['onUpdate:modelValue']('Another'); await flush();
+        expect(walkHost(originalEditor).filter(entry => entry.props.class === 'segment-edit-row')).toHaveLength(1);
+        taskButton('阅读').props.onClick(); await flush();
+        expect(editor()).toBe(originalEditor);
+        taskButton('校订译文').props.onClick(); await flush();
+        expect(editor()).toBe(originalEditor);
+        expect(walkHost(originalEditor).filter(entry => entry.props.class === 'segment-edit-row')).toHaveLength(1);
+        expect(hostText(originalEditor)).toContain('Another line');
+        state.selectDocument(state.documentQueue[1]); await flush();
+        expect(editor()).toBeUndefined();
+        expect(state.readerTab).toBe('read');
+        taskButton('校订译文').props.onClick(); await flush();
+        expect(editor()).not.toBe(originalEditor);
+        expect(walkHost(editor()!).filter(entry => entry.props.class === 'segment-edit-row')).toHaveLength(1);
+        expect(hostText(editor()!)).toContain('Second document');
+    });
     it('clears canceled confirmation metadata and renders the real editor update consumer', async () => {
         await state.loadFiles([file('first.txt')]);
         state.editSegment(0, '校订');

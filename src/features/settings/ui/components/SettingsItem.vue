@@ -125,8 +125,8 @@ const props = withDefaults(defineProps<{
   .settings-item {
     grid-template-columns: minmax(0, 1fr) minmax(170px, 44%);
     gap: 14px;
-    min-height: 62px;
-    padding: 12px var(--fr-card-padding-inline, 16px);
+    min-height: var(--fr-settings-row-min-height, 62px);
+    padding: var(--fr-settings-row-padding-block, 12px) var(--fr-card-padding-inline, 16px);
   }
 }
 
