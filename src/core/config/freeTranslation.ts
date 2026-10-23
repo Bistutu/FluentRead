@@ -1,7 +1,7 @@
 /**
  * @file src/core/config/freeTranslation.ts
  * 文件职责：定义免费翻译服务池、默认智能加速策略及请求预算的合法范围。
- * 主要内容：维护仅直连供应商的默认启用免密钥目录、B站官方固定域名与模型、实验性豆包网页节点的保守冷启动权重、均衡与顺序模式，规范启用列表、超时及可选邮箱；迁移时移除第三方代理，保留其余明确选择。
+ * 主要内容：维护仅直连供应商的默认启用免密钥目录、B站官方固定域名与模型、实验性豆包网页节点的保守冷启动权重、均衡与顺序模式，规范启用列表、超时及可选邮箱；迁移时移除第三方代理和已退役节点，保留其余明确选择，旧列表无有效节点时恢复当前默认池。
  * 模块边界：本文件只包含纯配置规则，不读取存储、调用供应商或持有请求健康状态；运行时降级由翻译服务编排。
  */
 
@@ -20,7 +20,6 @@ export const FREE_TRANSLATION_PROVIDERS = [
     {id: 'icibaFree', label: '金山词霸', description: '免密钥网页翻译，自动处理网页签名', official: true, defaultWeight: 3},
     {id: 'yandexFree', label: 'Yandex', description: '免密钥网页接口，暂不支持繁体目标语言', official: true, defaultWeight: 2},
     {id: 'myMemory', label: 'MyMemory', description: '官方 API，匿名每天 5,000 字符', official: true, defaultWeight: 1},
-    {id: 'sogouFree', label: '搜狗翻译', description: '实验性网页接口，自动处理临时签名', official: true, defaultWeight: 2},
     {id: 'reversoFree', label: 'Reverso', description: '实验性网页接口，可能触发访问验证', official: true, defaultWeight: 1},
     {id: 'apertiumFree', label: 'Apertium', description: '开放翻译服务，仅支持已提供的语言对，暂无中译', official: true, defaultWeight: 1},
     {id: 'alibabaFree', label: '阿里翻译', description: '官方网页接口，无需密钥', official: true, defaultWeight: 3},

@@ -1,6 +1,6 @@
 import {protectedDocumentLongMathParagraph} from './fixtures/documentLongMathParagraph';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
-import {translateExtraFreeWebText, isKnownUnsupportedApertiumDirection} from '@/src/providers/translation/free-extra-web';
+import {translateExtraFreeWebText, isKnownUnsupportedApertiumDirection, type ExtraFreeWebProvider} from '@/src/providers/translation/free-extra-web';
 import {setRuntimeFetch} from '@/src/platform/http/runtime';
 import {serializeTranslationSlots, parseTranslationSlots} from '@/src/core/translation/serialization';
 
@@ -8,17 +8,14 @@ const fetchMock = vi.fn<typeof fetch>();
 beforeEach(() => { fetchMock.mockReset(); setRuntimeFetch(fetchMock); });
 afterEach(() => setRuntimeFetch());
 
-function home() { return new Response('<script>window.__INITIAL_STATE__={"common":{"CONFIG":{"secretCode":109984457}}}</script>'); }
-function result(text: string) { return Response.json({status: 0, data: {translate: {dit: `译:${text}`}}}); }
+function result(text: string) { return Response.json({translation: [`译:${text}`]}); }
 
 const responseStages = [
-    ['sogouFree', 'home'], ['sogouFree', 'translation'],
     ['reversoFree', 'translation'],
     ['apertiumFree', 'pairs'], ['apertiumFree', 'translation'],
 ] as const;
 
 function installBeforeResponse(id: typeof responseStages[number][0], stage: typeof responseStages[number][1]): void {
-    if (id === 'sogouFree' && stage === 'translation') fetchMock.mockResolvedValueOnce(home());
     if (id === 'apertiumFree' && stage === 'translation') fetchMock.mockResolvedValueOnce(Response.json(['eng-spa']));
 }
 
@@ -32,6 +29,12 @@ function streamingResponse(status: number) {
 }
 
 describe('extra anonymous web providers', () => {
+    it('rejects a removed provider identifier without sending any request', async () => {
+        await expect(translateExtraFreeWebText('sogouFree' as ExtraFreeWebProvider, 'Hello', 'en', 'zh-Hans'))
+            .rejects.toMatchObject({statusCode: 400, freeFailure: 'request'});
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
     it.each(responseStages)('%s %s cancels a streaming HTTP failure without waiting for EOF or cleanup', async (id, stage) => {
         installBeforeResponse(id, stage);
         const {response, cancel} = streamingResponse(429);
@@ -41,7 +44,7 @@ describe('extra anonymous web providers', () => {
         await new Promise<void>(resolve => setTimeout(resolve, 0));
         expect(cancel).toHaveBeenCalledOnce();
         await expect(pending).resolves.toMatchObject({statusCode: 429, retryAfterMs: 60000});
-        expect(fetchMock).toHaveBeenCalledTimes(stage === 'translation' && (id === 'sogouFree' || id === 'apertiumFree') ? 2 : 1);
+        expect(fetchMock).toHaveBeenCalledTimes(stage === 'translation' && id === 'apertiumFree' ? 2 : 1);
     });
 
     it.each(responseStages)('%s %s cancels a late response and preserves owner cancellation if cleanup rejects', async (id, stage) => {
@@ -60,7 +63,7 @@ describe('extra anonymous web providers', () => {
         await new Promise<void>(resolve => setTimeout(resolve, 0));
         expect(cancel).toHaveBeenCalledOnce();
         await expect(pending).resolves.toBe(reason);
-        expect(fetchMock).toHaveBeenCalledTimes(stage === 'translation' && (id === 'sogouFree' || id === 'apertiumFree') ? 2 : 1);
+        expect(fetchMock).toHaveBeenCalledTimes(stage === 'translation' && id === 'apertiumFree' ? 2 : 1);
     });
 
     it('Reverso sends the actual long mathematical paragraph with complete protection tokens per request', async () => {
@@ -75,38 +78,23 @@ describe('extra anonymous web providers', () => {
         for (const token of packet.tokens) expect(observed.filter(text => text.includes(token))).toHaveLength(1);
     });
 
-    it('uses the current Sogou page secret and signed text protocol', async () => {
-        fetchMock.mockResolvedValueOnce(home()).mockResolvedValueOnce(result('Hello'));
-        await expect(translateExtraFreeWebText('sogouFree', 'Hello', 'en', 'zh-Hans')).resolves.toBe('译:Hello');
-        expect(fetchMock).toHaveBeenCalledTimes(2);
-        const init = fetchMock.mock.calls[1]![1]!;
-        expect(init).toMatchObject({method: 'POST', credentials: 'omit'});
-        const body = JSON.parse(String(init.body));
-        expect(body).toMatchObject({from: 'en', to: 'zh-CHS', text: 'Hello', client: 'pc', fr: 'browser_pc', needQc: 1});
-        expect(body.s).toMatch(/^[a-f0-9]{32}$/u);
-        expect(body.uuid).toMatch(/^[0-9a-f-]{36}$/u);
-        fetchMock.mockReset().mockResolvedValueOnce(home()).mockResolvedValueOnce(result('Auto'));
-        await translateExtraFreeWebText('sogouFree', 'Hello', 'auto', 'zh-Hans');
-        expect(JSON.parse(String(fetchMock.mock.calls[1]![1]!.body)).from).toBe('auto');
-    });
-
     it('preserves whitespace, line breaks and serialized slots', async () => {
-        fetchMock.mockImplementation(async (url) => String(url) === 'https://translate.sogou.com/' ? home() : result(JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body)).text));
+        fetchMock.mockImplementation(async (_url, init) => result(JSON.parse(String(init?.body)).input));
         const input = '  Hello\r\nBye  ';
-        await expect(translateExtraFreeWebText('sogouFree', input, 'en', 'zh-Hans')).resolves.toBe('  译:Hello\r\n译:Bye  ');
+        await expect(translateExtraFreeWebText('reversoFree', input, 'en', 'zh-Hans')).resolves.toBe('  译:Hello\r\n译:Bye  ');
         fetchMock.mockReset();
-        fetchMock.mockImplementation(async (url, init) => String(url) === 'https://translate.sogou.com/' ? home() : result(JSON.parse(String(init?.body)).text));
+        fetchMock.mockImplementation(async (_url, init) => result(JSON.parse(String(init?.body)).input));
         const slots = serializeTranslationSlots(['Hello', 'Bye'], 'extra-test');
-        const output = await translateExtraFreeWebText('sogouFree', slots.payload, 'en', 'zh-Hans');
+        const output = await translateExtraFreeWebText('reversoFree', slots.payload, 'en', 'zh-Hans');
         expect(parseTranslationSlots(slots, output)).toEqual(['译:Hello', '译:Bye']);
     });
 
-    it('rejects unsupported candidates explicitly and honors pre-abort', async () => {
+    it('propagates forbidden responses and honors pre-abort', async () => {
         fetchMock.mockResolvedValueOnce(new Response('', {status: 403}));
         await expect(translateExtraFreeWebText('reversoFree', 'Hello', 'en', 'zh-Hans')).rejects.toMatchObject({statusCode: 403});
         fetchMock.mockClear();
         const controller = new AbortController(); controller.abort();
-        await expect(translateExtraFreeWebText('sogouFree', 'Hello', 'en', 'zh-Hans', controller.signal)).rejects.toMatchObject({name: 'AbortError'});
+        await expect(translateExtraFreeWebText('reversoFree', 'Hello', 'en', 'zh-Hans', controller.signal)).rejects.toMatchObject({name: 'AbortError'});
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
@@ -116,6 +104,12 @@ describe('extra anonymous web providers', () => {
         fetchMock.mockResolvedValueOnce(response);
         await expect(translateExtraFreeWebText(id, 'Hello', 'en', 'zh-Hans')).resolves.toBe('translated');
         expect(fetchMock.mock.calls[0]![1]).toMatchObject({credentials: 'omit'});
+    });
+
+    it('Reverso preserves automatic source-language detection', async () => {
+        fetchMock.mockResolvedValueOnce(Response.json({translation: ['你好']}));
+        await expect(translateExtraFreeWebText('reversoFree', 'Hello', 'auto', 'zh-Hans')).resolves.toBe('你好');
+        expect(JSON.parse(String(fetchMock.mock.calls[0]![1]!.body))).toMatchObject({from: 'auto', to: 'chi'});
     });
 
     it('Apertium checks its dynamic language-pair list before translating', async () => {
@@ -163,31 +157,7 @@ describe('extra anonymous web providers', () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it('classifies HTTP failures and malformed Sogou bootstrap/results', async () => {
-        fetchMock.mockResolvedValueOnce(new Response('', {status: 429}));
-        await expect(translateExtraFreeWebText('sogouFree', 'Hello', 'en', 'zh-Hans')).rejects.toMatchObject({statusCode: 429});
-        fetchMock.mockReset().mockResolvedValueOnce(new Response('<html>no secret</html>'));
-        await expect(translateExtraFreeWebText('sogouFree', 'Hello', 'en', 'zh-Hans')).rejects.toMatchObject({statusCode: 502, freeFailure: 'unavailable'});
-        fetchMock.mockReset().mockResolvedValueOnce(home()).mockResolvedValueOnce(Response.json({status: 0, data: {translate: {dit: ''}}}));
-        await expect(translateExtraFreeWebText('sogouFree', 'Hello', 'en', 'zh-Hans')).rejects.toMatchObject({statusCode: 502});
-        fetchMock.mockReset().mockResolvedValueOnce(home()).mockResolvedValueOnce(new Response('', {status: 503}));
-        await expect(translateExtraFreeWebText('sogouFree', 'Hello', 'en', 'zh-Hans')).rejects.toMatchObject({statusCode: 503});
-        fetchMock.mockReset().mockResolvedValueOnce(home()).mockResolvedValueOnce(Response.json({status: 1}));
-        await expect(translateExtraFreeWebText('sogouFree', 'Hello', 'en', 'zh-Hans')).rejects.toMatchObject({freeFailure: 'unavailable'});
-    });
-
-    it('reports Sogou inner business errors even when its outer status is successful', async () => {
-        fetchMock.mockResolvedValueOnce(home()).mockResolvedValueOnce(Response.json({status: 0, data: {translate: {errorCode: 's10', dit: ''}}}));
-        await expect(translateExtraFreeWebText('sogouFree', 'Hello', 'en', 'zh-Hans')).rejects.toThrow('错误码 s10');
-        fetchMock.mockReset().mockResolvedValueOnce(home()).mockResolvedValueOnce(Response.json({status: '0', data: {translate: {errorCode: 's0', dit: '你好'}}}));
-        await expect(translateExtraFreeWebText('sogouFree', 'Hello', 'en', 'zh-Hans')).resolves.toBe('你好');
-        fetchMock.mockReset().mockResolvedValueOnce(home()).mockResolvedValueOnce(Response.json({status: 0, data: {translate: {errorCode: 'secret arbitrary body', dit: ''}}}));
-        await expect(translateExtraFreeWebText('sogouFree', 'Hello', 'en', 'zh-Hans')).rejects.toThrow('结果为空');
-    });
-
     it('covers provider language mappings and empty results', async () => {
-        fetchMock.mockReset().mockResolvedValueOnce(home()).mockResolvedValueOnce(result('繁'));
-        await translateExtraFreeWebText('sogouFree', 'Hello', 'en', 'zh-TW');
         fetchMock.mockReset().mockResolvedValueOnce(Response.json({translation: ['ok']}));
         await translateExtraFreeWebText('reversoFree', 'Hello', 'xx', 'en');
         fetchMock.mockReset().mockResolvedValueOnce(Response.json({translation: []}));
@@ -197,14 +167,14 @@ describe('extra anonymous web providers', () => {
     });
 
     it('handles blank and invalid top-level input', async () => {
-        await expect(translateExtraFreeWebText('sogouFree', 1 as unknown as string, 'en', 'zh-Hans')).rejects.toMatchObject({statusCode: 400});
-        await expect(translateExtraFreeWebText('sogouFree', ' \r\n ', 'en', 'zh-Hans')).resolves.toBe(' \r\n ');
+        await expect(translateExtraFreeWebText('reversoFree', 1 as unknown as string, 'en', 'zh-Hans')).rejects.toMatchObject({statusCode: 400});
+        await expect(translateExtraFreeWebText('reversoFree', ' \r\n ', 'en', 'zh-Hans')).resolves.toBe(' \r\n ');
     });
 
     it('cancels during a response and chunks long text for each protocol', async () => {
         const controller = new AbortController();
-        fetchMock.mockResolvedValueOnce(home()).mockImplementationOnce(async () => { controller.abort(); return result('late'); });
-        await expect(translateExtraFreeWebText('sogouFree', 'Hello', 'en', 'zh-Hans', controller.signal)).rejects.toMatchObject({name: 'AbortError'});
+        fetchMock.mockImplementationOnce(async () => { controller.abort(); return result('late'); });
+        await expect(translateExtraFreeWebText('reversoFree', 'Hello', 'en', 'zh-Hans', controller.signal)).rejects.toMatchObject({name: 'AbortError'});
         fetchMock.mockReset().mockImplementation(async (_url, init) => {
             const body = JSON.parse(String(init?.body));
             return Response.json({translation: [body.input]});

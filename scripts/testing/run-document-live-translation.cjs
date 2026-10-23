@@ -30,7 +30,7 @@ const slug = value => value.replace(/[^\p{L}\p{N}._-]+/gu, '-');
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 const compact = value => value.normalize('NFKC').replace(/\s+/gu, '').toLowerCase();
 const MOCK_MARKER = /BENCH_[a-f\d]|___FLUENTREAD_|__FRTERM_|SOURCE_BEGIN|SOURCE_END|测试译文[：:]/u;
-const FREE_DOMAINS = ['microsoft.com', 'google.com', 'google.co.uk', 'googleapis.com', 'bilibili.com', 'qq.com', 'volcengine.com', 'volces.com', 'youdao.com', 'iciba.com', 'yandex.net', 'yandex.com', 'translated.net', 'sogou.com', 'reverso.net', 'apertium.org', 'alibaba.com', 'modernmt.com', 'laratranslate.com', 'lingvanex.com'];
+const FREE_DOMAINS = ['microsoft.com', 'google.com', 'google.co.uk', 'googleapis.com', 'bilibili.com', 'qq.com', 'volcengine.com', 'volces.com', 'youdao.com', 'iciba.com', 'yandex.net', 'yandex.com', 'translated.net', 'reverso.net', 'apertium.org', 'alibaba.com', 'modernmt.com', 'laratranslate.com', 'lingvanex.com'];
 const isProviderDomain = host => host === 'api-b2b.backenster.com' || FREE_DOMAINS.some(domain => host === domain || host.endsWith(`.${domain}`));
 const shouldObserveResponseBody = (record, response) => record.providerCandidate
   && !/csrf|token|auth/iu.test(new URL(response.url()).pathname)

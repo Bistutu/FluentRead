@@ -1,7 +1,7 @@
 /**
  * @file src/platform/browser/freeProviderPermissions.ts
  * 文件职责：封装 Safari 免费翻译服务的精确域授权查询与用户手势授权入口。
- * 主要内容：维护当前十七个匿名 provider 的完整请求域集合；仅 Safari 按实际授权过滤可用服务，查询受取消信号、原截止时间与两秒上限约束，失败明确拒绝；授权函数同步调用浏览器 API，保留点击手势，成功结果仍须重新查询实际授权；为界面提供可清理的授权变更事件。
+ * 主要内容：维护当前十六个匿名 provider 的完整请求域集合并过滤旧配置中的已退役节点；仅 Safari 按实际授权过滤可用服务，查询受取消信号、原截止时间与两秒上限约束，失败明确拒绝；授权函数同步调用浏览器 API，保留点击手势，成功结果仍须重新查询实际授权；为界面提供可清理的授权变更事件。
  * 模块边界：这是 Safari 免费池的产品授权策略，不声称开放 CORS 接口技术上都需要授权；不请求所有站点、不发送供应商请求、不修改服务顺序、健康或持久配置，其他浏览器保持原行为。
  */
 import {isFreeTranslationProviderId, type FreeTranslationProviderId} from '@/src/core/config/freeTranslation';

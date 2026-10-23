@@ -9,7 +9,6 @@
   "icibaFree": ["https://ifanyi.iciba.com/*"],
   "yandexFree": ["https://translate.yandex.net/*"],
   "myMemory": ["https://api.mymemory.translated.net/*"],
-  "sogouFree": ["https://translate.sogou.com/*"],
   "reversoFree": ["https://api.reverso.net/*"],
   "apertiumFree": ["https://apertium.org/*"],
   "alibabaFree": ["https://translate.alibaba.com/*"],

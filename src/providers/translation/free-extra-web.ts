@@ -1,10 +1,9 @@
 /**
  * @file src/providers/translation/free-extra-web.ts
- * 文件职责：适配搜狗、Reverso 和 Apertium 三个匿名网页翻译候选。
- * 主要内容：按码点预算且不切术语标记，读取搜狗网页参数并识别内层业务错误，构造 Reverso 请求，调用 Apertium 动态语言对；仅短期记忆有效语言列表确认的不支持方向，不共享在途请求或取消信号；保留文本槽/换行/边缘空白并响应取消，失败或迟到取消时直接取消未读正文，避免等待错误页 EOF。
+ * 文件职责：适配 Reverso 和 Apertium 两个匿名网页翻译候选。
+ * 主要内容：按码点预算且不切术语标记，构造 Reverso 请求，调用 Apertium 动态语言对；仅短期记忆有效语言列表确认的不支持方向，不共享在途请求或取消信号；保留文本槽/换行/边缘空白并响应取消，失败或迟到取消时直接取消未读正文，避免等待错误页 EOF。
  * 模块边界：不读取用户 Cookie、凭据或代理；免费链的超时、冷却和并发由上层编排负责。
  */
-import MD5 from 'crypto-js/md5';
 import {translateFreeTextChunks} from './freeTextChunks';
 import {serializeTranslationSlots} from '@/src/core/translation/serialization';
 import {getTranslationGlossarySourceText} from '@/src/services/translation/requestSnapshot';
@@ -12,14 +11,11 @@ import {abortErrorFromSignal, cancelUnreadResponseBody, runtimeFetch} from '@/sr
 import {createHttpStatusError, readJsonResponse} from '@/src/platform/http/errors';
 
 export type ExtraFreeWebProvider =
-    | 'sogouFree'
     | 'reversoFree'
     | 'apertiumFree';
 
 export type FreeFailure = 'rate-limit' | 'quota' | 'blocked' | 'unavailable' | 'request';
 
-const SOGOU_HOME = 'https://translate.sogou.com/';
-const SOGOU_ENDPOINT = 'https://translate.sogou.com/api/transpc/text/result';
 const REVERSO_ENDPOINT = 'https://api.reverso.net/translate/v1/translation';
 const APERTIUM_ENDPOINT = 'https://apertium.org/apy';
 const MAX_CHUNK_CODEPOINTS = 1000;
@@ -36,67 +32,12 @@ function checkAbort(signal?: AbortSignal): void {
     if (signal?.aborted) throw abortErrorFromSignal(signal);
 }
 
-
 function language(value: string, target: boolean): string {
     const code = value.trim().replaceAll('_', '-').toLowerCase();
-    if (target && code === 'auto') throw failure('搜狗翻译不接受自动目标语言', 400, 'request');
+    if (target && code === 'auto') throw failure('免费网页翻译不接受自动目标语言', 400, 'request');
     if (code === 'zh' || code === 'zh-cn' || code === 'zh-hans' || code === 'zh-chs') return 'zh-CHS';
     if (code === 'zh-tw' || code === 'zh-hk' || code === 'zh-mo' || code === 'zh-hant' || code === 'zh-cht') return 'zh-CHT';
     return code === 'auto' ? 'auto' : code;
-}
-
-function uuid(): string {
-    return crypto.randomUUID();
-}
-
-async function getSogouSecret(signal?: AbortSignal): Promise<string> {
-    checkAbort(signal);
-    const response = await runtimeFetch(SOGOU_HOME, {method: 'GET', credentials: 'omit', signal});
-    try {
-        checkAbort(signal);
-        if (!response.ok) throw createHttpStatusError(response, '搜狗翻译首页请求失败');
-        const html = await response.text();
-        checkAbort(signal);
-        const match = html.match(/"secretCode"\s*:\s*(\d+)/u);
-        if (!match?.[1]) throw failure('搜狗翻译首页缺少匿名参数', 502, 'unavailable');
-        return match[1];
-    } finally {cancelUnreadResponseBody(response);}
-}
-
-type SogouResponse = {
-    status?: unknown;
-    data?: {translate?: {dit?: unknown; errorCode?: unknown}};
-};
-
-async function translateSogouChunk(text: string, source: string, target: string, signal: AbortSignal | undefined, secretPromise: Promise<string>): Promise<string> {
-    const secret = await secretPromise;
-    checkAbort(signal);
-    const requestUuid = uuid();
-    const signature = MD5(source + target + text + secret).toString();
-    const response = await runtimeFetch(SOGOU_ENDPOINT, {
-        method: 'POST',
-        credentials: 'omit',
-        signal,
-        headers: {'Content-Type': 'application/json', Accept: 'application/json, text/plain, */*'},
-        body: JSON.stringify({client: 'pc', exchange: false, fr: 'browser_pc', from: source, needQc: 1, s: signature, text, to: target, uuid: requestUuid}),
-    });
-    try {
-        checkAbort(signal);
-        if (!response.ok) throw createHttpStatusError(response, '搜狗翻译请求失败');
-        const result = await readJsonResponse<SogouResponse | null>(response, '搜狗翻译返回的不是有效 JSON');
-        checkAbort(signal);
-        if (result?.status !== 0 && result?.status !== '0') throw failure('搜狗翻译业务请求失败');
-        const translated = result.data?.translate?.dit;
-        const errorCode = result.data?.translate?.errorCode;
-        // 官方外层 status=0 仍可能返回空译文；只展示短格式内层错误码，不回显第三方正文。
-        if (typeof translated !== 'string' || !translated.trim()) {
-            if (typeof errorCode === 'string' && /^s\d{1,6}$/u.test(errorCode)) {
-                throw failure(`搜狗翻译未返回译文（错误码 ${errorCode}）；请稍后重试或停用此服务`);
-            }
-            throw failure('搜狗翻译结果为空');
-        }
-        return translated.trim();
-    } finally {cancelUnreadResponseBody(response);}
 }
 
 function genericLanguage(value: string, _target: boolean): string {
@@ -227,28 +168,26 @@ async function translatePlain(text: string, source: string, target: string, sign
 }
 
 export async function translateExtraFreeWebText(
-    id: ExtraFreeWebProvider,
+    id: string,
     text: string,
     source: string,
     target: string,
     signal?: AbortSignal,
 ): Promise<string> {
     checkAbort(signal);
+    if (id !== 'reversoFree' && id !== 'apertiumFree') throw failure('不支持的免费网页翻译服务', 400, 'request');
     if (typeof text !== 'string') throw failure('免费网页翻译仅支持文本输入', 400, 'unavailable');
     if (!text.trim()) return text;
     const from = language(source, false);
     const to = language(target, true);
-    // 初始化请求只在本次文本/槽请求中复用；不共享 Promise 或取消所有权。
-    let sogouSecret: Promise<string> | undefined;
+    // 语言对验证只在本次文本/槽请求中复用；不共享 Promise 或取消所有权。
     let apertiumPairValidated = false;
-    const translator: ChunkTranslator = id === 'sogouFree'
-        ? (chunk, from, to, signal) => translateSogouChunk(chunk, from, to, signal, sogouSecret ??= getSogouSecret(signal))
-        : id === 'reversoFree' ? translateReversoChunk
-            : async (chunk, from, to, signal) => {
-                    const output = await translateApertiumChunk(chunk, from, to, signal, apertiumPairValidated);
-                    apertiumPairValidated = true;
-                    return output;
-                };
+    const translator: ChunkTranslator = id === 'reversoFree' ? translateReversoChunk
+        : async (chunk, from, to, signal) => {
+            const output = await translateApertiumChunk(chunk, from, to, signal, apertiumPairValidated);
+            apertiumPairValidated = true;
+            return output;
+        };
     const slots = getTranslationGlossarySourceText(text);
     if (!Array.isArray(slots)) return translatePlain(text, from, to, signal, translator);
     const translated: string[] = [];

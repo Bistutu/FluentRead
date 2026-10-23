@@ -39,22 +39,22 @@ describe('userscript free translation settings', () => {
         const normalized = normalizeConfig({
             service: 'freeTranslation',
             freeTranslationMode: 'unexpected',
-            freeTranslationOrder: ['sogouFree', 'sogouFree', 'unknown'],
+            freeTranslationOrder: ['sogouFree', 'myMemory', 'myMemory', 'unknown'],
             freeTranslationWeights: {sogouFree: 99},
             // 首次升级插入 B站；下面再验证已升级配置保留用户关闭选择。
             freeTranslationBilibiliDefaultApplied: false,
         });
         expect(normalized.freeTranslationMode).toBe('balanced');
-        expect(normalized.freeTranslationOrder).toEqual(['bilibiliFree', 'sogouFree']);
+        expect(normalized.freeTranslationOrder).toEqual(['bilibiliFree', 'myMemory']);
         expect(normalized.freeTranslationBilibiliDefaultApplied).toBe(true);
         expect(normalized).not.toHaveProperty('freeTranslationWeights');
         expect(new Config().freeTranslationMode).toBe('balanced');
 
         const saved = normalizeConfig({
             ...normalized,
-            freeTranslationOrder: ['unknown', 'sogouFree', null, 'sogouFree', 42],
+            freeTranslationOrder: ['unknown', 'sogouFree', null, 'microsoft', 'microsoft', 42],
         });
-        expect(saved.freeTranslationOrder).toEqual(['sogouFree']);
+        expect(saved.freeTranslationOrder).toEqual(['microsoft']);
     });
 });
 
@@ -366,7 +366,9 @@ describe('compact userscript manual save ownership in the actual SFC', () => {
 
 describe('compact userscript real settings controls', () => {
     it('changes fallback order only in sequential mode, keeps one provider and can re-enable an omitted provider', async () => {
-        const h = await mountCompactSettings({service:'freeTranslation',freeTranslationOrder:['microsoft','google'],freeTranslationBilibiliDefaultApplied:true});
+        const h = await mountCompactSettings({service:'freeTranslation',freeTranslationOrder:['sogouFree','microsoft','google'],freeTranslationBilibiliDefaultApplied:true});
+        expect(h.state.draft.freeTranslationOrder).toEqual(['microsoft','google']);
+        expect(document.body.textContent).not.toContain('搜狗翻译');
         expect(document.querySelector('[aria-label="下移 微软翻译"]')).toBeNull();
         const mode = document.querySelector<HTMLSelectElement>('[aria-label="免费翻译选择模式"]')!;
         for(const option of mode.options) option.selected=option.value==='sequential';mode.dispatchEvent(new window.Event('change',{bubbles:true}));await settleSettings();

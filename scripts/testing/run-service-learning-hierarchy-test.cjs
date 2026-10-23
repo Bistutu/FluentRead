@@ -20,7 +20,7 @@ const artifactsDir = path.resolve(arg('artifacts-dir', '/private/tmp/fluentread-
 const browserPath = arg('browser-path', '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge');
 const helperPath = path.resolve(arg('focus-safe-helper', path.join(__dirname, 'focus-safe-browser.cjs')));
 const playwrightRoot = arg('playwright-root', '/Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules');
-const PROVIDERS = ['microsoft', 'bilibiliFree', 'transmart', 'volcengineFree', 'doubaoWeb', 'google', 'youdaoFree', 'icibaFree', 'yandexFree', 'myMemory', 'sogouFree', 'reversoFree', 'apertiumFree', 'alibabaFree', 'modernMtFree', 'laraFree', 'lingvanexFree'];
+const PROVIDERS = ['microsoft', 'bilibiliFree', 'transmart', 'volcengineFree', 'doubaoWeb', 'google', 'youdaoFree', 'icibaFree', 'yandexFree', 'myMemory', 'reversoFree', 'apertiumFree', 'alibabaFree', 'modernMtFree', 'laraFree', 'lingvanexFree'];
 const NOTE = ['阅读层级验收笔记', '第二行：原文优先', '第三行：关键操作清晰', '第四行：按需显示细节', '第五行：保留阅读上下文', '第六行：取消不覆盖内容', '第七行：窄屏可完整阅读', '第八行：这是笔记末尾'].join('\n');
 
 async function until(check, label) {
@@ -107,7 +107,7 @@ async function main() {
   const rows = () => page.locator('[data-fallback-provider]');
   async function providerOpen(open) {
     if ((await disclosure().getAttribute('open') !== null) !== open) await disclosure().locator(':scope > summary').click();
-    await until(async () => await page.locator('[data-fallback-provider]:visible').count() === (open ? 17 : 0), `provider rows ${open ? 'open' : 'closed'}`);
+    await until(async () => await page.locator('[data-fallback-provider]:visible').count() === (open ? 16 : 0), `provider rows ${open ? 'open' : 'closed'}`);
   }
   async function selectService(id) {
     const toggle = page.locator('.mobile-directory-toggle');
@@ -190,7 +190,7 @@ async function main() {
     await patchFixture({uiLanguageSetupCompleted: true, uiLanguage: 'zh-CN', theme: 'light', interfaceSkin: 'default', interfaceFont: 'system', animations: false, service: 'freeTranslation', freeTranslationMode: 'balanced', freeTranslationOrder: PROVIDERS});
 
     currentCase = 'provider-persistence'; await openOptions('settings-services'); await disclosure().waitFor(); await defaultAction('freeTranslation');
-    assert.notEqual(await disclosure().getAttribute('open'), null); assert.equal(await rows().count(), 17); assert.equal(await page.locator('[data-fallback-provider]:visible').count(), 17);
+    assert.notEqual(await disclosure().getAttribute('open'), null); assert.equal(await rows().count(), 16); assert.equal(await page.locator('[data-fallback-provider]:visible').count(), 16);
     assert.match(await disclosure().locator(':scope > summary').textContent(), /参与翻译的服务/u);
     await providerOpen(false);
     await providerOpen(true);
@@ -203,7 +203,7 @@ async function main() {
     await page.locator('[data-fallback-provider="microsoft"] .el-switch').click(); await until(async () => (await readConfig()).freeTranslationOrder.includes('microsoft'), 'provider enable saved');
     await openOptions('settings-services'); await providerOpen(true); assert.equal(await targetSwitch().getAttribute('aria-checked'), 'true');
     await selectService('microsoft'); await defaultAction('microsoft'); await selectService('freeTranslation'); await defaultAction('freeTranslation');
-    report.cases.push({name: 'provider-persistence', rows: 17, defaultExpanded: true, disabledAndEnabledReopened: true, defaultUnchangedByBrowsing: true});
+    report.cases.push({name: 'provider-persistence', rows: 16, defaultExpanded: true, disabledAndEnabledReopened: true, defaultUnchangedByBrowsing: true});
 
     currentCase = 'request-limit-disclosure';
     const limits = () => requestDisclosure().getByTestId('request-limit-settings');
