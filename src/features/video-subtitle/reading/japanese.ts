@@ -2,27 +2,13 @@
  * @file src/features/video-subtitle/reading/japanese.ts
  * 文件职责：在专属读音 Worker 中按需加载日语词典，把字幕转换为可安全以纯文本显示的 Hepburn 罗马字。
  * 主要内容：共享可重试的词典初始化、半角假名规范化、结构化词元读音、助词与促音衔接、有限数词例外和未知汉字保留。
- * 模块边界：不访问网页、配置或翻译服务，不生成 HTML；Worker 编排负责来源可信的词典 URL、任务取消、缓存与闲置释放。
+ * 模块边界：不访问网页、配置或翻译服务，不生成 HTML；词典适配器只读取固定版本的已校验下载缓存，Worker 编排负责任务取消与闲置释放。
  */
-import kuromoji from '@faanau/kuromoji';
+import {cachedJapaneseBuilder} from './cachedJapaneseTokenizer';
 import Kuroshiro from 'kuroshiro';
 
-export interface JapaneseReadingToken {
-    surface_form: string;
-    pos?: string;
-    pos_detail_1?: string;
-    reading?: string;
-    pronunciation?: string;
-    word_type?: string;
-}
-
-interface JapaneseTokenizer {
-    tokenize(text: string): JapaneseReadingToken[];
-}
-
-type BuildTokenizer = (options: {dicPath: string}) => {
-    build(callback: (error: Error | null, tokenizer: JapaneseTokenizer) => void): void;
-};
+import type {JapaneseReadingToken, JapaneseTokenizer, BuildTokenizer} from './japaneseTypes';
+export type {JapaneseReadingToken} from './japaneseTypes';
 
 interface ReadingUnit {
     surface: string;
@@ -140,7 +126,7 @@ export function formatJapaneseReadings(tokens: readonly JapaneseReadingToken[]):
 }
 
 /** 工厂让测试可以注入轻量词典端口；实际 Worker 只创建一个实例，初始化失败后允许下一次重试。 */
-export function createJapaneseRomanizer(build: BuildTokenizer = kuromoji.builder): (text: string, dictBaseUrl: string) => Promise<string> {
+export function createJapaneseRomanizer(build: BuildTokenizer = cachedJapaneseBuilder): (text: string, dictBaseUrl: string) => Promise<string> {
     let initialization: {url: string; promise: Promise<JapaneseTokenizer>} | undefined;
     return async (text, dictBaseUrl) => {
         if (text.length > 4096) throw new Error('Japanese reading text exceeds 4096 characters');
@@ -153,7 +139,7 @@ export function createJapaneseRomanizer(build: BuildTokenizer = kuromoji.builder
         }
         if (!initialization) {
             const promise = new Promise<JapaneseTokenizer>((resolve, reject) => {
-                build({dicPath: url}).build((error, tokenizer) => error ? reject(error) : resolve(tokenizer));
+                build({dicPath: url}).build((error, tokenizer) => error ? reject(error) : tokenizer ? resolve(tokenizer) : reject(new Error('Japanese tokenizer did not initialize')));
             });
             initialization = {url, promise};
         }

@@ -5,13 +5,12 @@ import {createHindiRomanizer} from '@/src/features/video-subtitle/reading/hindi'
 import {romanizeThai} from '@/src/features/video-subtitle/reading/thai';
 import {transliterateWritten} from '@/src/features/video-subtitle/reading/writtenTransliteration';
 
-const nativeWebAssembly = globalThis.WebAssembly;
-
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   vi.doUnmock('@pinyin-pro/data/traditional');
   vi.doUnmock('@/src/features/video-subtitle/reading/japanese');
+  vi.doUnmock('@/src/features/video-subtitle/reading/hindi');
 });
 
 describe('video reading language resolution', () => {
@@ -102,6 +101,15 @@ describe('actual local reading engines', () => {
     const {annotateReading: annotate} = await import('@/src/features/video-subtitle/reading/engine');
     expect(await annotate('猫','ja','https://extension.test/reading-annotation/ja/')).toBeNull();
   });
+
+  it('routes Hindi to the fixed-data engine without deriving a downloadable WASM address', async () => {
+    vi.resetModules();
+    const romanizeHindi = vi.fn(async () => 'namaste');
+    vi.doMock('@/src/features/video-subtitle/reading/hindi', () => ({romanizeHindi}));
+    const {annotateReading: annotate} = await import('@/src/features/video-subtitle/reading/engine');
+    expect(await annotate('नमस्ते', 'hi', '')).toMatchObject({text: 'namaste', language: 'hi'});
+    expect(romanizeHindi).toHaveBeenCalledWith('नमस्ते');
+  });
 });
 
 describe('written Russian, modern Greek and Arabic boundaries', () => {
@@ -139,96 +147,36 @@ describe('written Russian, modern Greek and Arabic boundaries', () => {
 });
 
 describe('Hindi lazy phonetic engine port', () => {
-  it('deduplicates initialization and requests the independently evaluated Hindi lexicon and reranker', async () => {
+  it('deduplicates initialization and keeps lexicon and reranker enabled without loading caller URLs', async () => {
     const transliterate = vi.fn(() => 'bharat');
     const load = vi.fn(async () => transliterate);
     const romanize = createHindiRomanizer(load);
-    expect(await Promise.all([romanize('भारत','https://extension.test/hi.wasm'),romanize('भारत','https://extension.test/hi.wasm')])).toEqual(['bharat','bharat']);
+    expect(await Promise.all([romanize('भारत','https://extension.test/hi.wasm'),romanize('भारत','https://untrusted.test/other.wasm')])).toEqual(['bharat','bharat']);
     expect(load).toHaveBeenCalledTimes(1);
+    expect(load).toHaveBeenCalledWith();
     expect(transliterate).toHaveBeenCalledWith('भारत',{lexicon:true,rerank:true});
-    await expect(romanize('भारत','https://extension.test/other.wasm')).rejects.toThrow('new Worker');
   });
 
-  it('retries after initialization failures and avoids WASM for non-Hindi text', async () => {
-    const load=vi.fn().mockRejectedValueOnce(new Error('missing wasm')).mockResolvedValue(() => 'namaste');
+  it('retries initialization failures and skips non-Hindi input before downloading', async () => {
+    const load=vi.fn().mockRejectedValueOnce(new Error('data unavailable')).mockResolvedValue(() => 'namaste');
     const romanize=createHindiRomanizer(load);
     await expect(romanize('Hello','')).resolves.toBe('Hello');
     expect(load).not.toHaveBeenCalled();
-    await expect(romanize('नमस्ते','')).rejects.toThrow('URL is required');
-    await expect(romanize('नमस्ते','/hi.wasm')).rejects.toThrow('missing wasm');
-    await expect(romanize('नमस्ते','/hi.wasm')).resolves.toBe('namaste');
-    await expect(romanize('अ'.repeat(3001),'/hi.wasm')).rejects.toThrow('3000');
+    await expect(romanize('नमस्ते')).rejects.toThrow('data unavailable');
+    await expect(romanize('नमस्ते')).resolves.toBe('namaste');
+    await expect(romanize('अ'.repeat(3001))).rejects.toThrow('3000');
   });
 
-  function stubRuntime(transliterate: (text: string) => string = text => text) {
-    const run=vi.fn(() => {
-      vi.stubGlobal('gomanizeTranslit', transliterate);
-      return new Promise<void>(() => {});
-    });
-    class Runtime {importObject = {gojs: {}}; run = run;}
-    const instantiate=vi.fn(async () => ({instance: {exports: {}}}));
-    vi.stubGlobal('Go', Runtime);
-    vi.stubGlobal('gomanizeTranslit', undefined);
-    vi.stubGlobal('WebAssembly', Object.assign(Object.create(nativeWebAssembly), {instantiate}));
-    return {run, instantiate};
-  }
-
-  it('initializes the fixed runtime and packaged WASM and derives Hindi assets from the trusted Japanese base', async () => {
-    const transliterate=vi.fn(() => 'namaste');
-    const {run,instantiate}=stubRuntime(transliterate);
-    const bytes=new ArrayBuffer(4);
-    const fetch=vi.fn(async () => ({ok:true,arrayBuffer:async () => bytes}));
-    vi.stubGlobal('fetch',fetch);
-    const romanize=createHindiRomanizer();
-    await expect(romanize('नमस्ते','https://extension.test/hi.wasm')).resolves.toBe('namaste');
-    await expect(romanize('नमस्ते','https://extension.test/hi.wasm')).resolves.toBe('namaste');
-    expect(fetch).toHaveBeenCalledTimes(1);
-    expect(instantiate).toHaveBeenCalledWith(bytes,{gojs:{}});
-    expect(run).toHaveBeenCalledTimes(1);
-    expect(transliterate).toHaveBeenCalledWith('नमस्ते',{lexicon:true,rerank:true});
-    // 重建实际路由模块，其初始化只从 Worker 自有的词典基地址推导另一个自有资源。
-    vi.resetModules();
-    const {annotateReading: annotate}=await import('@/src/features/video-subtitle/reading/engine');
-    await import('@/src/features/video-subtitle/reading/hindi');
-    stubRuntime(transliterate);
-    expect(await annotate('नमस्ते','hi','https://extension.test/reading-annotation/ja/')).toMatchObject({text:'namaste',language:'hi'});
-    expect(fetch).toHaveBeenLastCalledWith('https://extension.test/reading-annotation/hi/gomanize.wasm');
-  });
-
-  it('rejects a missing runtime, failed downloads and absent exports and allows a fresh retry', async () => {
-    const romanize=createHindiRomanizer();
-    vi.stubGlobal('Go',undefined);
-    await expect(romanize('नमस्ते','/hi.wasm')).rejects.toThrow('runtime is unavailable');
-    stubRuntime();
-    let rejectCancel!: (reason: unknown) => void;
-    const cancel=vi.fn(() => new Promise<void>((_resolve, reject) => {rejectCancel = reject;}));
-    vi.stubGlobal('fetch',vi.fn(async () => new Response(new ReadableStream({cancel}), {status:404})));
-    await expect(romanize('नमस्ते','/hi.wasm')).rejects.toThrow('(404)');
-    expect(cancel).toHaveBeenCalledTimes(1);
-    rejectCancel(new Error('late cleanup failure'));
-    await Promise.resolve();
-    vi.stubGlobal('fetch',vi.fn(async () => ({ok:false,status:500,body:null})));
-    await expect(romanize('नमस्ते','/hi.wasm')).rejects.toThrow('(500)');
-    vi.stubGlobal('fetch',vi.fn(async () => ({ok:true,arrayBuffer:async () => new ArrayBuffer(0)})));
-    class MissingExports {importObject={}; run() {return new Promise<void>(() => {});}}
-    vi.stubGlobal('Go',MissingExports);
-    vi.stubGlobal('gomanizeTranslit',undefined);
-    await expect(romanize('नमस्ते','/hi.wasm')).rejects.toThrow('did not initialize');
-    stubRuntime(() => 'namaste');
-    await expect(romanize('नमस्ते','/hi.wasm')).resolves.toBe('namaste');
-  });
-
-  it('propagates a runtime failure and starts cleanly on a later request', async () => {
-    stubRuntime(() => 'namaste');
-    vi.stubGlobal('fetch',vi.fn(async () => ({ok:true,arrayBuffer:async () => new ArrayBuffer(0)})));
-    class FailedRuntime {
-      importObject={};
-      run() {vi.stubGlobal('gomanizeTranslit',() => 'unused');return Promise.reject(new Error('runtime exited'));}
-    }
-    vi.stubGlobal('Go',FailedRuntime);
-    const romanize=createHindiRomanizer();
-    await expect(romanize('नमस्ते','/hi.wasm')).rejects.toThrow('runtime exited');
-    stubRuntime(() => 'namaste');
-    await expect(romanize('नमस्ते','/hi.wasm')).resolves.toBe('namaste');
+  it('normalizes nukta sequences and shares a rejected initialization without poisoning a later attempt', async () => {
+    let reject!: (reason: unknown) => void;
+    const failed = new Promise<never>((_resolve, onReject) => {reject = onReject;});
+    const transliterate = vi.fn((text: string) => text);
+    const load = vi.fn().mockReturnValueOnce(failed).mockResolvedValue(transliterate);
+    const romanize = createHindiRomanizer(load);
+    const pending = [romanize('क़'),romanize('क़')];
+    reject(new Error('offline'));
+    expect(await Promise.allSettled(pending)).toEqual([expect.objectContaining({status:'rejected'}),expect.objectContaining({status:'rejected'})]);
+    await expect(romanize('क़')).resolves.toBe('क़');
+    expect(transliterate).toHaveBeenCalledWith('क़',{lexicon:true,rerank:true});
   });
 });

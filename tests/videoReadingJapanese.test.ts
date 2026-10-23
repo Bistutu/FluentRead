@@ -133,4 +133,9 @@ describe('Japanese video reading annotation', () => {
         await expect(romanize('猫'.repeat(4097), '/dict')).rejects.toThrow('4096');
         expect(build).not.toHaveBeenCalled();
     });
+
+    it('reports a broken tokenizer adapter as an initialization failure', async () => {
+        const romanize = createJapaneseRomanizer(() => ({build: callback => callback(null)}));
+        await expect(romanize('猫', '/dict')).rejects.toThrow('did not initialize');
+    });
 });
