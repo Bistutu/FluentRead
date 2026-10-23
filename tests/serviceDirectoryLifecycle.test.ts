@@ -153,7 +153,14 @@ async function mount(name: string, values: Record<string, unknown>, listeners: R
   app.component('el-tooltip', {setup(_props: unknown, {slots}: any) {return () => runtime.h('span', null, slots.default?.())}})
   app.config.warnHandler = () => {};hostRoot = {tag: '#root', props: {}};app.mount(hostRoot);await settle()
 }
-async function mountFree(values: Record<string, unknown> = {}) {await mount('FreeTranslationSettings', {config: runtime.reactive(new Config()), ...values})}
+async function openProviders(open: boolean) {
+  publicNode(n => n.props['data-free-provider-disclosure'] !== undefined).props.onToggle({currentTarget: {open}})
+  await settle()
+}
+async function mountFree(values: Record<string, unknown> = {}, expanded = true) {
+  await mount('FreeTranslationSettings', {config: runtime.reactive(new Config()), ...values})
+  if (!values.advanced && expanded) await openProviders(true)
+}
 async function mountCatalog(values: Record<string, unknown> = {}, listeners: Record<string, unknown> = {}) {await mount('ServiceCatalog', {service: 'microsoft', defaultService: 'microsoft', services: catalog,
   favoriteServices: [], configuredServices: [], modelOptions: [], showModel: false, maximumModels: 5, maximumModelLength: 50, customModelCount: 0, allowCustomModels: false, ...values}, {'onUpdate:service': emitted, 'onUpdate:default-service': defaultEmitted, 'onAdd:service': emitted, ...listeners})}
 function invalidate(reason: string) {
@@ -168,6 +175,21 @@ function invalidate(reason: string) {
 }
 
 describe('免费设置的轮询和模板事件归属', () => {
+  it('默认收起不读取权重，展开才轮询，收起立即取消等待并拒绝迟到结果，再展开重新读取', async () => {
+    await mountFree({}, false)
+    expect(send).not.toHaveBeenCalled();expect(timerCount()).toBe(0)
+    // 表单仍挂载，既有节点开关和邮箱草稿不因折叠丢失。
+    expect(descendants(hostRoot).filter(n => n.props['data-fallback-provider'])).toHaveLength(FREE_TRANSLATION_PROVIDERS.length)
+    state.myMemoryEmailDraft = 'unsaved@example.test'
+    const pending = deferred<unknown>();send.mockReturnValueOnce(pending.promise)
+    await openProviders(true);expect(send).toHaveBeenCalledOnce();expect(timerCount()).toBe(2)
+    await openProviders(false);expect(timerCount()).toBe(0);expect(state.myMemoryEmailDraft).toBe('unsaved@example.test')
+    pending.resolve(response());await settle();expect(state.weightSnapshot).toBeNull()
+    await tickIntervals(2);expect(send).toHaveBeenCalledOnce()
+    send.mockResolvedValueOnce(response());await openProviders(true)
+    expect(send).toHaveBeenCalledTimes(2);expect(state.weightSnapshot.observedAt).toBe(123);expect(timerCount()).toBe(1)
+    props.active = false;await settle();expect(timerCount()).toBe(0)
+  })
   it.each(['hidden', 'cached', 'unmount', 'config', 'advanced', 'sequential'])('%s之后丢弃旧权重响应，停用时不再轮询', async reason => {
     const pending = deferred<unknown>();send.mockReturnValueOnce(pending.promise);await mountFree();const old = response();expect(send).toHaveBeenCalledOnce()
     invalidate(reason);await settle();pending.resolve(old);await settle();expect(state.weightSnapshot?.observedAt).not.toBe(123)
@@ -176,7 +198,8 @@ describe('免费设置的轮询和模板事件归属', () => {
   it('初始顺序策略与高级字段不创建权重计时器，回到分流模式创建一条轮询', async () => {
     const config = runtime.reactive(new Config());config.freeTranslationMode = 'sequential';await mountFree({config});expect(send).not.toHaveBeenCalled();expect(timerCount()).toBe(0)
     state.setMode('balanced');await settle();expect(send).toHaveBeenCalledOnce();expect(timerCount()).toBe(1)
-    props.advanced = true;await settle();expect(timerCount()).toBe(0);props.advanced = false;await settle();expect(send).toHaveBeenCalledTimes(2);expect(timerCount()).toBe(1)
+    props.advanced = true;await settle();expect(timerCount()).toBe(0);props.advanced = false;await settle();expect(send).toHaveBeenCalledOnce();expect(timerCount()).toBe(0)
+    await openProviders(true);expect(send).toHaveBeenCalledTimes(2);expect(timerCount()).toBe(1)
   })
   it('同一轮读取合并并发调用，完成后允许下一轮', async () => {
     await mountFree();send.mockClear();const pending = deferred<unknown>();send.mockReturnValue(pending.promise)

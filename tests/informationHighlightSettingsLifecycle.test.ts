@@ -279,8 +279,9 @@ describe('信息高亮设置真实父子模板与生命周期', () => {
     await mount('keywords')
     const heading = element('#information-highlight-settings .settings-group-heading'), title = element('#information-highlight-settings h2')
     expect(title.textContent).toBe('informationHighlight.title'); expect(heading.querySelectorAll('h2')).toHaveLength(1)
-    expect(title.nextElementSibling).toBe(element('.information-highlight-tags'))
-    expect(element('.information-highlight-tags').nextElementSibling?.textContent).toBe('informationHighlight.description')
+    const copy = element('#information-highlight-settings .settings-card-heading-copy'), tags = element('.information-highlight-tags')
+    expect(title.parentElement).toBe(copy); expect(title.nextElementSibling?.textContent).toBe('informationHighlight.description')
+    expect(copy.parentElement).toBe(heading); expect(tags.parentElement).toBe(heading); expect(tags.previousElementSibling).toBe(copy)
     expect(tooltips).toHaveLength(3)
     for (const [index, tag] of ['keywords', 'surprisal', 'reading'].entries()) {
       const button = element(`[data-information-highlight-tag="${tag}"]`)

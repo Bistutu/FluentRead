@@ -2,13 +2,13 @@
 html, body { height: auto; min-height: 100%; overflow: auto; }
 body, :root.dark body { background: var(--surface); color: var(--ink); }
 .fr-story-surface { width: 100%; color: var(--ink); font-family: var(--interface-font-family); font-size: 14px; line-height: 1.6; }
-.fr-story-surface h1, .fr-story-surface h2, .fr-story-surface h3, .fr-story-surface p { margin: 0 0 12px; }
-.fr-story-surface h1 { font-size: 28px; }
-.fr-story-surface h2 { font-size: 20px; }
-.fr-story-surface h3 { font-size: 15px; }
+.fr-story-surface :where(h1, h2, h3, p) { margin: 0 0 12px; }
+.fr-story-surface :where(h1) { font-size: 28px; }
+.fr-story-surface :where(h2) { font-size: 20px; }
+.fr-story-surface :where(h3) { font-size: 15px; }
 .fr-story-surface code { overflow-wrap: anywhere; font-size: 12px; }
 .fr-story-surface a { color: var(--brand-strong); }
-.fr-story-surface small, .fr-story-note { color: var(--muted); font-size: 12px; }
+.fr-story-surface :where(small), .fr-story-note { color: var(--muted); font-size: 12px; }
 .fr-story-stack { display: grid; gap: 20px; max-width: 760px; }
 .fr-story-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .fr-story-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); gap: 14px; }

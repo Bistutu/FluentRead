@@ -1,7 +1,7 @@
 <!--
  @file src/app/document-translation/DocumentApp.vue
- 文件职责：实现独立文档翻译页面的完整 Vue 应用，提供按已提交段落计算的实时数字与进度条、暂停及等待重试状态，服务或模型变更时取消旧任务并保留已有译文供续译，以及完成后与下载并列、经确认重新请求服务的重译入口；承载简短异常提示、技术详情、文件导入、格式化预览、分段翻译、人工校订、原文结构变化后旧校订的独立保留、保存原文件和双语文件导出的用户流程。
- 主要内容：相同译文保留原文且不重复展示；文档打开后按窗口宽度用一行或多行工具栏承载文件、阅读方式、页码缩放、翻译服务与目标语言、翻译与下载，窄窗口用翻译设置弹窗，矮小窗口用覆盖式侧栏保留正文高度；各种格式支持只缩放正文的触控板捏合与键盘操作，复用富文本预览并保持阅读位置；左侧可折叠的侧栏放文件列表与目录，其余空间留给正文；首页列出保存在本机的最近翻译，重新打开同一份文件时接着上次的译文继续；PDF 默认按原版排版左右对照，各种格式都从正在阅读的位置开始翻译，阅读锚点不变时复用批次顺序、翻页或滚动跨段后重排剩余片段；没有文字层的扫描版 PDF 在开始翻译时先逐页识别文字并显示进度；HTML、Markdown、纯文本与 ePub 的隔离预览只载入一次，译文逐段到达后原位更新并保留滚动位置，整篇译文几乎都与原文相同时状态里提示可换目标语言，带标题的文档（含 Word）在侧栏提供可按原文或译文显示的目录，Word 里的表格在阅读视图中仍按表格排版、只有一个部分时不显示部分切换，ePub 的全部章节列在侧栏目录里（按译文显示时用章内标题的译文）、当前章节下接着它其余的各级标题，正文上方不再占一行章节按钮，Word 与文本类预览在宽窗口左右对照；组织文档阅读与翻译、增量统计和人工校订，人工译法确认只在当前文件阅读会话中参与篇章参考，按原文件身份和冻结语言隔离，重译时清空；导入与在线下载绑定独立取消所有权；PDF 清晰阅读流式显示完整段落和原图区域，源页文字层与译文更新分离，下载按原版布局左右配对，长译文以完整批注保留；切换、删除、重置及卸载释放 PDF 任务和 URL；PDF/ePub/DOCX/ZIP 导出显示进度、支持取消重试，迟到结果不得回写。
+ 文件职责：实现独立文档翻译页面的完整 Vue 应用，提供按已提交段落计算的实时数字与进度条、暂停及等待重试状态，服务或模型变更时取消旧任务并保留已有译文供续译；未完成或设置待应用时突出翻译，完成后突出下载并保留次级、经确认重新请求服务的重译入口；任务提示按处理优先级在工具栏内显示，材料恢复与下载反馈保留独立位置，不覆盖正文；承载简短异常提示、技术详情、文件导入、格式化预览、分段翻译、人工校订、原文结构变化后旧校订的独立保留、保存原文件和双语文件导出的用户流程。
+ 主要内容：相同译文保留原文且不重复展示；文档打开后按窗口宽度用一行或多行工具栏承载文件、阅读方式、页码缩放、翻译服务与目标语言、翻译与下载，窄窗口用翻译设置弹窗，矮小窗口用覆盖式侧栏保留正文高度；各种格式支持只缩放正文的触控板捏合与键盘操作，复用富文本预览并保持阅读位置；左侧可折叠的侧栏放文件列表与目录，其余空间留给正文；首页列出保存在本机的最近翻译，重新打开同一份文件时接着上次的译文继续；PDF 默认按原版排版左右对照，各种格式都从正在阅读的位置开始翻译，阅读锚点不变时复用批次顺序、翻页或滚动跨段后重排剩余片段；没有文字层的扫描版 PDF 在开始翻译时先逐页识别文字并显示进度；HTML、Markdown、纯文本与 ePub 的隔离预览只载入一次，译文逐段到达后原位更新并保留滚动位置，整篇译文几乎都与原文相同时状态里提示可换目标语言，带标题的文档（含 Word）在侧栏提供可按原文或译文显示的目录，Word 里的表格在阅读视图中仍按表格排版、只有一个部分时不显示部分切换，ePub 的全部章节列在侧栏目录里（按译文显示时用章内标题的译文）、当前章节下接着它其余的各级标题，正文上方不再占一行章节按钮，Word 与文本类预览在宽窗口左右对照；组织文档阅读与翻译、增量统计和人工校订；校订器首次打开才挂载，同一文档往返阅读保留搜索和页码，切换文件释放；人工译法确认只在当前文件阅读会话中参与篇章参考，按原文件身份和冻结语言隔离，重译时清空；导入与在线下载绑定独立取消所有权；PDF 清晰阅读流式显示完整段落和原图区域，源页文字层与译文更新分离，下载按原版布局左右配对，长译文以完整批注保留；切换、删除、重置及卸载释放 PDF 任务和 URL；PDF/ePub/DOCX/ZIP 导出显示进度、支持取消重试，迟到结果不得回写。
  材料接入：按原文件内容指纹加入本机学习工作区，恢复文档页码与章节，重解析后只按唯一原句重新匹配位置；原文件记录缺失时重新选择并核对指纹，不把同名文件误认作原件。
  模块边界：ChatGPT 套餐模型选项保留全局和文档实际 slug，独立选择也直接保存，不经过自定义模型哨兵或新增发现请求；组件负责页面展示与交互，导入、OCR 与导出生命周期由 feature 控制器持有并经显式端口连接唯一任务模型；不自行解析二进制格式、不实现片段翻译队列、配置存储协议或导出编码；解析渲染来自 document-translation feature，配置协调来自 services/config，草稿共享设置编辑会话并保留文档字段与模型映射的原子补丁，运行时适配由本目录 runtime 注入。
 -->
@@ -167,7 +167,7 @@
               <ElOption v-for="model in documentModelOptions" :key="model" :value="model" data-i18n-ignore :label="model" />
             </ElSelect></label>
             </div>
-            <div class="toolbar-primary-actions">
+            <div class="toolbar-primary-actions" :data-primary-action="downloadIsPrimary ? 'download' : 'translate'">
             <button class="ghost-button toolbar-settings-toggle" type="button" :title="translationSettingsSummary" @click="openDocumentSettings">{{ translateLegacy('翻译设置') }}</button>
             <button class="download-button" type="button" :disabled="!originalDownloadSource && (!hasTranslation || queueBusy)" @click="openDownload">下载文件 ↓</button>
             <div class="translation-actions">
@@ -177,7 +177,11 @@
             </div>
           </div>
           <div v-if="showTranslationProgress" class="task-progress" :class="{ complete: translationComplete }" role="progressbar" :aria-label="t('document.translationProgress.label')" :aria-valuetext="translationProgressLabel" :aria-valuenow="progress" :aria-valuemin="0" :aria-valuemax="100" data-testid="document-translation-progress"><i :style="{width: `${progress}%`}" /></div>
-          <div v-if="translationFailureVisible" class="translation-recovery" role="alert" data-testid="document-translation-recovery">
+          <!-- 持续状态占据正常布局；当前翻译只显示最需要处理的一条，独立导入始终保留取消入口。 -->
+          <div class="taskbar-notices" data-testid="document-task-notices">
+          <p v-if="openingFile || downloadingPdf" class="document-import-progress" role="status">{{ importProgress }} <button class="ghost-button" type="button" @click="cancelImport">{{ t('document.pdfReading.cancelImport') }}</button></p>
+          <p v-if="configSaveError || credentialWarning" class="notice error task-notice" role="alert">{{ configSaveError || credentialWarning }} <button type="button" @click="documentSettingsDialog?.showModal()">调整设置</button></p>
+          <div v-else-if="translationFailureVisible" class="translation-recovery" role="alert" data-testid="document-translation-recovery">
             <span class="recovery-message">{{ documentFailureSummary(errorMessage) }}</span>
             <button class="recovery-service" type="button" @click="translating ? pauseAndChangeService() : openDocumentSettings()">{{ t('document.translationRecovery.switchService') }}</button>
             <details :key="errorMessage" class="recovery-details"><summary>{{ t('document.translationRecovery.details') }}</summary><p class="recovery-error-detail" data-i18n-ignore>{{ errorMessage }}</p></details>
@@ -187,16 +191,13 @@
             <button v-if="translating && retryWaiting" class="recovery-service" type="button" @click="pauseAndChangeService">{{ t('document.translationRecovery.switchService') }}</button>
             <details :key="retryNotice" class="recovery-details"><summary>{{ t('document.translationRecovery.details') }}</summary><p class="recovery-error-detail" data-i18n-ignore>{{ retryNotice }}</p></details>
           </div>
-          <!-- 提示统一浮在工具栏下方，出现和消失都不改变版面高度。 -->
-          <div class="taskbar-notices">
-          <p v-if="openingFile || downloadingPdf" class="document-import-progress" role="status">{{ importProgress }} <button class="ghost-button" type="button" @click="cancelImport">{{ t('document.pdfReading.cancelImport') }}</button></p>
-          <p v-if="!translationFailureVisible && (errorMessage || credentialWarning || configSaveError)" class="notice error task-notice" role="alert">{{ errorMessage || credentialWarning || configSaveError }} <button v-if="credentialWarning || configSaveError" type="button" @click="documentSettingsDialog?.showModal()">调整设置</button></p>
-          <p v-if="settingsChanged" class="notice warning task-notice">设置已更改。现有译文保留，按新设置翻译会从头开始。</p>
+          <p v-else-if="errorMessage" class="notice error task-notice" role="alert">{{ errorMessage }}</p>
+          <p v-else-if="settingsChanged" class="notice warning task-notice" role="status">设置已更改。现有译文保留，按新设置翻译会从头开始。</p>
           <p v-if="downloadNotice" class="taskbar-toast" role="status">{{ downloadNotice }}</p>
           </div>
         </section>
         <article class="document-reading-pane" aria-label="文档内容">
-        <DocumentSegmentEditor :key="activeDocumentId ?? 0" v-show="readerTab === 'edit'" :document="parsedDocument" :translations="translatedSegments" :retained-revisions="documentQueue.find(item => item.id === activeDocumentId)?.retainedRevisions" :disabled="queueBusy" @update="editSegment" />
+        <DocumentSegmentEditor v-if="editorRequested" :key="activeDocumentId ?? 0" v-show="readerTab === 'edit'" :document="parsedDocument" :translations="translatedSegments" :retained-revisions="documentQueue.find(item => item.id === activeDocumentId)?.retainedRevisions" :disabled="queueBusy" @update="editSegment" />
         <div v-show="readerTab === 'read'" ref="readingContent" class="reading-content" :class="{'reading-pdf': isPdfDocument}" :data-fluentread-material-fingerprint="activeTask?.historyId || undefined" :data-fluentread-material-title="parsedDocument.fileName" :data-fluentread-material-source="activeTask?.sourceUrl || undefined" :data-fluentread-material-page="isPdfDocument ? pdfPage : readerPage" :data-fluentread-material-section="isEpubDocument ? `epub:${epubChapterIndex}` : isDocxDocument ? `docx:${docxPartIndex}` : undefined" :data-reader-zoom="isPdfDocument ? undefined : readerScale" :tabindex="isPdfDocument || isRichDocument ? undefined : 0" @pointerdown="materialReadingPointerDown" @wheel.passive="markMaterialReadingIntent" @keydown.capture="markMaterialReadingIntent">
         <PdfReader
           ref="materialPdfReader"
@@ -575,8 +576,8 @@ const previewMode = ref<'source' | DocumentRenderMode>('bilingual');
 const pdfPresentation = ref<PdfReadingPresentation>('layout');
 const readerControls = ref<HTMLElement | null>(null);
 const outlineHost = ref<HTMLElement | null>(null);
-// 侧栏默认展开，PDF 先显示目录、其他格式显示文件；添加第二份文件或导入失败时切到文件页。
-const sidebarOpen = ref(true);
+// 窄屏初次打开时先留出正文空间；只读取一次宽度，之后保留用户选择。多文件或导入失败仍自动展开文件页。
+const sidebarOpen = ref(!window.matchMedia('(max-width: 760px)').matches);
 // 专注阅读隐藏本页的全部控件，并尽量让浏览器进入全屏；退出全屏或按 Esc 即恢复。
 const focusMode = ref(false);
 function setFocusMode(value: boolean): void {
@@ -595,6 +596,12 @@ const richOutline = ref<RichOutlineItem[]>([]);
 const richOutlineLanguage = ref<'source' | 'translated'>('translated');
 const pdfPage = ref(1);
 const readerTab = ref<'read' | 'edit'>('read');
+// 阅读时不构建隐藏校订器和全文占位符映射；首次打开后保留当前文档的搜索、页码和输入状态。
+const editorRequested = ref(false);
+watch([activeDocumentId, readerTab], ([documentId, tab], [previousDocumentId]) => {
+  if (documentId !== previousDocumentId) editorRequested.value = false;
+  if (tab === 'edit') editorRequested.value = true;
+});
 const readingContent = ref<HTMLElement | null>(null);
 const readerScale = ref(1);
 const readerZoomStyle = computed(() => ({zoom: String(readerScale.value)}));
@@ -1171,6 +1178,8 @@ function compatibleTranslationSettings(previous: string, current: string): boole
     && (before.service !== after.service || before.compositeConnection === after.compositeConnection);
 }
 const settingsChanged = computed(() => Boolean(taskFingerprint.value && !compatibleTranslationSettings(taskFingerprint.value, currentFingerprint.value)));
+// 只调整操作层级：完成后的下载承接当前结果；任何待应用的设置（含可续译的服务/模型）都重新突出翻译。
+const downloadIsPrimary = computed(() => translationComplete.value && (!taskFingerprint.value || taskFingerprint.value === currentFingerprint.value));
 // 其它文档页或设置页也可切换服务。显示新服务时必须撤销旧任务，避免仍等待旧线路却让读者以为新线路卡住。
 watch([effectiveDocumentService, selectedDocumentModel], () => {
   if (translating.value || batchRunning.value) pauseTranslation();

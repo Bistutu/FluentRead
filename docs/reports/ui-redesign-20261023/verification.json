@@ -1,0 +1,240 @@
+{
+  "schemaVersion": 2,
+  "rounds": {
+    "initial": {
+      "date": "2026-10-23",
+      "baseCommit": "0ad3d431b425d8e082f15acfce11de23a66b8cc1",
+      "artifact": "Chrome MV3 production extension",
+      "productionFingerprint": {
+        "sha256": "c64c9cd665607b46c4b6f8e83f9c21808cfee61cbb3a3826a67a1e859a6d04fe",
+        "fileCount": 525
+      },
+      "browser": "Isolated Microsoft Edge",
+      "launchMode": "macos-background-cdp",
+      "focusPolicy": "launchservices-no-foreground",
+      "windowPlacement": "background-visible-no-focus",
+      "totalCases": 104,
+      "totalScreenshots": 128,
+      "suites": {
+        "main": {
+          "ok": true,
+          "cases": 85,
+          "screenshots": 96,
+          "consoleErrors": 0,
+          "cleanup": {
+            "ownedBrowserClosed": true,
+            "profileRemoved": true
+          },
+          "finishedAt": "2026-10-23T06:08:28.905Z"
+        },
+        "learning": {
+          "ok": true,
+          "cases": 7,
+          "screenshots": 23,
+          "consoleErrors": 0,
+          "cleanup": {
+            "ownedBrowserClosed": true,
+            "profileRemoved": true
+          },
+          "finishedAt": "2026-10-23T06:08:45.052Z"
+        },
+        "document": {
+          "ok": true,
+          "cases": 12,
+          "screenshots": 9,
+          "consoleErrors": 0,
+          "cleanup": [],
+          "finishedAt": "2026-10-23T06:08:53.447Z"
+        }
+      },
+      "document": {
+        "requests": 1,
+        "downloads": [
+          {
+            "bytes": 184,
+            "containsSource": true,
+            "containsTranslation": true
+          }
+        ]
+      },
+      "limitations": [
+        "Controlled loopback document translation; no live provider claims.",
+        "Desktop Edge viewports; no physical mobile, Firefox or Safari runtime claims.",
+        "Targeted regression only."
+      ]
+    },
+    "refinement": {
+      "date": "2026-10-23",
+      "artifact": "Chrome MV3 production extension and built Storybook",
+      "totalCases": 126,
+      "totalScreenshots": 63,
+      "browser": "Isolated Microsoft Edge",
+      "launchMode": "macos-background-cdp",
+      "focusPolicy": "launchservices-no-foreground",
+      "windowPlacement": "background-visible-no-focus",
+      "suites": {
+        "consistency": {
+          "ok": true,
+          "cases": 76,
+          "screenshots": 16,
+          "consoleErrors": 0,
+          "cleanup": {
+            "ownedBrowserClosed": true,
+            "profileRemoved": true
+          },
+          "finishedAt": "2026-10-23T08:47:01.464Z",
+          "artifact": "ciContractRepairBuild",
+          "script": "run-settings-skin-consistency-test.cjs"
+        },
+        "learning": {
+          "ok": true,
+          "cases": 8,
+          "screenshots": 28,
+          "consoleErrors": 0,
+          "cleanup": {
+            "ownedBrowserClosed": true,
+            "profileRemoved": true
+          },
+          "finishedAt": "2026-10-23T07:53:55.338Z",
+          "artifact": "refinementBuild"
+        },
+        "document": {
+          "ok": true,
+          "cases": 18,
+          "screenshots": 15,
+          "consoleErrors": 0,
+          "cleanup": [],
+          "finishedAt": "2026-10-23T07:54:05.399Z",
+          "artifact": "refinementBuild"
+        },
+        "storybook": {
+          "ok": true,
+          "cases": 24,
+          "screenshots": 4,
+          "consoleErrors": 0,
+          "cleanup": {
+            "ownedBrowserClosed": true,
+            "profileRemoved": true
+          },
+          "finishedAt": "2026-10-23T07:57:44.333Z",
+          "artifact": "built-storybook"
+        }
+      },
+      "contrast": {
+        "skins": 14,
+        "actualSamples": 184,
+        "minimumRatio": 5.075626628846794,
+        "defaultDarkWarningRatio": 8.651407511719613
+      },
+      "document": {
+        "requests": 1,
+        "initialEditorNodes": 0,
+        "sidebar": {
+          "name": "narrow-sidebar-initial-and-user-toggle",
+          "ok": true,
+          "initialReading": {
+            "x": 0,
+            "y": 171,
+            "width": 390,
+            "height": 789
+          },
+          "expandedReading": {
+            "x": 0,
+            "y": 350.796875,
+            "width": 390,
+            "height": 609.203125
+          },
+          "collapsedReading": {
+            "x": 0,
+            "y": 171,
+            "width": 390,
+            "height": 789
+          },
+          "fileEvidence": {
+            "control": {
+              "top": 238,
+              "bottom": 282,
+              "width": 308,
+              "height": 44
+            },
+            "list": {
+              "top": 229,
+              "bottom": 337.796875,
+              "height": 108.796875,
+              "clientHeight": 109,
+              "scrollHeight": 109,
+              "scrollTop": 0,
+              "overflowY": "auto"
+            }
+          },
+          "addEvidence": {
+            "control": {
+              "top": 301,
+              "bottom": 337.796875,
+              "width": 370,
+              "height": 36.796875
+            },
+            "list": {
+              "top": 229,
+              "bottom": 337.796875,
+              "height": 108.796875,
+              "clientHeight": 109,
+              "scrollHeight": 109,
+              "scrollTop": 0,
+              "overflowY": "auto"
+            }
+          },
+          "sidebarBounds": {
+            "x": 0,
+            "y": 171,
+            "width": 390,
+            "height": 179.796875
+          }
+        },
+        "downloads": [
+          {
+            "bytes": 184,
+            "containsSource": true,
+            "containsTranslation": true
+          }
+        ]
+      },
+      "targetedTests": {
+        "settingsAndI18n": 330,
+        "serviceConfiguration": 127,
+        "documentApplicationHosts": 185,
+        "totalUniqueCases": 642
+      },
+      "limitations": [
+        "Controlled loopback document translation; no live provider claims.",
+        "Desktop Edge viewports; no physical mobile, Firefox or Safari runtime claims.",
+        "Targeted regression only.",
+        "Contrast values derive from computed colors and alpha-composited solid surfaces, not pixel anti-aliasing.",
+        "No startup latency or throughput percentage claim."
+      ],
+      "productionArtifacts": {
+        "refinementBuild": {
+          "sha256": "d19f2be28ea50937df91694555dc095962ae783245f7d6a9ff9375e624ce5473",
+          "fileCount": 525,
+          "algorithm": "SHA256 of lexicographically sorted relative paths followed by each file bytes"
+        },
+        "ciContractRepairBuild": {
+          "sha256": "f2469bee239437ccb03c6f7fb5254ea4605968fb4113107348a839717179a0d7",
+          "files": 525,
+          "algorithm": "SHA256 of recursively sorted relative paths, NUL delimiters, and file bytes"
+        }
+      },
+      "ciContractRepair": {
+        "publicCliRestoredExactly": true,
+        "frozenSiteComponentRestoredExactly": true,
+        "failedCasesAddressed": 24,
+        "targetedVerification": {
+          "promptSyncLifecycle": 47,
+          "existingCliLifecycleCases": 6,
+          "verificationOwnership": 21
+        },
+        "scope": "Only the website-list semantic error styles moved into shared settings CSS. The 76-case skin and invalid-form suite ran against the new build; other component and behavior implementations remain unchanged from their recorded production runs."
+      }
+    }
+  }
+}

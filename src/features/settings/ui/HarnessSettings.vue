@@ -140,7 +140,7 @@ function toggleAction(id: HarnessActionId) {
 .harness-provider-row { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; padding-bottom:18px; }
 .harness-provider-field { display:flex; flex-direction:column; gap:8px; min-width:0; }
 .harness-provider-field > label { color:var(--ink); font-size:13px; font-weight:600; }
-.service-hint { font-size:12px; line-height:1.6; color:var(--warning,#b26a00); }
+.service-hint { font-size:12px; line-height:1.6; color:var(--fr-warning); }
 .harness-free-hint, .harness-default-hint { font-size:12px; line-height:1.6; color:var(--muted); }
 .harness-fixed-model { min-height:32px; display:flex; align-items:center; padding:0 11px; border:1px solid var(--line); border-radius:6px; background:var(--surface-soft); color:var(--ink); font-size:12px; overflow-wrap:anywhere; }
 .harness-select { width:100%; }

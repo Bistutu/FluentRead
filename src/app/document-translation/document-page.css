@@ -1,6 +1,6 @@
 /**
  * @file src/app/document-translation/document-page.css
- * 文件职责：定义文档翻译独立页面的完整布局与主题表现，使导入区、阅读器、翻译进度、原文件保存、格式预览和导出操作在桌面与窄屏下保持可读。
+ * 文件职责：定义文档翻译独立页面的完整布局与主题表现，使导入区、阅读器、翻译进度、原文件保存、格式预览和导出操作在桌面与窄屏下保持可读，并按任务阶段突出翻译或下载这一项主操作；工具栏消息参与布局，持续警告和材料恢复反馈不遮挡正文。
  * 主要内容：让数字进度完整可见，保留零进度和完成进度条，失败后的续译提示保持紧凑单行且仅按需展开技术详情；声明页面级颜色变量与暗色覆盖，打开文档后的单行工具栏（内含翻译服务与目标语言选择）、可折叠的文件与目录侧栏和铺满窗口的阅读区，设置可收起的文件队列、本地范例、品牌头部、拖放卡片、工具栏、PDF 连续页及其不可见字体测量画布、EPUB/DOCX 分区、字幕与 JSON 行、设置摘要、下载预览和响应式断点；材料保存按钮在各格式工具栏中保持紧凑宽度，窄屏独立排布并避免覆盖阅读控件。
  * 模块边界：样式仅服务 DocumentApp 的 class 结构，不解析文档、不控制翻译状态，也不覆盖 content 宿主页面；跨页面基础视觉 token 仍由 src/ui/styles/tokens.css 管理。
  */
@@ -531,8 +531,10 @@ input { accent-color: var(--brand); }input:focus-visible { outline: 3px solid va
 .document-taskbar .document-settings-button { display: inline-grid; flex: none; place-items: center; width: 32px; max-width: none; height: 32px; padding: 0; border: 1px solid var(--line); border-radius: 9px; color: var(--muted); }
 .document-taskbar .document-settings-button svg { width: 17px; height: 17px; }
 .document-taskbar .document-settings-button > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.document-taskbar .download-button:enabled { border-color: var(--brand); color: #fff; background: var(--brand); font-weight: 700; }
-.document-taskbar .download-button:enabled:hover { border-color: var(--brand-strong); color: #fff; background: var(--brand-strong); }
+.document-taskbar [data-primary-action="download"] .download-button:enabled { border-color: var(--brand); color: #fff; background: var(--brand); font-weight: 700; }
+.document-taskbar [data-primary-action="download"] .download-button:enabled:hover { border-color: var(--brand-strong); color: #fff; background: var(--brand-strong); }
+.document-taskbar [data-primary-action="download"] .translate-document-button { border: 1px solid var(--line); color: var(--ink); background: var(--surface); }
+.document-taskbar [data-primary-action="download"] .translate-document-button:hover:not(:disabled) { border-color: var(--brand); color: var(--brand-strong); background: var(--brand-soft); }
 .document-taskbar .workspace-heading { max-width: min(26vw, 360px); }
 @media (max-width: 760px) {
   .is-workspace .document-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); }
@@ -634,9 +636,6 @@ input { accent-color: var(--brand); }input:focus-visible { outline: 3px solid va
 .restoring-section { display: grid; place-items: center; min-height: 100dvh; }
 .restoring-section .spinner { width: 22px; height: 22px; margin: 0; }
 .is-restoring .document-main { width: 100%; padding: 0; }
-.taskbar-toast { position: absolute; top: calc(100% + 10px); left: 50%; z-index: 25; margin: 0; padding: 8px 14px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); background: var(--surface); box-shadow: 0 10px 28px #10182826; font-size: 12px; white-space: nowrap; transform: translateX(-50%); pointer-events: none; }
-.taskbar-toast { animation: taskbar-toast-in .2s ease-out; }
-@keyframes taskbar-toast-in { from { opacity: 0; transform: translate(-50%, -6px); } }
 /* 导入中：进度条 + 次要的取消链接。 */
 .import-progress { width: min(320px, 80%); height: 6px; margin-top: 4px; overflow: hidden; border-radius: 6px; background: var(--brand-soft); }
 .import-progress i { display: block; height: 100%; border-radius: 6px; background: var(--brand); transition: width .2s; }
@@ -644,14 +643,15 @@ input { accent-color: var(--brand); }input:focus-visible { outline: 3px solid va
 @keyframes import-slide { from { transform: translateX(-20%); } to { transform: translateX(210%); } }
 .import-cancel { margin-top: 12px; padding: 0; border: 0; color: var(--muted); background: none; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .import-cancel:hover { color: var(--brand-strong); }
-/* 工具栏提示：浮在工具栏下方的提示条，不占行、不推动正文。 */
-.taskbar-notices { position: absolute; top: calc(100% + 10px); left: 50%; z-index: 25; display: flex; flex-direction: column; align-items: center; gap: 8px; width: max-content; max-width: min(720px, calc(100% - 32px)); transform: translateX(-50%); pointer-events: none; }
+/* 工具栏提示保留紧凑的正常布局行；正文随提示高度排布，不被长文案和窄屏换行遮挡。 */
+.taskbar-notices { grid-column: 1 / -1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .taskbar-notices:empty { display: none; }
-.document-taskbar .taskbar-notices > * { position: static; flex: none; margin: 0; padding: 8px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 10px 28px #10182826; font-size: 12px; line-height: 1.5; white-space: normal; transform: none; pointer-events: auto; animation: taskbar-notice-in .2s ease-out; }
+.document-taskbar .taskbar-notices > * { flex: none; margin: 0; padding: 4px 0; min-width: 0; font-size: 12px; line-height: 1.5; white-space: normal; overflow-wrap: anywhere; }
+.document-taskbar .taskbar-notices > .taskbar-toast { color: var(--muted); }
+.document-taskbar .taskbar-notices > .notice { padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; }
 .document-taskbar .taskbar-notices > .notice.warning { border-color: #f1dfb4; background: #fffaf0; }
 .document-taskbar .taskbar-notices > .notice.error { border-color: #f3c8d2; background: #fff5f7; }
 .dark .document-taskbar .taskbar-notices > .notice.warning, .dark .document-taskbar .taskbar-notices > .notice.error { background: var(--surface); }
-@keyframes taskbar-notice-in { from { opacity: 0; transform: translateY(-6px); } }
 /* 工具栏按完整功能组排布；常见桌面 PDF 使用两行，较窄桌面用设置入口收起翻译字段，保留阅读与任务操作。 */
 .document-taskbar { display: grid; grid-template-columns: minmax(100px, 170px) minmax(0, 1fr) auto; gap: 8px 10px; overflow: visible; }
 .document-taskbar .workspace-heading { grid-column: 1; grid-row: 1; width: 100%; max-width: none; min-width: 0; flex-wrap: nowrap; gap: 8px; }
@@ -750,6 +750,12 @@ input { accent-color: var(--brand); }input:focus-visible { outline: 3px solid va
 }
 @media (max-width: 760px) {
   .is-workspace .document-sidebar { width: auto; max-height: min(28dvh, 200px); }
+  /* 窄屏工具栏已有同一翻译设置入口，侧栏只保留文件与目录，避免重复入口挤压列表。 */
+  .is-workspace .document-sidebar .document-settings-button { display: none; }
+}
+@media (max-width: 760px) and (min-height: 521px) {
+  /* 自动高度的窄屏侧栏按内容分配列表空间，达到上限后内部滚动，不将文件与目录压为零高度。 */
+  .is-workspace .document-sidebar .document-batch, .is-workspace .document-sidebar .sidebar-outline { flex-basis: auto; }
 }
 @media (max-width: 420px) {
   .document-taskbar { padding-inline: 8px; }

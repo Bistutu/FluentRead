@@ -1,14 +1,14 @@
 <!--
  * @file src/features/vocabulary/ui/MaterialWorkspace.vue
  * 文件职责：以阅读材料和收藏原句为主要内容，提供主题整理、回到出处、连续学习和本地笔记。
- * 主要内容：保留轻量材料列表，详情按来源聚合原句、实时收藏和问答；窄屏引用正文预留覆盖式滚动条空间，保持滚动时行尾可读；加载、重试、编辑、归档恢复均保护异步代次和卸载边界，保存成功只清理所属材料中与提交快照相同的草稿。
+ * 主要内容：保留轻量材料列表，空库隐藏无效搜索与主题筛选但保留管理和恢复入口，详情按来源聚合原句、实时收藏和问答；窄屏引用正文预留覆盖式滚动条空间，保持滚动时行尾可读；加载、重试、编辑、归档恢复均保护异步代次和卸载边界，保存成功只清理所属材料中与提交快照相同的草稿。
  * 模块边界：只通过本地材料与既有学习客户端读写，不访问数据库或供应商；来源恢复由公共适配器处理，个人内容不进入配置同步。
  -->
 <template>
   <section class="fr-materials" aria-label="阅读材料" :aria-busy="loading">
     <div class="fr-material-toolbar">
-      <label class="fr-material-search"><UiIcon name="search" :size="16" /><input v-model="query" type="search" aria-label="搜索阅读材料" placeholder="搜索材料、原句或笔记" /></label>
-      <select v-model="topic" aria-label="按主题筛选"><option value="">全部主题</option><option v-for="item in topics" :key="item" :value="item">{{ item }}</option></select>
+      <label v-if="materials.length" class="fr-material-search"><UiIcon name="search" :size="16" /><input v-model="query" type="search" aria-label="搜索阅读材料" placeholder="搜索材料、原句或笔记" /></label>
+      <select v-if="materials.length && (topics.length || topic)" v-model="topic" aria-label="按主题筛选"><option value="">全部主题</option><option v-for="item in topics" :key="item" :value="item">{{ item }}</option></select>
       <details class="fr-material-menu" @keydown.esc.stop.prevent="closeMenu">
         <summary aria-label="材料管理"><UiIcon name="sliders" :size="16" /></summary>
         <div @click="closeMenu"><button type="button" :disabled="loading || busy" @click="reload">刷新材料</button><button type="button" :disabled="busy" @click="toggleArchive">{{ archived ? '返回阅读材料' : '查看已移除材料' }}</button><button type="button" :disabled="busy" @click="exportMaterials">导出材料备份</button><button type="button" :disabled="busy" @click="importInput?.click()">恢复材料备份</button><button type="button" :disabled="busy" @click="confirmClear = true">清空全部材料</button></div>
@@ -527,7 +527,8 @@ onBeforeUnmount(() => { active = false; generation++; detailGeneration++; browse
   padding:7px
 }
 .fr-material-menu {
-  position:relative
+  position:relative;
+  margin-left:auto
 }
 .fr-material-menu>summary {
   display:flex;
@@ -570,7 +571,7 @@ onBeforeUnmount(() => { active = false; generation++; detailGeneration++; browse
   margin-left:6px
 }
 .fr-material-feedback.error {
-  color:var(--danger,#c34b47)
+  color:var(--fr-danger)
 }
 .fr-material-empty {
   max-width:540px;

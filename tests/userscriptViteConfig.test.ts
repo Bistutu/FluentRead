@@ -402,8 +402,10 @@ describe('userscript browser shim injection', () => {
         'ru-RU': 'ru-RU.83347fe7c1e5f5da.json',
         'es-ES': 'es-ES.ccf366fbe218633c.json',
     };
-    const publishedMessages: Record<string, Record<string, string>> = Object.fromEntries(Object.entries(pinnedLanguageFiles)
-        .map(([language, file]) => [language, JSON.parse(readFileSync(resolve(process.cwd(), 'userscript/languages', file), 'utf8')).messages]));
+    const retiredLegacySources = ['鼠标悬停翻译设置', '将鼠标停在段落上，按快捷键查看译文。', '服务优先顺序'];
+    const publishedBundles: Record<string, {messages: Record<string, string>; legacyText: Record<string, string>}> = Object.fromEntries(Object.entries(pinnedLanguageFiles)
+        .map(([language, file]) => [language, JSON.parse(readFileSync(resolve(process.cwd(), 'userscript/languages', file), 'utf8'))]));
+    const publishedMessages = Object.fromEntries(Object.entries(publishedBundles).map(([language, bundle]) => [language, bundle.messages]));
     it('preserves pinned remote dictionaries for inlined panes and keeps embedded recovery copy', () => {
         const build = (userscriptConfig as {build: {cssCodeSplit: boolean; rollupOptions: {output: {inlineDynamicImports: boolean}}}}).build;
         expect(build.cssCodeSplit).toBe(false);
@@ -420,7 +422,11 @@ describe('userscript browser shim injection', () => {
             for (const phase of ['early', 'late'] as const) {
                 expect(bundle.legacyPatterns[phase]).toEqual(original.legacyPatterns[phase].filter(([source]) => !materialPatterns.includes(source)));
             }
-            for (const [source, value] of Object.entries(bundle.legacyText)) expect(value).toBe(original.legacyText[source]);
+            for (const source of retiredLegacySources) expect(original.legacyText).not.toHaveProperty(source);
+            expect(Object.keys(bundle.legacyText).filter(source => !(source in original.legacyText)).sort())
+                .toEqual(language === 'en-US' ? [] : [...retiredLegacySources].sort());
+            for (const [source, value] of Object.entries(bundle.legacyText)) expect(value).toBe(
+                retiredLegacySources.includes(source) ? publishedBundles[language]!.legacyText[source] : original.legacyText[source]);
             for (const source of materialSources) expect(original.legacyText[source]).toBeTruthy();
             if (language !== 'en-US') {
                 // 固定资源是发布契约；必须保持整包字节，不能只证明本地生成文件自洽。
@@ -456,9 +462,12 @@ describe('userscript browser shim injection', () => {
         const nonDocument = Object.fromEntries(Object.entries(projected.messages).filter(([key]) => !key.startsWith('document.')));
         for (const [key, value] of Object.entries(nonDocument)) expect(value).toBe(publishedOverrideKeys.includes(key)
             ? publishedMessages[language]![key] : original.messages[key]);
-        // 原文案继续使用root已发布投影，材料扩展界面文本不重新进入脚本固定资源。
+        // 删除的界面旧文案只保留在已发布远程资源，材料扩展界面文本不重新进入脚本固定资源。
         const materialSources = new Set(Object.keys(learningMaterialLegacyText[language as keyof typeof learningMaterialLegacyText]));
-        expect(projected.legacyText).toEqual(Object.fromEntries(Object.entries(original.legacyText).filter(([source]) => !materialSources.has(source) && source !== mimoRetirementSource && source !== '移动端 / X 自动贴底')));
+        expect(projected.legacyText).toEqual({
+            ...Object.fromEntries(Object.entries(original.legacyText).filter(([source]) => !materialSources.has(source) && source !== mimoRetirementSource && source !== '移动端 / X 自动贴底')),
+            ...Object.fromEntries(retiredLegacySources.map(source => [source, publishedBundles[language]!.legacyText[source]])),
+        });
         const materialPatterns = learningMaterialPatterns.map(({pattern}) => pattern);
         for (const phase of ['early', 'late'] as const) expect(projected.legacyPatterns[phase]).toEqual(original.legacyPatterns[phase].filter(([source]) => !materialPatterns.includes(source)));
         expect(JSON.stringify(original)).toBe(originalBefore);

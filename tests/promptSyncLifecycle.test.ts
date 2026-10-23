@@ -1,7 +1,7 @@
 /**
  * @file tests/promptSyncLifecycle.test.ts
  * 文件职责：通过实际 ServiceConfiguration 模板控件与确认端口验证服务设置的操作归属。
- * 主要内容：覆盖原生合批开关的服务范围、默认状态、独立修改和失活事件；验证提示词同步的来源编辑或删除、配置和服务切换、页签和活跃生命周期、目标列表重算、重复确认及旧按钮。
+ * 主要内容：挂载真实折叠容器及其始终保留的默认插槽，覆盖原生合批开关的服务范围、默认状态、独立修改和失活事件；验证提示词同步的来源编辑或删除、配置和服务切换、页签和活跃生命周期、目标列表重算、重复确认及旧按钮。
  * 模块边界：编译真实客户端 SFC setup 与缓存模板并实际挂载，Element Plus 和浏览器为受控端口；不访问 setup 私有函数、不证明真实浏览器或存储。
  */
 import {createRequire} from 'node:module'
@@ -63,7 +63,10 @@ beforeEach(async () => {
   ;(globalThis as any)[fixtureKey] = fixture
   vi.stubGlobal('window', win)
   const mocks: Plugin = {name: 'prompt-sync-client-sfc-ports', enforce: 'pre', resolveId(id) {
-    if (clientModules.has(id)) return id
+    // Vite 会把父组件的本机绝对路径导入改写为 /src URL；两种入口必须指向同一个已编译模块。
+    const clientId = id.startsWith('/src/') ? resolve(process.cwd(), id.slice(1)) : id
+    if (clientModules.has(clientId)) return clientId
+    if (id.endsWith('SettingsDisclosure.vue')) return `${resolve('src/features/settings/ui/components/SettingsDisclosure.vue')}.lifecycle-client.ts`
     if (id.endsWith('.vue') && !id.endsWith('ServiceConfiguration.vue')) return '\0prompt-sync-child'
     if (id === 'webextension-polyfill') return '\0prompt-sync-browser'
     if (id === 'element-plus') return '\0prompt-sync-element'
@@ -101,6 +104,14 @@ afterEach(async () => {
   expect(send).not.toHaveBeenCalled();expect(save).not.toHaveBeenCalled();expect(queue).not.toHaveBeenCalled()
 })
 async function mount(raw = false) {
+  // 折叠容器本身必须执行真实客户端模板，不能把默认插槽一起替换成空子组件。
+  const disclosureFile = resolve('src/features/settings/ui/components/SettingsDisclosure.vue')
+  const disclosure = compileVueFixture(disclosureFile, {id: 'prompt-sync-disclosure', cacheHandlers: true, includeScript: false})
+  const disclosureId = `${disclosureFile}.lifecycle-client.ts`
+  clientModules.set(disclosureId, disclosure.scriptSource)
+  const disclosureComponent = (await server.ssrLoadModule(disclosureId)).default
+  expect(disclosure.templateErrors).toEqual([])
+  disclosureComponent.render = new Function('Vue', disclosure.renderCode)(runtime)
   const filename = resolve('src/features/settings/ui/services/ServiceConfiguration.vue')
   const compiled = compileVueFixture(filename, {id: 'prompt-sync-public', cacheHandlers: true, includeScript: false})
   const clientId = `${filename}.lifecycle-client.ts`
@@ -158,6 +169,9 @@ describe('原生合批设置的实际模板与服务归属', () => {
   it.each([services.google, services.microsoft, services.deepL, services.azureTranslator, services.googleCloudTranslation])('%s 默认开启，实际开关只修改当前服务偏好', async service => {
     await mount();await select(service)
     const defaultService = props.config.service, original = {...props.config.nativeBatchTranslationEnabled}
+    const disclosure = document.querySelector('details[data-service-request-disclosure]')
+    expect(disclosure).not.toBeNull();expect(disclosure!.hasAttribute('open')).toBe(false)
+    expect(disclosure!.querySelector('[data-native-batch-toggle]')).toBe(toggle().element)
     expect(document.querySelector('[data-native-batch-service]')?.getAttribute('data-native-batch-service')).toBe(service)
     expect(toggle().element.getAttribute('aria-label')).toBe('settings.services.nativeBatch.label')
     expect(toggle().element.getAttribute('aria-checked')).toBe('true')

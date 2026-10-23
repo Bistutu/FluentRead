@@ -1,7 +1,7 @@
 <!--
 @file src/features/settings/ui/components/SettingsItem.vue
 文件职责：统一单条设置的标签、辅助说明和操作控件布局，使长配置页面保持清晰的阅读节奏与对齐关系。
-主要内容：支持常规双列和 stacked 单列模式、禁用视觉状态、可整体替换的文案区、可单独替换的说明行与控制区插槽、长文案与多控件自然换行，以及窄屏下从横向到纵向的响应式排列；补充说明可通过 help 收进标签旁的提示图标，不占用常驻版面。
+主要内容：支持常规双列和 stacked 单列模式、禁用视觉状态、可整体替换的文案区、可单独替换的说明行与控制区插槽；行间距消费共用卡片 token，长文案与多控件自然换行，窄屏输入控件转为纵向，独立开关仍与标签同行；补充说明可通过 help 收进标签旁的提示图标，不占用常驻版面。
 模块边界：本组件只处理展示和插槽排版，不拥有字段值、不触发持久化；只有独立开关行将文案区点击转发给原控件，其禁用与键盘行为仍由原控件处理。
 -->
 <template>
@@ -49,9 +49,9 @@ const props = withDefaults(defineProps<{
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(200px, 320px);
   align-items: center;
-  gap: 24px;
-  min-height: 66px;
-  padding: 16px 20px;
+  gap: var(--fr-settings-row-gap, 24px);
+  min-height: var(--fr-settings-row-min-height, 66px);
+  padding: var(--fr-settings-row-padding-block, 14px) var(--fr-card-padding-inline, 20px);
   transition: background 150ms ease;
 }
 
@@ -125,8 +125,8 @@ const props = withDefaults(defineProps<{
   .settings-item {
     grid-template-columns: minmax(0, 1fr) minmax(170px, 44%);
     gap: 14px;
-    min-height: 62px;
-    padding: 11px 12px;
+    min-height: var(--fr-settings-row-min-height, 62px);
+    padding: var(--fr-settings-row-padding-block, 12px) var(--fr-card-padding-inline, 16px);
   }
 }
 
@@ -142,5 +142,16 @@ const props = withDefaults(defineProps<{
   .settings-item-control :deep(.el-input),
   .settings-item-control :deep(.el-input-number),
   .settings-item-control :deep(.hotkey-config) { max-width: none; }
+
+  .settings-item:not(.stacked):has(> .settings-item-control > .el-switch) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+  }
+  .settings-item:not(.stacked):has(> .settings-item-control > .el-switch) .settings-item-control { justify-content: flex-end; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-item { transition: none; }
 }
 </style>

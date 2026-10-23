@@ -733,6 +733,23 @@ describe('shared UI actual client SFC lifecycle', () => {
     const simpleHelp = await mount(FieldHelp, {content: 'Plain help'});expect(simpleHelp.root.querySelector('button')!.getAttribute('aria-label')).toBe('Plain help');
     const titleOnly = await mount(SettingsGroup, {title: 'Title'});expect(titleOnly.root.querySelector('p')).toBeNull();const descriptionOnly = await mount(SettingsGroup, {description: 'Description'});expect(descriptionOnly.root.querySelector('h2')).toBeNull();
   });
+  it('keeps heading actions and form content mounted when the settings group has no title or description', async () => {
+    const action = vi.fn();
+    const mounted = await mount(SettingsGroup, {title: 'Group', description: 'Description'}, {slots: {
+      'heading-extra': () => h('button', {type: 'button', onClick: action}, 'Manage'),
+      default: () => h('input', {'aria-label': 'Draft'}),
+    }});
+    const heading = mounted.root.querySelector('header')!, button = heading.querySelector('button')!, input = mounted.root.querySelector('input')!;
+    input.value = 'unsaved draft';
+    expect(heading.querySelector('.settings-card-heading-copy')!.textContent).toBe('GroupDescription');
+    mounted.props.title = ''; mounted.props.description = ''; await settle();
+    expect(mounted.root.querySelector('header')).toBe(heading); expect(heading.querySelector('.settings-card-heading-copy')).toBeNull();
+    expect(heading.querySelector('button')).toBe(button); event(button, 'click'); expect(action).toHaveBeenCalledOnce();
+    expect(mounted.root.querySelector('input')).toBe(input); expect(input.value).toBe('unsaved draft');
+    mounted.props.title = 'Restored'; await settle();
+    expect(heading.querySelector('h2')!.textContent).toBe('Restored'); expect(heading.querySelector('button')).toBe(button);
+    expect(mounted.root.querySelector('input')).toBe(input); expect(input.value).toBe('unsaved draft');
+  });
   it('projects skin previews and updates their accessible labels and tokens across every registry entry', async () => {
     const mounted = await mount(InterfaceSkinPreview, {skin: skin(), skinLabel: 'Default', previewLabel: 'Preview'});
     for (const chosen of interfaceSkinOptions) {mounted.props.skin = chosen;mounted.props.previewLabel = chosen.label;await settle();const section = mounted.root.querySelector('section')!;expect(section.getAttribute('data-preview-skin')).toBe(chosen.value);expect(section.getAttribute('aria-label')).toBe(chosen.label);expect(section.style.getPropertyValue('--interface-popup-width')).toBe(`${chosen.popupWidth}px`);expect(section.querySelector('.preview-popup')!.getAttribute('data-preview-skin')).toBe(chosen.value);expect(mounted.root.querySelectorAll('button,input')).toHaveLength(0);}
