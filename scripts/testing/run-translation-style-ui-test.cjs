@@ -15,7 +15,131 @@ const assertScaled = (actual, base, scale, label) => assert(Math.abs(Number.pars
 const SOURCE = 'Reading should feel calm and effortless. Colors and lines should follow the page you are reading.';
 const TRANSLATION = '阅读应该轻松、自然。颜色和线条应当贴合你正在阅读的网页。';
 const DEFAULT_APPEARANCE = {textColor: '', backgroundColor: '', lineColor: '', fillColor: '', fontScale: 100, fontWeight: 'default', fontFamily: 'default', opacity: 100, customCss: ''};
-const EXPECTED_CATEGORY_COUNTS = {文字: 12, 线条: 14, 标记: 9, 卡片: 5, 趣味: 9};
+const EXPECTED_CATEGORY_COUNTS = {文字: 18, 线条: 14, 标记: 9, 卡片: 5, 趣味: 9};
+const TEXT_COLOR_PRESETS = [
+  {value: 49, label: '森林绿', hex: '#15803d'},
+  {value: 50, label: '澄澈蓝', hex: '#1d4ed8'},
+  {value: 51, label: '优雅紫', hex: '#6d28d9'},
+  {value: 52, label: '暖橙', hex: '#b45309'},
+  {value: 53, label: '青碧', hex: '#0f766e'},
+  {value: 54, label: 'FluentRead 粉', hex: '#ef4776'},
+];
+
+async function checkTextColors({options, page, group, preview, readConfig, patchConfig, untilConfig, shot, report, fixture, context, activate}) {
+  const card = value => options.locator(`.translation-style-card[data-style-value="${value}"]`);
+  const settle = () => options.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  const readColor = locator => locator.evaluate(element => {
+    const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1;
+    const drawing = canvas.getContext('2d', {willReadFrequently: true});
+    const rgb = color => {drawing.clearRect(0, 0, 1, 1); drawing.fillStyle = color; drawing.fillRect(0, 0, 1, 1); return [...drawing.getImageData(0, 0, 1, 1).data].slice(0, 3);};
+    return {color: getComputedStyle(element).color, rgb: rgb(getComputedStyle(element).color), parentRgb: rgb(getComputedStyle(element.parentElement).color), className: element.className};
+  });
+  const assertColor = async (locator, preset, label) => {
+    const actual = await readColor(locator);
+    const base = preset.hex.slice(1).match(/../gu).map(value => Number.parseInt(value, 16));
+    const expected = preset.value === 54 ? base : base.map((value, index) => Math.round(value * 0.76 + actual.parentRgb[index] * 0.24));
+    assert(actual.rgb.every((value, index) => Math.abs(value - expected[index]) <= 1), `${label}: ${JSON.stringify(actual)} vs ${expected}`);
+    return actual;
+  };
+
+  // 旧配置保留稳定编号及已有微调；新增卡片不迁移或改写用户的选择。
+  assert.equal(await card(6).getAttribute('aria-checked'), 'true');
+  assert.match(await preview.getAttribute('class'), /fluent-display-wavy/u);
+  assert.equal((await readColor(preview)).color, 'rgb(71, 85, 105)');
+  await options.reload({waitUntil: 'domcontentloaded'});
+  await group.waitFor({state: 'visible'});
+  assert.equal(await card(6).getAttribute('aria-checked'), 'true');
+  assert(subset((await readConfig()).translationAppearance, {textColor: '#475569', fontScale: 110}));
+  await shot(group, 'colors-01-existing-style-preserved');
+  await patchConfig({style: 0, translationAppearance: DEFAULT_APPEARANCE});
+  await options.locator('.translation-style-categories').getByRole('radio', {name: '文字', exact: true}).click();
+  assert.equal(await options.locator('.translation-style-card').count(), 18);
+  assert.deepEqual(await options.locator('.translation-style-card').evaluateAll(elements => elements.slice(0, 7).map(element => Number(element.dataset.styleValue))), [0, 49, 50, 51, 52, 53, 54]);
+  report.metrics.textColors = {};
+  for (const theme of ['light', 'dark']) {
+    await group.locator('.translation-style-preview-theme').getByRole('radio', {name: theme === 'light' ? '浅色网页' : '深色网页', exact: true}).click();
+    await wait(220); await settle();
+    for (const preset of TEXT_COLOR_PRESETS) {
+      const target = card(preset.value);
+      assert.equal(await target.getAttribute('aria-label'), preset.label);
+      await target.click();
+      await untilConfig(config => config.style === preset.value && !config.translationAppearance.textColor, `text preset ${preset.value}`);
+      await settle();
+      assert.equal(await target.getAttribute('aria-checked'), 'true');
+      const sample = await assertColor(target.locator('.fluent-read-bilingual-content'), preset, `${theme} card ${preset.value}`);
+      const live = await assertColor(preview, preset, `${theme} preview ${preset.value}`);
+      report.metrics.textColors[`${theme}-${preset.value}`] = {sample, preview: live};
+    }
+    await shot(group, `colors-02-${theme}-all-presets-brand-selected`);
+  }
+  report.checks.push('existing style 6 and its appearance survive reopening; six appended IDs render their colors in light/dark cards and preview');
+
+  // 新预设只保存稳定 ID；品牌色板可给任何旧样式指定相同的精确文字色。
+  await options.reload({waitUntil: 'domcontentloaded'}); await group.waitFor({state: 'visible'});
+  assert.equal(await card(54).getAttribute('aria-checked'), 'true');
+  await assertColor(preview, TEXT_COLOR_PRESETS[5], 'reopened brand preset');
+  assert.equal((await readConfig()).translationAppearance.textColor, '');
+  await card(49).click(); await untilConfig(config => config.style === 49);
+  await options.locator('.translation-appearance-disclosure').click();
+  const textField = options.locator('[data-color-field="translation-text-color"]');
+  const brand = textField.locator('button[data-color="#ef4776"]');
+  assert.match(await brand.getAttribute('aria-label'), /FluentRead/u);
+  await brand.focus(); await options.keyboard.press('Space');
+  await untilConfig(config => config.translationAppearance.textColor === '#ef4776', 'keyboard brand swatch');
+  await settle();
+  assert.equal(await brand.getAttribute('aria-checked'), 'true');
+  assert.equal((await readColor(preview)).color, 'rgb(239, 71, 118)');
+  await shot(group, 'colors-03-brand-swatch-overrides-green');
+  await options.reload({waitUntil: 'domcontentloaded'}); await group.waitFor({state: 'visible'});
+  assert.equal(await card(49).getAttribute('aria-checked'), 'true');
+  await options.locator('.translation-appearance-disclosure').click();
+  assert.equal(await brand.getAttribute('aria-checked'), 'true');
+  assert.equal((await readColor(preview)).color, 'rgb(239, 71, 118)');
+  await textField.getByRole('radio', {name: '默认', exact: true}).click();
+  await untilConfig(config => !config.translationAppearance.textColor, 'restore preset text color');
+  await settle(); await assertColor(preview, TEXT_COLOR_PRESETS[0], 'default restores green');
+  await shot(group, 'colors-04-green-restored-palette');
+  report.checks.push('brand preset and keyboard-selected brand swatch persist after reopening; Default restores the green preset color');
+
+  await options.locator('.translation-appearance-disclosure').click();
+  const layouts = {};
+  for (const width of [1024, 820, 390]) {
+    await options.setViewportSize({width, height: 960}); await wait(220);
+    layouts[width] = await options.evaluate(() => ({innerWidth, scrollWidth: document.documentElement.scrollWidth,
+      groupWidth: document.querySelector('.translation-style-group').getBoundingClientRect().width,
+      gridScrollWidth: document.querySelector('.translation-style-grid').scrollWidth,
+      gridWidth: document.querySelector('.translation-style-grid').clientWidth}));
+    assert(layouts[width].scrollWidth <= width + 1, `${width}px document overflow`);
+    assert(layouts[width].gridScrollWidth <= layouts[width].gridWidth + 1, `${width}px preset overflow`);
+  }
+  await shot(group, 'colors-05-mobile-green-presets');
+  await options.locator('.translation-appearance-disclosure').click();
+  await brand.click(); await untilConfig(config => config.translationAppearance.textColor === '#ef4776');
+  const palette = options.locator('#translation-appearance-panel');
+  assert(await palette.evaluate(element => element.scrollWidth <= element.clientWidth + 1), '390px palette overflow');
+  await shot(palette, 'colors-06-mobile-brand-palette');
+  report.metrics.layouts = layouts;
+  report.checks.push('1024/820/390 widths have no page or preset overflow; mobile palette remains inside its panel');
+
+  // 真实内容脚本配合本地确定性服务，验证新颜色不只存在于设置预览。
+  await page.setViewportSize({width: 1440, height: 960});
+  const pageColors = {};
+  for (const preset of [TEXT_COLOR_PRESETS[0], TEXT_COLOR_PRESETS[5]]) {
+    await patchConfig({style: preset.value, translationAppearance: DEFAULT_APPEARANCE, bilingualSentenceHighlightEnabled: false});
+    await page.reload({waitUntil: 'domcontentloaded'});
+    await page.locator('#fluent-read-page-styles').waitFor({state: 'attached'});
+    await activate(context, page, 30000);
+    await page.locator('#primary').hover(); await page.keyboard.down('Control'); await page.keyboard.up('Control');
+    const translated = page.locator('#primary > .fluent-read-bilingual-content');
+    await translated.waitFor({state: 'attached'});
+    await page.waitForFunction(() => document.querySelector('#primary > .fluent-read-bilingual-content')?.textContent.includes('阅读应该轻松'));
+    pageColors[preset.value] = await assertColor(translated, preset, `web page ${preset.value}`);
+    await shot(page, `colors-07-page-${preset.value === 49 ? 'green' : 'brand'}`);
+  }
+  report.metrics.pageColors = pageColors;
+  assert(fixture.requests.length >= 2, 'fixture should handle both translated pages');
+  report.checks.push('real content script renders green and exact brand pink on locally translated paragraphs');
+}
 
 async function startFixture() {
   const requests = [];
@@ -48,24 +172,26 @@ async function startFixture() {
 }
 
 async function main() {
+  const textColorsOnly = process.argv.includes('--text-colors-only');
   const extensionDir = path.resolve(argument('extension-dir', '.output/chrome-mv3'));
   const artifactsDir = path.resolve(argument('artifacts-dir', '/private/tmp/fluentread-translation-style'));
   const packages = argument('playwright-root'); const helperPath = argument('focus-safe-helper');
   assert(packages && helperPath, '需要 --playwright-root 与 --focus-safe-helper'); assert(fs.existsSync(path.join(extensionDir, 'manifest.json')));
   const {chromium} = require(require.resolve('playwright', {paths: [packages]}));
-  const {launchFocusSafePersistentContext, newPageWithoutForeground, activateExtensionTabWithoutForeground} = require(helperPath);
+  const {launchFocusSafePersistentContext, newPageWithoutForeground, activateExtensionTabWithoutForeground, queryMacFrontmostApplication} = require(helperPath);
   let profileDir; let launchAttempted = false;
   fs.mkdirSync(artifactsDir, {recursive: true});
   let fixture;
-  const report = {ok: false, extensionDir, profileDir, artifactsDir, checks: [], consoleErrors: [], screenshots: [], metrics: {},
+  const report = {ok: false, scope: textColorsOnly ? 'translation-text-colors' : 'translation-style', extensionDir, profileDir, artifactsDir, checks: [], consoleErrors: [], screenshots: [], metrics: {},
     evidenceBoundary: 'Local deterministic HTML/provider in an isolated Edge profile; no Firefox runtime or external provider claim.'};
   let launched;
   try {
     profileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fluentread-translation-style-edge-'));
     report.profileDir = profileDir;
     fixture = await startFixture();
+    report.foregroundBefore = await queryMacFrontmostApplication();
     launchAttempted = true;
-    launched = await launchFocusSafePersistentContext({chromium, profileDir, background: true, headless: false,
+    launched = await launchFocusSafePersistentContext({chromium, profileDir, background: true, headless: false, displayTarget: 'secondary',
       browserPath: '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge', viewport: {width: 1440, height: 960}, timeout: 30000,
       browserArgs: [`--disable-extensions-except=${extensionDir}`, `--load-extension=${extensionDir}`, '--no-first-run', '--no-default-browser-check']});
     Object.assign(report, {launchMode: launched.launchMode, focusPolicy: launched.focusPolicy, windowPlacement: launched.windowPlacement});
@@ -76,6 +202,7 @@ async function main() {
     const origin = /^chrome-extension:\/\/[^/]+/u.exec(worker.url())[0];
     const createPage = async url => {
       const result = await newPageWithoutForeground(context, 30000);
+      await result.setViewportSize({width: 1440, height: 960});
       result.on('pageerror', error => report.consoleErrors.push(`pageerror: ${error.message}`));
       result.on('console', message => { if (message.type() === 'error') report.consoleErrors.push(`console: ${message.text()}`); });
       await result.goto(url, {waitUntil: 'domcontentloaded'}); return result;
@@ -119,7 +246,9 @@ async function main() {
     };
     const service = 'custom:translation-style-fixture';
     await patchConfig({uiLanguage: 'zh-CN', uiLanguageSetupCompleted: true, on: true, theme: 'light', interfaceSkin: 'default',
-      display: 1, style: 1, translationAppearance: DEFAULT_APPEARANCE, service, from: 'en', to: 'zh-Hans', useCache: false,
+      display: 1, style: textColorsOnly ? 6 : 1,
+      translationAppearance: textColorsOnly ? {...DEFAULT_APPEARANCE, textColor: '#475569', fontScale: 110} : DEFAULT_APPEARANCE,
+      service, from: 'en', to: 'zh-Hans', useCache: false,
       autoTranslate: false, bilingualSentenceHighlightEnabled: false, translationBeforeOriginal: false,
       customOpenAIProviders: [{id: service, name: '译文样式夹具', endpoint: `${fixture.url}/v1/chat/completions`, models: ['fixture']}],
       token: {[service]: 'synthetic-local-fixture-not-a-secret'}, model: {[service]: 'fixture'},
@@ -148,6 +277,13 @@ async function main() {
     const group = options.locator('.translation-style-group');
     const preview = group.getByTestId('bilingual-highlight-preview-translation');
     await options.mouse.move(0, 0);
+    if (textColorsOnly) {
+      await checkTextColors({options, page, group, preview, readConfig, patchConfig, untilConfig, shot, report, fixture, context,
+        activate: activateExtensionTabWithoutForeground});
+      assert.deepEqual(report.consoleErrors, []);
+      report.requests = fixture.requests.length; report.ok = true;
+      return;
+    }
     await shot(group, '01-desktop-light-default');
 
     // 2. 分类数量与逐个选择：每个样式都即时反映到预览并写入配置。
@@ -171,7 +307,7 @@ async function main() {
       await shot(group, `02-category-${category}`);
     }
     report.metrics.categoryCounts = categoryCounts;
-    report.checks.push('49 preset cards across five categories update preview and persisted style');
+    report.checks.push('55 preset cards across five categories update preview and persisted style');
 
     // 3. 外观微调：色板、键盘、滑块、分段控件与自定义取色器全部写入配置，并由预览按网页规则计算。
     await options.locator('.translation-style-categories').getByRole('radio', {name: '线条', exact: true}).click();
@@ -410,6 +546,8 @@ async function main() {
       try {await launched.close(); closed = true;}
       catch (error) {report.cleanupErrors.push(`session close: ${error.message}`);}
     }
+    report.browserClosed = closed;
+    report.foregroundAfter = await queryMacFrontmostApplication();
     try {await fixture?.close();} catch (error) {report.cleanupErrors.push(`fixture close: ${error.message}`);}
     if (profileDir) {
       if (closed) {
@@ -417,10 +555,11 @@ async function main() {
         catch (error) {report.cleanupErrors.push(`profile removal: ${error.message}`); report.retainedProfile = profileDir;}
       } else report.retainedProfile = profileDir;
     }
+    report.profileRemoved = Boolean(profileDir && !fs.existsSync(profileDir));
     if (report.cleanupErrors.length) {report.ok = false; if ('status' in report) report.status = 'failed'; process.exitCode = 1;}
     try {fs.writeFileSync(path.join(artifactsDir, 'report.json'), JSON.stringify(report, null, 2));}
     catch (error) {console.error(error.stack || error); process.exitCode = 1;}
+    console.log(JSON.stringify(report, null, 2));
   }
-  console.log(JSON.stringify(report, null, 2));
 }
 main().catch(error => {console.error(error); process.exitCode = 1;});

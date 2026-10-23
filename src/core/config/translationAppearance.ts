@@ -67,10 +67,16 @@ export const TRANSLATION_STYLE_CATEGORIES: ReadonlyArray<{readonly value: Transl
 /**
  * 数组顺序即设置页卡片顺序；旧版下拉按分组内编号排序，已有预设的相对位置保持不变。
  * 24 以后的编号为新增预设，线条类改用 text-decoration，使多行译文逐行带线。
- * 29 以后的预设以网页文字颜色调配线条与底色，浅色和深色网页无需分别适配。
+ * 29 以后的装饰预设以网页文字颜色调配线条与底色；49 至 54 号为直接可选的彩色文字，品牌粉沿用界面品牌源色，与图标保持同一色系。
  */
 export const TRANSLATION_STYLE_PRESETS: readonly TranslationStylePreset[] = [
     {value: 0, className: 'fluent-display-default', label: '朴素模式', legacyGroup: 'basic', category: 'text', usesLine: false, usesFill: false},
+    {value: 49, className: 'fluent-display-text-green', label: '森林绿', legacyGroup: 'basic', category: 'text', usesLine: false, usesFill: false},
+    {value: 50, className: 'fluent-display-text-blue', label: '澄澈蓝', legacyGroup: 'basic', category: 'text', usesLine: false, usesFill: false},
+    {value: 51, className: 'fluent-display-text-purple', label: '优雅紫', legacyGroup: 'basic', category: 'text', usesLine: false, usesFill: false},
+    {value: 52, className: 'fluent-display-text-orange', label: '暖橙', legacyGroup: 'basic', category: 'text', usesLine: false, usesFill: false},
+    {value: 53, className: 'fluent-display-text-teal', label: '青碧', legacyGroup: 'basic', category: 'text', usesLine: false, usesFill: false},
+    {value: 54, className: 'fluent-display-text-brand', label: 'FluentRead 粉', legacyGroup: 'basic', category: 'text', usesLine: false, usesFill: false},
     {value: 1, className: 'fluent-display-bold', label: '加粗显示', legacyGroup: 'basic', category: 'text', usesLine: false, usesFill: false},
     {value: 2, className: 'fluent-display-italic', label: '优雅斜体', legacyGroup: 'basic', category: 'text', usesLine: false, usesFill: false},
     {value: 3, className: 'fluent-display-text-shadow', label: '立体阴影', legacyGroup: 'basic', category: 'text', usesLine: false, usesFill: false},
@@ -239,7 +245,7 @@ function swatch(id: string, value: string): TranslationColorSwatch {
     return {id, value, labelKey: `settings.translationStyle.colors.${id}`};
 }
 
-/** 前八种适合浅色网页，最后两种浅色适合深色网页。 */
+/** 常用深色与品牌粉在前，最后两种浅色适合深色网页；品牌粉与 --fr-color-brand 源色一致，呼应图标的粉色系。 */
 export const TRANSLATION_TEXT_COLOR_SWATCHES: readonly TranslationColorSwatch[] = [
     swatch('ink', '#1f2937'),
     swatch('slate', '#475569'),
@@ -249,6 +255,7 @@ export const TRANSLATION_TEXT_COLOR_SWATCHES: readonly TranslationColorSwatch[] 
     swatch('amber', '#b45309'),
     swatch('rose', '#be123c'),
     swatch('violet', '#6d28d9'),
+    swatch('brand', '#ef4776'),
     swatch('snow', '#f1f5f9'),
     swatch('gold', '#fde68a'),
 ];

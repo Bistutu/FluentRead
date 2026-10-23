@@ -1262,6 +1262,7 @@ export const koKRMessages = {
     'settings.translationStyle.colors.violet': '바이올렛',
     'settings.translationStyle.colors.snow': '설백색',
     'settings.translationStyle.colors.gold': '연한 금색',
+    'settings.translationStyle.colors.brand': 'FluentRead 분홍',
     'settings.translationStyle.colors.blue': '파랑',
     'settings.translationStyle.colors.pink': '분홍',
     'settings.translationStyle.colors.orange': '주황',

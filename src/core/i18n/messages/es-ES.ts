@@ -1262,6 +1262,7 @@ export const esESMessages = {
     'settings.translationStyle.colors.violet': 'Violeta',
     'settings.translationStyle.colors.snow': 'Blanco nieve',
     'settings.translationStyle.colors.gold': 'Dorado pálido',
+    'settings.translationStyle.colors.brand': 'Rosa FluentRead',
     'settings.translationStyle.colors.blue': 'Azul',
     'settings.translationStyle.colors.pink': 'Rosado',
     'settings.translationStyle.colors.orange': 'Naranja',

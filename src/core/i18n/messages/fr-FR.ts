@@ -1262,6 +1262,7 @@ export const frFRMessages = {
     'settings.translationStyle.colors.violet': 'Violet profond',
     'settings.translationStyle.colors.snow': 'Blanc neige',
     'settings.translationStyle.colors.gold': 'Or pâle',
+    'settings.translationStyle.colors.brand': 'Rose FluentRead',
     'settings.translationStyle.colors.blue': 'Bleu',
     'settings.translationStyle.colors.pink': 'Rose',
     'settings.translationStyle.colors.orange': 'Orangé',

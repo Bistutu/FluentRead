@@ -1489,6 +1489,7 @@ export const zhCNMessages = {
     'settings.translationStyle.colors.violet': '紫罗兰',
     'settings.translationStyle.colors.snow': '月白',
     'settings.translationStyle.colors.gold': '浅金',
+    'settings.translationStyle.colors.brand': 'FluentRead 粉',
     'settings.translationStyle.colors.blue': '蓝色',
     'settings.translationStyle.colors.pink': '粉红',
     'settings.translationStyle.colors.orange': '橙色',

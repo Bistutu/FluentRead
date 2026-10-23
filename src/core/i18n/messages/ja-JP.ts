@@ -1262,6 +1262,7 @@ export const jaJPMessages = {
     'settings.translationStyle.colors.violet': 'バイオレット',
     'settings.translationStyle.colors.snow': 'スノーホワイト',
     'settings.translationStyle.colors.gold': '淡い金色',
+    'settings.translationStyle.colors.brand': 'FluentRead ピンク',
     'settings.translationStyle.colors.blue': '青',
     'settings.translationStyle.colors.pink': 'ピンク',
     'settings.translationStyle.colors.orange': 'オレンジ',

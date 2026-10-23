@@ -29,19 +29,37 @@ import {
 describe('译文样式预设注册表', () => {
     it('保持稳定编号与唯一类名，并按五个分类组织全部预设', () => {
         const values = TRANSLATION_STYLE_PRESETS.map((preset) => preset.value);
-        expect([...values].sort((left, right) => left - right)).toEqual(Array.from({length: 49}, (_, index) => index));
-        expect(new Set(TRANSLATION_STYLE_PRESETS.map((preset) => preset.className)).size).toBe(49);
+        expect([...values].sort((left, right) => left - right)).toEqual(Array.from({length: 55}, (_, index) => index));
+        expect(new Set(TRANSLATION_STYLE_PRESETS.map((preset) => preset.className)).size).toBe(55);
         expect(TRANSLATION_STYLE_PRESETS.every((preset) => preset.className.startsWith('fluent-display-'))).toBe(true);
         const counts = Object.fromEntries(TRANSLATION_STYLE_CATEGORIES.map((category) => [
             category.value,
             TRANSLATION_STYLE_PRESETS.filter((preset) => preset.category === category.value).length,
         ]));
-        expect(counts).toEqual({text: 12, line: 14, mark: 9, card: 5, fun: 9});
+        expect(counts).toEqual({text: 18, line: 14, mark: 9, card: 5, fun: 9});
         const groups = new Set(TRANSLATION_STYLE_LEGACY_GROUPS.map((group) => group.value));
         expect(TRANSLATION_STYLE_PRESETS.every((preset) => groups.has(preset.legacyGroup))).toBe(true);
         expect(TRANSLATION_STYLE_PRESETS.filter((preset) => preset.category === 'line').every((preset) => preset.usesLine)).toBe(true);
         expect(TRANSLATION_STYLE_PRESETS.filter((preset) => preset.category === 'mark').every((preset) => preset.usesFill)).toBe(true);
         expect(TRANSLATION_STYLE_PRESETS.filter((preset) => preset.category === 'text').some((preset) => preset.usesLine || preset.usesFill)).toBe(false);
+    });
+
+    it('追加的彩色文字直接出现在文字分类前排，旧样式与默认外观保持原意', () => {
+        const text = TRANSLATION_STYLE_PRESETS.filter((preset) => preset.category === 'text');
+        expect(text.slice(0, 7).map(({value, className, label}) => ({value, className, label}))).toEqual([
+            {value: 0, className: 'fluent-display-default', label: '朴素模式'},
+            {value: 49, className: 'fluent-display-text-green', label: '森林绿'},
+            {value: 50, className: 'fluent-display-text-blue', label: '澄澈蓝'},
+            {value: 51, className: 'fluent-display-text-purple', label: '优雅紫'},
+            {value: 52, className: 'fluent-display-text-orange', label: '暖橙'},
+            {value: 53, className: 'fluent-display-text-teal', label: '青碧'},
+            {value: 54, className: 'fluent-display-text-brand', label: 'FluentRead 粉'},
+        ]);
+        expect(normalizeConfig({}).style).toBe(1);
+        expect(DEFAULT_TRANSLATION_APPEARANCE.textColor).toBe('');
+        expect(TRANSLATION_TEXT_COLOR_SWATCHES.find(({id}) => id === 'brand')).toMatchObject({
+            value: '#ef4776', labelKey: 'settings.translationStyle.colors.brand',
+        });
     });
 
     it('按编号查找预设，未知值和字符串编号不命中', () => {
@@ -60,7 +78,7 @@ describe('译文样式预设注册表', () => {
             ['background', '背景色系列'], ['special', '特殊效果'], ['pro', '专业样式'], ['transparent', '透明效果'], ['fun', '趣味效果'],
         ]);
         expect(legacy.filter((item) => !item.disabled).map((item) => item.value)).toEqual([
-            0, 1, 2, 3, 29, 30, 31, 32, 4, 5, 6, 24, 25, 33, 7, 8, 9, 39, 10, 11, 12, 13, 14, 15, 37, 38,
+            0, 1, 2, 3, 29, 30, 31, 32, 49, 50, 51, 52, 53, 54, 4, 5, 6, 24, 25, 33, 7, 8, 9, 39, 10, 11, 12, 13, 14, 15, 37, 38,
             16, 17, 18, 19, 26, 27, 28, 34, 35, 36, 20, 21, 22, 23, 40, 41, 42, 43, 44, 45, 46, 47, 48,
         ]);
         expect(legacy.find((item) => item.value === 1)).toEqual({value: 1, label: '加粗显示', class: 'fluent-display-bold', group: 'basic'});
@@ -162,6 +180,21 @@ describe('用户保存的译文样式', () => {
             {id: 'night', name: '夜读', style: 22, appearance: {...DEFAULT_TRANSLATION_APPEARANCE, textColor: '#aabbcc', backgroundColor: '#000080', fontScale: 111}},
             {id: 'paper', name: '纸张样式', style: 9, appearance: {...DEFAULT_TRANSLATION_APPEARANCE, opacity: 75}},
         ]);
+    });
+
+    it('新增文字预设沿用配置和命名快照的保存、导入与颜色覆盖', () => {
+        const profiles = [49, 50, 51, 52, 53, 54].map(style => ({
+            id: `color-${style}`, name: `Color ${style}`, style, appearance: {textColor: '#ef4776'},
+        }));
+        const config = normalizeConfig(JSON.parse(JSON.stringify({
+            style: 49, translationAppearance: {textColor: '#ef4776'},
+            translationStyleProfiles: profiles, activeTranslationStyleProfileId: 'color-54',
+        })));
+        expect(config.style).toBe(49);
+        expect(config.translationAppearance.textColor).toBe('#ef4776');
+        expect(config.translationStyleProfiles.map(({style}) => style)).toEqual([49, 50, 51, 52, 53, 54]);
+        expect(config.translationStyleProfiles.every(({appearance}) => appearance.textColor === '#ef4776')).toBe(true);
+        expect(config.activeTranslationStyleProfileId).toBe('color-54');
     });
 
     it('对导入的快照数量设限，并只保留指向现有快照的选择', () => {

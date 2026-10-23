@@ -1494,6 +1494,7 @@ export const enUSMessages = {
     'settings.translationStyle.colors.violet': 'Violet',
     'settings.translationStyle.colors.snow': 'Snow white',
     'settings.translationStyle.colors.gold': 'Pale gold',
+    'settings.translationStyle.colors.brand': 'FluentRead pink',
     'settings.translationStyle.colors.blue': 'Blue',
     'settings.translationStyle.colors.pink': 'Pink',
     'settings.translationStyle.colors.orange': 'Orange',

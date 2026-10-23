@@ -1262,6 +1262,7 @@ export const ruRUMessages = {
     'settings.translationStyle.colors.violet': 'Фиолетовый',
     'settings.translationStyle.colors.snow': 'Снежно-белый',
     'settings.translationStyle.colors.gold': 'Бледно-золотой',
+    'settings.translationStyle.colors.brand': 'Розовый FluentRead',
     'settings.translationStyle.colors.blue': 'Синий',
     'settings.translationStyle.colors.pink': 'Розовый',
     'settings.translationStyle.colors.orange': 'Оранжевый',

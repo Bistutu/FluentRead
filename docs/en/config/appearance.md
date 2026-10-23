@@ -21,11 +21,13 @@ To remove the website's font from translations on the current page, open **Aa Tr
 
 ## Translation style
 
-Choose how translations look in bilingual mode under **Settings → Interface style → Translation style**. Styles are grouped into **Text**, **Lines**, **Highlights**, and **Cards**, and every card shows the real effect. The preview beside them simulates a web page; switch between **Light page** and **Dark page** to check that translations stay readable on differently colored sites.
+Choose how translations look in bilingual mode under **Settings → Interface style → Translation style**. Styles are grouped into **Text**, **Lines**, **Highlights**, **Cards**, and **Fun**, and every card shows the real effect. The preview beside them simulates a web page; switch between **Light page** and **Dark page** to check that translations stay readable on differently colored sites.
+
+The **Text** category includes **Forest green**, **Clear blue**, **Elegant purple**, **Warm orange**, **Teal**, and **FluentRead pink**. Select a card directly without opening the appearance controls. The first five colors adapt slightly to the page's text color; FluentRead pink uses the brand color `#ef4776`, matching the icon's pink palette. Existing presets and saved styles keep working.
 
 **Customize appearance** lets you fine-tune:
 
-- **Text color**: give translations their own color, or keep **Default** to follow the page.
+- **Text color**: give translations their own color, including FluentRead pink from the swatches. **Default** uses the selected preset's text color, or follows the page in the plain preset. Existing color adjustments stay in effect when switching between built-in presets; choose **Default** or **Reset** to see the preset's original color.
 - **Translation background**: set an independent background for plain translations or any preset; **Default** keeps that preset's background.
 - **Line color**: recolor underlines, wavy lines, borders, and quote bars.
 - **Highlight color**: recolor markers, study highlights, backgrounds, and cards; the strength adapts to each style.
