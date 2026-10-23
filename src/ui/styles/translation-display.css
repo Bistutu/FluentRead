@@ -3,7 +3,7 @@
  * 文件职责：定义网页双语译文容器的基础排版与全部“译文样式”预设，是内容脚本注入网页和设置页实时预览共用的唯一视觉来源。
  * 主要内容：先声明 .fluent-read-bilingual-content 基础规则，再按文字、颜色、线条、标记、卡片与趣味六类定义预设；线条与底色读取
  * --fluent-read-translation-* 自定义属性并回退到各预设原有配色，使“自定义外观”无需改写类名即可生效。29 号以后的预设
- * 装饰效果不写死浅色网页的配色：线条、底色和彩色文字用 currentColor 调配，随网页文字颜色在浅色和深色网页上自动取得合适的深浅；品牌粉保持图标源色；
+ * 装饰效果不写死浅色网页的配色：线条、底色和彩色文字用 currentColor 调配，随网页文字颜色在浅色和深色网页上自动取得合适的深浅；品牌粉保留品牌源色色相并按页面文字深浅调节；
  * 自带表面的卡片则同时声明文字颜色；打印时撤下自有译文的屏外渲染隔离，确保完整正文参与分页。
  * 模块边界：只包含 fluent 前缀约束的选择器，不决定何时添加类名，也不写入用户外观；外观变量由内容脚本的样式同步器或
  * 设置页预览提供，加载、重试、图片与提示框等其他页面状态仍在 src/app/content/page.css。
@@ -15,6 +15,8 @@
     word-break: break-word; /* 允许在单词内断行，避免超出容器边界 */
     margin: 8px 0 !important; /* 统一与原文的上下间距，覆盖宿主段落样式 */
     color: inherit;
+    /* 显式自有变量保留父级文字色依赖，避开 Chromium 对 color-mix 中直接 currentColor 的失效缓存。 */
+    --fluent-read-translation-inherited-color: currentColor;
     background: transparent;
     box-sizing: border-box;
     overflow-wrap: break-word; /* 处理长单词或 URL 的断行 */
@@ -28,36 +30,52 @@
 }
 
 /* 文字效果 */
-/* 彩色文字直接复用现有精选文字色；color 属性里的 currentColor 取父级文字色，暗页随之变亮。
+/* 彩色文字以 60% 基色与 40% 父级文字色调配，保持色相并提高常见浅深页面上的正文对比度。
    先写纯色作为旧浏览器回退，用户明确设置的文字颜色由自有容器的后置 !important 声明覆盖。 */
 .fluent-read-bilingual-content.fluent-display-text-green {
     color: #15803d;
-    color: color-mix(in srgb, #15803d 76%, currentColor);
+    color: color-mix(in srgb, #15803d 60%, var(--fluent-read-translation-inherited-color));
 }
 
 .fluent-read-bilingual-content.fluent-display-text-blue {
     color: #1d4ed8;
-    color: color-mix(in srgb, #1d4ed8 76%, currentColor);
+    color: color-mix(in srgb, #1d4ed8 60%, var(--fluent-read-translation-inherited-color));
 }
 
 .fluent-read-bilingual-content.fluent-display-text-purple {
     color: #6d28d9;
-    color: color-mix(in srgb, #6d28d9 76%, currentColor);
+    color: color-mix(in srgb, #6d28d9 60%, var(--fluent-read-translation-inherited-color));
 }
 
 .fluent-read-bilingual-content.fluent-display-text-orange {
     color: #b45309;
-    color: color-mix(in srgb, #b45309 76%, currentColor);
+    color: color-mix(in srgb, #b45309 60%, var(--fluent-read-translation-inherited-color));
 }
 
 .fluent-read-bilingual-content.fluent-display-text-teal {
     color: #0f766e;
-    color: color-mix(in srgb, #0f766e 76%, currentColor);
+    color: color-mix(in srgb, #0f766e 60%, var(--fluent-read-translation-inherited-color));
 }
 
-/* 品牌粉沿用 tokens.css 的 --fr-color-brand，与扩展图标保持同一粉色系；网页上写入确定色值以免宿主变量改色。 */
+/* 品牌粉以 tokens.css 的 --fr-color-brand 为源色；正文随父级文字深浅调整，不以准确源色替代可读性。 */
 .fluent-read-bilingual-content.fluent-display-text-brand {
-    color: #ef4776;
+    color: #ad3158;
+    color: color-mix(in srgb, #ef4776 60%, var(--fluent-read-translation-inherited-color));
+}
+
+.fluent-read-bilingual-content.fluent-display-text-berry {
+    color: #be123c;
+    color: color-mix(in srgb, #be123c 60%, var(--fluent-read-translation-inherited-color));
+}
+
+.fluent-read-bilingual-content.fluent-display-text-gold {
+    color: #a16207;
+    color: color-mix(in srgb, #a16207 60%, var(--fluent-read-translation-inherited-color));
+}
+
+.fluent-read-bilingual-content.fluent-display-text-graphite {
+    color: #475569;
+    color: color-mix(in srgb, #475569 60%, var(--fluent-read-translation-inherited-color));
 }
 
 .fluent-display-bold {

@@ -15,7 +15,7 @@ const assertScaled = (actual, base, scale, label) => assert(Math.abs(Number.pars
 const SOURCE = 'Reading should feel calm and effortless. Colors and lines should follow the page you are reading.';
 const TRANSLATION = '阅读应该轻松、自然。颜色和线条应当贴合你正在阅读的网页。';
 const DEFAULT_APPEARANCE = {textColor: '', backgroundColor: '', lineColor: '', fillColor: '', fontScale: 100, fontWeight: 'default', fontFamily: 'default', opacity: 100, customCss: ''};
-const EXPECTED_CATEGORY_COUNTS = {文字: 12, 颜色: 6, 线条: 14, 标记: 9, 卡片: 5, 趣味: 9};
+const EXPECTED_CATEGORY_COUNTS = {文字: 12, 颜色: 12, 线条: 14, 标记: 9, 卡片: 5, 趣味: 6};
 const TEXT_COLOR_PRESETS = [
   {value: 49, label: '森林绿', hex: '#15803d'},
   {value: 50, label: '澄澈蓝', hex: '#1d4ed8'},
@@ -23,6 +23,12 @@ const TEXT_COLOR_PRESETS = [
   {value: 52, label: '暖橙', hex: '#b45309'},
   {value: 53, label: '青碧', hex: '#0f766e'},
   {value: 54, label: 'FluentRead 粉', hex: '#ef4776'},
+  {value: 55, label: '莓果红', hex: '#be123c'},
+  {value: 56, label: '暖金', hex: '#a16207'},
+  {value: 57, label: '石墨灰', hex: '#475569'},
+  {value: 40, label: '渐变文字'},
+  {value: 41, label: '霓虹微光'},
+  {value: 42, label: '彩虹荧光'},
 ];
 
 async function checkTextColors({options, page, group, preview, readConfig, patchConfig, untilConfig, shot, report, fixture, context, activate}) {
@@ -31,14 +37,42 @@ async function checkTextColors({options, page, group, preview, readConfig, patch
   const readColor = locator => locator.evaluate(element => {
     const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1;
     const drawing = canvas.getContext('2d', {willReadFrequently: true});
-    const rgb = color => {drawing.clearRect(0, 0, 1, 1); drawing.fillStyle = color; drawing.fillRect(0, 0, 1, 1); return [...drawing.getImageData(0, 0, 1, 1).data].slice(0, 3);};
-    return {color: getComputedStyle(element).color, rgb: rgb(getComputedStyle(element).color), parentRgb: rgb(getComputedStyle(element.parentElement).color), className: element.className};
+    const rgba = color => {drawing.clearRect(0, 0, 1, 1); drawing.fillStyle = color; drawing.fillRect(0, 0, 1, 1); return [...drawing.getImageData(0, 0, 1, 1).data];};
+    const rgb = color => rgba(color).slice(0, 3);
+    const blend = (foreground, background) => foreground.slice(0, 3).map((value, index) => value * foreground[3] / 255 + background[index] * (1 - foreground[3] / 255));
+    const layers = []; for (let current = element; current; current = current.parentElement) layers.unshift(rgba(getComputedStyle(current).backgroundColor));
+    const background = layers.reduce((result, layer) => blend(layer, result), [255, 255, 255]);
+    const style = getComputedStyle(element);
+    const inner = element.querySelector('.fluent-read-translation-text');
+    const stops = image => [...image.matchAll(/(?:rgba?|color)\([^)]*\)/gu)].map(match => rgba(match[0]));
+    const foregroundStops = style.webkitTextFillColor === 'rgba(0, 0, 0, 0)' ? stops(style.backgroundImage) : [rgba(style.color)];
+    const markerStops = inner ? stops(getComputedStyle(inner).backgroundImage) : [];
+    const backgrounds = markerStops.length ? markerStops.map(stop => blend(stop, background)) : [background];
+    const interpolate = values => values.length < 2 ? values : values.flatMap((value, index) => index === values.length - 1 ? [value]
+      : Array.from({length: 101}, (_, step) => value.map((channel, key) => channel + (values[index + 1][key] - channel) * step / 100)));
+    const luminance = color => color.slice(0, 3).map(value => {const channel = value / 255; return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;})
+      .reduce((result, value, index) => result + value * [0.2126, 0.7152, 0.0722][index], 0);
+    const contrast = (foreground, background) => {const a = luminance(foreground), b = luminance(background); return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);};
+    const contrasts = interpolate(foregroundStops).flatMap(foreground => interpolate(backgrounds).map(background => contrast(foreground, background)));
+    return {color: style.color, rgb: rgb(style.color), parentRgb: rgb(getComputedStyle(element.parentElement).color), className: element.className,
+      backgroundRgb: background, backgroundImage: style.backgroundImage, textFillColor: style.webkitTextFillColor, textShadow: style.textShadow,
+      markerBackgroundImage: inner ? getComputedStyle(inner).backgroundImage : 'none',
+      foregroundStops, markerStops, minimumContrast: Math.min(...contrasts)};
   });
   const assertColor = async (locator, preset, label) => {
     const actual = await readColor(locator);
-    const base = preset.hex.slice(1).match(/../gu).map(value => Number.parseInt(value, 16));
-    const expected = preset.value === 54 ? base : base.map((value, index) => Math.round(value * 0.76 + actual.parentRgb[index] * 0.24));
-    assert(actual.rgb.every((value, index) => Math.abs(value - expected[index]) <= 1), `${label}: ${JSON.stringify(actual)} vs ${expected}`);
+    if (preset.hex) {
+      const base = preset.hex.slice(1).match(/../gu).map(value => Number.parseInt(value, 16));
+      const expected = base.map((value, index) => Math.round(value * 0.6 + actual.parentRgb[index] * 0.4));
+      const matches = actual.rgb.every((value, index) => Math.abs(value - expected[index]) <= 1);
+      if (!matches) {report.metrics.failedColor = {label, expected, actual}; await shot(group, `failure-${label.replace(/[^a-z0-9]+/giu, '-')}`);}
+      assert(matches, `${label}: ${JSON.stringify(actual)} vs ${expected}`);
+    } else if (preset.value === 40) {
+      assert(actual.foregroundStops.length >= 3 && actual.backgroundImage.includes('linear-gradient'), `${label} needs visible gradient text`);
+    } else if (preset.value === 41) assert.notEqual(actual.textShadow, 'none', `${label} needs a neon glow`);
+    else if (preset.value === 42) assert(actual.markerStops.length >= 5, `${label} needs rainbow marker colors`);
+    if (actual.minimumContrast < 4.5) {report.metrics.failedColor = {label, actual}; await shot(group, `failure-${label.replace(/[^a-z0-9]+/giu, '-')}`);}
+    assert(actual.minimumContrast >= 4.5, `${label} contrast ${actual.minimumContrast} below 4.5 on fixture background`);
     return actual;
   };
 
@@ -51,7 +85,9 @@ async function checkTextColors({options, page, group, preview, readConfig, patch
   assert.equal(await card(6).getAttribute('aria-checked'), 'true');
   assert(subset((await readConfig()).translationAppearance, {textColor: '#475569', fontScale: 110}));
   await shot(group, 'colors-01-existing-style-preserved');
-  await patchConfig({style: 0, translationAppearance: DEFAULT_APPEARANCE});
+  const conflictingAppearance = {...DEFAULT_APPEARANCE, textColor: '#ef4776', fontScale: 117, fontWeight: 'bold', fontFamily: 'serif',
+    customCss: 'color: #ef4776; font-size: 117%; letter-spacing: 1px; border-radius: 9px;'};
+  await patchConfig({style: 0, translationAppearance: conflictingAppearance});
   await options.locator('.translation-style-categories').getByRole('radio', {name: '文字', exact: true}).click();
   assert.equal(await options.locator('.translation-style-card').count(), 12, 'original text category keeps its twelve presets');
   assert.equal(await card(49).count(), 0, 'color presets should have their own category');
@@ -60,8 +96,27 @@ async function checkTextColors({options, page, group, preview, readConfig, patch
   const colorCategory = categories.getByRole('radio', {name: '颜色', exact: true});
   await colorCategory.click();
   assert.equal(await colorCategory.getAttribute('aria-checked'), 'true');
-  assert.deepEqual(await options.locator('.translation-style-card').evaluateAll(elements => elements.map(element => Number(element.dataset.styleValue))), [49, 50, 51, 52, 53, 54]);
-  report.metrics.categoryCounts = {文字: 12, 颜色: 6};
+  assert.deepEqual(await options.locator('.translation-style-card').evaluateAll(elements => elements.map(element => Number(element.dataset.styleValue))), TEXT_COLOR_PRESETS.map(preset => preset.value));
+  report.metrics.categoryCounts = {文字: 12, 颜色: 12};
+  const independentCards = {};
+  for (const preset of TEXT_COLOR_PRESETS) independentCards[preset.value] = await assertColor(card(preset.value).locator('.fluent-read-bilingual-content'), preset, `independent card ${preset.value}`);
+  assert.equal(new Set(TEXT_COLOR_PRESETS.filter(preset => preset.hex).map(preset => independentCards[preset.value].rgb.join(','))).size, 9, 'nine solid cards must keep their own colors under a pink override');
+  report.metrics.independentCards = independentCards;
+  await shot(group, 'colors-01b-pink-config-independent-cards');
+  await card(49).click();
+  await untilConfig(config => config.style === 49 && !config.translationAppearance.textColor && !/(?:^|;)\s*color\s*:/iu.test(config.translationAppearance.customCss), 'green clears old pink and CSS color');
+  await settle();
+  await assertColor(preview, TEXT_COLOR_PRESETS[0], 'pink override then green click');
+  const clearedAppearance = (await readConfig()).translationAppearance;
+  assert(subset(clearedAppearance, {fontScale: 117, fontWeight: 'bold', fontFamily: 'serif'}));
+  assert.match(clearedAppearance.customCss, /letter-spacing:\s*1px/u);
+  assert.match(clearedAppearance.customCss, /border-radius:\s*9px/u);
+  const preservedTypography = await preview.evaluate(element => {const style = getComputedStyle(element); return {weight: style.fontWeight, family: style.fontFamily, spacing: style.letterSpacing, radius: style.borderRadius};});
+  assert.equal(preservedTypography.weight, '700'); assert.match(preservedTypography.family, /serif/u);
+  assert.equal(preservedTypography.spacing, '1px'); assert.equal(preservedTypography.radius, '9px');
+  report.metrics.preservedTypography = preservedTypography;
+  await shot(group, 'colors-01c-green-replaces-pink-preserves-typography');
+  await patchConfig({translationAppearance: DEFAULT_APPEARANCE});
   report.metrics.textColors = {};
   for (const theme of ['light', 'dark']) {
     await group.locator('.translation-style-preview-theme').getByRole('radio', {name: theme === 'light' ? '浅色网页' : '深色网页', exact: true}).click();
@@ -69,6 +124,8 @@ async function checkTextColors({options, page, group, preview, readConfig, patch
     for (const preset of TEXT_COLOR_PRESETS) {
       const target = card(preset.value);
       assert.equal(await target.getAttribute('aria-label'), preset.label);
+      if (preset.value === 40) await patchConfig({translationAppearance: {...DEFAULT_APPEARANCE, textColor: '#ef4776', backgroundColor: '#fff8cc', customCss: 'color: #ef4776; background: #fff8cc;'}});
+      if (preset.value === 41) await patchConfig({translationAppearance: {...DEFAULT_APPEARANCE, textColor: '#ef4776', customCss: 'color: #ef4776; text-shadow: none;'}});
       await target.click();
       await untilConfig(config => config.style === preset.value && !config.translationAppearance.textColor, `text preset ${preset.value}`);
       await settle();
@@ -77,15 +134,26 @@ async function checkTextColors({options, page, group, preview, readConfig, patch
       const live = await assertColor(preview, preset, `${theme} preview ${preset.value}`);
       report.metrics.textColors[`${theme}-${preset.value}`] = {sample, preview: live};
     }
-    await shot(group, `colors-02-${theme}-all-presets-brand-selected`);
+    await card(49).click(); await untilConfig(config => config.style === 49); await settle();
+    await shot(group, `colors-02-${theme}-twelve-presets-green-selected`);
   }
-  report.checks.push('existing style 6 and its appearance survive reopening; Text keeps 12 presets and Colors contains six appended IDs in the six-tab order');
-  report.checks.push('all six color presets render expected colors in light/dark cards and preview');
+  await group.locator('.translation-style-preview-theme').getByRole('radio', {name: '浅色网页', exact: true}).click();
+  await wait(220); await settle();
+  const roundTrip = {};
+  for (const preset of TEXT_COLOR_PRESETS) roundTrip[preset.value] = await assertColor(card(preset.value).locator('.fluent-read-bilingual-content'), preset, `dark to light card ${preset.value}`);
+  await assertColor(preview, TEXT_COLOR_PRESETS[0], 'dark to light green preview');
+  report.metrics.darkToLightCards = roundTrip;
+  report.checks.push('existing style 6 survives reopening; Text keeps 12 presets and Colors contains 12 stable IDs in the six-tab order');
+  report.checks.push('pink text and CSS override do not recolor color cards; selecting green clears conflicting color while preserving typography and other CSS');
+  report.checks.push('all 12 color presets render in light/dark cards and preview, with sampled contrast at least 4.5 on the specified fixture backgrounds');
+  report.checks.push('dark-to-light round trip refreshes all mounted color cards and the green preview without remounting');
+  report.metrics.readabilityMethod = 'Computed sRGB foreground/background; alpha-composited marker stops and 101 samples per adjacent gradient-stop pair. Threshold 4.5 applies to these light/dark fixture colors with default opacity, not arbitrary websites or custom overrides.';
 
   // 新预设只保存稳定 ID；品牌色板可给任何旧样式指定相同的精确文字色。
+  await card(54).click(); await untilConfig(config => config.style === 54);
   await options.reload({waitUntil: 'domcontentloaded'}); await group.waitFor({state: 'visible'});
   assert.equal(await colorCategory.getAttribute('aria-checked'), 'true', 'reopening a color preset should select Colors');
-  assert.equal(await options.locator('.translation-style-card').count(), 6);
+  assert.equal(await options.locator('.translation-style-card').count(), 12);
   assert.equal(await card(54).getAttribute('aria-checked'), 'true');
   await assertColor(preview, TEXT_COLOR_PRESETS[5], 'reopened brand preset');
   assert.equal((await readConfig()).translationAppearance.textColor, '');
@@ -99,7 +167,8 @@ async function checkTextColors({options, page, group, preview, readConfig, patch
   await settle();
   assert.equal(await brand.getAttribute('aria-checked'), 'true');
   assert.equal((await readColor(preview)).color, 'rgb(239, 71, 118)');
-  await shot(group, 'colors-03-brand-swatch-overrides-green');
+  await assertColor(card(49).locator('.fluent-read-bilingual-content'), TEXT_COLOR_PRESETS[0], 'green card keeps own color after optional pink fine-tuning');
+  await shot(group, 'colors-03-optional-brand-fine-tuning-cards-stay-original');
   await options.reload({waitUntil: 'domcontentloaded'}); await group.waitFor({state: 'visible'});
   assert.equal(await colorCategory.getAttribute('aria-checked'), 'true', 'reopening a customized color preset should select Colors');
   assert.equal(await card(49).getAttribute('aria-checked'), 'true');
@@ -111,6 +180,18 @@ async function checkTextColors({options, page, group, preview, readConfig, patch
   await settle(); await assertColor(preview, TEXT_COLOR_PRESETS[0], 'default restores green');
   await shot(group, 'colors-04-green-restored-palette');
   report.checks.push('brand preset and keyboard-selected brand swatch persist after reopening; Default restores the green preset color');
+
+  await card(40).click(); await untilConfig(config => config.style === 40);
+  await assertColor(preview, TEXT_COLOR_PRESETS.find(preset => preset.value === 40), 'gradient restored before optional text color');
+  await brand.click(); await untilConfig(config => config.translationAppearance.textColor === '#ef4776');
+  await settle();
+  const gradientOverride = await readColor(preview);
+  assert.equal(gradientOverride.color, 'rgb(239, 71, 118)');
+  assert.equal(gradientOverride.textFillColor, 'rgb(239, 71, 118)', 'explicit text color must override transparent gradient fill');
+  report.metrics.gradientTextColorOverride = gradientOverride;
+  await shot(group, 'colors-04b-gradient-explicit-text-color');
+  await card(49).click(); await untilConfig(config => config.style === 49 && !config.translationAppearance.textColor);
+  report.checks.push('explicit text color after selecting Gradient text updates both computed color and webkit text fill; selecting green restores its own color');
 
   await options.locator('.translation-appearance-disclosure').click();
   const layouts = {};
@@ -139,6 +220,7 @@ async function checkTextColors({options, page, group, preview, readConfig, patch
   report.metrics.layouts = layouts;
   report.checks.push('1024/820/390 widths have no page, preset or six-category overflow; mobile palette remains inside its panel');
 
+  await card(49).click(); await untilConfig(config => config.style === 49 && !config.translationAppearance.textColor);
   await patchConfig({uiLanguage: 'en-US'});
   await options.reload({waitUntil: 'domcontentloaded'}); await group.waitFor({state: 'visible'});
   const englishColors = categories.getByRole('radio', {name: 'Colors', exact: true});
@@ -147,17 +229,19 @@ async function checkTextColors({options, page, group, preview, readConfig, patch
   assert.equal(await options.locator('.translation-style-card').count(), 12);
   await englishColors.click();
   assert.equal(await englishColors.getAttribute('aria-checked'), 'true');
-  assert.equal(await options.locator('.translation-style-card').count(), 6);
+  assert.equal(await options.locator('.translation-style-card').count(), 12);
+  await assertColor(preview, TEXT_COLOR_PRESETS[0], 'English reopened Forest green is green');
   const englishTabs = await categories.getByRole('radio').evaluateAll(elements => elements.map(element => {
     const box = element.getBoundingClientRect();
     const range = document.createRange(); range.selectNodeContents(element);
     const lines = [...range.getClientRects()].filter(rect => rect.width > 0 && rect.height > 0);
     return {label: element.textContent.trim(), x: box.x, y: box.y, right: box.right, bottom: box.bottom,
       scrollWidth: element.scrollWidth, clientWidth: element.clientWidth,
+      textLineCount: lines.length,
       textInside: lines.length > 0 && lines.every(rect => rect.left >= box.left - 1 && rect.right <= box.right + 1 && rect.top >= box.top - 1 && rect.bottom <= box.bottom + 1)};
   }));
   assert.equal(englishTabs.length, 6);
-  assert(englishTabs.every(tab => tab.textInside && tab.scrollWidth <= tab.clientWidth + 1), JSON.stringify(englishTabs));
+  assert(englishTabs.every(tab => tab.textInside && tab.textLineCount === 1 && tab.scrollWidth <= tab.clientWidth + 1), JSON.stringify(englishTabs));
   for (let index = 0; index < englishTabs.length; index++) for (const other of englishTabs.slice(index + 1)) {
     const tab = englishTabs[index];
     const overlap = Math.min(tab.right, other.right) - Math.max(tab.x, other.x) > 0.5
@@ -166,7 +250,7 @@ async function checkTextColors({options, page, group, preview, readConfig, patch
   }
   report.metrics.english390Tabs = englishTabs;
   await shot(group, 'colors-06b-mobile-en-color-tab');
-  report.checks.push('English 390px Colors tab opens all six colors; all six category labels fit their buttons without clipping or overlap');
+  report.checks.push('English 390px Colors tab opens all 12 colors with a green preview; whole category labels stay on one text line and buttons wrap without clipping or overlap');
 
   // 真实内容脚本配合本地确定性服务，验证新颜色不只存在于设置预览。
   await page.setViewportSize({width: 1440, height: 960});
@@ -185,7 +269,7 @@ async function checkTextColors({options, page, group, preview, readConfig, patch
   }
   report.metrics.pageColors = pageColors;
   assert(fixture.requests.length >= 2, 'fixture should handle both translated pages');
-  report.checks.push('real content script renders green and exact brand pink on locally translated paragraphs');
+  report.checks.push('real content script renders readable green and brand pink on locally translated paragraphs');
 }
 
 async function startFixture() {
@@ -261,8 +345,9 @@ async function main() {
       if (surface !== owner) {
         // 设置页在内部容器中滚动；让整组真实进入视口再截图，避免截图把被裁剪的区域渲染成空白。
         const height = Math.ceil(await surface.evaluate(element => element.getBoundingClientRect().height));
-        if (height + 100 > viewport.height) {
-          await owner.setViewportSize({width: viewport.width, height: height + 100});
+        // 手机设置页顶部还有固定导航；额外留出空间，确保组底部不会被内部滚动视口裁切。
+        if (height + 400 > viewport.height) {
+          await owner.setViewportSize({width: viewport.width, height: height + 400});
           expanded = true;
         }
         await surface.scrollIntoViewIfNeeded();
@@ -354,7 +439,7 @@ async function main() {
       await shot(group, `02-category-${category}`);
     }
     report.metrics.categoryCounts = categoryCounts;
-    report.checks.push('55 preset cards across six categories update preview and persisted style');
+    report.checks.push('58 preset cards across six categories update preview and persisted style');
 
     // 3. 外观微调：色板、键盘、滑块、分段控件与自定义取色器全部写入配置，并由预览按网页规则计算。
     await options.locator('.translation-style-categories').getByRole('radio', {name: '线条', exact: true}).click();
@@ -594,7 +679,8 @@ async function main() {
       catch (error) {report.cleanupErrors.push(`session close: ${error.message}`);}
     }
     report.browserClosed = closed;
-    report.foregroundAfter = await queryMacFrontmostApplication();
+    try {report.foregroundAfter = await queryMacFrontmostApplication();}
+    catch (error) {report.cleanupErrors.push(`foreground observation: ${error.message}`);}
     try {await fixture?.close();} catch (error) {report.cleanupErrors.push(`fixture close: ${error.message}`);}
     if (profileDir) {
       if (closed) {

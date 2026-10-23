@@ -23,11 +23,13 @@ To remove the website's font from translations on the current page, open **Aa Tr
 
 Choose how translations look in bilingual mode under **Settings → Interface style → Translation style**. Styles are grouped into **Text**, **Colors**, **Lines**, **Highlights**, **Cards**, and **Fun**, and every card shows the real effect. The preview beside them simulates a web page; switch between **Light page** and **Dark page** to check that translations stay readable on differently colored sites.
 
-The **Colors** category includes **Forest green**, **Clear blue**, **Elegant purple**, **Warm orange**, **Teal**, and **FluentRead pink**. Select a card directly without opening the appearance controls. The first five colors adapt slightly to the page's text color; FluentRead pink uses the brand color `#ef4776`, matching the icon's pink palette. Existing text presets stay under **Text**; your previous selection and saved styles keep working.
+The **Colors** category offers 12 presets: **Forest green**, **Clear blue**, **Elegant purple**, **Warm orange**, **Teal**, **FluentRead pink**, **Berry red**, **Warm gold**, **Graphite gray**, **Gradient text**, **Neon glow**, and **Rainbow highlighter**. Solid colors blend with the page's text color for readability on light and dark pages. FluentRead pink starts from the brand color `#ef4776`, matching the icon's pink palette.
+
+Color cards always show their own colors. Selecting one clears conflicting custom text colors and CSS color declarations so that its color takes effect, while keeping unrelated font and size adjustments. Gradient text also clears backgrounds that would cover the gradient; Neon glow restores its own text shadow. You can fine-tune the result after selecting a color. Existing text presets stay under **Text**; your previous selection and saved styles keep working.
 
 **Customize appearance** lets you fine-tune:
 
-- **Text color**: give translations their own color, including FluentRead pink from the swatches. **Default** uses the selected preset's text color, or follows the page in the plain preset. Existing color adjustments stay in effect when switching between built-in presets; choose **Default** or **Reset** to see the preset's original color.
+- **Text color**: give translations their own color, including FluentRead pink from the swatches. **Default** uses the selected preset's text color, or follows the page in the plain preset. Presets outside **Colors** keep existing adjustments; selecting a color card restores its own colors.
 - **Translation background**: set an independent background for plain translations or any preset; **Default** keeps that preset's background.
 - **Line color**: recolor underlines, wavy lines, borders, and quote bars.
 - **Highlight color**: recolor markers, study highlights, backgrounds, and cards; the strength adapts to each style.

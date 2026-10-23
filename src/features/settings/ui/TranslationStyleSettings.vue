@@ -1,7 +1,7 @@
 <!--
 @file src/features/settings/ui/TranslationStyleSettings.vue
 文件职责：作为“界面风格”页的第一个分组，集中设置网页双语译文的样式预设、文字与独立背景色、精确字号等外观微调，并提供与网页一致的实时预览。
-主要内容：左侧实时预览、右侧选择样式，窄屏下按相同顺序纵向排列；以紧凑可视卡片比较内置样式和已保存样式的独立外观快照，保留用户命名的卡片文字、可访问名称及预览说明，不交给旧文案扫描；当前预览实时反映颜色、字体与安全的自定义 CSS 声明，并能保存、更新或删除多套样式。
+主要内容：左侧实时预览、右侧选择样式，窄屏下按相同顺序纵向排列，分类标签空间不足时整项换行以保留完整词语；颜色卡片展示预设本色，选择时仅清理冲突配色；以紧凑可视卡片比较内置样式和已保存样式的独立外观快照，保留用户命名的卡片文字、可访问名称及预览说明，不交给旧文案扫描；当前预览实时反映颜色、字体与安全的自定义 CSS 声明，并能保存、更新或删除多套样式。
 模块边界：本组件只编辑父级传入的 Config 草稿（style、translationAppearance、translationStyleProfiles 等），不持久化配置、
 不向网页注入样式；预设元数据和外观声明来自 core/config/translationAppearance，网页应用由 content 层负责。
 -->
@@ -87,7 +87,7 @@
               @click="selectPreset(preset.value)"
             >
               <span class="translation-style-card-sample" :data-page-theme="pageTheme" aria-hidden="true" data-i18n-ignore>
-                <span class="fluent-read-bilingual-content" :class="preset.className" :style="presetAppearanceStyle" lang="zh-CN"><span class="fluent-read-translation-text">阅读轻松自然</span></span>
+                <span class="fluent-read-bilingual-content" :class="preset.className" :style="getPresetPreviewStyle(preset)" lang="zh-CN"><span class="fluent-read-translation-text">阅读轻松自然</span></span>
               </span>
               <span class="translation-style-card-name">{{ translateLegacy(preset.label) }}</span>
               <span class="translation-style-card-check" aria-hidden="true"><i /></span>
@@ -269,11 +269,13 @@ import {
   TRANSLATION_TEXT_COLOR_SWATCHES,
   MAX_TRANSLATION_STYLE_PROFILES,
   getTranslationAppearanceStyle,
+  getTranslationPresetAppearance,
   getTranslationStylePreset,
   isDefaultTranslationAppearance,
   normalizeTranslationAppearance,
   parseTranslationCustomCss,
   type TranslationStyleCategory,
+  type TranslationStylePreset,
   type TranslationStyleProfile,
 } from '@/src/core/config/translationAppearance'
 import {useUiI18n} from '@/src/ui/i18n'
@@ -318,10 +320,17 @@ const categoryOptions = computed(() => TRANSLATION_STYLE_CATEGORIES.map((categor
 const fontWeightOptions = computed(() => TRANSLATION_FONT_WEIGHT_OPTIONS.map((option) => ({value: option.value, label: t(option.labelKey)})))
 const fontFamilyOptions = computed(() => TRANSLATION_FONT_FAMILY_OPTIONS.map((option) => ({value: option.value, label: t(option.labelKey)})))
 
+function getPresetPreviewStyle(preset: TranslationStylePreset): Record<string, string> {
+  if (preset.category !== 'color' || config.value.activeTranslationStyleProfileId) return presetAppearanceStyle.value
+  return getTranslationAppearanceStyle(getTranslationPresetAppearance(preset.value, appearance.value))
+}
+
 function selectPreset(style: number): void {
-  // 离开已保存的快照时恢复内置样式原貌；内置样式间切换仍沿用当前的全局外观微调。
+  // 离开已保存的快照时恢复内置样式原貌；颜色预设清除冲突配色，其余内置样式继续沿用全局微调。
   if (config.value.activeTranslationStyleProfileId) {
     config.value.translationAppearance = {...DEFAULT_TRANSLATION_APPEARANCE}
+  } else if (getTranslationStylePreset(style)?.category === 'color') {
+    config.value.translationAppearance = getTranslationPresetAppearance(style, appearance.value)
   }
   config.value.activeTranslationStyleProfileId = ''
   config.value.style = style
@@ -786,6 +795,7 @@ function resetAppearance(): void {
 .translation-style-card-name { padding-left: 0; font-size: 11px; font-weight: 500; color: var(--muted); }
 .translation-style-card.selected .translation-style-card-name { color: var(--brand-strong); font-weight: 650; }
 .translation-style-card-check { right: 9px; bottom: 9px; }
-.translation-style-categories.segmented-control { min-width: 220px; max-width: 290px; grid-auto-columns: auto; }
+.translation-style-categories.segmented-control { display: flex; flex-wrap: wrap; min-width: min(100%, 220px); max-width: 400px; }
+.translation-style-categories :deep(button) { flex: 1 0 auto; white-space: nowrap; }
 @container (max-width: 480px) { .translation-style-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 </style>

@@ -422,6 +422,10 @@ describe('userscript browser shim injection', () => {
     const publishedOverrideKeys = ['sectionTranslation.picker.preview', 'sectionTranslation.picker.instruction',
         'popup.sectionTranslationTitle', 'settings.services.deeplx.endpointHelp',
         'document.pdfReading.exportHint', 'document.pdfReading.layoutExportHint', 'document.pdfReading.exportPageCount'];
+    // 当前扩展新增的条目晚于固定远程资源发布；逐项约束差异，同时继续逐字节验证五份发布包。
+    const postPublicationLegacySources = ['森林绿', '澄澈蓝', '优雅紫', '暖橙', '青碧', 'FluentRead 粉',
+        '莓果红', '暖金', '石墨灰', '免费网页翻译不接受自动目标语言'];
+    const postPublicationMessageKeys = ['settings.translationStyle.category.color', 'settings.translationStyle.colors.brand'];
     const pinnedLanguageFiles = {
         'ja-JP': 'ja-JP.b81984c57e32c317.json',
         'ko-KR': 'ko-KR.f9dd4e317a3ccbac.json',
@@ -444,7 +448,15 @@ describe('userscript browser shim injection', () => {
         for (const [language, bundle] of Object.entries(UI_LANGUAGE_BUNDLES)) {
             const original = extensionBundles[language as keyof typeof extensionBundles];
             const materialSources = Object.keys(learningMaterialLegacyText[language as keyof typeof learningMaterialLegacyText]);
-            expect(Object.keys(original.legacyText).filter(source => !(source in bundle.legacyText)).sort()).toEqual([...materialSources, mimoRetirementSource, '移动端 / X 自动贴底'].sort());
+            expect(Object.keys(original.legacyText).filter(source => !(source in bundle.legacyText)).sort()).toEqual([
+                ...materialSources, mimoRetirementSource, '移动端 / X 自动贴底',
+                ...(language === 'en-US' ? [] : postPublicationLegacySources),
+            ].sort());
+            for (const source of postPublicationLegacySources) {
+                expect(original.legacyText[source], `${language}: ${source}`).toBeTruthy();
+                if (language === 'en-US') expect(bundle.legacyText[source]).toBe(original.legacyText[source]);
+                else expect(bundle.legacyText).not.toHaveProperty(source);
+            }
             const materialPatterns = learningMaterialPatterns.map(({pattern}) => pattern);
             for (const phase of ['early', 'late'] as const) {
                 expect(bundle.legacyPatterns[phase]).toEqual(original.legacyPatterns[phase].filter(([source]) => !materialPatterns.includes(source)));
@@ -469,7 +481,8 @@ describe('userscript browser shim injection', () => {
                 && !['waitingTranslation', 'crossPageContext', 'fullPassage', 'closePassage'].some(name => key === `document.pdfReading.${name}`)
                 && !key.startsWith('document.config.') && !key.startsWith('document.translationRecovery.') && !key.startsWith('document.retainedRevisions.')
                 && !key.startsWith('safari.freePool.')
-                && !key.startsWith('document.translationProgress.') && (language === 'en-US' || !registeredSupplementKeys.includes(key))));
+                && !key.startsWith('document.translationProgress.') && (language === 'en-US'
+                    || (!registeredSupplementKeys.includes(key) && !postPublicationMessageKeys.includes(key)))));
             if (language !== 'en-US') for (const key of publishedOverrideKeys) kept[key] = publishedMessages[language]![key]!;
             if (language === 'en-US') expect(bundle.messages).toEqual(kept);
             else expect(bundle.messages).toEqual(publishedMessages[language]);
@@ -495,7 +508,12 @@ describe('userscript browser shim injection', () => {
         // 固定资源直接读取原始 JSON；现用扩展文案及退役条目分别保持自己的归属。
         const materialSources = new Set(Object.keys(learningMaterialLegacyText[language as keyof typeof learningMaterialLegacyText]));
         for (const [source, value] of Object.entries(original.legacyText)) {
-            if (!materialSources.has(source) && source !== mimoRetirementSource && source !== '移动端 / X 自动贴底') expect(projected.legacyText[source]).toBe(value);
+            if (postPublicationLegacySources.includes(source)) {
+                expect(value).toBeTruthy();
+                expect(projected.legacyText).not.toHaveProperty(source);
+            } else if (!materialSources.has(source) && source !== mimoRetirementSource && source !== '移动端 / X 自动贴底') {
+                expect(projected.legacyText[source]).toBe(value);
+            }
         }
         const pinned = JSON.parse(readFileSync(resolve(process.cwd(), 'userscript/languages', pinnedLanguageFiles[language as keyof typeof pinnedLanguageFiles]), 'utf8'));
         expect(projected.legacyText).toEqual(pinned.legacyText);
@@ -586,7 +604,13 @@ describe('userscript browser shim injection', () => {
             && key !== 'video.nativeFullscreenHint'
             && !safariPermissionKeys.includes(key) && !pageFontKeys.includes(key)
             && key !== 'popup.compact.translate' && key !== 'popup.compact.restore' && !key.startsWith('popup.displayMode.')
-            && (_language === 'zh-CN' || _language === 'en-US' || !registeredSupplementKeys.includes(key)));
+            && (_language === 'zh-CN' || _language === 'en-US'
+                || (!registeredSupplementKeys.includes(key) && !postPublicationMessageKeys.includes(key))));
+        for (const key of postPublicationMessageKeys) {
+            expect(extension[key], `${_language}: ${key}`).toBeTruthy();
+            if (_language === 'zh-CN' || _language === 'en-US') expect(projected[key]).toBe(extension[key]);
+            else expect(projected).not.toHaveProperty(key);
+        }
         if (_language === 'zh-CN' || _language === 'en-US') expect(Object.keys(projected)).toHaveLength(retainedKeys.length);
         else expect(projected).toEqual(publishedMessages[_language]);
         for (const key of retainedKeys) expect(projected[key]).toBe(publishedMessages[_language] && publishedOverrideKeys.includes(key)

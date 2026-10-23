@@ -154,6 +154,38 @@ async function mountCompactSettings(initial: Partial<Config> = {}, readiness: Pr
     return {state, saved, sent, authority, broadcast, listeners, input, type, confirm, control, change, restore, unmount, closed, errors};
 }
 
+describe('userscript color preset selection', () => {
+    it('clears old color overrides only on a real preset choice while preserving fonts, saving and external hydration', async () => {
+        const appearance = {...new Config().translationAppearance, textColor: '#ef4776', fontScale: 117,
+            fontWeight: 'bold' as const, fontFamily: 'serif' as const,
+            customCss: 'color: pink; -webkit-text-fill-color: pink; font-size: 123%; border-radius: 6px'};
+        const fixture = await mountCompactSettings({style: 54, translationAppearance: appearance, activeTranslationStyleProfileId: 'previous-profile'});
+        expect(fixture.state.draft.translationAppearance.textColor).toBe('#ef4776');
+        await fixture.change('双语样式', '49');
+        expect(fixture.state.draft.style).toBe(49);
+        expect(fixture.state.draft.translationAppearance).toMatchObject({textColor: '', fontScale: 117, fontWeight: 'bold', fontFamily: 'serif',
+            customCss: ' font-size: 123%; border-radius: 6px'});
+        expect(fixture.state.draft.activeTranslationStyleProfileId).toBe('');
+        await pressSetting('保存设置');
+        expect(fixture.saved).toHaveBeenCalledOnce();
+        expect(fixture.authority.style).toBe(49);
+        expect(fixture.authority.translationAppearance).toEqual(fixture.state.draft.translationAppearance);
+        const selectedAppearance = JSON.parse(JSON.stringify(fixture.state.draft.translationAppearance));
+        await fixture.change('双语样式', '6');
+        expect(fixture.state.draft.translationAppearance).toEqual(selectedAppearance);
+        fixture.state.selectTranslationStyle('invalid');
+        expect(fixture.state.draft.style).toBe(6);
+        fixture.state.selectTranslationStyle('55');
+        expect(fixture.state.draft.style).toBe(55);
+        await pressSetting('保存设置');
+        fixture.broadcast(normalizeConfig({...fixture.authority, style: 54, translationAppearance: appearance}));
+        await settleSettings();
+        expect(fixture.state.draft.style).toBe(54);
+        expect(fixture.state.draft.translationAppearance).toEqual(appearance);
+        expect(fixture.errors).toEqual([]);
+    });
+});
+
 describe('userscript AI timeout actual input', () => {
     it('keeps each typed digit until confirmation, permits clear and retype, and saves milliseconds', async () => {
         const fixture = await mountCompactSettings();
