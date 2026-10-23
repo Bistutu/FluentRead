@@ -272,12 +272,12 @@ describe('Safari unsigned delivery contract', () => {
         expect(readFileSync(resolve(PROJECT_ROOT, 'entrypoints/background.ts'), 'utf8')).toContain('safari: false');
     });
 
-    it('只在 Safari MV2 声明免费池单一目录的二十一个精确 optional permissions，required 网页权限不扩大', async () => {
+    it('只在 Safari MV2 声明免费池单一目录的二十个精确 optional permissions，required 网页权限不扩大', async () => {
         const {verifySafariManifest} = await safariTools();
         const source = createExtensionManifest({browser: 'safari', manifestVersion: 2});
         const expected = Object.values(FREE_PROVIDER_ORIGINS).flat();
         expect(source.optional_permissions).toEqual(expected);
-        expect(expected).toHaveLength(21); expect(new Set(expected).size).toBe(21);
+        expect(expected).toHaveLength(20); expect(new Set(expected).size).toBe(20);
         expect(expected.every(origin => /^https:\/\/[a-z0-9.-]+\/\*$/u.test(origin))).toBe(true);
         expect(source.optional_host_permissions).toBeUndefined();
         expect(verifySafariManifest({...safariFixture(), optional_permissions: [...expected].reverse()})).toBeTruthy();
