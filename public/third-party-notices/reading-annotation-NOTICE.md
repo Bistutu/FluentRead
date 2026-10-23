@@ -1,7 +1,10 @@
 # Offline video reading annotations
 
 These components are used only after reading annotations are enabled for a
-supported original subtitle. JavaScript and data are packaged with the extension.
+supported original subtitle. Executable JavaScript is bundled with the extension.
+The large Japanese dictionary and Hindi data are downloaded on demand from
+version-pinned sources, verified by exact sizes and SHA-256, and cached for
+offline use. Smaller mappings remain bundled. No executable code is downloaded.
 No subtitle is sent to the component authors or their services.
 
 ## Japanese
@@ -11,8 +14,10 @@ No subtitle is sent to the component authors or their services.
   [Fork source](https://github.com/faanau/kuromoji-js).
   Full code license: `kuromoji-Apache-2.0.txt`; upstream dictionary and NAIST
   IPADIC attribution/conditions: `kuromoji-NOTICE.md`.
-  The 12 compressed dictionary files are redistributed unchanged; decompression
-  and tokenization happen inside the extension's dedicated Worker.
+  The 12 compressed dictionary files are downloaded unchanged on first use
+  from fixed version sources and cached after size/SHA-256 verification; they
+  are excluded from the extension package. Decompression and tokenization
+  happen inside the extension's dedicated Worker.
 - `doublearray` 0.0.2: MIT, Copyright (c) 2014 Takuya Asano.
   [Source](https://github.com/takuyaa/doublearray). This Double-Array trie is a
   runtime dependency of the tokenizer, bundled in the Japanese engine chunk.
@@ -56,25 +61,39 @@ published package.
 dictionary; a reported unparsed fallback leaves that subtitle unchanged.
 RTGS omits tone and vowel-length distinctions.
 
-## Hindi code, runtime and embedded data
+## Hindi static code and on-demand data
 
-`@budhash/gomanize` 1.2.1 is redistributed with its WebAssembly binary unchanged.
-The implementation is MIT, Copyright (c) 2023-2026 Budhaditya
-(budhash@gmail.com); full license: `reading-gomanize-MIT.txt`.
+FluentRead's `src/features/video-subtitle/reading/hindiEngine.ts` is a TypeScript
+port of the Hindi implementation from `@budhash/gomanize` 1.2.1, MIT,
+Copyright (c) 2023-2026 Budhaditya (budhash@gmail.com); full license:
+`reading-gomanize-MIT.txt`.
 [Exact npm source revision](https://github.com/budhash/gomanize/tree/3e519d5cfb689c2444545396e4cfab24d3a2d84a).
+The port preserves the parser, consonant runs, rule scopes and phase order,
+lexicon-first lookup, default/learned-schwa candidate generation, and UTF-8
+character-ngram scoring for the existing `lexicon:true, rerank:true` behavior.
 
-The fixed `dist/wasm_exec.js` Go runtime is imported at build time; FluentRead
-does not use the npm wrapper's dynamic-eval browser loader. Go runtime code is
-Copyright 2018 The Go Authors; the Go project license, Copyright 2009 The Go
-Authors, is supplied in `reading-Go-BSD-3-Clause.txt` (BSD-3-Clause).
+The extension no longer ships or runs gomanize WASM or the Go runtime. All
+executable Hindi code is static bundled TypeScript. The original npm WASM and
+Go runtime are used only as development parity oracles; their historical hashes
+are retained in `reading-annotation-PROVENANCE.json`. The Go project license is
+retained in `reading-Go-BSD-3-Clause.txt` for that historical record.
 
-The binary embeds these separately licensed Hindi data artifacts:
+These separately licensed pure-data artifacts are downloaded from the fixed
+source revision on first use, verified against exact byte sizes and SHA-256,
+and stored in a versioned offline cache. Neither data source can supply code.
 
-| Embedded source file | Origin and transformation | License |
+| Source file | Origin and transformation | License |
 | --- | --- | --- |
 | `lang/hindi/lexicon.tsv` | Google Dakshina Hindi train spellings, high-attestation winner per word; Shabd frequency ranking (CC0); TSV serialization | CC BY-SA 4.0 |
 | `lang/hindi/schwa_tree.json` | Decision tree learned from aligned schwa positions in Dakshina Hindi train data | CC BY-SA 4.0 |
 | `lang/hindi/roman_ngrams.tsv` | Character 4-gram counts from Dakshina Hindi train romanizations | CC BY-SA 4.0 |
+
+The three unchanged downloads total 472,254 bytes. A test-only subset in
+`tests/fixtures/video-reading-hindi-parity.json` retains selected lexicon entries,
+the unchanged schwa tree, all unigram counts and the additional ngram counts
+needed by the frozen original-WASM corpus. That derived data remains CC BY-SA
+4.0 and is excluded from the extension output. The subset and expected readings
+are compatibility fixtures, not an independent pronunciation assessment.
 
 Google Dakshina: Google / Brian Roark, Daan van Esch, Colin Allauzen, Michael
 Riley, 2020. [Original dataset and authorship](https://github.com/google-research-datasets/dakshina).
@@ -85,14 +104,14 @@ transparency. Source artifacts and reproducible training/build tools are
 available in the exact gomanize source revision above; its
 [research record](https://github.com/budhash/gomanize/blob/3e519d5cfb689c2444545396e4cfab24d3a2d84a/docs/RESEARCH.md)
 describes datasets, exclusions and transformations. FluentRead makes no further
-changes to these embedded artifacts and does not relicense them under the
+changes to the downloaded artifacts and does not relicense them under the
 implementation code's MIT license.
 
 The published 1.2.1 package predates the upstream separate embedded-data NOTICE.
 For transparency the later upstream `npm/NOTICE.md` is included unchanged as
 `reading-gomanize-upstream-NOTICE.md` (Git blob
 `a02cf9893b301d178e5e4973051e85bbc4726230`). That later document also lists Bengali
-data in newer builds; FluentRead's fixed 1.2.1 engine is Hindi-only. This
+data in newer builds; FluentRead's port of the fixed 1.2.1 engine is Hindi-only. This
 version-specific record and the full data license supplement that upstream
 notice. No attribution implies endorsement by an upstream author or dataset
 creator.

@@ -34,7 +34,7 @@ export async function annotateReading(text: string, language: string, dictionary
     reading = text.replace(/[\p{Script=Hangul}]+/gu, run => romanize(run.normalize('NFC'), {usePronunciationRules:true, casingOption:'lowercase'}));
   } else if (resolved === 'hi') {
     const {romanizeHindi} = await import('./hindi');
-    reading = await romanizeHindi(text, new URL('../hi/gomanize.wasm', dictionaryUrl).href);
+    reading = await romanizeHindi(text);
   } else if (resolved === 'th') {
     reading = (await import('./thai')).romanizeThai(text);
   } else reading = (await import('./writtenTransliteration')).transliterateWritten(text, resolved);

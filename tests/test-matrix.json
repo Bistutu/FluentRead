@@ -278,6 +278,8 @@
       "tests/videoReadingPlayer.test.ts",
       "tests/videoReadingJapanese.test.ts",
       "tests/videoReadingEngine.test.ts",
+      "tests/videoReadingAssetStore.test.ts",
+      "tests/videoReadingJapaneseDictionary.test.ts",
       "tests/videoSubtitleLogic.test.ts",
       "tests/videoKaraoke.test.ts",
       "tests/localModelReadiness.test.ts",
@@ -748,7 +750,9 @@
       "tests/xNativeSubtitleFlickerCli.test.ts",
       "tests/zhipuCredentials.test.ts",
       "tests/userscriptReadingRuntime.test.ts",
-      "tests/userscriptReadingGeneration.test.ts"
+      "tests/userscriptReadingGeneration.test.ts",
+      "tests/videoReadingCachedJapanese.test.ts",
+      "tests/videoReadingHindi.test.ts"
     ],
     "regression": [
       "tests/discordServerIconBoundary.test.ts",

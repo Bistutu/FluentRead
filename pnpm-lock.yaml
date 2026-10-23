@@ -22,9 +22,6 @@ importers:
       '@ai-sdk/openai-compatible':
         specifier: 2.0.70
         version: 2.0.70(zod@3.25.76)
-      '@budhash/gomanize':
-        specifier: 1.2.1
-        version: 1.2.1
       '@ctrl/tinycolor':
         specifier: 3.6.1
         version: 3.6.1
@@ -373,10 +370,6 @@ packages:
 
   '@bcoe/v8-coverage@0.2.3':
     resolution: {integrity: sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==}
-
-  '@budhash/gomanize@1.2.1':
-    resolution: {integrity: sha512-3q/Vou9nLZom7JToO/ntC4MJUtQlswckwdC3LX9ArhX2cHtxNa4+ivhxNY31amT11E12nbBuZatfGVm4Gcqqpw==}
-    engines: {node: '>=18'}
 
   '@codemirror/state@6.5.0':
     resolution: {integrity: sha512-MwBHVK60IiIHDcoMet78lxt6iw5gJOGSbNbOIVBHWVXIH4/Nq1+GQgLLGgI1KlnN86WDXsPudVaqYHKBIx7Eyw==}
@@ -4523,8 +4516,6 @@ snapshots:
       '@babel/helper-validator-identifier': 7.28.5
 
   '@bcoe/v8-coverage@0.2.3': {}
-
-  '@budhash/gomanize@1.2.1': {}
 
   '@codemirror/state@6.5.0':
     dependencies:

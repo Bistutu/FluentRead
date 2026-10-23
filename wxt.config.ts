@@ -14,7 +14,7 @@ import {tesseractSdkBuildPlugin} from './scripts/wasm/tesseract-sdk-build';
 import {GOOGLE_DRIVE_DEFAULT_CLIENT_ID, GOOGLE_DRIVE_EXTENSION_PUBLIC_KEY, GOOGLE_DRIVE_SCOPES} from './src/platform/google-drive/constants';
 import {createDeepLXRuntimeBuildPlugin} from './scripts/testing/deeplx-runtime-build';
 import {FREE_PROVIDER_ORIGINS} from './src/core/config/freeProviderOrigins';
-import {createReadingGoRuntimePlugin} from './scripts/testing/reading-annotation-build';
+import {createReadingDictionaryAliases} from './scripts/testing/reading-annotation-build';
 
 
 const packageJson = JSON.parse(fs.readFileSync(resolve(__dirname, 'package.json'), 'utf-8'));
@@ -243,9 +243,9 @@ export default defineConfig({
     vite: (env) => {
         const isProductionBuild = env.command === 'build' && env.mode === 'production';
         return {
-            // 固定 fork 的 import 入口依赖 node:module；浏览器 Worker 采用同包受 browser field 约束的 CJS 入口。
-            resolve: {alias: [{find: /^@faanau\/kuromoji$/, replacement: resolve(__dirname, 'node_modules/@faanau/kuromoji/src/kuromoji.js')}]},
-            plugins: [createReadingGoRuntimePlugin(__dirname), createDeepLXRuntimeBuildPlugin(__dirname), vue(), sharedOnnxBuildPlugin(), wllamaExtensionWorker(), tesseractSdkBuildPlugin(), escapeExtensionNoncharacters()],
+            // 固定版本的本地分词算法通过缓存适配器读取纯数据，不采用供应商自带的网络加载器。
+            resolve: {alias: createReadingDictionaryAliases(__dirname)},
+            plugins: [createDeepLXRuntimeBuildPlugin(__dirname), vue(), sharedOnnxBuildPlugin(), wllamaExtensionWorker(), tesseractSdkBuildPlugin(), escapeExtensionNoncharacters()],
             // WXT 默认在每个开发脚本中内联源码与 sourcemap；需要源码调试时显式开启。
             build: env.command === 'serve' ? {sourcemap: process.env.FLUENTREAD_DEV_SOURCEMAPS === '1' ? 'inline' : false} : undefined,
             define: {
@@ -287,9 +287,9 @@ export default defineConfig({
             // PDF 字体首次导出时下载并缓存，不进入安装包；fontkit 仍使用包内静态代码。
             // 恢复字体加入前的生产体积预算，防止完整字体再次随 public/ 打包。
             const budget = dev ? (process.env.FLUENTREAD_DEV_SOURCEMAPS === '1' ? 170_000_000 : 70_000_000) : 65_000_000;
-            // 完整离线日语词典 17.79 MB + 印地语 WASM 3.42 MB 单独有界；其余代码继续受原体积门禁约束。
-            const readingAssets = await checkExtensionSize(resolve(wxt.config.outDir, 'reading-annotation'), 21_500_000);
-            await checkExtensionSize(wxt.config.outDir, budget + readingAssets);
+            // 可选词典按需下载，不再为离线读音放宽安装包体积预算。
+            if (fs.existsSync(resolve(wxt.config.outDir, 'reading-annotation'))) throw new Error('读音离线数据不得随扩展打包');
+            await checkExtensionSize(wxt.config.outDir, budget);
         },
         'entrypoints:grouped': (_wxt, groups) => {
             groupModuleWorkers(groups);
@@ -303,12 +303,7 @@ export default defineConfig({
         },
         'build:publicAssets': (wxt, files) => {
             files.push(...createSafariBackgroundPage(wxt.config));
-            // 日语词典仅供扩展自有 Worker 读取，不暴露为网页可访问资源；不开读音时不读取或解压。
-            const readingDictionary = resolve(__dirname, 'node_modules/@faanau/kuromoji');
-            for (const name of fs.readdirSync(resolve(readingDictionary, 'dict')).filter(name => name.endsWith('.dat.gz'))) {
-                files.push({absoluteSrc: resolve(readingDictionary, 'dict', name), relativeDest: `reading-annotation/ja/${name}`});
-            }
-            files.push({absoluteSrc:resolve(__dirname,'node_modules/@budhash/gomanize/dist/gomanize.wasm'),relativeDest:'reading-annotation/hi/gomanize.wasm'});
+            // 仅保留本地算法的许可；日语词典与印地语语言数据首次使用时下载校验并缓存。
             for (const [source, destination] of [['@faanau/kuromoji/LICENSE-2.0.txt','kuromoji-Apache-2.0.txt'],['@faanau/kuromoji/NOTICE.md','kuromoji-NOTICE.md'],['kuroshiro/LICENSE','kuroshiro-MIT.txt'],['pinyin-pro/LICENSE','pinyin-pro-MIT.txt'],['thai-rtgs/LICENSE','thai-rtgs-MIT.txt']]) {
                 files.push({absoluteSrc: resolve(__dirname, 'node_modules', source), relativeDest: `third-party-notices/${destination}`});
             }

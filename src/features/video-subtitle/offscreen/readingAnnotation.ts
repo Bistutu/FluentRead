@@ -1,11 +1,12 @@
 /**
  * @file src/features/video-subtitle/offscreen/readingAnnotation.ts
  * 文件职责：拥有离屏页面中的唯一读音标注 Worker 与有界请求队列。
- * 主要内容：按需启动模块 Worker，串行处理有界请求，取消时立即结算页面等待但保留正在初始化的共享词典；校验请求编号和回复语言，超时或 Worker 错误后回收实例以允许后续重试，空闲三十秒释放词典内存。
+ * 主要内容：按需启动模块 Worker，串行处理有界请求，取消时立即结算页面等待但保留正在下载或初始化的共享词典；校验请求编号和回复语言，为首次下载保留有界等待，超时或 Worker 错误后回收实例以允许后续重试，空闲三十秒释放词典内存。
  * 模块边界：不在离屏主线程加载词典、分词或转写，不创建离屏文档；浏览器 Worker 创建由 app composition root 注入，纯消息契约由 core 拥有。
  */
 import {isReadingAnnotationWorkerResponse, type ReadingAnnotationInput, type VideoReadingAnnotation} from '@/src/core/messaging/readingAnnotation';
 import {isMessageRecord} from '@/src/core/messaging/validation';
+import {READING_ANNOTATION_WORKER_TIMEOUT_MS} from '@/src/core/readingAnnotation';
 
 interface Ports {createWorker(): Worker; timeoutMs?: number; idleMs?: number}
 interface Job {
@@ -79,7 +80,7 @@ export function createReadingAnnotationRuntime(ports: Ports) {
     active = job;
     try {
       const instance = ensureWorker();
-      timeout = setTimeout(() => failWorker(new Error('读音标注准备超时，请重试')), ports.timeoutMs ?? 25_000);
+      timeout = setTimeout(() => failWorker(new Error('读音标注准备超时，请重试')), ports.timeoutMs ?? READING_ANNOTATION_WORKER_TIMEOUT_MS);
       instance.postMessage({id: job.id, ...job.input});
     } catch (error) { failWorker(error); }
   };
@@ -95,7 +96,7 @@ export function createReadingAnnotationRuntime(ports: Ports) {
         const job: Job = {id: ++sequence, input: {text: input.text, language: input.language}, signal, resolve, reject, settled: false, abort() {
           settle(job, null, true, aborted());
           queue = queue.filter(item => item !== job);
-          // 在途 Worker 可能正在共享词典初始化，等待其完成后再执行最新任务，避免拖动进度反复重新加载。
+          // 在途 Worker 可能正在下载或初始化共享词典，等待其完成后再执行最新任务，避免换句反复重新下载。
           if (active !== job) pump();
         }};
         signal?.addEventListener('abort', job.abort, {once: true});
