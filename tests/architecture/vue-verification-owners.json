@@ -354,10 +354,11 @@
       "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
     },
     "src/features/settings/ui/TranslationStyleSettings.vue": {
-      "kind": "frozen-debt",
-      "sourceSha256": "7f59b9f75e82224a3eecf2f95379ad16af04631fda491f9c382b571962b23676",
-      "reason": "作为“界面风格”页的第一个分组，集中设置网页双语译文的样式预设、文字与独立背景色、精确字号等外观微调，并提供与网页一致的实时预览。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
-      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+      "kind": "behavior",
+      "tests": [
+        "tests/implementationAudit49F.test.ts"
+      ],
+      "scenario": "执行真实SFC模板，验证分类选择与选中恢复、颜色预设清理冲突覆盖并保留字体微调、预览与外观控件、命名快照保存/更新/删除、七语言用户名称保留，以及KeepAlive和卸载清理"
     },
     "src/features/settings/ui/VideoLocalModelSettings.vue": {
       "kind": "behavior",
