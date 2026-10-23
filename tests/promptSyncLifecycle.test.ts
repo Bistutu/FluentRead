@@ -129,7 +129,7 @@ describe('原生合批设置的实际模板与服务归属', () => {
     await mount();await select(service)
     const defaultService = props.config.service, original = {...props.config.nativeBatchTranslationEnabled}
     const disclosure = document.querySelector('details[data-service-request-disclosure]')
-    expect(disclosure).not.toBeNull();expect(disclosure!.hasAttribute('open')).toBe(false)
+    expect(disclosure).not.toBeNull();expect(disclosure!.hasAttribute('open')).toBe(true)
     expect(disclosure!.querySelector('[data-native-batch-toggle]')).toBe(toggle().element)
     expect(document.querySelector('[data-native-batch-service]')?.getAttribute('data-native-batch-service')).toBe(service)
     expect(toggle().element.getAttribute('aria-label')).toBe('settings.services.nativeBatch.label')

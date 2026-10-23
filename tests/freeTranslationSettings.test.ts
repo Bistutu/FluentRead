@@ -50,9 +50,7 @@ async function mountComponent(advanced: boolean): Promise<void> {
   await runtime.nextTick();
   if (!advanced) {
     const disclosure = elements.find(node => node.tag === 'details' && node.props['data-free-provider-disclosure'] !== undefined)!;
-    expect(disclosure.props.open).toBe(false);
-    disclosure.props.onToggle({currentTarget: {open: true}});
-    await runtime.nextTick();
+    expect(disclosure.props.open).toBe(true);
   }
 }
 

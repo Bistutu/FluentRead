@@ -53,6 +53,8 @@ pnpm docs:preview
 
 ### 卡片与信息层级
 
+设置页顶部直接显示页内导航；没有页内导航时直接显示设置内容。不再额外展示独占一行的页面大标题，页面名称由侧栏或窄屏分类选择器标识，并为屏幕阅读器保留语义标题。
+
 新增设置优先组合 `SettingsGroup`、`SettingsItem` 和 `SettingsDisclosure`，不要为每个功能另造一套卡片。它们位于 `src/features/settings/ui/components/`，共用 `src/ui/styles/tokens.css` 的语义变量：
 
 | 语义 | 变量与默认值 | 用途 |

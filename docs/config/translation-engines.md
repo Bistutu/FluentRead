@@ -96,7 +96,7 @@ outline: false
 
 如果服务把明显需要翻译的外语正文或英文标签列表原样返回，流畅阅读会在剩余等待时间内再试一次；连续原样返回时会显示失败提示，不会把原文保存成译文。短名称、代码以及已经是目标语言的文字仍可能保持原样。AI 服务使用自定义提示词时，也可以检查其中是否允许模型直接返回原文。
 
-免费翻译服务通过多个供应商直连接口生成译文。所有接口卡片统一展示，可选择参与调用的接口，并查看连接状态与分流参考。自动均衡会分配请求，优先顺序模式则按编号依次尝试。
+免费翻译服务通过多个供应商直连接口生成译文。**参与翻译的服务** 与 **请求限制** 默认展开，可直接查看和调整配置，也可手动收起。所有接口卡片统一展示，可选择参与调用的接口，并查看连接状态与分流参考。自动均衡会分配请求，优先顺序模式则按编号依次尝试。
 
 <figure class="doc-figure"><a href="/screenshots/ui/zh-CN/settings-services.webp" target="_blank" rel="noopener"><img class="doc-screenshot" src="/screenshots/ui/zh-CN/settings-services.webp" width="2560" height="1600" alt="翻译服务目录，可选择服务并查看所需的连接设置" loading="lazy" /></a><figcaption>先配置连接，再选择要用的服务。</figcaption></figure>
 

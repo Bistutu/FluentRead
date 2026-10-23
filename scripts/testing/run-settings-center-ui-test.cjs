@@ -1697,8 +1697,16 @@ async function main() {
         }
         report.assertions.aboutSupportArea = true;
       }
-      const visiblePageHeadings = await page.locator('.workspace > .settings-content-title:visible').count();
-      if (visiblePageHeadings !== 1) throw new Error(`${id} 页面级标题数量异常：${visiblePageHeadings}`);
+      const pageHeading = page.locator('.workspace > .settings-content-title');
+      if (await pageHeading.count() !== 1) throw new Error(`${id} 页面级语义标题数量异常`);
+      const headingLayout = await pageHeading.evaluate(element => {
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return {width: rect.width, height: rect.height, position: style.position, clipPath: style.clipPath};
+      });
+      if (headingLayout.position !== 'absolute' || headingLayout.width > 1 || headingLayout.height > 1 || headingLayout.clipPath !== 'inset(50%)') {
+        throw new Error(`${id} 页面标题仍占用可见空间：${JSON.stringify(headingLayout)}`);
+      }
       if (await page.locator('.card-intro:visible').count() !== 0) throw new Error(`${id} 仍有重复 card intro`);
       const metrics = await page.evaluate(() => ({
         horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
