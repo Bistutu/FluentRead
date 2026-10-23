@@ -103,3 +103,23 @@ Vue 验证归属门禁补充词法作用域内 const 组件别名追踪，允许
 S9 交叉探针复现笔记编辑 ACK 等待期间，另一页面 list/GC 与无关删除导致已确认旧正文和新正文同时丢失。修复改为不可见 pending 与不可回滚、自包含 v2 commit；每项最多保留一份此前已确认正文，不积累版本链。根审再次追到第三 ID 被 fallback 抢占去重身份、以及内容删除触发 fallback 后来源标识丢失两种交错，均新增正式回归并由独立公开 API 探针复现、验证。最终 readingStorage.ts SHA256 为 508fb8ea2ddffba068381cd646cb72e7569a45211cca1aca04dfec69de291364。
 
 正式 50 项存储测试通过，模块 S/L347/347、F33/33、B371/371；另 14 项独立交错探针全部通过。根审全文读取生产模块与最终增量，核对准备/提交点、原始删除 fence、fallback 来源、已确认 ID、稳定回收与无墓碑短路；结果 root-final-gm-review.json。该模块为本次新增，主线无 v1 版本，旧草案仅有列举的局部防护，不承诺混跑安全。永久墓碑增长、GM 无跨标签事务、实际脚本管理器未验收仍属边界。上述专项通过不替代 S10 全源覆盖和发版门禁。
+
+## 22:52 最终S11封存证据（发布条件未满足）
+
+S11固定提交为 c2d128c6349baf1c19108e40f99c9ae5d5ee01f0，6,756份源文件SHA保持一致；1,151生产文件与S10完全相同。后续工作树差异仅限本报告目录，883份测试/夹具文件与311份脚本均保持固定字节。最终报告提交不应被称为远程CI验证的代码提交。独立审阅核对15项事实、10份实际产物大小/SHA，只有四处措辞精确修订，未修改生产或测试。
+
+全量789文件全部通过，28,526项通过、2项专用Harness原件条件跳过，共28,528项，1,189.05秒；命令退出1来自原四维100%门槛。全源S/L162,660/166,717=97.56%，F11,733/13,152=89.21%，B86,408/89,246=96.82%。自有1,150文件F98.95%；自有未覆盖119项中39个正常V8映射、80个empty-report占位，第三方另缺1,300个。全部仍计入全源门槛，不用AST数量相减。
+
+S11的18步跨浏览器构建、清单、归档、类型和文档/Storybook检查全部通过，六份归档CRC及逐文件匹配。普通脚本1,859,771、standalone3,595,448字节通过原门槛；GF2,922,016字节仍超过2 MB上限922,016。Chrome ZIP35,889,242字节，同输入level6→9减少134,816；相对原基线level9仍多1,295。Chrome/Edge的background.js各比S10增加44字节，定位至CryptoJS MD5的生成require包装和局部命名；未追踪构建顺序根因，也不把局部结构一致当完整语义等价证明。各正式归档仍精确匹配本次构建。源码ZIP仅移除审计生成的audit-snapshot.json，保留1,912文件及原档备份，不计作安装包节省。
+
+远程CI run39968704974验证c2d128，789文件、28,520项通过、6项跳过，共28,526项；readingRuntime分支96.38%、readingGeneration98.98%，各自原100%门槛失败。它与本地全源门槛是不同覆盖口径。CI阅读回调prop警告已只读定位到Vue开发编译对方法索引类型的推导，生产content.js无对应运行时类型校验，尚未确认生产故障；开发警告列为未修项。
+
+14:50 UTC再次读取main仍为f2885bc93fcc54feecb602ce337009bd8ea79029。相对原基线6次提交/102文件，其中29文件与审计双改；只读merge-tree有12冲突（6生产/6测试）。新主线的页面边界、公平扫描、输入资格、设置/阅读UI等行为未接受S11验收；未进行真实merge。S11不能作为当前main或合并结果的发布验收。
+
+最近实际浏览器仍为S8的21通过、1夹具就绪失败、1实际焦点保护中止、49未执行。按浏览器技能硬性规则停止，没有自动重试或转前台；本轮原生Node84项通过仅为受控进程/HTTP端口，不能覆盖实际浏览器中止。真实在线供应商、脚本管理器、实体Safari/移动设备、Obsidian宿主和长视频仍未完整验收。
+
+最终文档附加复核：docs:typecheck、docs:build、storybook:build、docs:check及storybook:check通过。第一次仅docs:build后，docs:check因组合产物尚缺Storybook目录失败；完成既有Storybook构建后检查通过，保留前后日志且未改规则。reports/**本就由VitePress排除，这些检查不构成报告页面渲染证明；报告按Markdown/JSON及事实独立核验。
+
+结论：草稿PR #1057保留，未合并、未发布。100%覆盖、GF体积、完整站点和新主线整合目标仍未达成。当前完成的修复、测量与未完成门槛记录在release-report.md及acceptance-summary.json；不把时间上限当成任务全部完成。
+
+最终证据：checkpoint11-global-coverage.log、checkpoint11-coverage-gap-analysis.json、checkpoint11-web-acceptance-summary.json、checkpoint11-media-build-results.json、remote-ci-checkpoint11.json、core/final-release-report-cross-check.json、core/new-main-integration-review.json、web/final-reading-prop-warning-review.json、final-report-code-binding.json。

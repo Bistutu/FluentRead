@@ -226,3 +226,49 @@ GM 仍不提供跨标签原子事务，永久墓碑会随历史增长，极端�
 S10 冻结对应提交 `e2bc77814b6a5de0f976dd6ee2c2656f08335aef`。独立重算 1,151 个源码文件的 SHA-256 和 Git blob，全部匹配冻结清单与该提交；S9→S10 唯一生产源码差异正是上述 GM 文件，完整差异已再次阅读。七份审查台账的输入哈希、记录数量和每条当前源码证明均匹配：1,149 个自有文件无遗漏、无过期摘要；自有 AST 为 18,208 个函数节点、18,206 个函数体。其余两个生成资源继续仅作来源/许可/导出契约审查，vendor 的 3,044 个函数体不宣称人工逐函数审阅。全清单为 21,252 个 AST 函数节点、21,250 个函数体、218,849 行、0 个解析诊断。
 
 严格保留审查层级：971 份函数体审阅、8 份函数体审阅但静态文案选择性读取、144 份无可执行 AST 函数的源码审阅、26 份静态契约审阅，以及 2 份生成资源契约审阅。覆盖配置与 S9 相同；台账完整性不是运行时覆盖率 100% 或无 bug 的证明。最终全量结果由主任务另行记录。独立绑定证据见 `core/checkpoint10-independent-review.json`；本轮未修改生产代码、未运行浏览器。
+
+
+### S11 最终冻结与全文公开链路补测
+
+S9 剩余自有 V8 函数缺口经逐项分类为 121 个条目：80 个 `(empty-report)` 占位和 41 个普通映射函数，后者分布在 24 个文件中。占位项不能当作真实未测业务函数，Vue 编译回调也不能直接等同于源码 AST 函数；没有因执行次数为零删除生产适配器或构建钩子。本轮没有新确认的产品 bug 或死函数，完整候选与后续行为建议见 `core/checkpoint9-real-function-gap-followup.json`。
+
+在现有 `fullPageVisibilityScheduling.test.ts` 增加两条有独立可观察结果的公开链路测试：
+
+- 全文翻译启动后才挂载 open ShadowRoot，通过真实 DOM `fluentread-open-shadow-root` 事件触发发现，断言请求原文和译文 DOM；恢复原文后再挂载新的 ShadowRoot、派发同一事件，断言没有新请求且保持原文。
+- 三个相同原文段落按 IntersectionObserver 通知依次进入，前两段共用一次会话译文；调用公开 `invalidateFullPageTranslationSessionCache` 后第三段发出新请求并显示新译文，前两段已经显示的译文保留。
+
+两条用例均正常 import 生产 runtime，使用真实 CandidateCore 和源文快照，不读取或改写私有 fullPageSession，不注入手工候选状态，也不直接调用私有事件处理器。既有 LinkeDOM harness 仍替代浏览器布局/观察器、网络 client、译文展示辅助函数以及部分 core public facade（包括空 getOpenShadowRoots 夹具）；因此本结果验证实际 runtime 的发现、请求缓存与生命周期组合，不代表原生浏览器、真实 provider 或完整生产展示器验收。观察器登记断言仅作补充，主要断言为可观察的请求次数及 DOM 内容。
+
+定向两条通过；随后 `fullPageVisibilityScheduling` 416 条与 `contentMessageRuntime` 96 条共 **512 条全部通过**，`pnpm compile` 和 `git diff --check` 均退出 0。证据为 `core/final-fullpage-public-behavior-targeted.log`、`core/final-fullpage-public-behavior-regression.log`、`core/final-fullpage-public-behavior-compile.log`。该两条测试不产生可推算的最终全仓覆盖百分比，仍以主任务全量报告为准。
+
+最终 S11 源码快照对应提交 `c2d128c6349baf1c19108e40f99c9ae5d5ee01f0`。独立重算 1,151 个源码文件的 SHA-256 与 Git blob，全部匹配该提交与 inventory；S10→S11 **生产源码差异为零**，两个中央 Vitest 配置也未变化。新增测试文件的 SHA 同时匹配该提交与上述 512 条通过证据。七份审查台账的输入 SHA、记录数和逐条证明均可追溯：1,149 个自有文件当前摘要全部匹配，missing/stale/integrationOnly/source mismatch 为零，3 条历史 superseded 记录单独保留。
+
+审查层级仍为 971 份函数体审阅、8 份函数体审阅但静态文案选择性读取、144 份无可执行 AST 函数的源码审阅、26 份静态契约审阅、2 份生成资源契约审阅。自有 AST 为 18,208 个函数节点、18,206 个函数体；全量为 21,252 个节点、21,250 个函数体、218,849 行、0 个解析诊断。生成 vendor 的 3,044 个函数体仍不声称逐函数人工审阅，静态文案也不声称全部母语/视觉验收。独立证明见 `core/checkpoint11-independent-review.json`。本轮没有修改生产代码或覆盖门槛，没有启动浏览器；审查台账完整不等于全源四维覆盖 100% 或无 bug 保证。
+
+
+### 冻结后的主线漂移：S11 不覆盖新主线
+
+14:25 UTC 远程主线已推进至 `f2885bc93fcc54feecb602ce337009bd8ea79029`，包含 PR #1055（阅读请求与动态生命周期）及 PR #1054（UI 层级与视觉调整）；S11 仍是从原基线 `0ad3d431b425d8e082f15acfce11de23a66b8cc1` 派生的独立候选 `c2d128c6349baf1c19108e40f99c9ae5d5ee01f0`。本子任务只读 Git 对象与主任务 merge-tree 输出，没有合并、重置或修改生产/测试。
+
+原基线→新主线共改变 102 个文件，其中生产路径 39 个（20 Vue、7 TypeScript、12 CSS），测试 24 个。与本审计同时修改 29 个路径：12 个生产路径和 17 个测试。26 个现有 AST 清单文件的新主线字节与 S11 不同，另新增 `SettingsDisclosure.vue`；新 CSS 也不在既有运行源码 AST 计数之中。这些变更不能借用 S11 的旧摘要、逐函数审查或覆盖率结果。主任务只读 merge-tree 报告 12 个内容冲突（6 个生产路径、6 个测试），不冲突的文件也不等于已经完成语义整合。
+
+需要明确保留的整合边界：
+
+- 新主线增加 Markdown 链接目标边界识别、input value/type/name 动态资格恢复，以及独立冷却根的公平重扫/唤醒调度；S11 未包含这些实现。双方的 client 三处取消信号转发在执行逻辑上相同，但 queue 使用不同的等待项所有权与监听清理实现，必须保留两侧回归再决定一致实现。
+- 新增原生 details 折叠组件、始终挂载的设置表单、文档校订器首次请求才挂载、主动作/通知层级以及 popup/皮肤变化，会改变控件存在性、焦点、隐藏表单和旧事件归属。S11 的 stale-callback 修复与上游新 UI 断言需要一起验证。
+- 上游部分新测试仍基于原有 compileVueFixture/new Function/ssrLoadModule 方式；S11 已将相关消费者迁到正常 SFC import。不能整文件取一侧而丢失另一侧行为断言或重新丢失真实覆盖归因。
+- 上游重新投影旧文案来维持远端词典；S11 已直接绑定五份已发布 JSON。整合需要保持固定资源内容/哈希和脚本运行时补充文案契约，不可因冲突处理使远程资源失效。
+- 上游将普通 userscript 体积门槛由 **2,125,100** 提至 **2,127,100** 字节，而 S11 保持前者。该工具文件没有双方冲突，仍可能在未来干净合并时静默改变验收标准；本次不得借此宣称原体积要求通过。
+
+精确文件交集、Git blob 与差异证据见 `core/new-main-overlap-files.json`、`core/new-main-code-and-test.patch`、`core/new-main-integration-review.json`。这次工作是整合风险定位，没有重新语义审阅全部上游改动，也没有在新主线运行测试或构建。**S11 不是 f2885bc9 新主线或未来合并结果的验收**；整合后须重新生成当前 SHA 审查范围、运行全量与构建验证，并报告真实门槛结果。
+
+
+### S11 本地与远程 CI 用例计数差异核验
+
+对照本地完整日志与 GitHub job `120466005680` 的未截断日志，双方均包含相同的 789 个测试文件，784 个文件的通过/跳过/总数完全相同。远程不是少执行两个测试文件，也不是 PDF 数量动态展开造成总数变化。
+
+唯一总数差异来自 `ownedBrowserClose.test.ts`：本地 100 条、Ubuntu CI 98 条。其公开进程关闭用例按 `literalTemporaryRoots` 参数化；macOS 保留当前系统 tmpdir、`/tmp`、`/private/tmp` 三个不同字面路径，CI 仅一项，因此总数差 2。另四个真实 PDF 条件用例（NASA 导出、公报扫描、Attention 版面及完整论文目录）在本地运行，在 CI 各跳过一条，各文件总数保持不变；两条 Harness 条件在双方均跳过。
+
+计数完整闭合：本地 28,526 通过 − 2 条平台展开 − 4 条 PDF 条件 = CI 28,520 通过；跳过 2 + 4 = 6；总数 28,528 − 2 = 28,526。CI 仍因 readingRuntime 分支 96.38% 和 readingGeneration 分支 98.98% 未达严格 100% 而失败，此结论不能与本地全源分母混用。
+
+原始 CI 日志、789 文件逐项差分和源代码条件保留在 `core/remote-ci-checkpoint11-full-job.log`、`core/remote-ci-checkpoint11-complete-counts.log`、`core/final-ci-local-count-comparison.json`；原日志 SHA-256 为 `ad53fe78c0e60dc82cff68a952c2d5c53711b7dbba2d4894bd9257f8a46f53ce`。此前仅含 410 个文件的截断日志不足以归因，最终说明基于完整日志，不是根据环境条件猜测。本轮未修改测试或生产代码。

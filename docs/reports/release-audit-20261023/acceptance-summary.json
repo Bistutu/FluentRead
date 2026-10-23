@@ -1,0 +1,498 @@
+{
+  "schemaVersion": 1,
+  "state": "final_snapshot_verified_with_failed_release_gates",
+  "decision": "do_not_publish",
+  "decisionReasons": [
+    "The complete 1151-file S11 coverage run fails unchanged global 100% statements, lines, functions and branches gates.",
+    "Greasy Fork is 2922016 bytes against the unchanged 2000000-byte gate.",
+    "The final S11 complete live-site matrix was not accepted; the latest S8 matrix stopped at a real focus-policy violation.",
+    "Advanced main f2885bc93fcc54feecb602ce337009bd8ea79029 has not been integrated or accepted; merge-tree detects 12 conflicts.",
+    "Remote CI for c2d128 failed original per-file 100% branch gates for userscript/readingRuntime.ts and userscript/readingGeneration.ts."
+  ],
+  "snapshot": {
+    "name": "candidate-checkpoint-11",
+    "baseCommit": "c2d128c6349baf1c19108e40f99c9ae5d5ee01f0",
+    "frozenFiles": 6756,
+    "mediaBuildSourceHashMismatches": []
+  },
+  "coverage": {
+    "scopeFiles": 1151,
+    "scopeRoots": [
+      "src",
+      "entrypoints",
+      "userscript",
+      "integrations"
+    ],
+    "originalRequiredPercent": {
+      "statements": 100,
+      "lines": 100,
+      "functions": 100,
+      "branches": 100
+    },
+    "finalRunExit": 1,
+    "testFilesPassed": 789,
+    "testsPassed": 28526,
+    "testsSkipped": 2,
+    "testsTotal": 28528,
+    "actualAllSource": {
+      "files": 1151,
+      "metrics": {
+        "statements": {
+          "total": 166717,
+          "covered": 162660,
+          "skipped": 0,
+          "uncovered": 4057,
+          "pct": 97.56
+        },
+        "lines": {
+          "total": 166717,
+          "covered": 162660,
+          "skipped": 0,
+          "uncovered": 4057,
+          "pct": 97.56
+        },
+        "functions": {
+          "total": 13152,
+          "covered": 11733,
+          "skipped": 0,
+          "uncovered": 1419,
+          "pct": 89.21
+        },
+        "branches": {
+          "total": 89246,
+          "covered": 86408,
+          "skipped": 0,
+          "uncovered": 2838,
+          "pct": 96.82
+        }
+      },
+      "filesWithAnyGap": 192
+    },
+    "actualFirstParty": {
+      "files": 1150,
+      "metrics": {
+        "statements": {
+          "total": 165795,
+          "covered": 161808,
+          "skipped": 0,
+          "uncovered": 3987,
+          "pct": 97.59
+        },
+        "lines": {
+          "total": 165795,
+          "covered": 161808,
+          "skipped": 0,
+          "uncovered": 3987,
+          "pct": 97.59
+        },
+        "functions": {
+          "total": 11368,
+          "covered": 11249,
+          "skipped": 0,
+          "uncovered": 119,
+          "pct": 98.95
+        },
+        "branches": {
+          "total": 87557,
+          "covered": 85355,
+          "skipped": 0,
+          "uncovered": 2202,
+          "pct": 97.48
+        }
+      },
+      "filesWithAnyGap": 191
+    },
+    "actualVendor": {
+      "files": 1,
+      "metrics": {
+        "statements": {
+          "total": 922,
+          "covered": 852,
+          "skipped": 0,
+          "uncovered": 70,
+          "pct": 92.4
+        },
+        "lines": {
+          "total": 922,
+          "covered": 852,
+          "skipped": 0,
+          "uncovered": 70,
+          "pct": 92.4
+        },
+        "functions": {
+          "total": 1784,
+          "covered": 484,
+          "skipped": 0,
+          "uncovered": 1300,
+          "pct": 27.13
+        },
+        "branches": {
+          "total": 1689,
+          "covered": 1053,
+          "skipped": 0,
+          "uncovered": 636,
+          "pct": 62.34
+        }
+      },
+      "filesWithAnyGap": 1
+    },
+    "fullSourceGatePassed": false,
+    "accountingNote": "V8/Istanbul execution coverage and static TypeScript AST counts have different denominators. First-party/vendor partitions and synthetic empty-report labels explain the result without removing any file or lowering the global 100% gate.",
+    "testFilesFailed": 0,
+    "testsFailed": 0,
+    "durationSeconds": 1189.05,
+    "uncoveredFunctionEntries": {
+      "first_party:observed_function_map": 39,
+      "first_party:synthetic_empty_report": 80,
+      "vendor_bundle:observed_function_map": 1300
+    },
+    "syntheticPlaceholderAccounting": {
+      "total": 94,
+      "markedCovered": 14,
+      "markedUncovered": 80
+    },
+    "sourceAndCounterValidation": {
+      "inventoryFiles": 1151,
+      "summaryFiles": 1151,
+      "finalFiles": 1151,
+      "fileSetsEqual": true,
+      "sourceHashesMatchInventory": true,
+      "rawStatementsFunctionsBranchesMatchSummary": true,
+      "aggregatedTotalsMatchOriginalSummary": true
+    }
+  },
+  "artifacts": [
+    {
+      "name": "userscript",
+      "bytes": 1859771,
+      "sha256": "ec9b5552bfccd669e1af895b1a09f30d04021bb65ac7a404e945dec217c0a516",
+      "buildExit": 0,
+      "verifyExit": 0,
+      "originalByteLimit": 2125100,
+      "withinOriginalByteLimit": true
+    },
+    {
+      "name": "userscript-standalone",
+      "bytes": 3595448,
+      "sha256": "bb3d3a501caadfe9bc0bd39b3881e328549781f9df8393c483e172d290b39a38",
+      "buildExit": 0,
+      "verifyExit": 0,
+      "originalByteLimit": 3600000,
+      "withinOriginalByteLimit": true
+    },
+    {
+      "name": "userscript-greasyfork",
+      "bytes": 2922016,
+      "sha256": "bfae728d9448a0029ea22a8e4163014c70ffc763490b1d5f36f94e2ea2c89100",
+      "buildExit": 1,
+      "verifyExit": 1,
+      "originalByteLimit": 2000000,
+      "withinOriginalByteLimit": false
+    },
+    {
+      "name": "obsidian",
+      "bytes": 2064308,
+      "sha256": "3c43ccb00389a45efd985f7aea621c7ed2c96a6ce9d972e06dc27cf969681978",
+      "buildExit": 0,
+      "verifyExit": null,
+      "originalByteLimit": null,
+      "withinOriginalByteLimit": null
+    }
+  ],
+  "fixedResources": {
+    "commit": "4d7fe8be9dcfa2f5f6d312460518171ced4d12f8",
+    "files": [
+      {
+        "path": "userscript/resources/fluentread-vendor.v1.js",
+        "bytes": 580590,
+        "sha256": "821500421bee158f5fd1fa1284e1126240c00c777cf0e6197c3cd07a5db382ee",
+        "builtEqualsTracked": true,
+        "trackedEqualsCommitted": true
+      },
+      {
+        "path": "userscript/resources/fluentread-data.v1.js",
+        "bytes": 887452,
+        "sha256": "a899a911fe70ec0721f6810baeda85c28fdf4e201b73b7376a982794cb6cd818",
+        "builtEqualsTracked": true,
+        "trackedEqualsCommitted": true
+      }
+    ],
+    "licenseVerification": "Installed upstream notice text and package headings verified in S11 ordinary/standalone; selected fixed vendor notices verified. This is artifact verification, not a comprehensive legal assessment."
+  },
+  "rootReview": {
+    "integration": {
+      "candidateCommit": "c2d128c6349baf1c19108e40f99c9ae5d5ee01f0",
+      "baseCommit": "0ad3d431b425d8e082f15acfce11de23a66b8cc1",
+      "observedMain": "f2885bc93fcc54feecb602ce337009bd8ea79029",
+      "observedAt": "2026-10-23T14:25:00Z",
+      "newMainCommits": 6,
+      "newMainChangedFiles": 102,
+      "overlappingFiles": 29,
+      "overlappingProductionFiles": 12,
+      "overlappingTestFiles": 17,
+      "mergeSimulationConflicts": 12,
+      "mergeSimulationProductionConflicts": 6,
+      "mergeSimulationTestConflicts": 6,
+      "actualIntegrationPerformed": false,
+      "mainAcceptanceEstablished": false,
+      "evidence": "core/new-main-integration-review.json",
+      "confirmedSameMainAt": "2026-10-23T14:50:41Z"
+    },
+    "ci": {
+      "runId": 39968704974,
+      "jobId": 120466005680,
+      "headRevision": "c2d128c6349baf1c19108e40f99c9ae5d5ee01f0",
+      "status": "completed",
+      "conclusion": "failure",
+      "url": "https://github.com/FluentRead/FluentRead/actions/runs/39968704974",
+      "tests": {
+        "passed": 28520,
+        "skipped": 6,
+        "total": 28526,
+        "filesPassed": 789
+      },
+      "gateFailures": [
+        {
+          "file": "userscript/readingRuntime.ts",
+          "metric": "branches",
+          "actual": 96.38,
+          "required": 100
+        },
+        {
+          "file": "userscript/readingGeneration.ts",
+          "metric": "branches",
+          "actual": 98.98,
+          "required": 100
+        }
+      ],
+      "evidence": "remote-ci-checkpoint11.json",
+      "countReconciliation": {
+        "localPassed": 28526,
+        "localSkipped": 2,
+        "localTotal": 28528,
+        "remotePassed": 28520,
+        "remoteSkipped": 6,
+        "remoteTotal": 28526,
+        "platformExpandedCaseDifference": 2,
+        "platformFile": "tests/ownedBrowserClose.test.ts",
+        "macOSTestCases": 100,
+        "linuxTestCases": 98,
+        "pdfConditionalPassToSkipDifference": 4,
+        "allFileCountsCompared": 789,
+        "reason": "macOS temporary path parameter deduplication yields three literal roots; Linux yields one. Four original PDFs enable four otherwise skipped cases without changing their declared total.",
+        "independentRootEvidence": "root-final-ci-count-check.json"
+      },
+      "initialCodeReviewLogTruncated": true,
+      "completeJobLogAvailable": true,
+      "completeLogEvidence": "core/remote-ci-checkpoint11-full-job.log"
+    },
+    "browserAcceptance": {
+      "lastActualCheckpoint": "S8",
+      "plannedPaths": 72,
+      "passedPaths": 21,
+      "siteOrFixtureNotReady": 1,
+      "focusGuardStopped": 1,
+      "notRun": 49,
+      "guardExit": 86,
+      "finalS11MatrixAccepted": false,
+      "automaticallyRetried": false,
+      "skill": "/Users/thinkstu/.codex/skills/fluentread-browser-translation-test/SKILL.md",
+      "evidence": "web/s8-browser-readonly-diagnosis.json",
+      "controlledResponsesOnly": true
+    },
+    "webBuilds": {
+      "snapshotBase": "c2d128c6349baf1c19108e40f99c9ae5d5ee01f0",
+      "stepsPassed": 18,
+      "runnerExit": 0,
+      "compressionExit": 0,
+      "browserStarted": false,
+      "sourceModified": false,
+      "productionFilesCompared": 1151,
+      "archives": [
+        {
+          "archive": "fluent-read-0.0.40-chrome.zip",
+          "bytes": 35889242,
+          "sha256": "7422ed6310a115fdd46601c9988511b7a792264dd9106572731d7852870f257f",
+          "files": 527,
+          "uncompressedBytes": 84126624,
+          "entriesSha256": "e864136663312d0ac0f7c40f972cd43a20e8126a29e8ffa7cde971d4e008bca7",
+          "sourceDirectory": "/Users/thinkstu/Desktop/copy/research/release-audit-20261023/candidate-checkpoint-11/.output/chrome-mv3",
+          "crc32": "passed",
+          "fileSet": "exact",
+          "fileBytes": "all equal"
+        },
+        {
+          "archive": "fluent-read-0.0.40-edge.zip",
+          "bytes": 35888770,
+          "sha256": "9253b6123e40b4ca75b7e814fbfdcb29a9614a3b84d7fae155213907c140e6e9",
+          "files": 527,
+          "uncompressedBytes": 84126025,
+          "entriesSha256": "62b3aa20c0160f1376d37887ffdc8cb02af62b384264c9339325b211554f84c2",
+          "sourceDirectory": "/Users/thinkstu/Desktop/copy/research/release-audit-20261023/candidate-checkpoint-11/.output/edge-mv3",
+          "crc32": "passed",
+          "fileSet": "exact",
+          "fileBytes": "all equal"
+        },
+        {
+          "archive": "fluent-read-0.0.40-firefox.zip",
+          "bytes": 35889838,
+          "sha256": "7add8129d2d57e3861e10879551d4bef70b7c60281dca6992d5c30b0d1cb33b6",
+          "files": 527,
+          "uncompressedBytes": 84129457,
+          "entriesSha256": "80ffb1c5c4da7ea6e14cbf9d8ae0fbcea8c0701661746217dd51b438c16c7f14",
+          "sourceDirectory": "/Users/thinkstu/Desktop/copy/research/release-audit-20261023/candidate-checkpoint-11/.output/firefox-mv2",
+          "crc32": "passed",
+          "fileSet": "exact",
+          "fileBytes": "all equal"
+        },
+        {
+          "archive": "fluent-read-0.0.40-safari.zip",
+          "bytes": 35843840,
+          "sha256": "67a2cc4c6b63c15d686519e338416227174e604f302d331f0bf534cd2e3393e7",
+          "files": 516,
+          "uncompressedBytes": 84008556,
+          "entriesSha256": "310655f4f8960d39c57aa56c729c22c32b354d1900aff1ab1103fca739d02f49",
+          "sourceDirectory": "/Users/thinkstu/Desktop/copy/research/release-audit-20261023/candidate-checkpoint-11/.output/safari-mv2",
+          "crc32": "passed",
+          "fileSet": "exact",
+          "fileBytes": "all equal"
+        },
+        {
+          "archive": "fluent-read-0.0.40-sources.zip",
+          "bytes": 49501566,
+          "sha256": "06729b8d40d1098e4c082470bf53326912936ca1daba378700a982c548ae67da",
+          "files": 1912,
+          "uncompressedBytes": 72391647,
+          "entriesSha256": "d8da4d0d1b372efbd9deb6a835894a6b2d18e0f1ef0f92344f3d4ab28e4677d5",
+          "sourceDirectory": "/Users/thinkstu/Desktop/copy/research/release-audit-20261023/candidate-checkpoint-11",
+          "crc32": "passed",
+          "fileSet": "WXT source exclusions apply; every archived file equals snapshot",
+          "fileBytes": "all equal"
+        },
+        {
+          "archive": "fluent-read-0.0.40-thunderbird.xpi",
+          "bytes": 36032845,
+          "sha256": "e2fc04c68978de373b8554f63dee3cbb9b9618f621e046252dce7f1b2f99fbd8",
+          "files": 527,
+          "uncompressedBytes": 84128839,
+          "entriesSha256": "e122f20f1676aacfd2731bc6be3b797047a8bcc0cd20675392ea33ca381f7b02",
+          "sourceDirectory": "/Users/thinkstu/Desktop/copy/research/release-audit-20261023/candidate-checkpoint-11/.output/thunderbird-mv2",
+          "crc32": "passed",
+          "fileSet": "exact",
+          "fileBytes": "all equal"
+        }
+      ],
+      "compression": {
+        "sameInputSavedBytes": 134816,
+        "sameInputSavedPercent": 0.37423879341966415,
+        "baselineSameInputSavedBytes": 134838,
+        "officialVersusBaseline6Bytes": -133543,
+        "officialVersusBaseline9Bytes": 1295
+      }
+    },
+    "nativeNode": {
+      "files": 6,
+      "passed": 84,
+      "skipped": 0,
+      "exit": 0,
+      "actualBrowserStarted": false,
+      "evidence": "checkpoint11-native-node.log"
+    },
+    "documentationCodeBinding": {
+      "evidence": "final-report-code-binding.json",
+      "method": "All 6756 frozen source SHA256 values plus current checkout and Git diff compared; only docs/reports/release-audit-20261023/ may differ.",
+      "productionFiles": 1151,
+      "testAndFixtureFiles": 883,
+      "scriptFiles": 311,
+      "warning": "Preserved source bytes do not change failing gates into passes and do not establish new-main acceptance."
+    },
+    "knownDevelopmentWarning": {
+      "runtimeEffectConfirmed": false,
+      "productionFailureConfirmed": false,
+      "resolved": false,
+      "cause": "Vue 3.5.13 development SFC compiler resolves indexed method callback types to String.",
+      "evidence": "web/final-reading-prop-warning-review.json"
+    },
+    "finalDocumentationChecks": {
+      "typecheckExit": 0,
+      "docsBuildExit": 0,
+      "storybookBuildExit": 0,
+      "docsCheckExit": 0,
+      "storybookCheckExit": 0,
+      "initialDocsCheckExit": 1,
+      "initialFailure": "Only docs:build had run and removed embedded Storybook; the normal Storybook build restored the combined artifact before the successful checks. No rule was changed.",
+      "reportsExcludedFromVitePress": true,
+      "reportPageRenderProven": false,
+      "reportChecks": "Independent fact reconciliation, Markdown diff check and JSON parsing; not browser rendering."
+    }
+  },
+  "evidence": {
+    "mediaBuildResults": "/Users/thinkstu/Desktop/copy/research/release-audit-20261023/checkpoint11-media-build-results.json",
+    "mediaBuildCommandLog": "/Users/thinkstu/Desktop/copy/research/release-audit-20261023/checkpoint11-media-build-run.log",
+    "coverageGapAnalysis": "/Users/thinkstu/Desktop/copy/research/release-audit-20261023/checkpoint11-coverage-gap-analysis.json",
+    "mediaReport": "docs/reports/release-audit-20261023/media-audit.md",
+    "coverageInputHashes": {
+      "summary": {
+        "path": "/Users/thinkstu/Desktop/copy/research/release-audit-20261023/candidate-checkpoint-11-global-coverage/coverage-summary.json",
+        "bytes": 426784,
+        "sha256": "c9df7afe08193adcfcf2ac77f5fe84b6203614a7f44f88ea50f115f984e9e371"
+      },
+      "final": {
+        "path": "/Users/thinkstu/Desktop/copy/research/release-audit-20261023/candidate-checkpoint-11-global-coverage/coverage-final.json",
+        "bytes": 33738031,
+        "sha256": "ca470ff065d66b08af05af895516fd87cef2264b533495999e60a4d8c8723e01"
+      },
+      "inventory": {
+        "path": "/Users/thinkstu/Desktop/copy/research/release-audit-20261023/inventory-checkpoint11.json",
+        "bytes": 9489882,
+        "sha256": "66e65f49e30f224c69da045d591b5ace6e12022c304f3ba45711ca39344e9dd4"
+      }
+    },
+    "globalCoverageLog": {
+      "path": "/Users/thinkstu/Desktop/copy/research/release-audit-20261023/checkpoint11-global-coverage.log",
+      "sha256": "9020dbb4c32760acccb3fddb3e8c2b952e8738bcd6deb1c5f7719d942b53b75f"
+    }
+  },
+  "limitations": [
+    "This is an audit record with failing gates, not permission to publish or a claim of zero bugs.",
+    "Production code, tests and configuration remain bound to c2d128; later documentation-only commits were not the remote CI head.",
+    "Live providers, real userscript managers, physical Safari/mobile devices, long videos and the real Obsidian host are not fully accepted.",
+    "The S11 production source equals S10, but Chrome and Edge background bundle bytes differ; each archive matches its actual S11 build.",
+    "Coverage partitions and synthetic counters are explanatory only; no file, branch or threshold was removed."
+  ],
+  "updatedAt": "2026-10-23T14:57:54.089238+00:00",
+  "rootEvidence": {
+    "checkpoint11-web-acceptance-summary.json": {
+      "path": "checkpoint11-web-acceptance-summary.json",
+      "sha256": "e38c6a41bb4a9526cea643e59aa50e9f139d6a2b234cca0434b2c195e959b2d8"
+    },
+    "checkpoint11-production-source-equivalence.json": {
+      "path": "checkpoint11-production-source-equivalence.json",
+      "sha256": "7058a2d64bf7e4110a59e5fbcf19862075168643bc7647429e441cf2535f36e4"
+    },
+    "core/new-main-integration-review.json": {
+      "path": "core/new-main-integration-review.json",
+      "sha256": "803ece75f53e60161e551d8f8e10a1755898a433d65427fc35fd2617a4c2fbc0"
+    },
+    "core/final-release-report-cross-check.json": {
+      "path": "core/final-release-report-cross-check.json",
+      "sha256": "1ed518b3691d738973edae77e16196b0f308bdd1a13e1911fa434ebc266f31c6"
+    },
+    "web/final-reading-prop-warning-review.json": {
+      "path": "web/final-reading-prop-warning-review.json",
+      "sha256": "19c124d74163d45d68302f06119baf9f932e661c5c332461e2cc175fa14bc6bd"
+    },
+    "remote-ci-checkpoint11.json": {
+      "path": "remote-ci-checkpoint11.json",
+      "sha256": "3d21a375051aae0d1367266876a9cc36bc6d240c40db689849666e4afedc83b4"
+    },
+    "root-final-ci-count-check.json": {
+      "path": "root-final-ci-count-check.json",
+      "sha256": "93a909f86b06abd2a4bbb94cc8ee090a592dc35decd798c3845e436c3723a60f"
+    },
+    "media/final-acceptance-document-cross-check.json": {
+      "path": "media/final-acceptance-document-cross-check.json",
+      "sha256": "ce8d424770cf38ad0040435bfb2f411835bf8c407aff3b13fdf5f270b49c1e09"
+    }
+  }
+}
