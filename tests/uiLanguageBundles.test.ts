@@ -3,7 +3,7 @@ import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 
 type I18nModule = typeof import('@/src/core/i18n');
-type BundlesModule = typeof import('@/src/core/i18n/bundles');
+type BundlesModule = typeof import('./helpers/uiLanguageBundles');
 type LoaderModule = typeof import('@/src/platform/i18n/uiLanguageBundles');
 
 // 注册表是模块级状态；每个用例重新加载模块，保证“未加载语言”与“已加载语言”互不污染。
@@ -11,7 +11,7 @@ async function loadModules(): Promise<{i18n: I18nModule; bundles: BundlesModule;
     vi.resetModules();
     const [i18n, bundles, loader] = await Promise.all([
         import('@/src/core/i18n'),
-        import('@/src/core/i18n/bundles'),
+        import('./helpers/uiLanguageBundles'),
         import('@/src/platform/i18n/uiLanguageBundles'),
     ]);
     return {i18n, bundles, loader};

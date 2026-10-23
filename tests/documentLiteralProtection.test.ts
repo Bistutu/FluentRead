@@ -128,6 +128,15 @@ describe('document literal protection', () => {
         expect(validateDocumentInlineMarkers('<g1></g1>', '<g1>新增</g1>', context)).toBe('<g1>新增</g1>');
     });
 
+    it('validates a large inline-node paragraph while retaining repeated-id and empty-node protection', () => {
+        const rows = Array.from({length: 512}, (_, index) => index + 1);
+        const source = rows.map(id => `<g${id}>Readable source</g${id}>`).join(' ') + '<g1>Repeated source</g1>';
+        const translated = rows.map(id => `<g${id}>可读译文</g${id}>`).join(' ') + '<g1>重复译文</g1>';
+        expect(validateDocumentInlineMarkers(source, translated, {targetLanguage: 'zh-Hans'})).toBe(translated);
+        expect(() => validateDocumentInlineMarkers(source, translated.replace('<g512>可读译文</g512>', '<g512></g512>'),
+            {targetLanguage: 'zh-Hans'})).toThrow(DocumentInlineMarkerError);
+    });
+
     it('rejects the real English menu-label echo only with the document paragraph evidence and actual Chinese target', () => {
         const source = 'For an online PDF, open the extension menu and choose <g1>Open PDF reader</g1> or <g2>Document translation</g2>.';
         const echoed = '对于在线PDF，打开扩展菜单选择 <g1>Open PDF reader</g1> 或 <g2>Document translation</g2>。';

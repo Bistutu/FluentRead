@@ -12,7 +12,7 @@ import {method} from "@/src/core/config/constants";
 import {getDeepLEndpoint} from '@/src/core/config/deepl';
 import {getTranslationProviderLanguages} from '@/src/services/translation/requestSnapshot';
 import {createHttpStatusError} from '@/src/platform/http/errors';
-import {abortErrorFromSignal, runtimeFetch} from '@/src/platform/http/runtime';
+import {abortErrorFromSignal, cancelUnreadResponseBody, runtimeFetch} from '@/src/platform/http/runtime';
 import {requireTranslationProviderConfig} from '@/src/services/translation/requestSnapshot';
 import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import {readNativeBatchJson, translateNativeTextBatch} from './native-batch';
@@ -59,7 +59,10 @@ async function deepl(message: TranslationProviderRequest<string | string[]>) {
             }),
             signal: message.abortSignal,
         });
-        if (!resp.ok) throw createHttpStatusError(resp, '翻译失败');
+        if (!resp.ok) {
+            cancelUnreadResponseBody(resp);
+            throw createHttpStatusError(resp, '翻译失败');
+        }
         const result = await readNativeBatchJson<{translations?: Array<{text?: unknown}>} | null>(resp, 'DeepL 返回的不是有效 JSON', message.abortSignal);
         if (message.abortSignal?.aborted) throw abortErrorFromSignal(message.abortSignal);
         return Array.isArray(result?.translations) ? result.translations.map(item => item?.text) : undefined;

@@ -5,7 +5,6 @@ import {afterEach, describe, expect, it, vi} from 'vitest';
 import {
     collectLiveTranslationTextSlots,
     createDeclarativeAdapter,
-    createTranslationCore,
     extractTranslationText,
     extractTranslationTextFromNodes,
     getCurrentTranslationCore,
@@ -13,6 +12,7 @@ import {
     resolveTranslationCandidateAtPoint,
     getTranslationCandidateKey,
 } from '@/src/core/translation/public';
+import {createTranslationCore} from './helpers/translationCore';
 import {defaultTranslationAdapters} from '@/src/core/translation/registry';
 import {isTranslationCandidateCurrent} from '@/src/features/full-page-translation/content/translationStability';
 import type {TranslationCandidate, TranslationScope} from '@/src/core/translation/public';

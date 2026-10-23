@@ -1,7 +1,7 @@
 /**
  * @file src/core/translation/documentInlineMarkers.ts
  * 文件职责：保留文档整句翻译的编号行内标签，让标签中的文字正常参与翻译。
- * 主要内容：共享实体、全角和空白写法归一，逐槽检查每个编号的次数、配对、自闭合和嵌套父子关系；文档候选必须保留源节点的可见正文占用数量，空白/不可见正文不能胜出，允许兄弟节点随译句重排及自闭合写成空对；在实际目标语言下拒绝唯一平级节点的普通正文原样返回，显式术语只豁免原文回显。
+ * 主要内容：共享实体、全角和空白写法归一，逐槽检查每个编号的次数、配对、自闭合和嵌套父子关系；文档候选必须保留源节点的可见正文占用数量，空白/不可见正文不能胜出，允许兄弟节点随译句重排及自闭合写成空对；一次汇总编号出现次数，在实际目标语言下拒绝唯一平级节点的普通正文原样返回，显式术语只豁免原文回显。
  * 模块边界：纯文本协议，不读取配置或调用服务；只由文档入口启用，不评价一般语义质量，也无法识别两个结构相同槽的正文被交换。
  */
 import {isLikelyUntranslatedInlineResponse} from './resultValidation';
@@ -95,11 +95,16 @@ export function validateDocumentInlineMarkers(origin: string, result: unknown, c
     if (context) {
         // 按结构身份累计，允许重复编号/兄弟重排；含子节点文字的父节点也算非空，扫描保持线性。
         if ([...expected.filled].some(([key, count]) => (actual.filled.get(key) ?? 0) < count)) throw new DocumentInlineMarkerError();
+        const occurrences = new Map<string, number>();
+        for (const [key, count] of expected.counts) {
+            const id = key.slice(0, key.indexOf(':'));
+            occurrences.set(id, (occurrences.get(id) ?? 0) + count);
+        }
         const paired = (text: string) => new Map([...text.matchAll(/<g(\d+)>([\s\S]*?)<\/g\1>/gu)].map(match => [match[1]!, match[2]!]));
         const translations = paired(normalized);
         for (const [id, source] of paired(origin)) {
             // 重复编号或嵌套正文缺少唯一的独立节点身份，不猜测哪处文字应当翻译。
-            if ([...expected.counts].filter(([key]) => key.startsWith(`${id}:`)).reduce((sum, [, count]) => sum + count, 0) !== 1
+            if (occurrences.get(id) !== 1
                 || /<\/?g\d+\/?\s*>/u.test(source)) continue;
             const target = translations.get(id)!;
             if (context.protectedTokens?.some(token => source.includes(token) || target.includes(token))) continue;

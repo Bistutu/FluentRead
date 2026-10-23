@@ -258,8 +258,8 @@ export default defineConfig({
     manifest: createExtensionManifest,
     zip: {
         name: 'fluent-read',
-        // 默认等级 9 的压缩耗时明显更长；6 保留标准 DEFLATE 和全部文件，平衡打包速度与体积。
-        compressionLevel: 6,
+        // 发布包采用标准 DEFLATE 的最高压缩等级；仅增加打包时间，不改变解压后的资源或运行时。
+        compressionLevel: 9,
         // AMO 源码包保留扩展源码、锁文件、构建脚本及字体/OCR 资产，
         // 排除网站素材、测试证据和其他发布出口，避免超过 200 MB 上传限制。
         excludeSources: [

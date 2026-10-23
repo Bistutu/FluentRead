@@ -198,11 +198,18 @@ async function placeBackgroundWindowOnDisplay(session, targetId, viewport, displ
   const display = resolveVisibleDisplayBounds(layout, normalizedTarget, mainDisplay);
   const requestedBounds = centeredWindowBounds(viewport, display);
   const { windowId } = await session.send('Browser.getWindowForTarget', { targetId });
-  await session.send('Browser.setWindowBounds', {
-    windowId,
-    bounds: { ...requestedBounds, windowState: 'normal' },
-  });
-  const { bounds } = await session.send('Browser.getWindowBounds', { windowId });
+  const { bounds: currentBounds } = await session.send('Browser.getWindowBounds', { windowId });
+  // 创建新页签时通常复用同一个窗口；不要重复切换已正常定位的原生窗口状态。
+  const alreadyPlaced = currentBounds?.windowState === 'normal'
+    && Object.entries(requestedBounds).every(([key, value]) => currentBounds[key] === value);
+  let bounds = currentBounds;
+  if (!alreadyPlaced) {
+    await session.send('Browser.setWindowBounds', {
+      windowId,
+      bounds: { ...requestedBounds, windowState: 'normal' },
+    });
+    ({ bounds } = await session.send('Browser.getWindowBounds', { windowId }));
+  }
   if (bounds.windowState !== 'normal' || !isWindowFullyContained(bounds, display)) {
     throw new Error(`测试 Edge 窗口未完全位于目标显示器可用区域：${JSON.stringify({ bounds, display })}`);
   }
@@ -575,7 +582,7 @@ async function newPageWithoutForeground(context, timeout = 10000) {
   }
 
   const browser = context.browser();
-  if (!browser) throw new Error('无法获取隔离浏览器实例；为避免抢占前台焦点，已停止创建页面');
+  if (!browser) throw Object.assign(new Error('无法获取隔离浏览器实例；为避免抢占前台焦点，已停止创建页面'), {code: 'FOCUS_SAFETY_VIOLATION'});
   const session = await browser.newBrowserCDPSession();
   const markerUrl = `about:blank#fluentread-background-${crypto.randomUUID()}`;
   let targetId;
@@ -591,10 +598,10 @@ async function newPageWithoutForeground(context, timeout = 10000) {
     Object.assign(backgroundState.windowPlacement, placement);
     const frontmostAfter = await queryMacFrontmostApplication();
     if (!frontmostAfter) {
-      throw new Error('无法读取 macOS 前台应用；为避免测试窗口争抢焦点，测试已停止');
+      throw Object.assign(new Error('无法读取 macOS 前台应用；为避免测试窗口争抢焦点，测试已停止'), {code: 'FOCUS_SAFETY_VIOLATION'});
     }
     if (frontmostAfter.pid === backgroundState.browserPid) {
-      throw new Error(`测试 Edge 进程 ${backgroundState.browserPid} 成为了前台应用；测试已停止`);
+      throw Object.assign(new Error(`测试 Edge 进程 ${backgroundState.browserPid} 成为了前台应用；测试已停止`), {code: 'FOCUS_SAFETY_VIOLATION'});
     }
     backgroundState.windowPlacement.browserFrontmost = false;
     backgroundState.windowPlacement.frontmostBefore = backgroundState.frontmostBefore;

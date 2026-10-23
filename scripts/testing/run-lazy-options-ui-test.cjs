@@ -489,23 +489,31 @@ async function visible(locator) {
 
     const popup = await openExtensionPage(context, popupUrl, 'popup');
     await popup.locator('.popup-shell[data-config-ready="true"]').waitFor({state: 'visible', timeout});
-    const popupSwitch = popup.locator('.popup-shell [role="switch"]').first();
-    assert.equal(await popupSwitch.getAttribute('aria-checked'), latestFinal);
+    // Popup 的两个网站规则开关不代表全局启用状态；用实际受总开关控制的语言输入验证同步。
+    const popupLanguages = popup.locator('.language-pair input[role="combobox"]');
+    assert.equal(await popupLanguages.count(), 2);
+    for (const input of await popupLanguages.all()) assert.equal(await input.isDisabled(), latestFinal !== 'true');
     report.crossPageSync = true;
     report.popup.mount = true;
     report.cases.push('options-setting-is-visible-in-reopened-popup');
 
     if (latestFinal !== 'true') {
       await page.locator('#settings-general [role="switch"]').first().locator('..').click();
-      await popup.waitForFunction(() => document.querySelector('.popup-shell [role="switch"]')?.getAttribute('aria-checked') === 'true', undefined, {timeout});
+      await popup.waitForFunction(() => {
+        const inputs = [...document.querySelectorAll('.language-pair input[role="combobox"]')];
+        return inputs.length === 2 && inputs.every(input => !input.disabled);
+      }, undefined, {timeout});
       report.cases.push('options-change-updates-an-already-open-popup');
     }
 
-    await popup.locator('.service-field').click();
-    await popup.locator('.service-picker-panel').waitFor({state: 'visible', timeout});
-    assert.ok(await popup.locator('.service-option:visible').count() > 0, 'Popup 服务选择器没有可见选项');
+    await popup.getByTestId('popup-feature-services').click();
+    await popup.locator('[data-feature-service="default"]').click();
+    await popup.locator('[data-service-picker="default"]').waitFor({state: 'visible', timeout});
+    assert.ok(await popup.locator('.service-choice:visible').count() > 0, 'Popup 服务选择器没有可见选项');
     await popup.keyboard.press('Escape');
-    await popup.locator('.service-picker-panel').waitFor({state: 'hidden', timeout});
+    await popup.locator('[data-service-picker="default"]').waitFor({state: 'hidden', timeout});
+    await popup.locator('.popup-service-toolbar .service-panel-close').click();
+    await popup.locator('.popup-service-panel').waitFor({state: 'hidden', timeout});
     report.popup.servicePicker = true;
     report.cases.push('popup-service-picker-opens-and-closes-with-escape');
 

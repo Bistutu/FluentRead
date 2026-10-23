@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/youtubeTimedTextBridgeCore.ts
  * 文件职责：实现可注入、可测试的 YouTube timedtext 网络桥核心，安全包裹页面 fetch 与 XMLHttpRequest 并发布成功字幕响应，同时支持完整恢复。
- * 主要内容：定义环境端口、状态键和生命周期事件，识别目标 URL、构造 payload，保存原始方法，处理 XHR 复用/同步失败/迟到响应，并为显式开启的站点提供有界二进制文本适配与资源回放。
+ * 主要内容：定义环境端口、状态键和生命周期事件，识别目标 URL、构造 payload，保存原始方法，处理 XHR 复用/同步失败/迟到响应，克隆正文统一限制为 8MB 和 15 秒读取预算，并为显式开启的站点提供有界二进制文本适配与资源回放；卸载后不再克隆迟到响应。
  * 模块边界：核心不直接引用全局 window、不解析字幕内容也不操作扩展 UI；页面适配器注入真实环境，video runtime 消费消息，所有猴补只属于 MAIN-world bridge 所有权。
  */
 export const YOUTUBE_TIMED_TEXT_MESSAGE = 'fluent-read-youtube-timedtext';
@@ -87,6 +87,8 @@ interface YoutubeBridgeLifecycleState {
     readonly dispose: () => void;
 }
 
+const MAX_CLONED_RESPONSE_BYTES = 8_000_000;
+const CLONED_RESPONSE_TIMEOUT_MS = 15_000;
 const MAX_REPLAY_RESOURCE_COUNT = 16;
 const MAX_REPLAY_RESPONSE_CHARS = 2_000_000;
 
@@ -167,8 +169,7 @@ export function installYoutubeTimedTextBridgeCore(
     const replayEnabled = environment.resourcePolicy?.replayLatest === true;
     const responseScope = new AbortController();
     const readResponseText = async (response: ReturnType<YoutubeFetchResponsePort['clone']>): Promise<string | null> => {
-        const limit = environment.resourcePolicy?.maxResponseBytes;
-        if (limit === undefined) return response.text();
+        const limit = environment.resourcePolicy?.maxResponseBytes ?? MAX_CLONED_RESPONSE_BYTES;
         if (Number(response.headers?.get('content-length')) > limit) {
             void response.body?.cancel().catch(() => undefined);
             return null;
@@ -179,23 +180,30 @@ export function installYoutubeTimedTextBridgeCore(
             return text.length <= limit && new TextEncoder().encode(text).length <= limit ? text : null;
         }
         const reader = response.body.getReader();
-        const cancel = () => { void reader.cancel().catch(() => undefined); };
+        let cancelled = false;
+        const cancel = () => {
+            if (cancelled) return;
+            cancelled = true;
+            void reader.cancel().catch(() => undefined);
+        };
         responseScope.signal.addEventListener('abort', cancel, {once: true});
+        const timer = setTimeout(cancel, CLONED_RESPONSE_TIMEOUT_MS);
         const decoder = new TextDecoder();
         const parts: string[] = [];
         let bytes = 0;
         try {
-            while (!responseScope.signal.aborted) {
+            while (!responseScope.signal.aborted && !cancelled) {
                 const part = await reader.read();
                 if (part.done) break;
                 bytes += part.value.byteLength;
                 if (bytes > limit) return null;
                 parts.push(decoder.decode(part.value, {stream: true}));
             }
-            if (responseScope.signal.aborted) return null;
+            if (responseScope.signal.aborted || cancelled) return null;
             parts.push(decoder.decode());
             return parts.join('');
         } finally {
+            clearTimeout(timer);
             responseScope.signal.removeEventListener('abort', cancel);
             cancel();
             reader.releaseLock();
@@ -254,7 +262,7 @@ export function installYoutubeTimedTextBridgeCore(
         const requestUrl = getYoutubeRequestUrl(input);
         const requestHref = environment.getHref();
         const response = await Reflect.apply(originalFetch, this, [input, init]);
-        if (matches(requestUrl, requestHref)) {
+        if (active && requestHref === environment.getHref() && matches(requestUrl, requestHref)) {
             try {
                 void readResponseText(response.clone())
                     .then((responseText) => publish(requestUrl, responseText, requestHref))

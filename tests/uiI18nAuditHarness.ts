@@ -2,22 +2,14 @@
  * @file tests/uiI18nAuditHarness.ts
  * 文件职责：为语言归属审计加载实际 i18n、Selector 和 SettingsSections 客户端模板。
  * 主要内容：使用真实 Vue/KeepAlive、共享 i18n 保存函数及父 props，配置端口保留同步乐观订阅、revision、字段比较和失败权威回读。
- * 模块边界：只替换存储传输、资源加载和无关设置组件；不启动浏览器或监听 TCP，不模拟操作系统焦点，每次显式清理 server/app/context。
+ * 模块边界：只替换存储传输、资源加载和无关设置组件；不启动浏览器或监听 TCP，不模拟操作系统焦点，每次显式清理 app/context 和模块端口。
  */
-import {createRequire} from 'node:module'
-import {existsSync, readFileSync} from 'node:fs'
-import {basename, resolve} from 'node:path'
+import * as runtime from 'vue'
 import {parseHTML} from 'linkedom'
-import vue from '@vitejs/plugin-vue'
-import {createServer, type Plugin} from 'vite'
-import {compileScript, compileTemplate, parse} from 'vue/compiler-sfc'
-import ts from 'typescript'
-import {expect, vi} from 'vitest'
+import {vi} from 'vitest'
 import type {UiLanguage} from '@/src/core/i18n/language'
 import type {UiI18nContext} from '@/src/ui/i18n'
 
-export const runtime = createRequire(import.meta.url)('vue') as typeof import('vue')
-const key = '__frUiLanguageOwnershipAudit'
 // 可选诊断仅记录夹具的等待阶段，帮助定位全量运行中的超时，不改变 Promise 或计时门槛。
 export const languageHarnessPhases: Array<{phase: string; at: number; value?: unknown}> = []
 function recordPhase(phase: string, value?: unknown) {
@@ -65,60 +57,68 @@ export async function createLanguageHarness({parent = false, mount = true, ready
     ensure: vi.fn((value: UiLanguage) => bundles.get(value)?.promise ?? Promise.resolve(true)),
     captureControl: (instance: import('vue').ComponentInternalInstance) => controls.push(instance),
     browser: {runtime: {sendMessage: vi.fn()}, tabs: {query: vi.fn(async () => []), sendMessage: vi.fn(async () => undefined)}}}
-  ;(globalThis as Record<string, unknown>)[key] = data
-  const actual = new Set(['/src/features/settings/ui/SettingsSections.vue','/src/ui/components/UiLanguageSelector.vue'])
-  const mocks: Plugin = {name: 'language-ownership-audit-ports', enforce: 'pre', resolveId(id) {
-    if (id.endsWith('/UiSelect.vue')) return '\0language-control'
-    if (id.endsWith('.vue') && ![...actual].some(file => id.endsWith(file))) return '\0language-child'
-    if (id.endsWith('/src/services/config/store')) return '\0language-store'
-    if (id.endsWith('/src/platform/i18n/uiLanguageBundles')) return '\0language-bundles'
-    if (id.endsWith('/src/ui/interfaceAppearance')) return '\0language-appearance'
-    if (id === 'webextension-polyfill') return '\0language-browser'
-    if (id === 'element-plus') return '\0language-element'
-    if (id === '@element-plus/icons-vue') return '\0language-icons'
-    if (id.endsWith('/src/platform/browser/capabilities')) return '\0language-capabilities'
-    return null
-  }, load(id) {
-    const directory = process.env.FLUENTREAD_UI_LANGUAGE_TEST_SOURCE_DIR
-    if (directory && (actual.has(id.slice(process.cwd().length)) || id.endsWith('/src/ui/i18n.ts'))) {
-      const file = resolve(directory, basename(id));if (existsSync(file)) return readFileSync(file, 'utf8')
-    }
-    if (id === '\0language-control') return `import {getCurrentInstance,h} from 'vue';export default {inheritAttrs:false,setup(_, {attrs,slots}) {globalThis.${key}.captureControl(getCurrentInstance());return () => h('div', {...attrs,'data-language-control':'true'}, slots.default?.());}};`
-    if (id === '\0language-child') return "import {h} from 'vue';export default {inheritAttrs:false,setup(_, {attrs,slots}) {return () => h('div',attrs,slots.default?.());}};"
-    if (id === '\0language-store') return `export const {config,configReady,requestConfigPatch,getConfigRevision,subscribeConfig,handoffPendingConfigPatches} = globalThis.${key};`
-    if (id === '\0language-bundles') return `export const ensureUiLanguageBundle = globalThis.${key}.ensure;`
-    if (id === '\0language-appearance') return `export const applyInterfaceTheme = globalThis.${key}.applyInterfaceTheme;`
-    if (id === '\0language-browser') return `export default globalThis.${key}.browser;`
-    if (id === '\0language-element') return "import {h} from 'vue';export const ElMessage=Object.assign(() => {},{warning:()=>{}});export const ElOption={props:['value','label'],setup:(p,{slots})=>()=>h('div',{'data-option':p.value},slots.default?.())};"
-    if (id === '\0language-icons') return 'export const ArrowRight={render:()=>null};export const InfoFilled=ArrowRight;export const Edit=ArrowRight;'
-    if (id === '\0language-capabilities') return "export const browserCapabilities={browser:'chrome'};"
-    return null
-  }}
-  recordPhase('server-create'); const server = await createServer({configFile: false, publicDir: false, appType: 'custom', logLevel: 'silent', root: process.cwd(),
-    plugins: [mocks, vue()], resolve: {alias: {'@': process.cwd()}},
-    // 夹具只加载 SSR 模块；不扫描静态资源或 HTML，也不预构建客户端依赖。
-    optimizeDeps: {noDiscovery: true, include: []},
-    ssr: {noExternal: ['element-plus', '@element-plus/icons-vue', 'webextension-polyfill']}, // Vite5 的 hmr:false 仍创建 WebSocket 服务；ws:false 才禁用实际 TCP 监听。
-    // client-inject 的 buildStart 即使禁用 WebSocket 也解析默认 localhost；SSR 无需 DNS。
-    server: {host: '127.0.0.1', ws: false, hmr: false, middlewareMode: true, watch: null}})
+  vi.resetModules()
+  const child={inheritAttrs:false,setup:(_:unknown,{attrs,slots}:any)=>()=>runtime.h('div',attrs,slots.default?.())}
+  vi.doMock('@/src/services/config/store',()=>data)
+  vi.doMock('@/src/platform/i18n/uiLanguageBundles',()=>({ensureUiLanguageBundle:data.ensure}))
+  vi.doMock('@/src/ui/interfaceAppearance',()=>({applyInterfaceTheme:data.applyInterfaceTheme}))
+  vi.doMock('webextension-polyfill',()=>({default:data.browser}))
+  vi.doMock('element-plus',()=>({ElMessage:Object.assign(()=>{},{warning:()=>{}}),ElOption:{props:['value','label'],setup:(p:any,{slots}:any)=>()=>runtime.h('div',{'data-option':p.value},slots.default?.())}}))
+  vi.doMock('@element-plus/icons-vue',()=>({ArrowRight:{render:()=>null},InfoFilled:{render:()=>null},Edit:{render:()=>null}}))
+  vi.doMock('@/src/platform/browser/capabilities',()=>({browserCapabilities:{browser:'chrome'}}))
+  vi.doMock('@/src/ui/components/UiSelect.vue',()=>({__esModule:true,default:{inheritAttrs:false,setup:(_:unknown,{attrs,slots}:any)=>{data.captureControl(runtime.getCurrentInstance()!);return()=>runtime.h('div',{...attrs,'data-language-control':'true'},slots.default?.())}}}))
+  for(const path of [
+    '@/src/ui/components/FeatureEnableCard.vue',
+    '@/src/ui/components/GlossaryLibrarySelect.vue',
+    '@/src/ui/components/CustomHotkeyInput.vue',
+    '@/src/ui/components/ServiceIcon.vue',
+    '@/src/features/settings/ui/FeatureServiceSettings.vue',
+    '@/src/features/settings/ui/services/ServiceConfiguration.vue',
+    '@/src/features/settings/ui/WritingSettings.vue',
+    '@/src/features/settings/ui/InformationHighlightSettings.vue',
+    '@/src/features/settings/ui/SelectionSettings.vue',
+    '@/src/features/settings/ui/FloatingBallSettings.vue',
+    '@/src/features/settings/ui/SiteAdaptationSettings.vue',
+    '@/src/features/settings/ui/SitePreferencesSettings.vue',
+    '@/src/features/settings/ui/SiteRulePreview.vue',
+    '@/src/features/settings/ui/VideoLocalModelSettings.vue',
+    '@/src/features/settings/ui/LocalTtsSettings.vue',
+    '@/src/features/settings/ui/VideoSubtitleAppearanceSettings.vue',
+    '@/src/features/settings/ui/InterfaceSettings.vue',
+    '@/src/features/settings/ui/AreaTranslationSettings.vue',
+    '@/src/features/settings/ui/InputTranslationSettings.vue',
+    '@/src/features/settings/ui/ParagraphCopySettings.vue',
+    '@/src/features/settings/ui/SectionTranslationSettings.vue',
+    '@/src/features/settings/ui/ParagraphHandlingSettings.vue',
+    '@/src/features/settings/ui/TranslationCacheSettings.vue',
+    '@/src/features/settings/ui/ExcludedLanguageSettings.vue',
+    '@/src/features/settings/ui/ReadingAssistanceSettings.vue',
+    '@/src/features/settings/ui/ConfigManagement.vue',
+    '@/src/features/settings/ui/QuickTranslationProfiles.vue',
+    '@/src/features/settings/ui/ContextMenuSettings.vue',
+    '@/src/features/settings/ui/components/FieldHelp.vue',
+    '@/src/features/settings/ui/components/SettingsGroup.vue',
+    '@/src/features/settings/ui/components/SettingsItem.vue',
+    '@/src/features/settings/ui/components/SettingsPanel.vue',
+    '@/src/features/settings/ui/services/ServiceRepairReturn.vue',
+    '@/src/features/settings/ui/services/RequestLimitFields.vue',
+    '@/src/features/settings/ui/components/SettingsNumberInput.vue',
+    '@/src/features/settings/ui/services/CompositeTranslationFields.vue',
+    '@/src/features/settings/ui/components/SegmentedControl.vue',
+    '@/src/features/settings/ui/services/CustomOpenAIProviderDialog.vue',
+    '@/src/features/settings/ui/services/ServiceCatalog.vue'
+  ])vi.doMock(path,()=>({__esModule:true,default:child}))
+  vi.doMock('@/src/features/translation-center/public',()=>({TranslationCenter:child}))
+  vi.doMock('@/src/features/glossary/public',()=>({GlossarySettings:child}))
+  vi.doMock('@/src/features/image-translation/ui/public',()=>({ImageOcrSettings:child,MangaSettings:child}))
+  vi.doMock('@/src/features/model-usage/public',()=>({ModelUsageDashboard:child}))
+  vi.doMock('@/src/features/translation-stats/public',()=>({TranslationStatsDashboard:child}))
   let context!: UiI18nContext
   try {
-    recordPhase('server-created'); recordPhase('ssr-module-load'); const module = await server.ssrLoadModule('/src/ui/i18n.ts'); recordPhase('ssr-module-loaded')
+    recordPhase('module-load'); const module = await import('@/src/ui/i18n'); recordPhase('module-loaded')
     context = module.createUiI18nContext(); recordPhase('context-created')
-    const loadComponent = async (relative: string) => {
-      const filename = resolve(relative), directory = process.env.FLUENTREAD_UI_LANGUAGE_TEST_SOURCE_DIR
-      const original = directory ? resolve(directory, basename(filename)) : filename
-      const source = readFileSync(existsSync(original) ? original : filename, 'utf8'), {descriptor} = parse(source, {filename})
-      const script = compileScript(descriptor, {id: 'ui-language-parent-audit'})
-      const component = (await server.ssrLoadModule('/' + relative)).default
-      const template = compileTemplate({source: descriptor.template!.content, filename, id: 'ui-language-parent-audit',
-        compilerOptions: {mode: 'function', cacheHandlers: true, bindingMetadata: script.bindings, expressionPlugins: ['typescript']}})
-      expect(template.errors).toEqual([]);component.ssrRender = undefined
-      component.render = new Function('Vue', ts.transpileModule(template.code, {compilerOptions: {target: ts.ScriptTarget.ES2022}}).outputText)(runtime)
-      return component
-    }
-    const selector = mount ? await loadComponent('src/ui/components/UiLanguageSelector.vue') : undefined
-    const component = mount ? (parent ? await loadComponent('src/features/settings/ui/SettingsSections.vue') : selector) : undefined
+    const selector = mount ? (await import('@/src/ui/components/UiLanguageSelector.vue')).default : undefined
+    const component = mount ? (parent ? (await import('@/src/features/settings/ui/SettingsSections.vue')).default : selector) : undefined
     const visible = runtime.ref(true), props = runtime.reactive({activeSection: 'settings-general'}), parentState: Record<string, any> = {}
     if (component) {
       const renderer = runtime.createRenderer({patchProp(element: any, name: string, _before: unknown, next: unknown) {
@@ -134,7 +134,7 @@ export async function createLanguageHarness({parent = false, mount = true, ready
         querySelector: value => document.querySelector(value), setScopeId: () => {}, cloneNode: (node: any) => node.cloneNode(true),
         insertStaticContent: (html, owner: any, anchor: any) => {const template = document.createElement('template');template.innerHTML = html;const first = template.content.firstChild!, last = template.content.lastChild!;owner.insertBefore(template.content, anchor);return [first,last]}})
       app = renderer.createApp({setup: () => () => runtime.h(runtime.KeepAlive, null, {default: () => visible.value
-        ? runtime.h(component, {...(parent ? props : {}), ref: (vm: any) => {if (vm) parentState.value = vm.$.setupState}})
+        ? runtime.h(component as runtime.Component, {...(parent ? props : {}), ref: (vm: any) => {if (vm) parentState.value = vm.$.setupState}})
         : runtime.h({render: () => null}, {key: 'cached'})})})
       app.provide(module.UI_I18N_KEY, context);app.provide(runtime.ssrContextKey, {modules: new Set<string>()});app.config.warnHandler = () => {}
       app.mount(document.getElementById('app')!);await settle()
@@ -144,6 +144,6 @@ export async function createLanguageHarness({parent = false, mount = true, ready
       stored: () => stored.uiLanguage, foreign: (value: UiLanguage) => {stored = {...stored, uiLanguage: value};revision += 1;emit(stored)},
       control, handles, selector: () => control().parent!, open: async () => {handles().onVisibleChange?.(true);await settle()},
       change: (value: UiLanguage) => handles().onChange(value), pagehide: () => window.dispatchEvent(new dom.window.Event('pagehide')),
-      unmount: () => {app?.unmount();app = undefined}, close: async () => {recordPhase('close-start');app?.unmount();context.dispose();await settle();recordPhase('server-close');await server.close();recordPhase('close-done');delete (globalThis as Record<string,unknown>)[key];vi.unstubAllGlobals()}}
-  } catch (error) {app?.unmount();context?.dispose();await server.close();delete (globalThis as Record<string,unknown>)[key];vi.unstubAllGlobals();throw error}
+      unmount: () => {app?.unmount();app = undefined}, close: async () => {recordPhase('close-start');app?.unmount();context.dispose();await settle();recordPhase('close-done');vi.unstubAllGlobals()}}
+  } catch (error) {app?.unmount();context?.dispose();vi.unstubAllGlobals();throw error}
 }

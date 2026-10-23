@@ -1,7 +1,7 @@
 /**
  * @file src/features/document-translation/ui/presentation.ts
- * 文件职责：提供文档翻译界面使用的纯展示派生规则，把 ParsedDocument 转换成空状态提示和格式特定的文本/样式标签。
- * 主要内容：相同译文保留原文且不重复展示；包含小型本地范例、基于有界编码与大型 JSON 摘录的导出预览、字幕与富文本格式判断、预览说明、DOCX 部件名称映射、阅读器文本清理（含整句送翻留下的编号占位符，ASS 的换行与空格代码显示成真正的换行和空格）、译文是否带占位符的判断及 source 节点 class 的选择。
+ * 文件职责：提供文档翻译界面使用的纯展示派生规则，把 ParsedDocument 转换成空状态提示和格式特定的文本标签。
+ * 主要内容：相同译文保留原文且不重复展示；包含小型本地范例、基于有界编码与大型 JSON 摘录的导出预览、字幕与富文本格式判断、预览说明、DOCX 部件名称映射、阅读器文本清理（含整句送翻留下的编号占位符，ASS 的换行与空格代码显示成真正的换行和空格）及译文是否带占位符的判断。
  * 模块边界：本文件不创建 DOM、不解析文件也不调用翻译；它只消费 core 模型并返回 UI 可直接使用的值，实际预览 HTML 归 core/preview，PDF 位图和导出分别归 pdfPreview 与 binary。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
@@ -91,10 +91,4 @@ export function formatDocumentReaderText(format: DocumentFormat | undefined, val
         return (format === 'ass' ? text.replace(/\\[Nn]/gu, '\n').replace(/\\h/gu, ' ') : text).trim();
     }
     return value.trim();
-}
-
-export function getDocumentReaderSourceClass(format: DocumentFormat | undefined, value: string): string {
-    return format === 'markdown' && /^\s{0,3}#{1,6}\s+/u.test(value)
-        ? 'reader-heading'
-        : '';
 }

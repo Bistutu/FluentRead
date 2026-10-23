@@ -18,3 +18,9 @@ export function getUserscriptFunction(
         ? (modern as UserscriptMethod).bind(modernNamespace)
         : undefined;
 }
+
+/** 只读取管理器签发的隐私标记；不以网页 URL 或公开消息推断私密窗口。 */
+export function isUserscriptPrivateContext(): boolean {
+    const info = typeof GM_info !== 'undefined' ? GM_info : typeof GM !== 'undefined' ? GM?.info : undefined;
+    return info?.isIncognito === true || info?.isPrivate === true;
+}

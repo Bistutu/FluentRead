@@ -23,12 +23,11 @@ export interface SitePreferenceRow {
 }
 
 /** 同一网站只出现一行，不改变存储格式或悄悄消除用户的重叠偏好。 */
-export function listSitePreferences(config: SitePreferenceLists, query = ''): SitePreferenceRow[] {
+export function listSitePreferences(config: SitePreferenceLists): SitePreferenceRow[] {
     const always = new Set(normalizeSiteDomains(config.alwaysTranslateDomains));
     const disabled = new Set(normalizeSiteDomains(config.disabledExtensionDomains));
     const hidden = new Set(normalizeSiteDomains(config.floatingBallDisabledDomains));
-    const term = query.trim().toLowerCase();
-    return [...new Set([...always, ...disabled, ...hidden])].filter(domain => domain.includes(term))
+    return [...new Set([...always, ...disabled, ...hidden])]
         .sort((a, b) => a.localeCompare(b)).map(domain => ({domain, alwaysTranslate: always.has(domain),
             extensionDisabled: disabled.has(domain), floatingBallHidden: hidden.has(domain)}));
 }

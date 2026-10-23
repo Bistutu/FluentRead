@@ -93,7 +93,6 @@ const actions = computed(() => {
     timeout: (event: Event) => {if (current()) emit('update', {timeoutMs: inputValue(event).trim() ? Number(inputValue(event)) * 1000 : NaN})},
     selectMember: (event: Event) => {if (current()) {selectedMember.value = inputValue(event);appendMember(selectedMember.value)}},
     strategy: (strategy: string | number) => {if (current() && strategies.includes(strategy as CompositeTranslationStrategy)) emit('update', {strategy: strategy as CompositeTranslationStrategy})},
-    add: () => {if (current()) appendMember(selectedMember.value)},
     move: (service: string, direction: number) => {
       if (!current()) return
       const services = [...props.draft.services], index = services.indexOf(service), target = index + direction

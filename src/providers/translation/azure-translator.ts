@@ -11,7 +11,7 @@ import {isNativeTranslationBatchEnabled} from '@/src/core/config/nativeBatch';
 import {AZURE_TRANSLATOR_ENDPOINT, method} from '@/src/core/config/constants';
 import {getTranslationProviderLanguages} from '@/src/services/translation/requestSnapshot';
 import {createHttpStatusError, createProviderCodeError} from '@/src/platform/http/errors';
-import {abortErrorFromSignal, runtimeFetch} from '@/src/platform/http/runtime';
+import {abortErrorFromSignal, cancelUnreadResponseBody, runtimeFetch} from '@/src/platform/http/runtime';
 import {requireTranslationProviderConfig} from '@/src/services/translation/requestSnapshot';
 import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import {resolveCloudLanguages} from './cloud/languages';
@@ -53,7 +53,10 @@ async function azureTranslator(message: TranslationProviderRequest<string | stri
             body: JSON.stringify(origins.map(Text => ({Text}))),
             signal: message.abortSignal,
         });
-        if (!response.ok) throw createHttpStatusError(response, 'Azure 翻译请求失败');
+        if (!response.ok) {
+            cancelUnreadResponseBody(response);
+            throw createHttpStatusError(response, 'Azure 翻译请求失败');
+        }
         const result = await readNativeBatchJson<AzureTranslatorResponse | null>(response, 'Azure 翻译返回的不是有效 JSON', message.abortSignal);
         if (message.abortSignal?.aborted) throw abortErrorFromSignal(message.abortSignal);
         if (!Array.isArray(result) && result?.error) {

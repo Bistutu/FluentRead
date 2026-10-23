@@ -205,11 +205,9 @@ async function saveForm() {
   const result = upsertSiteRuleDraft(draft.value, buildSiteRuleFromForm(form.value, originalRule.value), editingId.value, document);
   if (!result.ok) { issues.value = result.issues; return; }
   // 表单先校验整份合并结果，保存失败时保留表单与已有 JSON 草稿，只有后台确认后才退出编辑。
-  const parsed = parseSiteAdaptationDraft(result.draft, document);
-  if (!parsed.ok) { issues.value = parsed.issues; return; }
   const id = form.value.id.trim();
   draftOwned.value = true;
-  if (!await commitSettings({...props.modelValue, custom: parsed.pack})) return;
+  if (!await commitSettings({...props.modelValue, custom: result.pack})) return;
   draft.value = result.draft; draftBase.value = result.draft; draftOwned.value = false; undoDraft.value = null;
   form.value = null; originalRule.value = undefined;
   filter.value = 'custom'; search.value = ''; selectedId.value = id; visibleLimit.value = 30;

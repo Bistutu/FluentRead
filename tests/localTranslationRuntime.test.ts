@@ -501,6 +501,111 @@ describe('local translation idle disposal while waiting for shared capacity', ()
   });
 });
 
+describe('local translation owner model management and worker failures', () => {
+  afterEach(() => {vi.useRealTimers();vi.unstubAllGlobals();vi.doUnmock('@/src/features/local-translation/offscreen/downloads');vi.resetModules();});
+  async function fixture() {
+    vi.resetModules();vi.useFakeTimers();
+    const ready = translationSnapshot('ready');
+    let hooks!: {onChange: (snapshot: typeof ready) => Promise<void>; beforeRemove: (model: string) => void};
+    const downloads = {status: vi.fn().mockResolvedValue(ready), start: vi.fn().mockResolvedValue(ready), pause: vi.fn().mockResolvedValue(translationSnapshot('paused')),
+      remove: vi.fn(async (model: string) => {hooks.beforeRemove(model);})};
+    vi.doMock('@/src/features/local-translation/offscreen/downloads', () => ({createLocalTranslationDownloadManager: (options: typeof hooks) => {hooks = options;return downloads;}}));
+    const workers: WorkerPort[] = [];
+    class WorkerPort {
+      onmessage?: (event: any) => void;onerror?: (event: any) => void;messages: any[] = [];terminate = vi.fn();
+      postMessage = vi.fn((message: any) => {this.messages.push(message);});
+      constructor(readonly url: string, readonly options: unknown) {workers.push(this);}
+      reply(data: unknown) {this.onmessage?.({data});}
+    }
+    vi.stubGlobal('Worker', WorkerPort);
+    vi.stubGlobal('chrome', {runtime: {getURL: (path: string) => `chrome-extension://owner/${path}`}});
+    vi.stubGlobal('window', {setTimeout, clearTimeout, location: {href: 'chrome-extension://owner/offscreen.html'}});
+    const owner = await import('@/src/features/local-translation/offscreen/translation');
+    const request = {model: LOCAL_TRANSLATION_MODEL_IDS.m2m100, text: 'Original', sourceLanguage: 'en', targetLanguage: 'zh'};
+    const flush = () => vi.advanceTimersByTimeAsync(0);
+    return {owner, hooks, downloads, workers, request, flush, ready};
+  }
+
+  it('forwards download controls, publishes configured progress, and only terminates the model being removed', async () => {
+    const {owner, hooks, downloads, workers, request, flush, ready} = await fixture();
+    try {
+      await expect(hooks.onChange(ready)).resolves.toBeUndefined();
+      const notify = vi.fn().mockResolvedValue(undefined);owner.configureLocalTranslationDownloadNotifications(notify);
+      await hooks.onChange(ready);expect(notify).toHaveBeenCalledWith(ready);
+      await expect(owner.prepareLocalTranslationModel(request.model)).resolves.toEqual(ready);
+      await expect(owner.pauseLocalTranslationModelDownload(request.model)).resolves.toEqual(translationSnapshot('paused'));
+      expect(downloads.start).toHaveBeenCalledWith(request.model);expect(downloads.pause).toHaveBeenCalledWith(request.model);
+      const status = await owner.getLocalTranslationModelStatus();
+      expect(status.models.find(model => model.model === request.model)).toMatchObject({downloaded: true});
+      expect(status.models.find(model => model.model === LOCAL_TRANSLATION_MODEL_IDS.opusZhEn)).toMatchObject({downloaded: false});
+      const pending = owner.translateLocalText(request);
+      const rejection = expect(pending).rejects.toThrow('LOCAL_TRANSLATION_MODEL_REMOVED');await flush();
+      expect(workers[0].url).toBe('chrome-extension://owner/localTranslationWorker.js');expect(workers[0].options).toEqual({type: 'module'});
+      await owner.removeLocalTranslationModel(LOCAL_TRANSLATION_MODEL_IDS.opusZhEn);expect(workers[0].terminate).not.toHaveBeenCalled();
+      await owner.removeLocalTranslationModel(request.model);await rejection;expect(workers[0].terminate).toHaveBeenCalledOnce();
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {owner.disposeLocalTranslationWorker();}
+  });
+
+  it('rejects missing model downloads before creating a worker and skips blank or same-language requests', async () => {
+    const {owner, downloads, workers, request} = await fixture();
+    try {
+      await expect(owner.translateLocalText({...request, text: ''})).resolves.toBe('');
+      await expect(owner.translateLocalText({...request, text: '  '})).resolves.toBe('  ');
+      await expect(owner.translateLocalText({...request, targetLanguage: 'en'})).resolves.toBe('Original');
+      expect(downloads.status).not.toHaveBeenCalled();
+      for (const tasks of [[], [{model: request.model, phase: 'paused'}]]) {
+        downloads.status.mockResolvedValue({version: 2, tasks});
+        await expect(owner.translateLocalText(request)).rejects.toThrow('LOCAL_TRANSLATION_NOT_DOWNLOADED');
+      }
+      expect(workers).toHaveLength(0);
+    } finally {owner.disposeLocalTranslationWorker();}
+  });
+
+  it.each([
+    [{success: true, result: 42}, '消息格式无效'],
+    [{success: false}, '本地翻译 Worker 失败'],
+    [{success: true, result: ''}, '本地翻译未返回有效译文'],
+    [{success: false, error: 'model failed'}, 'model failed'],
+  ] as const)('rejects invalid or failed worker responses %j while allowing later requests', async (response, error) => {
+    const {owner, workers, request, flush} = await fixture();
+    try {
+      const pending = owner.translateLocalText(request);const rejection = expect(pending).rejects.toThrow(error);await flush();
+      const worker = workers[0];worker.reply(null);worker.reply({requestId: 999, success: true, result: 'orphan'});
+      worker.reply({requestId: worker.messages[0].requestId, ...response});await rejection;
+      const retry = owner.translateLocalText(request);await flush();
+      worker.reply({requestId: worker.messages[1].requestId, success: true, result: 'Recovered'});
+      await expect(retry).resolves.toBe('Recovered');expect(workers).toHaveLength(1);
+    } finally {owner.disposeLocalTranslationWorker();}
+  });
+
+  it.each([new Error('structured clone failed'), 'worker unavailable', null])('terminates failed postMessage resources and recovers from %s', async error => {
+    const {owner, workers, request, flush} = await fixture();
+    try {
+      const warm = owner.translateLocalText(request);await flush();workers[0].reply({requestId: workers[0].messages[0].requestId, success: true, result: 'Warm'});await warm;
+      workers[0].postMessage.mockImplementationOnce(() => {throw error;});
+      const signal = new AbortController().signal;
+      await expect(owner.translateLocalText(request, signal)).rejects.toThrow(error instanceof Error ? error.message : error || '无法启动本地翻译 Worker');
+      expect(workers[0].terminate).toHaveBeenCalledOnce();expect(vi.getTimerCount()).toBe(0);
+      const retry = owner.translateLocalText(request);await flush();
+      workers[0].reply({requestId: 1, success: true, result: 'Late old result'});
+      workers[1].reply({requestId: workers[1].messages[0].requestId, success: true, result: 'Recovered'});
+      await expect(retry).resolves.toBe('Recovered');
+    } finally {owner.disposeLocalTranslationWorker();}
+  });
+
+  it('terminates a stalled worker at the absolute deadline and reports runtime errors without a browser message', async () => {
+    const {owner, workers, request, flush} = await fixture();
+    try {
+      const stalled = owner.translateLocalText(request);const timedOut = expect(stalled).rejects.toThrow('超过 120 秒');await flush();
+      await vi.advanceTimersByTimeAsync(120_000);await timedOut;expect(workers[0].terminate).toHaveBeenCalledOnce();
+      expect(vi.getTimerCount()).toBe(0);
+      const retry = owner.translateLocalText(request);const crashed = expect(retry).rejects.toThrow('本地翻译 Worker 已停止');await flush();
+      workers[1].onerror?.({});await crashed;expect(workers[1].terminate).toHaveBeenCalledOnce();expect(vi.getTimerCount()).toBe(0);
+    } finally {owner.disposeLocalTranslationWorker();}
+  });
+});
+
 describe('local translation background handlers', () => {
   it('acknowledges background jobs without marking them downloaded and only persists trusted completed progress', async () => {
     let stored: Record<string, unknown> = {[LOCAL_TRANSLATION_MODEL_STATE_KEY]: []};

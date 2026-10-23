@@ -44,16 +44,27 @@ function decodeStoredValue(value: unknown): unknown {
     }
 }
 
+/** 已提交的 GM 写入与外部变更不能被某个 UI 观察者的异常改判为失败。 */
+function notifyListeners(key: string, nextValue: unknown, previousValue: unknown): void {
+    listeners.get(key)?.forEach(listener => {
+        try {listener(nextValue, previousValue);}
+        catch {console.warn('[FluentRead userscript] 存储订阅回调执行失败');}
+    });
+}
+
 /**
  * GM 存储 API 在不同脚本管理器中可能同步或异步返回；这里统一归一为 Promise。
  * 内存回退仅服务于缺少 GM API 的测试或受限环境，不跨页面持久化。
  */
-export async function getStoredValue<T>(key: string): Promise<T | null> {
+export async function getStoredValue<T>(key: string, options?: {fallback: T}): Promise<T | null> {
+    const missingValue = options ? options.fallback : null;
     const getValue = getUserscriptFunction('GM_getValue', 'getValue');
     if (typeof getValue === 'function') {
-        return decodeStoredValue(await Promise.resolve(getValue(key, null))) as T | null;
+        const value = await Promise.resolve(getValue(key, undefined));
+        // 缺失键与已存 JSON null 不同；默认值也不能按旧存储字符串再次 JSON 解码。
+        return value === undefined ? missingValue : decodeStoredValue(value) as T | null;
     }
-    return (memoryFallback.get(key) ?? null) as T | null;
+    return memoryFallback.has(key) ? memoryFallback.get(key) as T : missingValue;
 }
 
 export async function setStoredValue<T>(key: string, value: T): Promise<void> {
@@ -68,7 +79,7 @@ export async function setStoredValue<T>(key: string, value: T): Promise<void> {
     }
     readOwners.set(key, {});
     observedValues.set(key, value);
-    listeners.get(key)?.forEach((listener) => listener(value, previousValue));
+    notifyListeners(key, value, previousValue);
 }
 
 export async function removeStoredValue(key: string): Promise<void> {
@@ -82,7 +93,7 @@ export async function removeStoredValue(key: string): Promise<void> {
     }
     readOwners.set(key, {});
     observedValues.set(key, null);
-    listeners.get(key)?.forEach((listener) => listener(null, previousValue));
+    notifyListeners(key, null, previousValue);
 }
 
 /** 统一枚举 GM 键；计数等跨页面派生状态只读取自己的命名空间。 */
@@ -114,7 +125,7 @@ async function refreshWatchedValues(): Promise<void> {
         if (readOwners.get(key) !== owner || listeners.get(key) !== bucket) return;
         if (comparable(previousValue) === comparable(nextValue)) return;
         observedValues.set(key, nextValue);
-        listeners.get(key)?.forEach((listener) => listener(nextValue, previousValue));
+        notifyListeners(key, nextValue, previousValue);
     }));
 }
 

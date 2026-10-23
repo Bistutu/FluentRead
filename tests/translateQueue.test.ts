@@ -32,6 +32,59 @@ afterEach(() => {
 });
 
 describe('translation queue', () => {
+  it('立即摘除取消信号对应的等待项，不等其他活动请求结束', async () => {
+    mockConfig.maxConcurrentTranslations = 1;
+    const gate = deferred<void>();
+    const active = enqueueTranslation(() => gate.promise);
+    const controller = new AbortController();
+    const task = vi.fn(async () => 'should not run');
+    let cancellation: unknown;
+    const queued = enqueueTranslation(task, undefined, controller.signal).catch(error => {cancellation = error; return error;});
+    try {
+      controller.abort();
+      await Promise.resolve();
+      expect(cancellation).toMatchObject({name: 'AbortError'});
+      expect(task).not.toHaveBeenCalled();
+    } finally {
+      gate.resolve();
+      await Promise.all([active, queued]);
+    }
+  });
+
+  it('拒绝预先取消且不运行任务，活动请求的取消监听交回任务所有者', async () => {
+    const controller = new AbortController(); controller.abort();
+    const task = vi.fn(async () => 'unused');
+    await expect(enqueueTranslation(task, undefined, controller.signal)).rejects.toMatchObject({name: 'AbortError'});
+    expect(task).not.toHaveBeenCalled();
+
+    const owner = new AbortController();
+    const remove = vi.spyOn(owner.signal, 'removeEventListener');
+    const gate = deferred<string>();
+    const active = enqueueTranslation(async () => gate.promise, undefined, owner.signal);
+    expect(remove).toHaveBeenCalledWith('abort', expect.any(Function));
+    owner.abort();
+    gate.resolve('owned transport result');
+    await expect(active).resolves.toBe('owned transport result');
+  });
+
+  it.each(['session', 'clear'] as const)('%s 取消等待项时移除其信号监听，迟到abort不会破坏下一代队列', async mode => {
+    mockConfig.maxConcurrentTranslations = 1;
+    const gate = deferred<void>(), owner = new AbortController();
+    const remove = vi.spyOn(owner.signal, 'removeEventListener');
+    const active = enqueueTranslation(() => gate.promise);
+    const session = createTranslationQueueSession();
+    const queued = enqueueTranslation(async () => 'unused', session, owner.signal).catch(error => error);
+    if (mode === 'session') cancelTranslationQueueSession(session);
+    else clearTranslationQueue();
+    await expect(queued).resolves.toBeInstanceOf(TranslationQueueCancelledError);
+    expect(remove).toHaveBeenCalledWith('abort', expect.any(Function));
+    owner.abort();
+    const next = enqueueTranslation(async () => 'next');
+    gate.resolve();
+    await active;
+    await expect(next).resolves.toBe('next');
+  });
+
   it('保持并发上限，并按 FIFO 顺序启动下一个任务', async () => {
     const controls = Array.from({length: 5}, () => deferred<number>());
     const started: number[] = [];

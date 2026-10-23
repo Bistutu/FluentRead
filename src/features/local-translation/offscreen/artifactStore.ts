@@ -2,10 +2,11 @@
  * @file src/features/local-translation/offscreen/artifactStore.ts
  *
  * 文件职责：保存本地翻译模型的分块文件并执行可恢复的多源下载。
- * 主要内容：固定版本与 SHA-256 校验、流式写入、Range 续传、来源回退和离线读取，下载内存有明确上限。
+ * 主要内容：固定版本与 SHA-256 校验、流式写入、Range 续传、来源回退和离线读取，下载内存有明确上限；拒绝响应立即释放未读正文，清理不阻塞镜像回退。
  * 模块边界：只操作专属 Cache Storage，不保存页面状态、不初始化推理引擎，也不向下载源发送翻译文本。
  */
 import {huggingFaceDownloadOrigins} from '@/src/platform/http/modelDownloads';
+import {cancelUnreadResponseBody} from '@/src/platform/http/runtime';
 import {sha256} from '@noble/hashes/sha256';
 import frozenArtifacts from '@/src/core/config/localTranslationArtifacts.json';
 import {getLocalTranslationModel} from '@/src/core/config/localTranslation';
@@ -137,10 +138,11 @@ async function receiveArtifact(
         timer = setTimeout(abort, ms);
     };
     let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+    let response: Response | undefined;
     try {
         abortIfNeeded(signal);
         armTimeout(15_000);
-        const response = await fetch(artifactUrl(file).replace(OFFICIAL_ORIGIN, origin), {
+        response = await fetch(artifactUrl(file).replace(OFFICIAL_ORIGIN, origin), {
             signal: controller.signal,
             credentials: 'omit',
             referrerPolicy: 'no-referrer',
@@ -194,7 +196,8 @@ async function receiveArtifact(
     } finally {
         clearTimeout(timer);
         controller.abort();
-        await reader?.cancel().catch(() => undefined);
+        if (reader) void reader.cancel().catch(() => undefined);
+        else if (response) cancelUnreadResponseBody(response);
         reader?.releaseLock();
         signal.removeEventListener('abort', abort);
     }

@@ -4,10 +4,10 @@
  * 主要内容：使用内存 IndexedDB 真实执行读写；检查解析版本和分段位置变化时只复用未变化原文，重复片段仅凭唯一位置或邻文恢复而不跳过空译文，没有旧原文时仅采用同版本同数量的兼容恢复；检查列表不含文件字节并按最近更新时间排序，保存的是调用方数据的副本，重译缓存策略只保留显式 true，条数与总字节超限时淘汰最旧记录，过大或没有标识的记录不保存，数据库缺失或出错时返回空结果而不抛出。
  * 模块边界：只测试历史存储服务，不挂载页面、不解析文档、不发起翻译。
  */
-import {IDBFactory} from 'fake-indexeddb';
+import {IDBFactory, IDBObjectStore} from 'fake-indexeddb';
 import {describe, expect, it, vi} from 'vitest';
 import {parseDocument, type ParsedDocument, type PdfDocumentBlock, type PdfDocumentLine} from '@/src/features/document-translation/core/document';
-import {createDocumentHistory, documentHistoryId, restoreDocumentHistoryPdfOcr, restoreDocumentHistoryRevisions, restoreDocumentHistoryTranslations, DOCUMENT_HISTORY_MAX_BYTES, DOCUMENT_HISTORY_MAX_ENTRIES, type DocumentHistoryRecord} from '@/src/features/document-translation/services/history';
+import {createDocumentHistory, documentHistoryId, restoreDocumentHistoryPdfOcr, restoreDocumentHistoryRevisions, DOCUMENT_HISTORY_MAX_BYTES, DOCUMENT_HISTORY_MAX_ENTRIES, type DocumentHistoryRecord} from '@/src/features/document-translation/services/history';
 
 const record = (id: string, updatedAt: number, extra: Partial<DocumentHistoryRecord> = {}): DocumentHistoryRecord => ({id, name: `${id}.pdf`, format: 'pdf', size: 3, total: 4, completed: 2, updatedAt,
     bytes: new Uint8Array([1, 2, 3]), mimeType: 'application/pdf', translations: ['甲', '', '丙', ''], fingerprint: 'fp', ...extra});
@@ -47,28 +47,28 @@ describe('document history translation migration', () => {
     it('restores by source after a reorder even when the version and segment count still match', () => {
         const saved = record('reordered', 1, {parsed: parsed(['First', 'Second']), parsedVersion: 7, total: 2, translations: ['第一段校订', '第二段校订']});
         const before = JSON.stringify(saved);
-        expect(restoreDocumentHistoryTranslations(saved, parsed(['Second', 'First']), 7)).toEqual(['第二段校订', '第一段校订']);
+        expect(restoreDocumentHistoryRevisions(saved, parsed(['Second', 'First']), 7).translations).toEqual(['第二段校订', '第一段校订']);
         expect(JSON.stringify(saved)).toBe(before);
     });
     it('keeps unchanged sources across inserted, removed and changed segments without synthesizing a merged translation', () => {
         const saved = record('changed', 1, {parsed: parsed(['Left', 'Right', 'Case', ' Spaced ']), parsedVersion: 6, total: 4,
             translations: ['左侧校订', '右侧校订', '大小写校订', '空格校订']});
-        expect(restoreDocumentHistoryTranslations(saved, parsed(['Inserted', 'Right', 'Left Right', 'case', 'Spaced', 'Left']), 7))
+        expect(restoreDocumentHistoryRevisions(saved, parsed(['Inserted', 'Right', 'Left Right', 'case', 'Spaced', 'Left']), 7).translations)
             .toEqual(['', '右侧校订', '', '', '', '左侧校订']);
     });
     it('retains ambiguous duplicate revisions instead of guessing occurrence order after insertion or removal', () => {
         const saved = record('duplicates', 1, {parsed: parsed(['Repeat', 'Between', 'Repeat', 'Repeat']), total: 4,
             translations: ['第一次校订', '中间校订', '第二次校订', '第三次校订']});
-        expect(restoreDocumentHistoryTranslations(saved, parsed(['Repeat', 'Repeat']), 7)).toEqual(['', '']);
-        expect(restoreDocumentHistoryTranslations(saved, parsed(['Repeat', 'New', 'Repeat', 'Between', 'Repeat', 'Repeat']), 7))
+        expect(restoreDocumentHistoryRevisions(saved, parsed(['Repeat', 'Repeat']), 7).translations).toEqual(['', '']);
+        expect(restoreDocumentHistoryRevisions(saved, parsed(['Repeat', 'New', 'Repeat', 'Between', 'Repeat', 'Repeat']), 7).translations)
             .toEqual(['', '', '', '中间校订', '第二次校订', '']);
     });
     it('consumes empty and whitespace duplicate slots without borrowing later completed revisions', () => {
         const saved = record('empty-duplicates', 1, {parsed: parsed(['Repeat', 'Repeat', 'Repeat', 'Sparse']), parsedVersion: 7, total: 4,
             translations: ['', ' \n ', '第三次校订']});
-        expect(restoreDocumentHistoryTranslations(saved, parsed(['Repeat', 'Repeat', 'Repeat', 'Sparse']), 7))
+        expect(restoreDocumentHistoryRevisions(saved, parsed(['Repeat', 'Repeat', 'Repeat', 'Sparse']), 7).translations)
             .toEqual(['', ' \n ', '第三次校订', '']);
-        expect(restoreDocumentHistoryTranslations(saved, parsed(['Repeat']), 7)).toEqual(['']);
+        expect(restoreDocumentHistoryRevisions(saved, parsed(['Repeat']), 7).translations).toEqual(['']);
     });
     it.each([NaN, Infinity, -1, 1.5])('refuses order compatibility for unlocated duplicates with an invalid parser version: %s', currentVersion => {
         const saved = record('invalid-source-order-version', 1, {parsed: parsed(['Repeat', 'Repeat']), parsedVersion: currentVersion,
@@ -80,36 +80,36 @@ describe('document history translation migration', () => {
     it('uses stored segment identifiers and tolerates legacy source snapshots without identifiers', () => {
         const saved = record('identifiers', 1, {parsed: {segments: [{id: 2, source: 'Third slot'}, {id: 0, source: 'First slot'}, {id: 99, source: 'Missing slot'}]},
             total: 3, translations: ['第一槽校订', '', '第三槽校订']});
-        expect(restoreDocumentHistoryTranslations(saved, parsed(['First slot', 'Third slot', 'Missing slot']), 7))
+        expect(restoreDocumentHistoryRevisions(saved, parsed(['First slot', 'Third slot', 'Missing slot']), 7).translations)
             .toEqual(['第一槽校订', '第三槽校订', '']);
         const legacy = record('legacy-identifiers', 1, {parsed: {segments: [{source: 'Legacy slot'}, {id: -1, source: 'Invalid id'}, {id: 1.5, source: 'Fractional id'}]},
             total: 3, translations: ['旧索引校订', '负标识校订', '非整数标识校订']});
-        expect(restoreDocumentHistoryTranslations(legacy, parsed(['Invalid id', 'Fractional id', 'Legacy slot']), 7))
+        expect(restoreDocumentHistoryRevisions(legacy, parsed(['Invalid id', 'Fractional id', 'Legacy slot']), 7).translations)
             .toEqual(['负标识校订', '非整数标识校订', '旧索引校订']);
     });
     it('does not fall back to indexes when only part of the old source snapshot is usable', () => {
         const saved = record('partial-snapshot', 1, {parsed: {segments: [null, 12, {source: 'Known'}, {source: ''}]},
             parsedVersion: 7, total: 4, translations: ['错位旧译文', '另一错位旧译文', '已知校订', '空原文校订']});
-        expect(restoreDocumentHistoryTranslations(saved, parsed(['Unknown', '', 'Known', 'Different']), 7))
+        expect(restoreDocumentHistoryRevisions(saved, parsed(['Unknown', '', 'Known', 'Different']), 7).translations)
             .toEqual(['', '空原文校订', '已知校订', '']);
-        expect(restoreDocumentHistoryTranslations(saved, parsed([]), 7)).toEqual([]);
+        expect(restoreDocumentHistoryRevisions(saved, parsed([]), 7).translations).toEqual([]);
     });
     it('reserves reused OCR occurrences before native matching, including empty revisions and non-contiguous legacy identifiers', () => {
         const saved = record('direct-duplicates', 1, {parsed: {segments: [{id: 2, source: 'Repeat'}, {id: 0, source: 'Repeat'}, {id: 1, source: 'Repeat'}]},
             translations: ['', '第二扫描页独立校订', '文字页校订']});
-        expect(restoreDocumentHistoryTranslations(saved, parsed(['Repeat', 'Repeat', 'Repeat']), 7, [undefined, 1, 2]))
+        expect(restoreDocumentHistoryRevisions(saved, parsed(['Repeat', 'Repeat', 'Repeat']), 7, [undefined, 1, 2]).translations)
             .toEqual(['文字页校订', '', '第二扫描页独立校订']);
     });
     it('ignores invalid or mismatched direct origins rather than assigning another source revision', () => {
         const saved = record('invalid-origins', 1, {parsed: {segments: [null, 12, {source: 'Different'}, {source: 'Same'}]},
             translations: ['空对象不能套译文', '数字不能套译文', '另一原文校订', '同原文校订']});
-        expect(restoreDocumentHistoryTranslations(saved, parsed(['Same', 'Same', 'Same', 'Same', 'Same', 'Same', 'Same', 'Same']), 7,
-            [-1, 1.5, NaN, 99, 0, 1, 2, '3' as any])).toEqual(['', '', '', '', '', '', '', '']);
+        expect(restoreDocumentHistoryRevisions(saved, parsed(['Same', 'Same', 'Same', 'Same', 'Same', 'Same', 'Same', 'Same']), 7,
+            [-1, 1.5, NaN, 99, 0, 1, 2, '3' as any]).translations).toEqual(['', '', '', '', '', '', '', '']);
     });
     it.each([undefined, null, 12, 'old snapshot', {}, {segments: null}, {segments: []}, {segments: [null, {source: 12}]}])
         ('allows index compatibility only for missing sources from the same known parsing version: %j', snapshot => {
             const saved = record('legacy', 1, {parsed: snapshot, parsedVersion: 7, total: 2, translations: ['第一槽校订']});
-            expect(restoreDocumentHistoryTranslations(saved, parsed(['First', 'Second']), 7)).toEqual(['第一槽校订', '']);
+            expect(restoreDocumentHistoryRevisions(saved, parsed(['First', 'Second']), 7).translations).toEqual(['第一槽校订', '']);
         });
     it.each([
         {parsedVersion: undefined, currentVersion: 7, total: 2},
@@ -120,7 +120,7 @@ describe('document history translation migration', () => {
         {parsedVersion: 1.5, currentVersion: 1.5, total: 2},
     ])('refuses unsafe index recovery with unknown versions or mismatched counts: %j', ({parsedVersion, currentVersion, total}) => {
         const saved = record('unsafe', 1, {parsedVersion, total, translations: ['错位旧译文', '另一错位旧译文']});
-        expect(restoreDocumentHistoryTranslations(saved, parsed(['First', 'Second']), currentVersion)).toEqual(['', '']);
+        expect(restoreDocumentHistoryRevisions(saved, parsed(['First', 'Second']), currentVersion).translations).toEqual(['', '']);
     });
 });
 
@@ -187,7 +187,7 @@ describe('document history PDF geometry migration', () => {
         const {document, segmentOrigins} = restoreDocumentHistoryPdfOcr(saved, current);
         expect(document.segments.map(segment => segment.source)).toEqual(previous.segments.map(segment => segment.source));
         expect(segmentOrigins).toEqual([0, 1, 2, 3]);
-        expect(restoreDocumentHistoryTranslations(saved, document, 16, segmentOrigins)).toEqual(saved.translations);
+        expect(restoreDocumentHistoryRevisions(saved, document, 16, segmentOrigins).translations).toEqual(saved.translations);
         if (document.binary?.kind !== 'pdf') throw new Error('expected PDF');
         expect(document.binary.bytes).toBe(current.binary.bytes);
         expect(document.binary.pages[0].segmentIndexes).toEqual([0, 1, 2, 3]);
@@ -219,7 +219,7 @@ describe('document history PDF geometry migration', () => {
         expect(document.binary.pages[0].blocks[1]).toMatchObject({lineCount: 2, lineHeight: 14});
         expect(document.binary.pages[0].blocks[1].lines).toEqual(freshBlock.lines!.slice(1, 3));
         expect(document.binary.pages[0].blocks[0]).not.toHaveProperty('readingOrder');
-        expect(restoreDocumentHistoryTranslations(saved, document, 16, segmentOrigins)).toEqual(['左段校订', '', '末段校订', '']);
+        expect(restoreDocumentHistoryRevisions(saved, document, 16, segmentOrigins).translations).toEqual(['左段校订', '', '末段校订', '']);
     });
 
     it.each([
@@ -276,7 +276,7 @@ describe('document history PDF geometry migration', () => {
         const {document, segmentOrigins} = restoreDocumentHistoryPdfOcr(saved, current);
         const expectedBySource = new Map<string, string[]>();
         previous.segments.forEach((segment, index) => {const slots = expectedBySource.get(segment.source) ?? []; slots.push(translations[index]); expectedBySource.set(segment.source, slots);});
-        const restoredTranslations = restoreDocumentHistoryTranslations(saved, document, 16, segmentOrigins);
+        const restoredTranslations = restoreDocumentHistoryRevisions(saved, document, 16, segmentOrigins).translations;
         expect(restoredTranslations).toEqual(document.segments.map(segment => expectedBySource.get(segment.source)?.shift() ?? ''));
         for (const origin of [103, 104, 105, 106]) {
             const index = segmentOrigins!.indexOf(origin);
@@ -314,7 +314,7 @@ describe('document history scanned-PDF migration', () => {
         expect(restored.binary.pages[1].blocks.map(block => block.segmentIndex)).toEqual([1, -1]);
         expect(restored.binary.pages[2]).toMatchObject({sourceRotation: 90, scanned: false});
         expect(segmentOrigins).toEqual([undefined, 1, 2]);
-        expect(restoreDocumentHistoryTranslations(saved, restored, 7, segmentOrigins)).toEqual(['', '第一页扫描校订', '第二页扫描校订']);
+        expect(restoreDocumentHistoryRevisions(saved, restored, 7, segmentOrigins).translations).toEqual(['', '第一页扫描校订', '第二页扫描校订']);
         expect(JSON.stringify(saved)).toBe(before);
         expect(current.binary.pages[1].scanned).toBe(true);
     });
@@ -346,7 +346,7 @@ describe('document history scanned-PDF migration', () => {
         const saved = record('removed-native', 1, {bytes: previous.binary.bytes, parsed: previous,
             translations: ['文字页校订', '第一页扫描独立校订', '', '第二页重复段独立校订']});
         const {document, segmentOrigins} = restoreDocumentHistoryPdfOcr(saved, current);
-        expect(restoreDocumentHistoryTranslations(saved, document, 7, segmentOrigins))
+        expect(restoreDocumentHistoryRevisions(saved, document, 7, segmentOrigins).translations)
             .toEqual([...expected, '第一页扫描独立校订', '', '第二页重复段独立校订']);
         expect(document).not.toHaveProperty('segmentOrigins');
     });
@@ -489,6 +489,18 @@ describe('document history storage', () => {
         const loaded = await history.load('new');
         expect(Array.from(loaded!.bytes)).toEqual([9, 8, 7]); expect(loaded!.translations).toEqual(['甲', '乙']); expect(loaded!.fingerprint).toBe('fp');
     });
+    it('列表和保存淘汰逐条读取摘要，不聚合复制全部原文件及解析快照', async () => {
+        const aggregateRead = vi.spyOn(IDBObjectStore.prototype, 'getAll');
+        const history = createDocumentHistory(new IDBFactory());
+        try {
+            for (let index = 0; index < 3; index++) {
+                expect(await history.save(record(String(index), index, {bytes: new Uint8Array(512_000), parsed: parsed(['完整解析快照'.repeat(10_000)])}))).toBe(true);
+            }
+            expect((await history.list()).map(item => item.id)).toEqual(['2', '1', '0']);
+            expect(aggregateRead).not.toHaveBeenCalled();
+            expect((await history.load('1'))?.bytes.byteLength).toBe(512_000);
+        } finally { aggregateRead.mockRestore(); }
+    });
     it('updates an existing record in place, removes single records and clears everything', async () => {
         const history = createDocumentHistory(new IDBFactory());
         await history.save(record('a', 1)); await history.save(record('b', 2)); await history.save(record('a', 3, {completed: 4}));
@@ -542,7 +554,7 @@ describe('document history storage', () => {
         const rejecting = createDocumentHistory({open: () => {
             const opened = {result: {transaction: (_store: string, mode: IDBTransactionMode) => {
                 if (mode === 'readwrite') throw new Error('quota');
-                return {objectStore: () => ({getAll: failing, get: failing})};
+                return {objectStore: () => ({openCursor: failing, get: failing})};
             }}} as unknown as IDBOpenDBRequest;
             queueMicrotask(() => opened.onsuccess?.(new Event('success')));
             return opened;

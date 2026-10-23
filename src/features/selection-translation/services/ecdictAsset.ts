@@ -4,7 +4,7 @@
  * 主要内容：限制响应体积与下载时长、验证 SHA-256、复用 CacheStorage 中的可信副本，并允许镜像失败后重试。
  * 模块边界：只处理可选词库资产，不传输查询词、不解析词义，也不加载远程脚本或 WASM。
  */
-import {runtimeFetch} from '@/src/platform/http/runtime';
+import {cancelUnreadResponseBody, runtimeFetch} from '@/src/platform/http/runtime';
 
 export type EcdictCompactRow = readonly [string, string, string, string];
 
@@ -26,20 +26,16 @@ export function canCacheOptionalEcdict(): boolean {
 }
 
 async function verifiedRows(bytes: Uint8Array): Promise<EcdictCompactRow[]> {
-    if (bytes.byteLength !== FULL_BYTES) throw new Error('Optional dictionary size mismatch');
     const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes as BufferSource)),
         byte => byte.toString(16).padStart(2, '0')).join('');
     if (hash !== FULL_SHA256) throw new Error('Optional dictionary integrity mismatch');
-    const payload: unknown = JSON.parse(new TextDecoder().decode(bytes));
-    if (!Array.isArray(payload) || payload.length !== 20_000
-        || !payload.every(row => Array.isArray(row) && row.length === 4 && row.every(value => typeof value === 'string'))) {
-        throw new Error('Optional dictionary format mismatch');
-    }
-    return payload as EcdictCompactRow[];
+    // readBounded 已保证字节数；固定摘要绑定仓库审计过的完整 JSON，
+    // 无须在每次缓存命中时再次遍历 20,000 行验证相同的不可变结构。
+    return JSON.parse(new TextDecoder().decode(bytes)) as EcdictCompactRow[];
 }
 
 async function readBounded(response: Response): Promise<Uint8Array> {
-    if (!response.ok) throw new Error(`Optional dictionary HTTP ${response.status}`);
+    if (!response.ok) {cancelUnreadResponseBody(response); throw new Error(`Optional dictionary HTTP ${response.status}`);}
     if (!response.body) throw new Error('Optional dictionary response body missing');
     const reader = response.body.getReader();
     const bytes = new Uint8Array(FULL_BYTES);

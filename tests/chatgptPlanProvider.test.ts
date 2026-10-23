@@ -38,7 +38,7 @@ describe('ChatGPT 套餐 provider 与能力', () => {
     it('是独立 AI 服务，账户模型为空目录，凭据和端点不进入常规设置字段', () => {
         expect(servicesType.isAI(services.chatgptPlan)).toBe(true);
         expect(servicesType.isUseModel(services.chatgptPlan)).toBe(true);
-        for (const predicate of [servicesType.isAiSdk, servicesType.isUseToken, servicesType.isUseProxy, servicesType.isUseCustomUrl, servicesType.isUseCustomBody]) {
+        for (const predicate of [servicesType.isAiSdk, servicesType.isUseToken, servicesType.isUseProxy, servicesType.isUseCustomBody]) {
             expect(predicate(services.chatgptPlan)).toBe(false);
         }
         expect(currentModelIds.chatgptPlan).toBe('');
@@ -198,7 +198,9 @@ describe('Responses SSE 严格完成与取消', () => {
 
     it('缺失SSE body/类型与无效UTF-8会拒绝', async () => {
         await expect(readChatGPTPlanStream(new Response(null, {headers: {'Content-Type': 'text/event-stream'}}))).rejects.toThrow('事件流');
-        await expect(readChatGPTPlanStream(new Response('{}'))).rejects.toThrow('事件流');
+        const cancel = vi.fn(() => new Promise<void>(() => {}));
+        await expect(readChatGPTPlanStream(new Response(new ReadableStream({cancel})))).rejects.toThrow('事件流');
+        expect(cancel).toHaveBeenCalledOnce();
         await expect(readChatGPTPlanStream(new Response(new Uint8Array([255]), {headers: {'Content-Type': 'text/event-stream'}}))).rejects.toThrow('UTF-8');
     });
 
@@ -211,7 +213,10 @@ describe('Responses SSE 严格完成与取消', () => {
         controller.abort();
         await expectation;
         expect(cancel).toHaveBeenCalledTimes(1);
-        await expect(readChatGPTPlanStream(sse(doneEvent()), controller.signal)).rejects.toMatchObject({name: 'AbortError'});
+        const lateCancel = vi.fn(() => new Promise<void>(() => {}));
+        const lateResponse = new Response(new ReadableStream({cancel: lateCancel}), {headers: {'Content-Type': 'text/event-stream'}});
+        await expect(readChatGPTPlanStream(lateResponse, controller.signal)).rejects.toMatchObject({name: 'AbortError'});
+        expect(lateCancel).toHaveBeenCalledOnce();
     });
 
     it('完成后取消上游剩余帧，reader不会长期占用连接', async () => {

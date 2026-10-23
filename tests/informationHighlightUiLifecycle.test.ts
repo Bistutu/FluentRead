@@ -87,6 +87,17 @@ describe('信息高亮真实偏好组件', () => {
     state.densityChoices.find((item: any) => item.value === 'high').choose(); await settle(); state.colorChoices.find((item: any) => item.value === 'mint').choose(); await settle(); state.styleChoices.find((item: any) => item.value === 'underline').choose()
     expect(props.config.informationHighlight).toEqual({enabled: false, hotkey: 'Alt+H', hotkeyEnabled: true, model: 'qwen2.5-0.5b', mode: 'surprisal-local', density: 'high', color: 'mint', style: 'underline', intensity: 'standard'})
   })
+  it('拒绝输入框快捷键冲突，并只保留已启用圈选功能的占用', async () => {
+    await mount('InformationHighlightPreferences')
+    props.config.inputBoxTranslationTrigger = 'ctrl_enter'
+    expect(state.hotkeyConflict('Control+Enter')).toBe('informationHighlight.hotkey.conflict')
+    props.config.inputBoxTranslationTrigger = 'none'
+    expect(state.hotkeyConflict('Control+Enter')).toBe('')
+    props.config.selectionAreaHotkey = 'custom'; props.config.customSelectionAreaHotkey = 'Alt+J'; props.config.selectionAreaEnabled = false
+    expect(state.hotkeyConflict('Alt+J')).toBe('')
+    props.config.selectionAreaEnabled = true
+    expect(state.hotkeyConflict('Alt+J')).toBe('informationHighlight.hotkey.conflict')
+  })
   it('偏好更换、视图关闭又重开和卸载时，缓存控件不能借用新配置', async () => {
     await mount('InformationHighlightPreferences'); const oldMode = state.actions.mode, oldDensity = state.densityChoices[0].choose
     props.config.informationHighlight = {...props.config.informationHighlight, color: 'blue'}

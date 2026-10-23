@@ -2,7 +2,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {parseHTML} from 'linkedom';
 import {Config} from '@/src/core/config/model';
 import {mountPlatformCaptions} from '@/src/features/video-subtitle/content/platformRuntime';
-import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
+import {registerAllUiLanguageBundles} from './helpers/uiLanguageBundles';
 registerAllUiLanguageBundles();
 
 const readingPort = vi.hoisted(() => ({annotate: vi.fn()}));

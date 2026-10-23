@@ -1,7 +1,7 @@
 <!--
 @file src/features/settings/ui/LocalDataManagement.vue
 文件职责：在备份与恢复页提供唯一的 FluentRead 数据迁移入口。
-主要内容：将设置、单词本和模型用量导出为一份版本化备份，确认期随页面活跃归属失效；已接受并开始读取的导出继续下载，迟到提示与焦点归还仍核对归属。文件导入的读取确认与文本等待也复验活跃归属，失效后不再启动读取或解析、展示迟到预览；已确认导入继续完成各领域写入并消费旧预览，只允许本次打开的对话框关闭回调清理和归还焦点，避免迟到结果影响新视图。
+主要内容：将设置、单词本和模型用量导出为一份版本化备份，确认期随页面活跃归属失效；已接受并开始读取的导出继续下载，迟到提示与焦点归还仍核对归属。文件导入和粘贴 JSON 的输入、预览、确认及关闭事件绑定本次活跃对话框，旧确认不能接受新预览；已确认导入继续完成各领域写入并消费旧预览，只允许本次打开的对话框关闭回调清理和归还焦点，避免迟到结果影响新视图。
 模块边界：组件只编排 runtime 协议和文件交互；各领域仓库继续拥有校验与合并规则，Anki 与清空等单词本操作留在单词本页。
 -->
 <template>
@@ -23,15 +23,17 @@
     </SettingsGroup>
 
     <input
+      :key="restoreSourceActions.inputKey"
       ref="data-import-input"
       hidden
       type="file"
       accept="application/json,.json"
-      @change="readImportFile"
+      :onChange="restoreSourceActions.readFile"
     />
 
     <el-dialog
-      v-model="restoreSourceVisible"
+      :model-value="restoreSourceVisible"
+      @update:model-value="restoreSourceActions.setVisible"
       title="从备份恢复"
       width="min(600px, calc(100vw - 32px))"
       data-testid="restore-source-dialog"
@@ -45,26 +47,28 @@
           <strong>选择备份文件</strong>
           <small>{{ t('settings.backup.restoreHint') }}</small>
         </div>
-        <el-button type="primary" :disabled="busy" @click="chooseImport($event)">选择文件</el-button>
+        <el-button type="primary" :disabled="busy" @click="restoreSourceActions.chooseFile">选择文件</el-button>
       </div>
       <details class="legacy-paste">
         <summary>粘贴旧版配置 JSON</summary>
         <p>如果你以前使用“导出配置”复制了 JSON，可以直接粘贴在这里</p>
         <el-input
-          v-model="pastedJson"
+          :model-value="pastedJson"
+          @update:model-value="restoreSourceActions.updateJson"
           type="textarea"
           :rows="8"
           :placeholder="translateLegacy('粘贴 FluentRead JSON').replace('FluentRead', t('common.brand'))"
           :aria-label="translateLegacy('粘贴 FluentRead JSON').replace('FluentRead', t('common.brand'))"
         />
         <div class="legacy-paste-actions">
-          <el-button :disabled="busy || !pastedJson.trim()" @click="previewPastedImport($event)">预览恢复内容</el-button>
+          <el-button :disabled="busy || !pastedJson.trim()" @click="restoreSourceActions.preview">预览恢复内容</el-button>
         </div>
       </details>
     </el-dialog>
 
     <el-dialog
-      v-model="importPreviewVisible"
+      :model-value="importPreviewVisible"
+      @update:model-value="importPreviewActions.setVisible"
       title="导入前确认"
       width="min(720px, calc(100vw - 32px))"
       destroy-on-close
@@ -135,8 +139,8 @@
         </p>
       </template>
       <template #footer>
-        <el-button :disabled="busy" @click="importPreviewVisible = false">取消</el-button>
-        <el-button type="primary" :loading="busy" :disabled="!pendingImport" @click="applyPendingImport">确认导入</el-button>
+        <el-button :disabled="busy" @click="importPreviewActions.cancel">取消</el-button>
+        <el-button type="primary" :loading="busy" :disabled="!pendingImport" @click="importPreviewActions.confirm">确认导入</el-button>
       </template>
     </el-dialog>
   </div>
@@ -192,6 +196,33 @@ let restoreActionTrigger: HTMLElement | null = null;
 const noopClosed = () => undefined;
 const clearImportPreview = shallowRef<() => void>(noopClosed);
 const clearRestoreSource = shallowRef<() => void>(noopClosed);
+// 控件可能保留旧事件；视图归属或恢复对话框更新后，不允许它们修改新一次恢复内容。
+const restoreSourceActions = computed(() => {
+  const source = clearRestoreSource.value;
+  const isCurrent = localDataContext.capture();
+  const ownsSource = () => isCurrent() && clearRestoreSource.value === source
+    && restoreSourceVisible.value && !importPreviewVisible.value && !busy.value;
+  return {
+    inputKey: Symbol(),
+    setVisible(value: boolean) {if (ownsSource()) restoreSourceVisible.value = value;},
+    updateJson(value: string) {if (ownsSource()) pastedJson.value = value;},
+    chooseFile(event?: MouseEvent) {if (ownsSource()) chooseImport(event);},
+    readFile(event: Event) {if (ownsSource()) return readImportFile(event);},
+    preview(event?: MouseEvent) {if (ownsSource()) return previewPastedImport(event);},
+  };
+});
+const importPreviewActions = computed(() => {
+  const preview = clearImportPreview.value;
+  const target = pendingImport.value;
+  const isCurrent = localDataContext.capture();
+  const ownsPreview = () => isCurrent() && clearImportPreview.value === preview
+    && pendingImport.value === target && importPreviewVisible.value && !busy.value;
+  return {
+    setVisible(value: boolean) {if (ownsPreview()) importPreviewVisible.value = value;},
+    cancel() {if (ownsPreview()) importPreviewVisible.value = false;},
+    confirm() {if (ownsPreview()) return applyPendingImport();},
+  };
+});
 
 const importSummary = computed(() => pendingImport.value ? summarizeLocalDataImport(pendingImport.value) : null);
 function prepareImportedConfig(target: LocalDataImport | null, current: Config): Config | null {
@@ -302,10 +333,9 @@ async function chooseBackupContext(): Promise<boolean | null> {
 }
 
 function openRestoreSource(event: MouseEvent): void {
-  if (!busy.value && !importPreviewVisible.value) {
-    if (pendingImport.value) consumePendingImport(pendingImport.value);
-    clearImportPreview.value = noopClosed;
-  }
+  if (!localDataContext.active.value || busy.value || importPreviewVisible.value) return;
+  if (pendingImport.value) consumePendingImport(pendingImport.value);
+  clearImportPreview.value = noopClosed;
   const trigger = event.currentTarget as HTMLElement | null;
   const isCurrent = localDataContext.capture();
   const previewAtOpen = clearImportPreview.value;
@@ -359,7 +389,7 @@ async function readImportFile(event: Event): Promise<void> {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
   input.value = '';
-  if (!file || busy.value || !localDataContext.active.value) return;
+  if (!file || busy.value || !localDataContext.active.value || !restoreSourceVisible.value) return;
   const trigger = restoreActionTrigger;
   restoreActionTrigger = null;
   const isCurrent = localDataContext.capture();
@@ -391,17 +421,18 @@ async function readImportFile(event: Event): Promise<void> {
 
 async function previewPastedImport(event?: MouseEvent): Promise<void> {
   const text = pastedJson.value.trim();
-  if (!text || busy.value) return;
+  if (!text || busy.value || !localDataContext.active.value || !restoreSourceVisible.value) return;
   const trigger = eventTarget(event);
+  const isCurrent = localDataContext.capture();
   busy.value = true;
   try {
     const parsed = parseLocalDataImport(JSON.parse(text));
     showImportPreview(parsed, '粘贴的旧版 JSON', new Blob([text]).size);
   } catch (error) {
-    ElMessage.error(`无法读取 JSON：${errorMessage(error)}`);
+    if (isCurrent()) ElMessage.error(`无法读取 JSON：${errorMessage(error)}`);
   } finally {
     busy.value = false;
-    await focusTriggerAfterBusy(trigger, () => restoreSourceVisible.value && !importPreviewVisible.value);
+    await focusTriggerAfterBusy(trigger, () => isCurrent() && restoreSourceVisible.value && !importPreviewVisible.value);
   }
 }
 
@@ -485,7 +516,7 @@ function eventTarget(event?: MouseEvent): HTMLElement | null {
 
 async function focusTriggerAfterBusy(
   trigger: HTMLElement | null,
-  shouldFocus: () => boolean = () => true,
+  shouldFocus: () => boolean,
 ): Promise<void> {
   await nextTick();
   const activeElement = document.activeElement;

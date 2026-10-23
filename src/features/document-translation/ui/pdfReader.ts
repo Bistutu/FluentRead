@@ -5,7 +5,6 @@
  * 模块边界：调度器只调用注入的渲染端口；浏览器渲染端口依赖 PDF.js 和文档预览资源，不发起翻译请求、不修改原始文件或负责入口挂载。
  */
 import type {PDFPageProxy, TextLayer} from 'pdfjs-dist/legacy/build/pdf.mjs';
-import {hasDistinctTranslation} from '@/src/core/translation/result';
 import type {DocumentRenderMode, ParsedDocument, PdfDocumentPage} from '@/src/features/document-translation/core/document';
 import {acquirePdfDocument} from '@/src/features/document-translation/ui/pdfPreview';
 import {buildPdfReadingPlan, type PdfReadingPresentation, type PdfReadingRect, type PdfReadingRegionEntry} from '@/src/features/document-translation/core/pdfReadingPlan';
@@ -61,23 +60,19 @@ export function pdfReaderPageWindow(pageCount: number, currentIndex: number, vis
 }
 
 /** 画布像素限制在源文与译文的合计预算中；预算内固定按 2 倍像素比渲染，CSS 缩放与文本层不受影响。 */
-export function pdfReaderCanvasSize(width: number, height: number, devicePixelRatio: number, canvasCount = 1, pixelBudget = PDF_READER_MAX_PAGE_PIXELS): {width: number; height: number; outputScale: number} {
+export function pdfReaderCanvasSize(width: number, height: number, _devicePixelRatio: number, canvasCount = 1, pixelBudget = PDF_READER_MAX_PAGE_PIXELS): {width: number; height: number; outputScale: number} {
     if (!Number.isFinite(pixelBudget) || pixelBudget < 1) throw new RangeError('PDF 页面像素预算不足');
     const pixelLimit = Math.floor(pixelBudget);
     const safeWidth = Math.max(1, Number.isFinite(width) ? width : 1);
     const safeHeight = Math.max(1, Number.isFinite(height) ? height : 1);
     const outputScale = Math.min(
         // 至少按 2 倍超采样：1 倍屏上细小的论文字形经缩小后更锐利，窗口报告的像素比偏低时也不会发虚。
-        Math.max(2, Math.min(2, Number.isFinite(devicePixelRatio) ? devicePixelRatio : 2)),
+        2,
         Math.sqrt(pixelLimit / Math.max(1, canvasCount) / safeWidth / safeHeight),
         PDF_READER_MAX_CANVAS_EDGE / Math.max(safeWidth, safeHeight),
         pixelLimit / Math.max(safeWidth, safeHeight),
     );
     return {width: Math.max(1, Math.floor(safeWidth * outputScale)), height: Math.max(1, Math.floor(safeHeight * outputScale)), outputScale};
-}
-
-export function pdfReaderPageHasTranslation(document: ParsedDocument, page: PdfDocumentPage, translations: readonly string[]): boolean {
-    return page.segmentIndexes.some(index => hasDistinctTranslation(document.segments[index]?.source ?? '', translations[index]));
 }
 
 /** 原图区域身份和坐标变更才重裁剪；键不含译文、角色或片段关联，区域插入顺序变化也不重绘原像素。 */

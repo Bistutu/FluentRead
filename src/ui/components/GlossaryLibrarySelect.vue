@@ -40,8 +40,6 @@
 <script setup lang="ts">
 import UiSelect from '@/src/ui/components/UiSelect.vue';
 import {ElOption} from 'element-plus';
-import {useUiI18n as useControlI18n} from '@/src/ui/i18n';
-const {translateLegacy: translateControlLabel} = useControlI18n();
 
 import {computed} from 'vue';
 import type {GlossaryLibrary} from '@/src/core/glossary';
@@ -56,7 +54,7 @@ const props = withDefaults(defineProps<{
   showCopy?: boolean;
 }>(), {showCopy: true});
 const emit = defineEmits<{'update:modelValue': [value: string[] | null]}>();
-const {t} = useUiI18n();
+const {t, translateLegacy: translateControlLabel} = useUiI18n();
 const mode = computed(() => props.modelValue == null ? 'inherit' : props.modelValue.length ? 'selected' : 'none');
 function changeMode(value: string): void {
   if (props.disabled || value === mode.value || !['inherit', 'none', 'selected'].includes(value)) return;

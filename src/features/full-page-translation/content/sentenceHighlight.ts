@@ -101,15 +101,17 @@ export function installBilingualSentenceHighlight(document: Document): () => voi
     let active: Pair | undefined;
     let pending: {event: PointerEvent; target: Element | null} | null = null;
     let frame: number | null = null;
+    const ownerAncestors: Node[] = [];
     const observer = new view.MutationObserver(records => {
         if (owner && (!owner.isConnected || records.some(record => owner!.contains(record.target)
-            || record.target.contains(owner)))) clear();
+            || ownerAncestors.some(ancestor => record.target.contains(ancestor))))) clear();
     });
     function clear(): void {
         paint.clear();
         active = undefined;
         owner = null;
         ownerTarget = null;
+        ownerAncestors.length = 0;
         pairs = [];
         collecting = undefined;
         pending = null;
@@ -132,7 +134,16 @@ export function installBilingualSentenceHighlight(document: Document): () => voi
             collecting = {wrapper: wrappers[0], source: textCollector(owner, 100_000)};
             pending = point;
             // 收集期间也观察，避免跨帧使用已经变更或脱离页面的节点。
-            observer.observe(document, {subtree: true, childList: true, characterData: true, attributes: true});
+            // document 的观察不穿透 Shadow DOM；同时观察每层实际根及其宿主祖先。
+            const options = {subtree: true, childList: true, characterData: true, attributes: true};
+            let ancestor: Node = owner;
+            while (true) {
+                ownerAncestors.push(ancestor);
+                const root = ancestor.getRootNode();
+                observer.observe(root, options);
+                if (root === document) break;
+                ancestor = (root as ShadowRoot).host;
+            }
         }
         ownerTarget = hit;
         if (collecting) {

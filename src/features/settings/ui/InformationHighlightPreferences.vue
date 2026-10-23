@@ -69,7 +69,7 @@ import {canonicalizeHotkey, resolveConfiguredHotkey} from '@/src/core/hotkey'
 import {resolveSectionTranslationHotkey} from '@/src/core/config/sectionTranslation'
 import {resolveParagraphCopyHotkey} from '@/src/core/config/paragraphCopy'
 import {resolveAreaTranslationHotkey} from '@/src/core/config/areaTranslation'
-import {findEnabledQuickTranslationHotkeyConflict} from '@/src/core/config/quickTranslation'
+import {findEnabledQuickTranslationHotkeyConflict, inputBoxTranslationTriggerHotkey} from '@/src/core/config/quickTranslation'
 const CustomHotkeyInput = defineAsyncComponent(() => import('@/src/ui/components/CustomHotkeyInput.vue'))
 const props = withDefaults(defineProps<{config: Config; active?: boolean; compact?: boolean; showMode?: boolean; showDensity?: boolean; showAppearance?: boolean}>(), {active: true, compact: false, showMode: true, showDensity: true, showAppearance: true})
 const {t} = useUiI18n()
@@ -91,7 +91,8 @@ function hotkeyConflict(hotkey: string): string {
     config.selectionTranslatorMode === 'disabled' ? '' : resolveConfiguredHotkey(config.selectionTranslatorTrigger, config.customSelectionTranslatorHotkey),
     config.sectionTranslationHotkeyEnabled ? resolveSectionTranslationHotkey(config.sectionTranslationHotkey, config.customSectionTranslationHotkey) : '',
     config.paragraphCopyEnabled ? resolveParagraphCopyHotkey(config.paragraphCopyHotkey, config.customParagraphCopyHotkey) : '',
-    resolveAreaTranslationHotkey(config.selectionAreaHotkey, config.customSelectionAreaHotkey)]
+    config.selectionAreaEnabled ? resolveAreaTranslationHotkey(config.selectionAreaHotkey, config.customSelectionAreaHotkey) : '',
+    inputBoxTranslationTriggerHotkey(config.inputBoxTranslationTrigger)]
   return taken.some(item => canonicalizeHotkey(item || '').toLocaleLowerCase() === identity) || findEnabledQuickTranslationHotkeyConflict(config.quickTranslationProfiles ?? [], hotkey)
     ? t('informationHighlight.hotkey.conflict') : ''
 }

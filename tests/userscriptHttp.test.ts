@@ -1,4 +1,4 @@
-import {afterEach, describe, expect, it} from 'vitest';
+import {afterEach, describe, expect, it, vi} from 'vitest';
 import {userscriptFetch} from '@/userscript/http';
 import {DOUBAO_GUEST_HEADER} from '@/src/platform/http/doubaoGuest';
 
@@ -7,6 +7,8 @@ describe('userscript HTTP transport', () => {
         globalThis.GM_xmlhttpRequest = undefined;
         globalThis.GM = undefined;
         globalThis.GM_info = undefined;
+        vi.restoreAllMocks();
+        vi.unstubAllGlobals();
     });
 
     it('uses Safari Userscripts promise-only GM.xmlHttpRequest without falling back to page fetch', async () => {
@@ -45,6 +47,101 @@ describe('userscript HTTP transport', () => {
         controller.abort();
         await expect(request).rejects.toMatchObject({name: 'AbortError'});
         expect(aborted).toBe(true);
+    });
+
+    it.each(['before', 'during'] as const)('cancels %s reading a streaming Request body without dispatching GM', async timing => {
+        let source!: ReadableStreamDefaultController<Uint8Array>;
+        const body = new ReadableStream<Uint8Array>({start(controller) {source = controller; controller.enqueue(new Uint8Array([1]));}});
+        const controller = new AbortController();
+        const request = new Request('https://api.example.test/stream', {method: 'POST', body, duplex: 'half'} as RequestInit);
+        const dispatch = vi.fn();
+        globalThis.GM_xmlhttpRequest = dispatch;
+        if (timing === 'before') controller.abort();
+        const pending = userscriptFetch(request, {signal: controller.signal}).then(() => null, error => error);
+        if (timing === 'during') {await new Promise(resolve => setTimeout(resolve, 0)); controller.abort();}
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const result = await Promise.race([pending, new Promise(resolve => {timer = setTimeout(() => resolve('body read stalled'), 150);})]);
+        clearTimeout(timer);
+        source.close();
+        await pending;
+        expect(result).toMatchObject({name: 'AbortError'});
+        expect(dispatch).not.toHaveBeenCalled();
+        // Preparing a GM upload must not consume the caller's reusable original Request.
+        expect(request.bodyUsed).toBe(false);
+    });
+
+    it('passes a streaming Request directly to native fetch when GM is unavailable', async () => {
+        let source!: ReadableStreamDefaultController<Uint8Array>;
+        const body = new ReadableStream<Uint8Array>({start(controller) {source = controller;}});
+        const request = new Request('https://api.example.test/native', {method: 'POST', body, duplex: 'half'} as RequestInit);
+        const clone = vi.spyOn(request, 'clone');
+        const response = new Response('native');
+        const native = vi.fn(async () => response);
+        vi.stubGlobal('fetch', native);
+        const pending = userscriptFetch(request);
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const result = await Promise.race([pending, new Promise(resolve => {timer = setTimeout(() => resolve('unnecessary body read'), 150);})]);
+        clearTimeout(timer);
+        source.close();
+        await pending;
+        expect(result).toBe(response);
+        expect(clone).not.toHaveBeenCalled();
+        expect(native).toHaveBeenCalledWith(request, undefined);
+    });
+
+    it('preserves empty uploads and URL objects through the GM transport', async () => {
+        const captured: UserscriptXmlHttpRequestDetails[] = [];
+        globalThis.GM_xmlhttpRequest = details => {
+            captured.push(details);
+            details.onload?.({status: 200, response: 'fallback body', responseHeaders: 'broken\r\n : skip\r\nx-valid: yes'});
+        };
+        const response = await userscriptFetch(new Request('https://api.example.test/empty', {method: 'POST'}));
+        expect(captured[0].data).toBeInstanceOf(ArrayBuffer);
+        expect((captured[0].data as ArrayBuffer).byteLength).toBe(0);
+        expect(await response.text()).toBe('fallback body');
+        expect(response.headers.get('x-valid')).toBe('yes');
+        await userscriptFetch(new URL('https://api.example.test/url'));
+        expect(captured[1].url).toBe('https://api.example.test/url');
+    });
+
+    it.each([
+        ['onerror', {status: 503}, 'HTTP 503'],
+        ['onerror', {status: 0, statusText: 'disconnected'}, 'disconnected'],
+        ['ontimeout', undefined, 'unknown error'],
+    ] as const)('settles manager %s failures with bounded response metadata', async (event, metadata, expected) => {
+        globalThis.GM_xmlhttpRequest = details => {details[event]?.(metadata as UserscriptXmlHttpResponse);};
+        await expect(userscriptFetch('https://api.example.test/failure')).rejects.toThrow(expected);
+    });
+
+    it('keeps cancellation authoritative when the manager handle throws and refuses already-cancelled URL requests', async () => {
+        const controller = new AbortController();
+        let started!: () => void;
+        const ready = new Promise<void>(resolve => {started = resolve;});
+        globalThis.GM_xmlhttpRequest = () => {started(); return {abort() {throw new Error('expired handle');}};};
+        const pending = userscriptFetch('https://api.example.test/abort', {signal: controller.signal});
+        const rejection = expect(pending).rejects.toMatchObject({name: 'AbortError'});
+        await ready;
+        controller.abort();
+        await rejection;
+        const dispatch = vi.fn();
+        globalThis.GM_xmlhttpRequest = dispatch;
+        await expect(userscriptFetch('https://api.example.test/abort', {signal: controller.signal})).rejects.toMatchObject({name: 'AbortError'});
+        expect(dispatch).not.toHaveBeenCalled();
+    });
+
+    it('reports synchronous manager failure and delegates invalid native URLs without masking native errors', async () => {
+        globalThis.GM_xmlhttpRequest = () => {throw new Error('manager unavailable');};
+        await expect(userscriptFetch('https://api.example.test/failure')).rejects.toThrow('manager unavailable');
+        const failure = new TypeError('invalid native URL');
+        const native = vi.fn(async () => {throw failure;});
+        vi.stubGlobal('fetch', native);
+        await expect(userscriptFetch('http://[')).rejects.toBe(failure);
+        expect(native).toHaveBeenCalledWith('http://[', undefined);
+    });
+
+    it('reports a manager-originated abort without requiring a caller AbortSignal', async () => {
+        globalThis.GM_xmlhttpRequest = details => {details.onabort?.({status: 0, statusText: 'Aborted', responseText: ''});};
+        await expect(userscriptFetch('https://api.example.test/manager-abort')).rejects.toMatchObject({name: 'AbortError'});
     });
 
     it('wraps Via-compatible responseText as a fetch Response', async () => {
@@ -207,10 +304,19 @@ describe('userscript HTTP transport', () => {
             {scriptHandler: 'Userscripts', version: '6.0', platform: {browserName: 'safari', os: 'mac'}},
             {scriptHandler: 'Tampermonkey', version: '5.4.0', platform: {browserName: 'chrome', os: 'mac'}},
             {scriptHandler: 'Tampermonkey', version: '5.6.6239', platform: {browserName: 'chrome', os: 'android'}},
+            {scriptHandler: 'Tampermonkey', version: '5.6.6239', platform: {os: 'mac'}},
+            {scriptHandler: 'Tampermonkey', version: '5.6.6239', platform: {browserName: 'chrome'}},
         ]) {
             globalThis.GM_info = info;
             await expect(userscriptFetch('https://www.doubao.com/', {credentials: 'omit'})).rejects.toThrow('无法发送豆包匿名');
         }
         expect(calls).toBe(0);
+    });
+
+    it('uses modern GM metadata when classic metadata is absent', async () => {
+        globalThis.GM = {info: {scriptHandler: 'Tampermonkey', version: '6.0', platform: {browserName: 'chrome', os: 'mac'}},
+            xmlHttpRequest: details => {expect(details.anonymous).toBe(true); return Promise.resolve({status: 200});}};
+        const response = await userscriptFetch('https://www.doubao.com/');
+        expect(await response.text()).toBe('');
     });
 });

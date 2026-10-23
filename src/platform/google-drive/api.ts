@@ -5,6 +5,7 @@
  * 已完成上传却无法核验时返回明确的待核验状态提示，避免把上传后的错误误报为未写入。
  * 模块边界：只接受加密封装，账号会话由 auth 管理，配置合并由同步服务管理。
  */
+import {cancelResponseReader, cancelUnreadResponseBody} from '@/src/platform/http/runtime';
 import {DriveError, type DriveSession} from './auth';
 import {strongCloudEtag} from '@/src/core/config/cloudSync';
 import {GOOGLE_DRIVE_CONFIG_FILE_NAME, GOOGLE_DRIVE_MAX_BYTES} from './constants';
@@ -47,7 +48,7 @@ export function createDriveApi(fetcher: typeof fetch) {
                     return await consume(response);
                 } finally {
                     // 错误响应与无需正文的 DELETE 也必须释放流；清理失败不替换业务错误。
-                    if (response?.body && !response.body.locked) await response.body.cancel().catch(() => undefined);
+                    if (response) cancelUnreadResponseBody(response);
                 }
             })();
             return operation.catch(error => {
@@ -75,16 +76,18 @@ export function createDriveApi(fetcher: typeof fetch) {
             if (!reader) throw new DriveError('无法读取同步文件。');
             const chunks: Uint8Array[] = [];
             let size = 0;
+            let finished = false;
             try {
                 while (true) {
                     const chunk = await reader.read();
-                    if (chunk.done) break;
+                    if (chunk.done) {finished = true; break;}
                     size += chunk.value.byteLength;
                     if (size > GOOGLE_DRIVE_MAX_BYTES) throw new DriveError('同步文件过大，请使用完整数据备份。');
                     chunks.push(chunk.value);
                 }
             } finally {
-                try {await reader.cancel().catch(() => undefined);} finally {reader.releaseLock();}
+                if (finished) reader.releaseLock();
+                else cancelResponseReader(reader);
             }
             const bytes = new Uint8Array(size);
             let offset = 0;

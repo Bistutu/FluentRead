@@ -1,10 +1,31 @@
 import {describe, expect, it, vi} from 'vitest';
 import {HarnessLedger, deriveEventMessage, deriveMessages, foldSurface, isSurfaceEvent} from '@/src/core/harness/surface';
 import {runHarnessLoop, type HarnessGenerateResult, type HarnessToolDefinition} from '@/src/core/harness/loop';
+import {z} from 'zod';
+import {isReadContextInput} from '@/src/services/harness/readContext';
 
 const tools: readonly HarnessToolDefinition[] = [{name: 'read_context', description: 'read', input: {type: 'object'}}];
 const result = (text: string, toolCalls: HarnessGenerateResult['toolCalls'] = []): HarnessGenerateResult => ({
     assistant: {role: 'assistant', content: text ? [{type: 'text', text}] : toolCalls.map(call => ({type: 'tool-call', toolCallId: call.id, toolName: call.name, input: call.input}))}, text, toolCalls,
+});
+
+describe('shared read_context wire validation', () => {
+    it('matches the installed native strict schema for JSON boundaries, inherited keys and non-JSON tool values', () => {
+        const native = z.object({reason: z.string().max(200).optional()}).strict();
+        const inputs: unknown[] = [undefined, null, true, 0, NaN, '', [], ['reason'], () => undefined,
+            {}, {reason: undefined}, {reason: ''}, {reason: 'x'.repeat(200)}, {reason: 'x'.repeat(201)},
+            {reason: '🙂'.repeat(100)}, {reason: '🙂'.repeat(101)}, {reason: null}, {reason: 1}, {reason: false},
+            {reason: {}}, {extra: ''}, {reason: 'ok', extra: false}, new Date(), new Map(), new Set(), Promise.resolve(),
+            {then() {}, catch() {}}, Object.create(null), Object.create({reason: 'inherited'}),
+            Object.create({other: 'inherited'}), Object.defineProperty({}, 'extra', {value: true}),
+            {[Symbol('private')]: true}, new (class {reason = 'class field';})(),
+        ];
+        for (const value of inputs) expect(isReadContextInput(value)).toBe(native.safeParse(value).success);
+        for (let size = 0; size <= 220; size++) {
+            const value = {reason: 'x'.repeat(size)};
+            expect(isReadContextInput(value)).toBe(native.safeParse(value).success);
+        }
+    });
 });
 
 describe('Harness browser core', () => {

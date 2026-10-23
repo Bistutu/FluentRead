@@ -4084,7 +4084,7 @@ describe('LearnOpenGL protected native slot contract', () => {
         <span class="ezoic-ad" id="div-gpt-ad-Sidebar_1/observed-0"></span>
         <span class="reportline"><span><img alt="Ezoic" src="ezoic.png"></span></span>
       </span></div></div></div>
-    <div id="leftsixthtenthad"><div></div></div><div id="lefteighttenthad"><div></div></div>
+    <div id="leftsixthtenthad"><div></div></div><div id="lefteighttenthad"><div id="ezoic-pub-ad-placeholder-113"><div><span class="ezoic-ad" data-ez-name="Sidebar_1/observed-113"><span class="ezoic-ad" id="div-gpt-ad-Sidebar_1/observed-113-0"></span></span></div></div></div>
     <div id="lefttenthtenthad"></div></div></body></html>`;
   type PagePort = Parameters<typeof assertPageContract>[0] & {
     evaluateHandle: (fn: (argument: unknown) => unknown, argument: unknown) => Promise<unknown>;
@@ -4166,7 +4166,7 @@ describe('LearnOpenGL protected native slot contract', () => {
       hydrate();
       const current = await assertNav(page, baseline) as {hostNativeDiagnostics: Array<{unprojectedStructure: string}>};
       expect(baseline.forbiddenState[0].signatures[0]).toMatchObject({nativeSlotProjection: {
-        id: 'leftfourthtenthad', directElementChildIndex: 6, navIdentityValid: true,
+        slots: [{id: 'leftfourthtenthad', directElementChildIndex: 6}, {id: 'lefteighttenthad', directElementChildIndex: 8}], navIdentityValid: true,
       }});
       expect(document.querySelector('#leftfourthtenthad iframe')?.hasAttribute('src')).toBe(false);
       expect(current.hostNativeDiagnostics[0].unprojectedStructure)
@@ -4179,13 +4179,42 @@ describe('LearnOpenGL protected native slot contract', () => {
     });
   });
 
+  it('keeps Ezoic slot 113 hydration separate from protected navigation and slot metadata', async () => {
+    await fixture(async ({document, page}) => {
+      const baseline = await capture(page), before = JSON.stringify(baseline);
+      const ad = document.querySelector('#lefteighttenthad [data-ez-name]')!;
+      ad.setAttribute('style', 'display:none !important');
+      ad.children[0].setAttribute('data-google-query-id', 'observed-query');
+      ad.children[0].append(document.createElement('div'));
+      await expect(assertNav(page, baseline)).resolves.toBeDefined();
+      expect(JSON.stringify(baseline)).toBe(before);
+    });
+  });
+
+  it.each(['text', 'anchor', 'owned', 'moved', 'missing', 'replaced', 'metadata', 'duplicate'] as const)(
+    'rejects second native slot damage instead of projecting the whole nav (%s)', async damage => {
+      await fixture(async ({document, page}) => {
+        const baseline = await capture(page), slot = document.querySelector('#lefteighttenthad')!;
+        if (damage === 'text') slot.append('Injected navigation');
+        if (damage === 'anchor') slot.append(document.createElement('a'));
+        if (damage === 'owned') {const injected = document.createElement('span'); injected.className = 'fluent-read-loading'; slot.append(injected);}
+        if (damage === 'moved') document.querySelector('#nav')!.append(slot);
+        if (damage === 'missing') slot.remove();
+        if (damage === 'replaced') slot.replaceWith(slot.cloneNode(true));
+        if (damage === 'metadata') slot.setAttribute('aria-label', 'changed');
+        if (damage === 'duplicate') document.body.append(slot.cloneNode(true));
+        await expect(assertNav(page, baseline)).rejects.toThrow(/forbidden DOM/);
+      });
+    },
+  );
+
   it.each(['wrong-host', 'wrong-url', 'non-direct', 'duplicate-slot'] as const)(
     'keeps raw native topology strict for a nonqualifying %s baseline', async state => {
       const url = state === 'wrong-host' ? 'https://example.test/Getting-started/Coordinate-Systems'
         : state === 'wrong-url' ? exactUrl + '?different=1' : exactUrl;
       await fixture(async ({page, hydrate}) => {
         const baseline = await capture(page);
-        expect(baseline.forbiddenState[0].signatures[0]).not.toHaveProperty('nativeSlotProjection');
+        expect(baseline.forbiddenState[0].signatures[0]).not.toMatchObject({nativeSlotProjection: {slots: expect.arrayContaining([expect.objectContaining({id: 'leftfourthtenthad'})])}});
         hydrate();
         await expect(assertNav(page, baseline, url)).rejects.toThrow('forbidden DOM 被修改');
       }, {url, prepare: document => {
@@ -4369,5 +4398,57 @@ describe('hover source choice for the original Chinese-output flow', () => {
       expect(actualPage.waitForFunction).toHaveBeenCalledWith(expect.any(Function), expect.any(Object), {timeout: 100});
       expect(document.querySelectorAll('.fluent-read-bilingual-content')).toHaveLength(0);
     }, html);
+  });
+});
+
+describe('full-page failure modal and geometry evidence',()=>{
+  it('captures an obstructing delayed consent dialog without changing source DOM or granting completion',()=>{
+    const {readFullPageFailureSnapshotInPage}=require('../scripts/run-site-translation-test.cjs');
+    const {runInNewContext}=require('node:vm');
+    const {document}=parseHTML('<html><head></head><body><main><p>Original readable page content.</p></main><div class="overlay"></div><section role="dialog" aria-modal="true"><a href="/cookies">Cookie Notice</a><button>OK</button></section><section role="dialog" hidden>Hidden panel</section></body></html>');
+    const target=document.querySelector('p')!,dialog=document.querySelector('[aria-modal]')!,mask=document.querySelector('.overlay')!,button=document.querySelector('button')!;
+    const rect={left:10,top:10,right:510,bottom:110,width:500,height:100};for(const node of document.querySelectorAll('*'))Object.defineProperty(node,'getBoundingClientRect',{configurable:true,value:()=>rect});
+    Object.defineProperty(document,'activeElement',{value:dialog.querySelector('a')});Object.assign(document,{elementsFromPoint:()=>[dialog,mask,target]});
+    const before=document.documentElement.outerHTML;
+    const result=runInNewContext(`(${readFullPageFailureSnapshotInPage.toString()})('main p')`,{document,innerWidth:1000,innerHeight:800,getComputedStyle:(node:Element)=>({display:node.hasAttribute('hidden')?'none':'block',visibility:'visible',opacity:'1',position:node===dialog?'fixed':'static',zIndex:'100',overflow:'visible',overflowY:'visible',pointerEvents:'auto'})});
+    expect(result.totalBilingual).toBe(0);expect(result.targetAncestors[0]).toMatchObject({tag:'P',rect,html:'<p>Original readable page content.</p>'});expect(result.visibleModals).toHaveLength(1);expect(result.visibleModals[0]).toMatchObject({role:'dialog',ariaModal:'true',containsTarget:false,containsActive:true});expect(result.visibleButtons[0].text).toBe(button.textContent);expect(result.pointStack[0].role).toBe('dialog');expect(result).not.toHaveProperty('ready');expect(document.documentElement.outerHTML).toBe(before);
+  });
+  it('records missing geometry targets and unavailable hit testing without inventing an occluder',()=>{
+    const {readFullPageFailureSnapshotInPage}=require('../scripts/run-site-translation-test.cjs');const {runInNewContext}=require('node:vm');const {document}=parseHTML('<html><body></body></html>');
+    const result=runInNewContext(`(${readFullPageFailureSnapshotInPage.toString()})('missing')`,{document,innerWidth:1000,innerHeight:800,getComputedStyle:()=>null});expect(result.targetText).toBe('');expect(result.targetPoint).toBeNull();expect(result.targetAncestors).toEqual([]);expect(result.pointStack).toEqual([]);expect(result.visibleModals).toEqual([]);
+  });
+});
+
+describe('geometry-bounded long-page scrolling',()=>{
+  async function scrollFixture(options:{extent:number;bodyExtent?:number;rootViewport?:number;stuck?:boolean;growAt?:number;growTo?:number;endless?:boolean}){
+    const {scrollAndWaitFullPage}=require('../scripts/run-site-translation-test.cjs');const {createContext,runInContext}=require('node:vm');
+    const {document,window:domWindow}=parseHTML('<html><head></head><body><p>Target source.</p></body></html>');
+    let extent=options.extent,position=0,clock=100000,moves=0;const positions:number[]=[],distances:number[]=[];
+    Object.defineProperty(document.body,'scrollHeight',{get:()=>options.bodyExtent ?? extent});Object.defineProperty(document.documentElement,'scrollHeight',{get:()=>extent});
+    Object.defineProperty(document,'scrollingElement',{value:document.documentElement});Object.defineProperty(document.documentElement,'clientHeight',{value:options.rootViewport ?? 816});Object.defineProperty(document.documentElement,'scrollTop',{get:()=>position});
+    const window={innerHeight:816,get scrollY(){return position},scrollTo(value:number|{top:number}){const next=typeof value==='number'?value:value.top;distances.push(Math.abs(next-position));moves++;if(!options.stuck)position=Math.max(0,Math.min(extent-(options.rootViewport ?? 816),next));positions.push(position);if(moves===options.growAt)extent=options.growTo!;if(options.endless)extent+=2000;}};
+    const context=createContext({document,window,HTMLElement:domWindow.HTMLElement,Date:{now:()=>clock},performance:{now:()=>clock}});
+    const evaluate=async(fn:Function,arg?:unknown)=>{context.argument=arg;return runInContext(`(${fn.toString()})(argument)`,context)};
+    const page={evaluate,waitForTimeout:async(ms:number)=>{clock+=ms},waitForFunction:async(fn:Function,arg:unknown)=>{for(let i=0;i<100;i++){if(await evaluate(fn,arg))return;clock+=100}throw new Error('controlled idle did not settle')},locator:()=>({first:()=>({scrollIntoViewIfNeeded:async()=>{}})})};
+    const run=()=>scrollAndWaitFullPage(page,1000,undefined,'p',async()=>{},async()=>{});
+    return{run,positions,distances,get moves(){return moves},get extent(){return extent}};
+  }
+  it('visits every interval of a finite page taller than the old 320-step limit before returning to the target',async()=>{
+    const fixture=await scrollFixture({extent:300000});await fixture.run();expect(Math.max(...fixture.positions)).toBe(300000-816);expect(fixture.moves).toBeGreaterThan(320);expect(fixture.distances.slice(1,-1).every(step=>step<=530)).toBe(true);
+  });
+  it('uses the actual scrolling root rather than a clipped body that is taller than the viewport',async()=>{
+    const fixture=await scrollFixture({extent:816,bodyExtent:831});await fixture.run();expect(Math.max(...fixture.positions)).toBe(0);expect(fixture.moves).toBeLessThan(5);
+  });
+  it('requires the real scrolling root bottom even when body is shorter and a horizontal scrollbar reduces the viewport',async()=>{
+    const fixture=await scrollFixture({extent:30000,bodyExtent:816,rootViewport:801});await fixture.run();expect(Math.max(...fixture.positions)).toBe(30000-801);expect(fixture.distances.slice(1,-1).every(step=>step<=520)).toBe(true);
+  });
+  it('accounts for observed translation layout growth while preserving contiguous viewport exposure',async()=>{
+    const fixture=await scrollFixture({extent:60000,growAt:20,growTo:200000});await fixture.run();expect(Math.max(...fixture.positions)).toBe(200000-816);expect(fixture.distances.slice(1,-1).every(step=>step<=530)).toBe(true);
+  });
+  it('fails early when the page refuses scrolling instead of granting bottom coverage',async()=>{
+    const fixture=await scrollFixture({extent:30000,stuck:true});await expect(fixture.run()).rejects.toThrow('没有滚动进展');expect(fixture.moves).toBeLessThan(20);
+  });
+  it('retains an absolute work cap for an infinitely growing page',async()=>{
+    const fixture=await scrollFixture({extent:30000,endless:true});await expect(fixture.run()).rejects.toThrow('2048');expect(fixture.moves).toBeLessThanOrEqual(2050);
   });
 });

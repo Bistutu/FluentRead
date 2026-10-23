@@ -367,10 +367,6 @@ function formatValue(value: unknown): string {
     return String(value);
 }
 
-function formatEndpoint(value: unknown): string {
-    return formatValue(value);
-}
-
 function formatPrompt(value: unknown): string {
     if (value === undefined || value === null || value === '') return '未设置';
     if (typeof value === 'string') {
@@ -436,7 +432,7 @@ function formatCustomOpenAIProviders(value: unknown): string {
     return formatArray(value, (item) => {
         if (!isRecord(item)) return formatValue(item);
         const name = typeof item.name === 'string' && item.name.trim() ? item.name.trim() : '未命名服务';
-        const endpoint = formatEndpoint(item.endpoint);
+        const endpoint = formatValue(item.endpoint);
         const models = Array.isArray(item.models) ? formatArray(item.models) : '无';
         return `${name}（接口：${endpoint}；模型：${models}）`;
     });
@@ -573,12 +569,12 @@ const FIELD_DEFINITIONS: Record<string, FieldDefinition> = {
     mimoBillingPlan: {group: 'translationServices', label: 'MiMo 计费方案', format: (value) => formatEnum(value, BILLING_PLAN_LABELS)},
     mimoRegion: {group: 'translationServices', label: 'MiMo API 区域', format: (value) => formatEnum(value, REGION_LABELS)},
     customBody: {group: 'translationServices', label: '自定义请求体', mapping: serviceMapping('自定义请求体', formatCustomBody)},
-    proxy: {group: 'translationServices', label: '代理地址', mapping: serviceMapping('代理地址', formatEndpoint)},
-    custom: {group: 'translationServices', label: '自定义服务地址', format: formatEndpoint},
+    proxy: {group: 'translationServices', label: '代理地址', mapping: serviceMapping('代理地址', formatValue)},
+    custom: {group: 'translationServices', label: '自定义服务地址', format: formatValue},
     deeplApiPlan: {group: 'translationServices', label: 'DeepL API 套餐', format: (value) => formatEnum(value, DEEPL_API_PLAN_LABELS)},
-    deeplx: {group: 'translationServices', label: 'DeepLX 服务地址', format: formatEndpoint},
-    newApiUrl: {group: 'translationServices', label: 'New API 地址', format: formatEndpoint},
-    azureOpenaiEndpoint: {group: 'translationServices', label: 'Azure 端点', format: formatEndpoint},
+    deeplx: {group: 'translationServices', label: 'DeepLX 服务地址', format: formatValue},
+    newApiUrl: {group: 'translationServices', label: 'New API 地址', format: formatValue},
+    azureOpenaiEndpoint: {group: 'translationServices', label: 'Azure 端点', format: formatValue},
     system_role: {group: 'translationServices', label: 'System 提示词', mapping: serviceMapping(' System 提示词', formatPrompt)},
     user_role: {group: 'translationServices', label: 'User 提示词', mapping: serviceMapping(' User 提示词', formatPrompt)},
     deepseekApiType: {group: 'translationServices', label: 'DeepSeek API 格式', format: (value) => formatEnum(value, DEEPSEEK_API_LABELS)},

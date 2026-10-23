@@ -2,12 +2,10 @@ import {parseHTML} from 'linkedom';
 import { describe, expect, it, vi } from 'vitest';
 import {
     canUseBundledDictionaryFallback,
-    calculateReadingPopupLayout,
     calculateSelectionPopupPosition,
     chooseSelectionRect,
     getSelectionPresentationDelayRemaining,
     isSameLanguage,
-    isChineseEnglishTarget,
     isSelectionExcludedTagName,
     normalizeSelectionText,
     readSelectionText,
@@ -33,9 +31,6 @@ import {detectlang} from '@/src/core/language/detect';
 
 describe('中英划词方向', () => {
     it('只为当前目标语言的可信中英选区选择反向目标', () => {
-        expect(isChineseEnglishTarget('zh-Hant')).toBe(true);
-        expect(isChineseEnglishTarget('en')).toBe(true);
-        expect(isChineseEnglishTarget('ja')).toBe(false);
         expect(selectionReverseTarget('你好，世界！', 'zh-Hans', 'auto')).toBe('en');
         expect(selectionReverseTarget('這是一段繁體中文。', 'zh-Hant', 'auto')).toBe('en');
         expect(selectionReverseTarget('This is an English sentence.', 'en', 'zh-Hant')).toBe('zh-Hant');
@@ -317,41 +312,7 @@ describe('selection translator core geometry', () => {
             .toEqual({left: 92, top: 154, placement: 'bottom'});
     });
 
-    it('reserves the reading viewport before a streamed answer grows and keeps its anchor side', () => {
-        const anchor = {top: 720, right: 970, bottom: 744, left: 940, width: 30, height: 24};
-        const layout = calculateReadingPopupLayout(anchor, {width: 1200, height: 900});
-        expect(layout).toEqual({left: 800, top: 190, placement: 'top', width: 388, height: 520});
-        // 初始空回答、长流式回答和追问均使用预留高度；恢复 legacy 翻译时仍按实际内容定位。
-        expect(calculateSelectionPopupPosition(anchor, {width: layout.width, height: layout.height}, {width: 1200, height: 900})).toEqual({left: layout.left, top: layout.top, placement: layout.placement});
-        expect(calculateSelectionPopupPosition(anchor, {width: 388, height: 160}, {width: 1200, height: 900}).top).toBe(550);
-    });
 
-    it('fits the reading viewport after zoom or narrow-window resize without exceeding its padding', () => {
-        const topEdge = {top: 20, right: 372, bottom: 42, left: 342, width: 30, height: 22};
-        expect(calculateReadingPopupLayout(topEdge, {width: 390, height: 300})).toEqual({left: 12, top: 12, placement: 'bottom', width: 366, height: 276});
-        const bottomEdge = {...topEdge, top: 580, bottom: 602};
-        const layout = calculateReadingPopupLayout(bottomEdge, {width: 390, height: 640});
-        expect(layout).toEqual({left: 12, top: 50, placement: 'top', width: 366, height: 520});
-        expect(layout.left + layout.width).toBeLessThanOrEqual(390 - 12);
-        expect(layout.top + layout.height).toBeLessThanOrEqual(640 - 12);
-    });
-
-    it('uses visible dimensions for a reading card compensated against page zoom', () => {
-        const anchor = {top: 300, right: 340, bottom: 324, left: 300, width: 40, height: 24};
-        const enlargedPage = calculateReadingPopupLayout(anchor, {width: 640, height: 450}, 0.5);
-        expect(enlargedPage).toEqual({left: 300, top: 30, placement: 'top', width: 388, height: 520});
-        expect(enlargedPage.width * 0.5 * 2).toBe(388);
-
-        const reducedPage = calculateReadingPopupLayout(anchor, {width: 600, height: 400}, 2);
-        expect(reducedPage.width).toBe(288);
-        expect(reducedPage.height).toBe(188);
-        expect(reducedPage.left + reducedPage.width * 2).toBeLessThanOrEqual(600 - 12);
-        expect(reducedPage.top + reducedPage.height * 2).toBeLessThanOrEqual(400 - 12);
-        for (const invalidScale of [0, -1, Infinity, NaN]) {
-            expect(calculateReadingPopupLayout(anchor, {width: 640, height: 450}, invalidScale))
-                .toEqual(calculateReadingPopupLayout(anchor, {width: 640, height: 450}, 1));
-        }
-    });
 });
 
 describe('selection translator presentation stability', () => {
@@ -876,15 +837,17 @@ describe('selection translator text and speech language normalization', () => {
 
     it('continues to the next voice when Edge TTS rejects the first synthesis', async () => {
         const originalFetch = globalThis.fetch;
+        const cancel = vi.fn(async () => {});
         const fetchMock = vi.fn()
             .mockResolvedValueOnce({ ok: true, json: async () => ({ t: 'test-token', r: 'eastus' }) })
-            .mockResolvedValueOnce({ ok: false, status: 503 })
+            .mockResolvedValueOnce({ ok: false, status: 503, body: {cancel} })
             .mockResolvedValueOnce({ ok: true, arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer });
         vi.stubGlobal('fetch', fetchMock);
 
         try {
             const result = await synthesizeEdgeTts('hello', 'en-US', ['en-US-JennyNeural', 'en-US-AvaMultilingualNeural']);
             expect(result.voice).toBe('en-US-AvaMultilingualNeural');
+            expect(cancel).toHaveBeenCalledOnce();
             expect(fetchMock).toHaveBeenCalledTimes(3);
             expect(String(fetchMock.mock.calls[1]?.[0])).toContain('.tts.speech.microsoft.com');
             expect(fetchMock.mock.calls[1]?.[1]?.body).toContain('en-US-JennyNeural');

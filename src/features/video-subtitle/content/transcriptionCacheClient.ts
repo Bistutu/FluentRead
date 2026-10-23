@@ -47,10 +47,6 @@ export function getVideoTranscriptionMediaTransition(
   return {sameMedia, identity, key: identity ? buildVideoAiSubtitleVideoKey(identity) || nextSource : ''};
 }
 
-export function getVideoTranscriptionMediaKey(source: VideoAiSubtitleCacheSource | null | undefined): string {
-  return source ? buildVideoAiSubtitleVideoKey(source) || String(source.directSource || '') : '';
-}
-
 export function getVideoTranscriptionCacheRequest(
   video: HTMLVideoElement | null, model: unknown, language: string, href: string, confirmedIdentity?: VideoAiSubtitleCacheSource | null,
 ): VideoAiSubtitleCacheRequest | null {

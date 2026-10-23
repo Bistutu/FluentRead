@@ -33,6 +33,10 @@ const KNOWN_UPSTREAM_CODES = new Set([
   'chatpass_v2_invalid_authorization_context', 'response_failed', 'response_incomplete',
 ]);
 export const safeUpstreamCode = (value) => typeof value === 'string' && KNOWN_UPSTREAM_CODES.has(value) ? value : 'upstream_error';
+/** 丢弃响应时立即发起取消；传输层的取消确认不能阻塞错误返回、续期或退出。 */
+export function cancelStream(stream) {
+  try { void stream?.cancel().catch(() => {}); } catch { /* 清理失败不覆盖已确定的请求结果。 */ }
+}
 function upstreamFailure(code, status) {
   const preservedStatus = Number.isInteger(status) && status >= 400 && status <= 599 ? status : 502;
   const message = status === 429 ? 'ChatGPT 套餐额度或请求频率暂不可用，请管理用量。'
@@ -237,7 +241,7 @@ export function createOAuthRuntime({ store, initial, fetchImpl = fetch, now = Da
       guard(expected);
       let response = await upstream(`${RESOURCE}/${path}`, { ...init, signal: controller.signal, headers: { ...init.headers, Authorization: `Bearer ${token}` } });
       if (response.status === 401) {
-        await response.body?.cancel(); token = await access(expected, true);
+        cancelStream(response.body); token = await access(expected, true);
         response = await upstream(`${RESOURCE}/${path}`, { ...init, signal: controller.signal, headers: { ...init.headers, Authorization: `Bearer ${token}` } });
       }
       guard(expected);

@@ -6,7 +6,7 @@
  */
 import {describePartOfSpeech} from '@/src/core/language/partOfSpeech';
 import {readJsonResponse} from '@/src/platform/http/errors';
-import {createRuntimeAbortContext, runtimeFetch} from '@/src/platform/http/runtime';
+import {cancelUnreadResponseBody, createRuntimeAbortContext, runtimeFetch} from '@/src/platform/http/runtime';
 import {canCacheOptionalEcdict, downloadFullEcdict, readCachedFullEcdict, type EcdictCompactRow} from './ecdictAsset';
 import {normalizeEnglishWord} from './wordNormalization';
 
@@ -628,8 +628,11 @@ async function fetchJson(url: string, timeoutMs = LOOKUP_TIMEOUT_MS, signal?: Ab
             headers: { Accept: 'application/json' },
             signal: abortContext.signal,
         });
-        if (response.status === 404) return null;
-        if (!response.ok) throw new Error(`dictionary request failed: ${response.status}`);
+        if (response.status === 404 || !response.ok) {
+            cancelUnreadResponseBody(response);
+            if (response.status === 404) return null;
+            throw new Error(`dictionary request failed: ${response.status}`);
+        }
         return await readJsonResponse(response, 'dictionary response is not valid JSON');
     } finally {
         abortContext.cleanup();
@@ -670,7 +673,7 @@ function createEcdictProvider(): WordDictionaryProvider {
         // 让浏览器资源短暂不可用后的下一次查询能够自动恢复。
         indexPromise = (async () => {
             const response = await runtimeFetch(url, {credentials: 'omit'});
-            if (!response.ok) throw new Error(`local dictionary request failed: ${response.status}`);
+            if (!response.ok) {cancelUnreadResponseBody(response); throw new Error(`local dictionary request failed: ${response.status}`);}
             const payload = await readJsonResponse(response, 'local dictionary response is not valid JSON');
             const entries = Array.isArray(payload) ? payload : [];
             return indexRows(entries);

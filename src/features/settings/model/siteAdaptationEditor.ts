@@ -111,7 +111,7 @@ export function buildSiteRuleFromForm(form: SiteRuleForm, original?: SiteRule): 
 }
 
 /** 保存单条可视化规则进入现有 JSON 草稿；标识碰撞不静默覆盖。 */
-export function upsertSiteRuleDraft(draft: string, rule: SiteRule, originalId: string | null, document: Document): SiteRuleDraftUpdate {
+export function upsertSiteRuleDraft(draft: string, rule: SiteRule, originalId: string | null, document: Document): SiteRuleDraftUpdate & SiteRulePackParseResult {
     const parsed = parseSiteAdaptationDraft(draft, document);
     if (!parsed.ok) return parsed;
     if (parsed.pack.rules.some(item => item.id === rule.id && item.id !== originalId)) {
@@ -122,7 +122,7 @@ export function upsertSiteRuleDraft(draft: string, rule: SiteRule, originalId: s
     else parsed.pack.rules[index] = rule;
     const next = formatSiteRulePack(parsed.pack);
     const result = parseSiteAdaptationDraft(next, document);
-    return result.ok ? {ok: true, draft: formatSiteRulePack(result.pack)} : result;
+    return result.ok ? {ok: true, draft: formatSiteRulePack(result.pack), pack: result.pack} : result;
 }
 
 /** 安全合并导入包，模板重名且内容不同则拒绝，避免改变既有规则的隐式引用。 */

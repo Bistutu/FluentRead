@@ -1,53 +1,70 @@
 import {readFileSync} from 'node:fs';
-import {createRequire} from 'node:module';
 import {resolve} from 'node:path';
-import vue from '@vitejs/plugin-vue';
-import {createServer, type Plugin, type ViteDevServer} from 'vite';
+import * as runtime from 'vue';
+import {parseHTML} from 'linkedom';
+import GlossarySettings from '@/src/features/glossary/ui/GlossarySettings.vue';
+import BuiltinGlossaries from '@/src/features/glossary/ui/BuiltinGlossaries.vue';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {translate} from '@/src/core/i18n';
 import {GLOSSARY_LIMITS, normalizeGlossaryLibraries, type GlossaryLibrary} from '@/src/core/glossary';
 import {Config} from '@/src/core/config/model';
 import {createQuickTranslationProfile} from '@/src/core/config/quickTranslation';
-import {compileVueFixture} from './helpers/compiledVueFixture';
 
-// 编译实际 SFC；文本字段回归同时执行模板绑定，原生焦点与 DOM 指令由隔离浏览器覆盖。
+// 正常导入并渲染生产模板；只隔离配置、浏览器、原生对话框及第三方选择控件端口。
 const stateKey = '__fluentReadGlossarySettingsTest';
-const require = createRequire(import.meta.url);
-const runtime = require('vue') as typeof import('vue');
-let server: ViteDevServer;
 let app: import('vue').App;
-let renderer: import('vue').Renderer<Record<string, unknown>>;
+let renderer: import('vue').Renderer<any>;
 let state: Record<string, any>;
 let listeners: Set<(value: unknown) => void>;
 let config: {glossaryEnabled: boolean; glossaryLibraries: GlossaryLibrary[]; to: string};
 let requestConfigPatch: ReturnType<typeof vi.fn>;
 let confirm: ReturnType<typeof vi.fn>;
-
+let dom: ReturnType<typeof parseHTML>;
+let elements: RenderElement[];
 type RenderElement = Record<string, any> & {tag: string; props: Record<string, any>; value?: string};
-async function mountMetadataRender(): Promise<RenderElement[]> {
-  const filename = resolve(process.cwd(), 'src/features/glossary/ui/GlossarySettings.vue');
-  const {renderCode} = compileVueFixture(filename, {id: 'glossary-render-test'});
-  const loaded = await server.ssrLoadModule('/src/features/glossary/ui/GlossarySettings.vue');
-  const component = loaded.default;
-  // 保留真实模板的值绑定和事件；无关 v-model 的原生 DOM 指令交给浏览器回归。
-  component.render = new Function('Vue', renderCode)({...runtime, vModelText: {}, vModelSelect: {}, vModelCheckbox: {}, vShow: {}});
-  app.unmount();
-  const elements: RenderElement[] = [];
-  const host = runtime.createRenderer<RenderElement, RenderElement>({
-    patchProp: (node, key, _previous, value) => {node.props[key] = value; if (key === 'value') node.value = String(value ?? '');},
-    insert: () => undefined, remove: () => undefined,
-    createElement: tag => {const node = {tag, props: {}}; elements.push(node); return node;},
-    createText: () => ({tag: '#text', props: {}}), createComment: () => ({tag: '#comment', props: {}}),
-    setText: () => undefined, setElementText: (node, value) => {node.text = value;}, parentNode: () => null, nextSibling: () => null,
-    querySelector: () => null, setScopeId: () => undefined, cloneNode: node => ({...node}),
-    insertStaticContent: () => [{tag: '#static', props: {}}, {tag: '#static', props: {}}],
+
+vi.mock('@/src/services/config/store', () => ({
+  get config() {return (globalThis as any).__fluentReadGlossarySettingsTest.config;},
+  get configReady() {return (globalThis as any).__fluentReadGlossarySettingsTest.configReady;},
+  requestConfigPatch: (...args: unknown[]) => (globalThis as any).__fluentReadGlossarySettingsTest.requestConfigPatch(...args),
+  subscribeConfig: (...args: unknown[]) => (globalThis as any).__fluentReadGlossarySettingsTest.subscribeConfig(...args),
+}));
+vi.mock('@/src/ui/i18n', () => ({useUiI18n: () => ({language: runtime.ref('zh-CN'), t: (key: string, params?: Record<string, string>) => translate(key, 'zh-CN', params), translateLegacy: (text: string) => text})}));
+vi.mock('webextension-polyfill', () => ({default: {runtime: {sendMessage: async () => undefined}}}));
+vi.mock('element-plus/es/components/select/style/css', () => ({}));
+vi.mock('element-plus', () => ({
+  ElOption: {props: ['value', 'label'], setup: (props: any) => () => runtime.h('option', {value: props.value}, props.label)},
+  ElMessageBox: {confirm: (...args: unknown[]) => (globalThis as any).__fluentReadGlossarySettingsTest.confirm(...args)},
+}));
+vi.mock('@/src/ui/components/UiSelect.vue', () => ({default: {inheritAttrs: false, props: ['modelValue', 'disabled'], emits: ['update:modelValue', 'change'], setup(props: any, {attrs, slots, emit}: any) {
+  return () => runtime.h('span', [runtime.h('input', {...attrs, value: props.modelValue, disabled: props.disabled, 'data-select-port': '', onInput: (event: any) => {emit('update:modelValue', event.target.value);emit('change', event.target.value);}}), runtime.h('span', {hidden: true}, slots.default?.())]);
+}}}));
+const dialogPort = {props: ['modelValue'], emits: ['update:modelValue'], setup: (props: any, {slots, emit}: any) => () => props.modelValue ? runtime.h('section', {role: 'dialog'}, [slots.default?.(), runtime.h('button', {'data-dialog-close': '', onClick: () => emit('update:modelValue', false)}, 'Close dialog')]) : null};
+function mountComponent(component: import('vue').Component | undefined = undefined, props: Record<string, unknown> = {}): void {
+  elements = [];
+  renderer = runtime.createRenderer({
+    patchProp(node: any, key, old: any, value: any) {
+      node.props[key] = value;
+      if (key === 'value') {node.value = value ?? '';return;}
+      if (key === 'checked') {node.checked = !!value;return;}
+      if (/^on[A-Z]/u.test(key)) {const event = key.slice(2).toLowerCase();if (old) node.removeEventListener(event, old);if (typeof value === 'function') node.addEventListener(event, value);}
+      else if (value === undefined || value === null || value === false) node.removeAttribute(key);else node.setAttribute(key, String(value));
+    },
+    insert: (child: any, parent: any, anchor: any = null) => parent.insertBefore(child, anchor), remove: (node: any) => node.parentNode?.removeChild(node),
+    createElement: tag => {const node: any = dom.document.createElement(tag);node.tag = tag;node.props = {};elements.push(node);return node;},
+    createText: text => dom.document.createTextNode(text), createComment: text => dom.document.createComment(text),
+    setText: (node: any, text) => {node.nodeValue = text;}, setElementText: (node: any, text) => {node.textContent = text;node.text = text;},
+    parentNode: (node: any) => node.parentNode, nextSibling: (node: any) => node.nextSibling,
+    querySelector: value => dom.document.querySelector(value), setScopeId: () => {}, cloneNode: (node: any) => node.cloneNode(true),
+    insertStaticContent: (content, parent: any, anchor) => {const template = dom.document.createElement('template');template.innerHTML = content;const first = template.content.firstChild,last = template.content.lastChild;parent.insertBefore(template.content, anchor);return [first,last];},
   });
-  app = host.createApp(component); app.provide(runtime.ssrContextKey, {modules: new Set<string>()});
-  app.config.warnHandler = () => undefined;
-  const vm = app.mount({tag: '#root', props: {}});
-  state = (vm.$ as unknown as {setupState: Record<string, any>}).setupState;
-  await settle();
-  return elements;
+  const capture = (vm: any) => {if (vm) state = vm.$.setupState;};
+  app = renderer.createApp({setup: () => () => component ? runtime.h(component, {...props, ref: capture}) : runtime.h(GlossarySettings, {ref: capture})});
+  app.component('ElDialog', dialogPort);app.config.warnHandler = () => undefined;
+  app.mount(dom.document.querySelector('main')!);
+}
+async function mountMetadataRender(): Promise<RenderElement[]> {
+  app.unmount();mountComponent();await settle();return elements;
 }
 
 function typeMetadataInput(input: RenderElement, value: string): void {
@@ -68,54 +85,18 @@ function fixture(name = '技术'): GlossaryLibrary {
 }
 function event(value: string): Event {return {target: {value}} as unknown as Event;}
 async function settle(): Promise<void> {for (let index = 0; index < 8; index++) {await Promise.resolve(); await runtime.nextTick();}}
-function mocks(): Plugin {
-  return {name: 'glossary-settings-mocks', enforce: 'pre', resolveId(id) {
-    if (id === 'webextension-polyfill') return '\0glossary-browser';
-    if (id.endsWith('/UiSelect.vue')) return '\0glossary-select';
-    if (id === 'element-plus') return '\0glossary-element';
-    if (/\/src\/services\/config\/store(?:\.ts)?$/u.test(id)) return '\0glossary-config';
-    if (/\/src\/ui\/i18n(?:\.ts)?$/u.test(id)) return '\0glossary-i18n';
-    return null;
-  }, load(id) {
-    if (id === '\0glossary-select') return `import {h} from 'vue'; export default {setup: (_, {slots}) => () => h('select', {}, slots.default?.())};`;
-    if (id === '\0glossary-browser') return 'export default {runtime: {sendMessage: async () => undefined}}';
-    if (id === '\0glossary-element') return `import {h} from 'vue'; export const ElSelect = {setup: (_, {slots}) => () => h('select', {}, slots.default?.())}; export const ElOption = {props: ['value', 'label'], setup: props => () => h('option', {value: props.value}, props.label)}; export const ElMessageBox = {confirm: globalThis.${stateKey}.confirm};`;
-    if (id === '\0glossary-config') return `const s = globalThis.${stateKey}; export const config = s.config; export const configReady = s.configReady; export const requestConfigPatch = s.requestConfigPatch; export const subscribeConfig = s.subscribeConfig;`;
-    if (id === '\0glossary-i18n') return `import {ref} from 'vue'; export const useUiI18n = () => ({language: ref('zh-CN'), t: globalThis.${stateKey}.translate, translateLegacy: text => text});`;
-    return null;
-  }};
-}
-
 beforeEach(async () => {
+  dom = parseHTML('<html><body><main></main></body></html>');
+  vi.stubGlobal('document', dom.document);vi.stubGlobal('window', dom.window);vi.stubGlobal('HTMLInputElement', dom.window.HTMLInputElement);
+  dom.window.HTMLElement.prototype.scrollIntoView = vi.fn();dom.window.HTMLInputElement.prototype.select = vi.fn();
   config = {glossaryEnabled: false, glossaryLibraries: [], to: 'zh-Hans'};
-  listeners = new Set(); confirm = vi.fn().mockResolvedValue('confirm');
-  requestConfigPatch = vi.fn(async (patch) => {
-    Object.assign(config, patch);
-    config.glossaryLibraries = normalizeGlossaryLibraries(config.glossaryLibraries);
-    listeners.forEach(listener => listener(config));
-  });
+  listeners = new Set();confirm = vi.fn().mockResolvedValue('confirm');
+  requestConfigPatch = vi.fn(async patch => {Object.assign(config, patch);config.glossaryLibraries = normalizeGlossaryLibraries(config.glossaryLibraries);listeners.forEach(listener => listener(config));});
   Object.assign(globalThis, {[stateKey]: {config, confirm, configReady: Promise.resolve(), requestConfigPatch,
-    subscribeConfig: (listener: (value: unknown) => void) => {listeners.add(listener); return () => listeners.delete(listener);},
-    translate: (key: string, params?: Record<string, string>) => translate(key, 'zh-CN', params)}});
-  server = await createServer({appType: 'custom', configFile: false, logLevel: 'silent', plugins: [mocks(), vue()],
-    resolve: {alias: {'@': resolve(process.cwd(), '.')}}, root: process.cwd(), server: {hmr: false, middlewareMode: true}, ssr: {noExternal: ['webextension-polyfill', 'element-plus']}});
-  const loaded = await server.ssrLoadModule('/src/features/glossary/ui/GlossarySettings.vue');
-  const component = loaded.default;
-  component.ssrRender = undefined; component.render = () => null;
-  renderer = runtime.createRenderer<Record<string, never>, Record<string, unknown>>({
-    patchProp: () => undefined, insert: () => undefined, remove: () => undefined, createElement: () => ({}),
-    createText: () => ({}), createComment: () => ({}), setText: () => undefined, setElementText: () => undefined,
-    parentNode: () => null, nextSibling: () => null, querySelector: () => null, setScopeId: () => undefined,
-    cloneNode: () => ({}), insertStaticContent: () => [{}, {}],
-  });
-  app = renderer.createApp(component); app.provide(runtime.ssrContextKey, {modules: new Set<string>()});
-  app.config.warnHandler = () => undefined;
-  const vm = app.mount({});
-  // Vue 的公开内部实例类型不暴露 setupState；仅此编译组件夹具读取真实 setup 返回值。
-  state = (vm.$ as unknown as {setupState: Record<string, any>}).setupState;
-  await settle();
+    subscribeConfig: (listener: (value: unknown) => void) => {listeners.add(listener);return () => listeners.delete(listener);}}});
+  mountComponent();await settle();
 });
-afterEach(async () => {app?.unmount(); await server?.close(); delete (globalThis as any)[stateKey]; vi.unstubAllGlobals();});
+afterEach(async () => {app?.unmount();delete (globalThis as any)[stateKey];vi.unstubAllGlobals();});
 
 describe('GlossarySettings compiled component', () => {
   it('renders separate script choices from the shared translation catalog and persists traditional scope', async () => {
@@ -549,17 +530,12 @@ describe('Glossary integration and user-content boundaries', () => {
   });
 
   it('distinguishes glossary-only profile overrides in the real collapsed summary and keeps inheritance unchanged', async () => {
-    const loaded = await server.ssrLoadModule('/src/features/settings/ui/QuickTranslationProfiles.vue');
-    const component = loaded.default;
-    component.ssrRender = undefined; component.render = () => null;
+    const {default: component} = await import('@/src/features/settings/ui/QuickTranslationProfiles.vue');
     app.unmount();
     const profileConfig = runtime.reactive(Object.assign(new Config(), {glossaryLibraries: [fixture('技术'), fixture('产品')]}));
     const profile = {...createQuickTranslationProfile('hover'), enabled: true, hotkey: 'Control+1'};
-    app = renderer.createApp(component, {config: profileConfig, action: 'hover', profiles: [profile]});
-    app.provide(runtime.ssrContextKey, {modules: new Set<string>()});
-    app.config.warnHandler = () => undefined;
-    const vm = app.mount({});
-    const summary = (vm.$ as unknown as {setupState: Record<string, any>}).setupState;
+    mountComponent(component, {config: profileConfig, action: 'hover', profiles: [profile]});
+    const summary = state;
     for (const inherited of [profile, {...profile, glossaryIds: null}]) {
       expect(summary.hasProfileOverrides(inherited)).toBe(false);
       expect(summary.profileSummaryTitle(inherited)).toBe(translate('quickTranslation.useDefaults', 'zh-CN'));
@@ -587,4 +563,180 @@ describe('Glossary integration and user-content boundaries', () => {
     expect(source('src/features/glossary/ui/GlossarySettings.vue')).toContain('data-i18n-ignore');
     expect(source('src/features/glossary/ui/GlossarySettings.vue')).not.toContain('v-html');
   });
+});
+
+describe('Glossary real template workflows', () => {
+  const tr = (key: string) => translate(key, 'zh-CN');
+  async function click(node: Element | null): Promise<void> {expect(node).toBeTruthy();expect(node!.hasAttribute('disabled')).toBe(false);node!.dispatchEvent(new dom.window.Event('click', {bubbles: true}));await settle();}
+  function button(key: string, root: ParentNode = document): Element | null {return [...root.querySelectorAll('button')].find(node => node.textContent?.trim() === tr(key)) || null;}
+  async function input(node: Element | null, value: string, event = 'input'): Promise<void> {expect(node).toBeTruthy();(node as HTMLInputElement).value = value;node!.dispatchEvent(new dom.window.Event(event, {bubbles: true}));await settle();}
+
+  it.each(['library', 'entry'] as const)('does not delete a %s after its pending confirmation outlives the component', async kind => {
+    await state.persist({glossaryLibraries: [fixture()]});
+    let release!: () => void;
+    confirm.mockImplementationOnce(() => new Promise<void>(resolve => {release = resolve;}));
+    const deleting = kind === 'library' ? state.deleteLibrary() : state.deleteEntry(state.selected.entries[0]);
+    const calls = requestConfigPatch.mock.calls.length;
+    app.unmount();release();await deleting;
+    expect(requestConfigPatch).toHaveBeenCalledTimes(calls);
+    expect(config.glossaryLibraries).toHaveLength(1);expect(config.glossaryLibraries[0].entries).toEqual(fixture().entries);
+  });
+
+  it('previews bundled terms, filters locally, closes and adds an editable copy through its actual parent event', async () => {
+    const card = document.querySelector('[data-testid="builtin-ai-en-zh-hans"]')!;
+    await click(button('glossary.builtin.preview', card));
+    const preview = () => document.querySelector('[data-testid="builtin-glossary-preview"]');
+    expect(preview()!.textContent).toContain('artificial intelligence');
+    await input(preview()!.querySelector('input'), 'zz-no-actual-term');
+    expect(preview()!.querySelectorAll('tbody tr')).toHaveLength(0);
+    expect(preview()!.textContent).toContain(tr('glossary.noResults'));
+    await input(preview()!.querySelector('input'), ' artificial intelligence ');
+    expect(preview()!.querySelectorAll('tbody tr')).toHaveLength(1);
+    await click(button('common.close', preview()!));expect(preview()).toBeNull();
+    await click(button('glossary.builtin.preview', card));expect(preview()!.querySelectorAll('tbody tr')).toHaveLength(65);
+    await click(button('glossary.builtin.add', preview()!));
+    expect(preview()).toBeNull();expect(config.glossaryLibraries[0].preset?.id).toBe('ai-en-zh-hans');expect(config.glossaryEnabled).toBe(false);
+    await click(button('glossary.builtin.preview', card));await click(document.querySelector('[data-dialog-close]'));expect(preview()).toBeNull();
+    await click(button('glossary.builtin.manage', card));expect(config.glossaryLibraries).toHaveLength(1);
+    await click(document.querySelector('[role="switch"]'));expect(config.glossaryEnabled).toBe(true);
+  });
+
+  it('edits a term and scope through inputs, keeps pagination and search consistent, and restores disabled libraries', async () => {
+    const library = {...fixture(), entries: Array.from({length: 32}, (_, i) => ({id: `term-${i}`, source: `source-${i}`, target: `译法-${i}`, caseSensitive: false}))};
+    await state.persist({glossaryLibraries: [library, fixture('second')]});
+    const libraryId = config.glossaryLibraries[0].id;
+    await click(document.querySelector(`[aria-label="${tr('glossary.nextPage')}"]`));expect(document.querySelector('.glossary-table tbody')!.textContent).toContain('source-31');
+    await click(document.querySelector(`[aria-label="${tr('glossary.previousPage')}"]`));expect(document.querySelector('.glossary-pagination')!.textContent).toContain('1/2');
+    await input(document.querySelector('.glossary-search input'), 'no-match');await click(button('glossary.clearSearch'));
+    await click(button('glossary.addEntry'));
+    await input(document.querySelector('.glossary-entry-form input[required]'), 'from-dom');
+    await input(document.querySelector('.glossary-entry-form input[aria-label]'), '来自控件');
+    const sensitive = document.querySelector('.glossary-entry-form input[type="checkbox"]') as HTMLInputElement;sensitive.checked = true;sensitive.dispatchEvent(new dom.window.Event('change', {bubbles: true}));
+    document.querySelector('form')!.dispatchEvent(new dom.window.Event('submit', {bubbles: true, cancelable: true}));await settle();
+    expect(config.glossaryLibraries[0].entries.at(-1)).toMatchObject({source: 'from-dom', target: '来自控件', caseSensitive: true});
+    await click(document.querySelector('.glossary-settings-toggle'));
+    await input(document.querySelector(`#glossary-library-settings [aria-label="${tr('glossary.sourceLanguage')}"]`), 'en');
+    await input(document.querySelector(`#glossary-library-settings [aria-label="${tr('glossary.targetLanguage')}"]`), 'zh-hant');
+    expect(config.glossaryLibraries[0]).toMatchObject({sourceLanguage: 'en', targetLanguage: 'zh-hant'});
+    const enabled = document.querySelector('#glossary-library-settings input[type="checkbox"]') as HTMLInputElement;enabled.checked = false;enabled.dispatchEvent(new dom.window.Event('change', {bubbles: true}));await settle();
+    await click(button('glossary.libraryEnabled'));expect(config.glossaryLibraries[0].enabled).toBe(true);
+    await input(document.querySelector('.glossary-library-picker input'), 'second');expect(state.selectedId).toBe('second');
+    await click(document.querySelector('.glossary-library-name'));expect(state.selectedId).toBe(libraryId);
+    const order = document.querySelectorAll('.glossary-library-order button');await click(order[1]);expect(config.glossaryLibraries[1].id).toBe(libraryId);
+    await click(document.querySelectorAll('.glossary-library-order button')[2]);expect(config.glossaryLibraries[0].id).toBe(libraryId);
+  });
+
+  it.each(['CSV','TSV','JSON'])('exports a real library as %s and always releases the object URL', async format => {
+    await state.persist({glossaryLibraries: [fixture('a/b')]});
+    const create = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:glossary-export');
+    const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    const anchorClick = vi.spyOn(dom.window.HTMLElement.prototype, 'click').mockImplementation(function (this: HTMLElement) {
+      expect(this.getAttribute('download')).toBe(`a_b.${format.toLowerCase()}`);
+    });
+    await input(document.querySelector(`[aria-label="${tr('glossary.exportFormat')}"]`), format);
+    await click(button('glossary.export'));
+    const blob = create.mock.calls[0][0] as Blob;expect(await blob.text()).toContain('token');
+    expect(revoke).toHaveBeenCalledWith('blob:glossary-export');
+    anchorClick.mockRestore();create.mockRestore();revoke.mockRestore();
+  });
+
+  it('adds and edits entries from the empty state, exposes duplicate recovery and deletes via actual table actions', async () => {
+    await click(button('glossary.addEntry'));expect(config.glossaryLibraries).toHaveLength(1);
+    await input(document.querySelector('input[required]'), 'unique-token');
+    document.querySelector('form')!.dispatchEvent(new dom.window.Event('submit', {bubbles: true, cancelable: true}));await settle();
+    const edit = document.querySelector('.glossary-table button');await click(edit);
+    await input(document.querySelector('input[required]'), 'unique-token');await click(button('common.cancel'));
+    await click(button('glossary.addEntry'));await input(document.querySelector('input[required]'), 'unique-token');
+    await click(button('glossary.editExisting'));expect(document.querySelector('input[required]')).toHaveProperty('value', 'unique-token');
+    await click(button('common.cancel'));await click(document.querySelectorAll('.glossary-table button')[1]);
+    expect(config.glossaryLibraries[0].entries).toEqual([]);
+    await click(button('glossary.newLibrary'));expect(config.glossaryLibraries).toHaveLength(2);
+  });
+
+  it('opens preview from the toolbar, checks scope and creates an unmatched term without calling a provider', async () => {
+    await state.persist({glossaryLibraries: [fixture('first'), {...fixture('second'), entries: [{id:'second-entry',source:'token',target:'另一译法',caseSensitive:false}]}]});
+    await click(button('glossary.preview'));
+    const panel = () => document.querySelector('[data-testid="glossary-preview"]')!;
+    await input(panel().querySelector('textarea'), 'token');expect(panel().querySelectorAll('tbody tr')).toHaveLength(1);expect(panel().textContent).toContain(tr('glossary.conflicts'));
+    await input(panel().querySelector(`[aria-label="${tr('glossary.sourceLanguage')}"]`), 'en');
+    await input(panel().querySelector(`[aria-label="${tr('glossary.targetLanguage')}"]`), 'ja');
+    await input(panel().querySelector('input[type="url"]'), 'https://example.com/article');
+    expect(panel().querySelectorAll('tbody tr')).toHaveLength(0);
+    await click(panel().querySelector('.glossary-diagnostics button'));expect(panel()).toBeNull();
+    await click(button('glossary.preview'));await input(panel().querySelector('textarea'), 'new-example');await click(button('glossary.addFromPreview', panel()));
+    expect(document.querySelector('input[required]')).toHaveProperty('value', 'new-example');await click(button('common.cancel'));
+    await click(button('glossary.preview'));await click(document.querySelector('[data-dialog-close]'));expect(panel()).toBeNull();
+    await click(button('glossary.preview'));
+    config.glossaryLibraries = [];listeners.forEach(listener=>listener(config));await settle();
+    await click(button('glossary.builtin.title', panel()));expect(dom.window.HTMLElement.prototype.scrollIntoView).toHaveBeenCalled();
+  });
+
+  it('imports through the actual text, format and warning controls, and closes both cancel routes', async () => {
+    await click(button('glossary.import'));
+    const panel = () => document.querySelector('.glossary-import-dialog')!;
+    await input(panel().querySelector('textarea'), 'source,target,tgt_lng,note\nwidget,组件,zh-hans,extra');
+    const warning = panel().querySelector('input[type="checkbox"]') as HTMLInputElement;expect(warning).toBeTruthy();warning.checked=true;warning.dispatchEvent(new dom.window.Event('change',{bubbles:true}));await settle();
+    await click(button('glossary.confirmImport',panel()));expect(config.glossaryLibraries[0].entries[0].target).toBe('组件');expect(panel()).toBeNull();
+    await click(button('glossary.import'));await input(panel().querySelector(`[aria-label="${tr('glossary.format')}"]`),'tsv');
+    await input(panel().querySelector('textarea'),'source\ttarget\nsecond\t第二');expect(state.importFormat).toBe('tsv');
+    await click(button('common.cancel',panel()));expect(panel()).toBeNull();
+    await click(button('glossary.import'));await click(document.querySelector('[data-dialog-close]'));expect(panel()).toBeNull();
+  });
+
+  it('can start an entry if another page removes every library while preview is open', async () => {
+    await state.persist({glossaryLibraries:[fixture('first')]});await click(button('glossary.preview'));
+    config.glossaryLibraries=[];listeners.forEach(listener=>listener(config));await settle();
+    const panel=document.querySelector('[data-testid="glossary-preview"]')!;
+    await click(button('glossary.addEntry',panel));expect(document.querySelector('input[required]')).toBeTruthy();expect(config.glossaryLibraries).toHaveLength(1);
+  });
+
+  it.each(['duplicate','id-collision','library-capacity','total-capacity'])('merges an entry submission with external %s arriving before its queued write',async mode=>{
+    await state.persist({glossaryLibraries:[{...fixture('editable'),entries:[]}]});
+    await click(button('glossary.addEntry'));await input(document.querySelector('input[required]'),'new-local-term');
+    const draftId=state.entryDraft.id;
+    document.querySelector('form')!.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
+    const remote=(id:string,source:string)=>({id,source,target:'远端',caseSensitive:false});
+    if(mode==='duplicate') config.glossaryLibraries[0].entries=[remote('remote-id','new-local-term')];
+    else if(mode==='id-collision') config.glossaryLibraries[0].entries=[remote(draftId,'remote-other-term')];
+    else if(mode==='library-capacity') config.glossaryLibraries[0].entries=Array.from({length:500},(_,i)=>remote(`remote-${i}`,`remote-term-${i}`));
+    else config.glossaryLibraries.push(...Array.from({length:10},(_,i)=>({...fixture(`remote-library-${i}`),entries:Array.from({length:500},(_,j)=>remote(`remote-${j}`,`remote-term-${j}`))})));
+    listeners.forEach(listener=>listener(config));await settle();
+    if(mode==='id-collision'){
+      expect(config.glossaryLibraries[0].entries.map(e=>e.source)).toEqual(['remote-other-term','new-local-term']);
+      expect(new Set(config.glossaryLibraries[0].entries.map(e=>e.id)).size).toBe(2);expect(document.querySelector('input[required]')).toBeNull();
+    }else{
+      expect(document.querySelector('input[required]')).toHaveProperty('value','new-local-term');
+      expect(document.querySelector('[role="alert"]')?.textContent).toContain(tr(mode==='duplicate'?'glossary.duplicateHelp':'glossary.capacity'));
+    }
+  });
+
+  it.each(['libraries','entries'])('prevents adding a builtin at %s capacity while retaining preview and existing-library management',async mode=>{
+    const list=Array.from({length:mode==='libraries'?20:10},(_,i)=>({...fixture(`capacity-${i}`),entries:mode==='libraries'?[]:Array.from({length:500},(_,j)=>({id:`term-${j}`,source:`term-${j}`,target:'译',caseSensitive:false}))}));
+    list[0]={...list[0],preset:{id:'ai-en-zh-hans',version:2}} as typeof list[number];
+    await state.persist({glossaryLibraries:list});
+    const missing=document.querySelector('[data-testid="builtin-software-en-zh-hans"]')!;
+    const add=button('glossary.builtin.add',missing)!;expect(add.hasAttribute('disabled')).toBe(true);
+    const installed=document.querySelector('[data-testid="builtin-ai-en-zh-hans"]')!;
+    await click(button('glossary.builtin.manage',installed));expect(config.glossaryLibraries).toHaveLength(list.length);
+    await click(button('glossary.builtin.preview',missing));
+    const preview=document.querySelector('[data-testid="builtin-glossary-preview"]')!;expect(button('glossary.builtin.add',preview)!.hasAttribute('disabled')).toBe(true);
+  });
+
+
+  it('keeps builtin preview available during save but emits an add only after the parent enables the action', async()=>{
+    app.unmount();
+    const props=runtime.reactive({libraries:[] as GlossaryLibrary[],enabled:false,disabled:true});const add=vi.fn();
+    app=renderer.createApp({setup:()=>()=>runtime.h(BuiltinGlossaries,{...props,onAdd:add})});
+    // ElDialog 默认在首次打开后保留已渲染的 slot；关闭时其子条件仍会更新。
+    app.component('ElDialog',{props:['modelValue'],setup(dialogProps:any,{slots}:any){const opened=runtime.ref(false);runtime.watch(()=>dialogProps.modelValue,value=>{if(value)opened.value=true;},{immediate:true});return()=>opened.value?runtime.h('section',{role:dialogProps.modelValue?'dialog':undefined,hidden:!dialogProps.modelValue},slots.default?.()):null;}});
+    app.mount(document.querySelector('main')!);await settle();
+    const card=document.querySelector('[data-testid="builtin-ai-en-zh-hans"]')!;
+    expect(button('glossary.builtin.add',card)!.hasAttribute('disabled')).toBe(true);
+    await click(button('glossary.builtin.preview',card));
+    const preview=document.querySelector('[data-testid="builtin-glossary-preview"]')!;expect(button('glossary.builtin.add',preview)!.hasAttribute('disabled')).toBe(true);expect(add).not.toHaveBeenCalled();
+    props.disabled=false;await settle();await click(button('glossary.builtin.add',preview));expect(add).toHaveBeenCalledOnce();expect(add).toHaveBeenCalledWith('ai-en-zh-hans');
+    props.enabled=true;props.libraries=[{...fixture('copy'),preset:{id:'ai-en-zh-hans',version:2}}];await settle();
+    expect(document.querySelector('.builtin-disabled-note')).toBeNull();expect(button('glossary.builtin.manage',card)).toBeTruthy();
+  });
+
 });

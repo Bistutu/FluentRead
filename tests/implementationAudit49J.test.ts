@@ -346,6 +346,7 @@ interface PlanProbeReport {
 }
 
 async function planChild(command: string, args: string[]) {
+    // Process/report contracts own a temporary cwd; snapshot Git status is unrelated and can scan large copied trees.
     const entry = join(fixtureRoot, `plan-${++serial}.mjs`);
     const artifactsDir = join(fixtureRoot, `plan-artifacts-${serial}`);
     writeFileSync(entry, `import {executePlan} from ${JSON.stringify(pathToFileURL(join(sourceRoot, 'scripts/testing/run-full-regression.mjs')).href)};
@@ -353,7 +354,7 @@ console.log('ORIGINAL_PUBLIC_RUNNER_LOADED');
 try {
  const report=await executePlan({version:3,mode:'contract-fixture',dryRun:false,artifactsDir:${JSON.stringify(artifactsDir)},
   failFast:false,continueOnError:true,policies:{browser:'disabled',network:'disabled',headed:'disabled'},
-  steps:[{id:'controlled-step',phase:'local',command:${JSON.stringify(command)},args:${JSON.stringify(args)},label:'controlled step',gates:[],dependsOn:[]}]});
+  steps:[{id:'controlled-step',phase:'local',command:${JSON.stringify(command)},args:${JSON.stringify(args)},label:'controlled step',gates:[],dependsOn:[]}]}, {cwd:${JSON.stringify(fixtureRoot)}});
  console.log('PLAN_RESULT '+JSON.stringify(report));console.log('PLAN_FINISHED');process.exitCode=report.status==='passed'?0:1;
 }
 catch (error) {console.error('PLAN_REJECTED', error.message); process.exitCode=17;}`);

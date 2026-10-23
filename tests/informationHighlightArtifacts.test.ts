@@ -112,6 +112,17 @@ describe('fixed model artifacts integrity and bounded resumable cache', () => {
         cache.put.mockRejectedValueOnce(new DOMException('full', 'QuotaExceededError')); const fetcher = vi.fn(async () => new Response(new Uint8Array([1,2]))); vi.stubGlobal('fetch', fetcher); await expect(store.download(file, new AbortController().signal, () => {})).rejects.toMatchObject({name: 'QuotaExceededError'}); expect(fetcher).toHaveBeenCalledOnce();
         vi.stubGlobal('fetch', vi.fn(async () => {throw null;})); await expect(store.download(file, new AbortController().signal, () => {})).rejects.toBe(null);
     });
+    it.each([500, 206, 201])('cancels a rejected %s response before trying the next model source', async status => {
+        const bytes = new Uint8Array([1, 2]), file = fileFor(bytes), store = createModelArtifactStore('models', [file]);
+        const cancel = vi.fn(() => new Promise<void>(() => {}));
+        const fetcher = vi.fn().mockResolvedValueOnce(new Response(new ReadableStream({cancel}), {status}))
+            .mockResolvedValueOnce(new Response(bytes));
+        vi.stubGlobal('fetch', fetcher);
+        await store.download(file, new AbortController().signal, () => {});
+        expect(cancel).toHaveBeenCalledOnce();
+        expect(fetcher).toHaveBeenCalledTimes(2);
+        expect(await store.complete(file)).toBe(true);
+    });
     it('pauses before fetch or during the stream, keeps other model entries and bounds stalled-network waiting', async () => {
         const body = new Uint8Array([1,2]), file = fileFor(body), store = createModelArtifactStore('models', [file]);
         const controller = new AbortController(); controller.abort(); await expect(store.download(file, controller.signal, () => {})).rejects.toMatchObject({name: 'AbortError'});

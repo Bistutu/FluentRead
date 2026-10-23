@@ -660,6 +660,29 @@ describe('translation API request lifecycle performance', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it.each(['single', 'batch', 'video'] as const)('%s abort immediately rejects queued work before transport starts', async kind => {
+    mocks.config.maxConcurrentTranslations = 1;
+    const gate = deferred<string>();
+    mocks.sendMessage.mockReturnValueOnce(gate.promise);
+    const active = translateText('Active source', 'Page', {maxRetries: 0});
+    await flushMicrotasks(30);
+    expect(mocks.sendMessage).toHaveBeenCalledOnce();
+    const owner = new AbortController();
+    let failure: unknown;
+    const queued = contextGateRequest(kind, owner.signal).catch(error => {failure = error; return error;});
+    await flushMicrotasks(30);
+    owner.abort();
+    await flushMicrotasks();
+    try {
+      expect(failure).toMatchObject({name: 'AbortError'});
+      expect(mocks.sendMessage).toHaveBeenCalledOnce();
+    } finally {
+      gate.resolve('Completed active translation');
+      await Promise.all([active, queued]);
+    }
+    expect(mocks.sendMessage).toHaveBeenCalledOnce();
+  });
+
   it('aborts a retry delay without sending another runtime request', async () => {
     mocks.sendMessage.mockRejectedValue(new Error('temporary failure'));
     const controller = new AbortController();

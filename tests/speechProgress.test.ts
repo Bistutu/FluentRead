@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {audioSpeechProgress,boundarySpeechProgress,parseSpeechCues,parseSpeechProgress,speechTextSlices,speechTextTokens,parseSpeechPlaybackPosition,seekSpeechTime} from '@/src/core/tts/speechProgress';
+import {audioSpeechProgress,boundarySpeechProgress,parseSpeechCues,parseSpeechProgress,speechTextTokens,parseSpeechPlaybackPosition,seekSpeechTime} from '@/src/core/tts/speechProgress';
 describe('音频时间与安全跟读切片',()=>{
     it('复用同一原文的分词仍保持每次跳转与分段边界一致',()=>{
         const text="We’re publishing H2D，中文\n🙂 release.";
@@ -66,12 +66,5 @@ describe('音频时间与安全跟读切片',()=>{
         expect(seekSpeechTime(0,NaN,5)).toBeNull();
         expect(seekSpeechTime(0,12,NaN)).toBeNull();
     });
-    it('原文与空白完整保留，跨富文本片段按绝对索引扫色',()=>{
-        const p={start:2,end:8,fraction:.5,estimated:true};
-        const slices=speechTextSlices('  Hello world',0,p);expect(slices).toEqual({before:'  ',active:'Hello ',after:'world',fraction:.5});
-        const part=speechTextSlices('lo world',5,p);expect(part).toEqual({before:'',active:'lo ',after:'world',fraction:0});
-        expect(speechTextSlices('untouched',20,p)).toEqual({before:'',active:'',after:'untouched',fraction:0});
-        expect(speechTextSlices('exact text',0,null)).toEqual({before:'',active:'',after:'exact text',fraction:0});
-        expect(speechTextSlices('lo ',5,{...p,fraction:1}).fraction).toBe(1);
-    });
+
 });

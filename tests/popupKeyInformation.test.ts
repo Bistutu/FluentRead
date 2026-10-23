@@ -4,23 +4,18 @@
  * 主要内容：覆盖模型能力、请求体覆盖、自定义接口、外部同步、中英文无障碍名称，以及模块排序、PDF 主入口与迟到标签页查询的模板边界。
  * 模块边界：浏览器、配置存储和展示组件为受控端口；不读取源码私有状态，不将 DOM 测试视为真实几何或在线服务证明。
  */
-import {createRequire} from 'node:module';
-import {readFileSync} from 'node:fs';
-import {resolve} from 'node:path';
+import * as runtime from 'vue';
+import PopupApp from '@/src/app/popup/PopupApp.vue';
 import {parseHTML} from 'linkedom';
-import {createServer, type ViteDevServer} from 'vite';
-import {compileScript, parse} from 'vue/compiler-sfc';
-import ts from 'typescript';
 import {afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi} from 'vitest';
-import type {App, Component, Plugin} from 'vue';
+import type {App, Plugin} from 'vue';
 import {Config, normalizeConfig} from '@/src/core/config/model';
 import {customModelString} from '@/src/core/config/catalog';
 import {LOCAL_TRANSLATION_MODEL_IDS} from '@/src/core/config/localTranslation';
 import {translate, translateLegacyText, type UiLanguage} from '@/src/core/i18n';
-import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
+import {registerAllUiLanguageBundles} from './helpers/uiLanguageBundles';
 import type {PopupActiveTab} from '@/src/app/popup/pageActions';
 
-const runtime = createRequire(import.meta.url)('vue') as typeof import('vue');
 const language = runtime.ref<UiLanguage>('zh-CN');
 const bundleRevision = runtime.ref(0);
 const config = new Config();
@@ -29,7 +24,7 @@ const patches = vi.fn(), openOptions = vi.fn(), createTab = vi.fn();
 const queryTabs = vi.fn<() => Promise<PopupActiveTab[]>>();
 const send = vi.fn<(id: number, message: {type: string; action?: string}) => Promise<unknown>>();
 const tabUpdated = new Set<(id: number, change: {url?: string; status?: string}, tab: PopupActiveTab & {active?: boolean}) => void>();
-let server: ViteDevServer, component: Component, app: App | undefined, document: Document;
+let app: App | undefined, document: Document;
 let window: ReturnType<typeof parseHTML>['window'];
 
 async function settle() {for (let index = 0; index < 12; index++) {await Promise.resolve();await runtime.nextTick();}}
@@ -46,54 +41,33 @@ function summary() {
 }
 function model() {return summary().querySelector('.provider-summary-model');}
 
-beforeAll(async () => {
-  registerAllUiLanguageBundles();
-  vi.stubGlobal('__popupSummaryFixture', {config, language, bundleRevision, listeners, patches, openOptions, createTab, queryTabs, send, tabUpdated,
-    t: (key: string, params?: Parameters<typeof translate>[2]) => translate(key, language.value, params),
-    translateLegacy: (text: string) => translateLegacyText(text, language.value)});
-  server = await createServer({root: process.cwd(), configFile: false, appType: 'custom', logLevel: 'silent',
-    resolve: {alias: {'@': process.cwd()}}, ssr: {noExternal: ['element-plus', 'webextension-polyfill']}, plugins: [{name: 'popup-summary-client', enforce: 'pre', resolveId(id) {
-      if (/(?:\/|^)Popup(?:App|SiteRule)\.vue$/u.test(id)) return resolve('src/app/popup', id.split('/').at(-1)!) + '.summary.ts';
-      if (id === 'webextension-polyfill') return '\0summary-browser';
-      if (/\/src\/services\/config\/store(?:\.ts)?$/u.test(id)) return '\0summary-config';
-      if (/\/src\/ui\/i18n(?:\.ts)?$/u.test(id)) return '\0summary-i18n';
-      if (/\/src\/ui\/interfaceAppearance(?:\.ts)?$/u.test(id)) return '\0summary-appearance';
-      if (/\/src\/platform\/browser\/capabilities(?:\.ts)?$/u.test(id)) return '\0summary-capabilities';
-      if (id.endsWith('/PopupDrawer') || id.endsWith('/PopupDrawer.ts')) return '\0summary-drawer';
-      if (id.endsWith('/PopupServices.vue')) return '\0summary-services';
-      if (id === '@element-plus/icons-vue') return '\0summary-icons';
-      if (id === 'element-plus/es/components/tooltip/index') return '\0summary-tooltip';
-      if (id.endsWith('.vue')) return '\0summary-display';
-      return null;
-    }, load(id) {
-      if (id.endsWith('.vue.summary.ts')) {
-        const componentPath = id.slice(0, -11), file = componentPath.startsWith('/src/') ? resolve(componentPath.slice(1)) : componentPath;
-        const {descriptor, errors} = parse(readFileSync(file, 'utf8'), {filename: file});
-        expect(errors).toEqual([]);
-        descriptor.template!.content = descriptor.template!.content.replace(/<\/?Transition\b/gu, tag => tag.replace('Transition', 'OwnedTransition'));
-        const script = compileScript(descriptor, {id: 'popup-summary-client', inlineTemplate: true});
-        return ts.transpileModule(script.content, {compilerOptions: {target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext}}).outputText;
-      }
-      if (id === '\0summary-browser') return `const f=globalThis.__popupSummaryFixture;const event={addListener:()=>{},removeListener:()=>{}};
-        export default {tabs:{query:f.queryTabs,sendMessage:f.send,create:f.createTab,
-          onUpdated:{addListener:fn=>f.tabUpdated.add(fn),removeListener:fn=>f.tabUpdated.delete(fn)},onActivated:event,onRemoved:event},
-        runtime:{id:'fixture-extension',onMessage:{addListener:()=>{},removeListener:()=>{}},getManifest:()=>({version:'0.0.35'}),getURL:p=>'extension://'+p,sendMessage:async()=>({success:true}),openOptionsPage:f.openOptions}};`;
-      if (id === '\0summary-config') return `const f=globalThis.__popupSummaryFixture;export const config=f.config;
-        export const subscribeConfig=fn=>{f.listeners.add(fn);return()=>f.listeners.delete(fn)};
-        export const requestConfigPatch=async value=>f.patches(value);export const handoffPendingConfigPatches=async()=>{};`;
-      if (id === '\0summary-i18n') return 'export const useUiI18n=()=>globalThis.__popupSummaryFixture;';
-      if (id === '\0summary-appearance') return 'export const applyInterfaceFont=()=>{},applyInterfaceSkin=()=>{};';
-      if (id === '\0summary-capabilities') return "export const browserCapabilities={browser:'chrome',areaTranslation:true,imageTranslation:true};";
-      if (id === '\0summary-icons') return 'export const Setting={render:()=>null};';
-      // Tooltip 的定位和显示时序由真实浏览器验证；此处只保留链接及父组件的关闭端口。
-      if (id === '\0summary-tooltip') return 'export const ElTooltip={inheritAttrs:false,setup(_, {slots,expose}){expose({onClose(){},hide(){}});return()=>slots.default?.()}};';
-      if (id === '\0summary-drawer') return "import {h} from 'vue';export default {setup(_, {attrs,slots}){return()=>attrs.modelValue||attrs['model-value']?h('div',{class:'drawer-port'},slots.default?.()):null}};";
-      if (id === '\0summary-services') return "import {h} from 'vue';export default {emits:['close'],setup(_, {emit}){return()=>h('button',{class:'service-panel-close',onClick:()=>emit('close')},'Close')}};";
-      if (id === '\0summary-display') return "import {h} from 'vue';export default {setup(_, {attrs,slots}){return()=>h('div',attrs,slots.default?.())}};";
-      return null;
-    }}]});
-  component = (await server.ssrLoadModule('/src/app/popup/PopupApp.vue')).default;
+beforeAll(() => {registerAllUiLanguageBundles();});
+vi.mock('vue', async importOriginal => {
+  const actual = await importOriginal<typeof import('vue')>();
+  return {...actual, Transition: actual.defineComponent({setup: (_, {slots}) => () => slots.default?.()})};
 });
+vi.mock('webextension-polyfill', () => {
+  const event = {addListener() {}, removeListener() {}};
+  return {default: {tabs: {query: () => queryTabs(), sendMessage: (...args: Parameters<typeof send>) => send(...args),
+    create: (...args: unknown[]) => createTab(...args), onUpdated: {addListener: (fn: any) => tabUpdated.add(fn), removeListener: (fn: any) => tabUpdated.delete(fn)},
+    onActivated: event, onRemoved: event}, runtime: {id: 'fixture-extension', onMessage: event, getManifest: () => ({version: '0.0.35'}),
+      getURL: (path: string) => 'extension://' + path, sendMessage: async () => ({success: true}), openOptionsPage: () => openOptions()}}};
+});
+vi.mock('@/src/services/config/store', () => ({get config() {return config;}, configReady: Promise.resolve(),
+  subscribeConfig: (fn: (value: Config) => void) => {listeners.add(fn);return () => listeners.delete(fn);},
+  requestConfigPatch: async (value: unknown) => patches(value), handoffPendingConfigPatches: async () => {}}));
+vi.mock('@/src/ui/i18n', () => ({useUiI18n: () => ({language, bundleRevision,
+  t: (key: string, params?: Parameters<typeof translate>[2]) => translate(key, language.value, params),
+  translateLegacy: (text: string) => translateLegacyText(text, language.value)})}));
+vi.mock('@/src/ui/interfaceAppearance', () => ({applyInterfaceFont() {}, applyInterfaceSkin() {}}));
+vi.mock('@/src/platform/browser/capabilities', () => ({browserCapabilities: {browser: 'chrome', areaTranslation: true, imageTranslation: true}}));
+vi.mock('@element-plus/icons-vue', () => ({Setting: {render: () => null}}));
+vi.mock('element-plus/es/components/tooltip/index', () => ({ElTooltip: {inheritAttrs: false,
+  setup(_: unknown, {slots, expose}: any) {expose({onClose() {}, hide() {}});return () => slots.default?.();}}}));
+vi.mock('@/src/app/popup/PopupDrawer', () => ({__esModule: true, default: {setup(_: unknown, {attrs, slots}: any) {
+  return () => attrs.modelValue || attrs['model-value'] ? runtime.h('div', {class: 'drawer-port'}, slots.default?.()) : null;}}}));
+vi.mock('@/src/app/popup/PopupServices.vue', () => ({__esModule: true, default: {emits: ['close'], setup(_: unknown, {emit}: any) {
+  return () => runtime.h('button', {class: 'service-panel-close', onClick: () => emit('close')}, 'Close');}}}));
 
 beforeEach(() => {
   vi.clearAllMocks();listeners.clear();tabUpdated.clear();language.value = 'zh-CN';bundleRevision.value = 0;
@@ -111,7 +85,7 @@ beforeEach(() => {
 });
 
 afterEach(async () => {app?.unmount();app = undefined;await settle();});
-afterAll(async () => {await server?.close();vi.unstubAllGlobals();});
+afterAll(() => {vi.unstubAllGlobals();});
 
 async function mount(plugin?: Plugin) {
   const renderer = runtime.createRenderer<Node, HTMLElement>({
@@ -134,9 +108,8 @@ async function mount(plugin?: Plugin) {
       parent.insertBefore(template.content, anchor || null);return [first, last];
     },
   });
-  app = renderer.createApp(component);
+  app = renderer.createApp(PopupApp);
   if (plugin) app.use(plugin);
-  app.component('OwnedTransition', runtime.defineComponent({setup: (_, {slots}) => () => slots.default?.()}));
   app.config.warnHandler = () => undefined;
   app.mount(document.getElementById('app')!);
   await settle();
@@ -337,7 +310,7 @@ describe('Popup 首页关键信息', () => {
     vi.doMock('webextension-polyfill', () => ({default: {runtime: {sendMessage: vi.fn()}}}));
     vi.doMock('@/src/platform/i18n/uiLanguageBundles', () => ({ensureUiLanguageBundle: async () => true}));
     try {
-      const {createUiI18nPlugin} = await import('@/src/ui/i18n');
+      const {createUiI18nPlugin} = await vi.importActual<typeof import('@/src/ui/i18n')>('@/src/ui/i18n');
       await mount(createUiI18nPlugin({documentRoot: document.body}));
       // 固定旧中文按钮确实被 observer 转换，不能靠 scanner 没执行掩盖正文污染。
       await vi.waitFor(() => expect(document.querySelector('.settings-button > span')?.textContent).toBe('Settings'));
@@ -386,3 +359,11 @@ describe('Popup 首页关键信息', () => {
     expect(document.querySelectorAll('[data-testid="page-translation"]')).toHaveLength(1);
   });
 });
+
+vi.mock('@/src/app/popup/PopupLanguageSelect.vue', () => ({default: {setup(_: unknown, {attrs, slots}: any) {return () => runtime.h('div', attrs, slots.default?.());}}}));
+
+vi.mock('@/src/features/self-help/ui/DiagnosticNotice.vue', () => ({default: {setup(_: unknown, {attrs, slots}: any) {return () => runtime.h('div', attrs, slots.default?.());}}}));
+
+vi.mock('@/src/ui/components/ServiceIcon.vue', () => ({default: {setup(_: unknown, {attrs, slots}: any) {return () => runtime.h('div', attrs, slots.default?.());}}}));
+
+vi.mock('@/src/ui/components/UiLanguageOnboarding.vue', () => ({default: {setup(_: unknown, {attrs, slots}: any) {return () => runtime.h('div', attrs, slots.default?.());}}}));

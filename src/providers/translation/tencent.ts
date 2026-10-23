@@ -10,7 +10,7 @@ import {normalizeChineseLanguageCode} from '@/src/core/language/chinese';
 import { method } from "@/src/core/config/constants";
 import {getTranslationProviderLanguages} from '@/src/services/translation/requestSnapshot';
 import {createHttpStatusError, createProviderCodeError, readJsonResponse} from '@/src/platform/http/errors';
-import {runtimeFetch} from '@/src/platform/http/runtime';
+import {cancelUnreadResponseBody, runtimeFetch} from '@/src/platform/http/runtime';
 import {requireTranslationProviderConfig} from '@/src/services/translation/requestSnapshot';
 import type {TranslationProviderRequest} from '@/src/services/translation/types';
 
@@ -153,6 +153,7 @@ async function tencent(message: TranslationProviderRequest<string>) {
     });
 
     if (!response.ok) {
+        cancelUnreadResponseBody(response);
         throw createHttpStatusError(response, '腾讯云机器翻译请求失败');
     }
 

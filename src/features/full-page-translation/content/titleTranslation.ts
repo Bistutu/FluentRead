@@ -1,8 +1,8 @@
 /**
  * @file src/features/full-page-translation/content/titleTranslation.ts
  * 文件职责：在全文翻译会话期间翻译页面标题，并在恢复时把标题交还给页面。
- * 主要内容：精确相同译文和有同目标语言证据的排版回显保留原文且不重复展示；以 <title> 当前文本为源、复用会话冻结的配置快照发起翻译；观察 head 子树以跟随 SPA 改写的标题；用「上次写入值」区分自身写入与页面写入来阻断自激循环；源标题变化时取消旧请求，并用 generation 与写前快照丢弃迟到结果；恢复时仅在译文仍然在位时写回原标题。
- * 模块边界：本文件只读写 document.title 并观察 head，不参与正文候选遍历、不渲染双语 DOM、不读取配置存储；翻译经 translateText 发出，配置由调用方传入的快照提供。
+ * 主要内容：精确相同译文和有同目标语言证据的排版回显保留原文且不重复展示；以 <title> 当前文本为源、复用会话冻结的配置快照发起翻译；观察 head 子树及根节点的直接子级以跟随 SPA 替换 head/html 或改写标题；用「上次写入值」区分自身写入与页面写入来阻断自激循环；源标题变化时取消旧请求，并用 generation 与写前快照丢弃迟到结果；恢复时仅在译文仍然在位时写回原标题。
+ * 模块边界：本文件只读写 document.title；根节点仅观察结构更换，正文子树不进入标题观察，不参与正文候选遍历、不渲染双语 DOM、不读取配置存储；翻译经 translateText 发出，配置由调用方传入的快照提供。
  *
  * 背景：正文候选遍历把整个 <head> 列为硬裁剪标签（core/translation/dom.ts），标题因此
  * 永远不会成为候选。标题也无法承载双语对照——标签页只显示一行文本——所以这里统一采用
@@ -20,6 +20,8 @@ interface TitleTranslationState {
     snapshot: FullPageTranslationConfigSnapshot;
     controller: AbortController;
     observer: MutationObserver;
+    root: Element | null;
+    head: HTMLHeadElement | null;
     settleTimer: number | null;
     /** 页面自己的标题文本；恢复时写回这一份。 */
     originalTitle: string;
@@ -68,9 +70,20 @@ function scheduleTranslate(active: TitleTranslationState): void {
     }, TITLE_SETTLE_DELAY_MS);
 }
 
+/** 只重绑标题容器和两层结构哨兵；避免为标题观察所有正文变化。 */
+function observeTitleRoots(active: TitleTranslationState): void {
+    active.root = document.documentElement;
+    active.head = document.head;
+    active.observer.disconnect();
+    active.observer.observe(document, {childList: true});
+    if (active.root) active.observer.observe(active.root, {childList: true});
+    if (active.head) active.observer.observe(active.head, {childList: true, subtree: true, characterData: true});
+}
+
 function handleTitleMutation(active: TitleTranslationState): void {
     // disconnect 之后仍可能收到已排队的记录；停用的会话不再改写标题。
     if (state !== active) return;
+    if (active.root !== document.documentElement || active.head !== document.head) observeTitleRoots(active);
     const current = document.title;
     // 本模块刚写入的译文，不能再当作新的源标题，否则会自激循环。
     if (active.appliedTitle !== null && current === active.appliedTitle) return;
@@ -94,20 +107,22 @@ export function isFullPageTitleTranslationActive(): boolean {
 export function startFullPageTitleTranslation(snapshot: FullPageTranslationConfigSnapshot): void {
     stopFullPageTitleTranslation();
 
-    // SPA 可能改写 <title> 的文本，也可能整体替换该元素；观察 head 子树两种都能覆盖。
+    // SPA 可以替换 title、head 或 html；结构哨兵只观察直接子级，标题观察只进入 head。
     // 回调只在观察开始后触发，此时 active 已完成初始化。
     const observer = new MutationObserver(() => handleTitleMutation(active));
     const active: TitleTranslationState = {
         snapshot,
         controller: new AbortController(),
         observer,
+        root: null,
+        head: null,
         settleTimer: null,
         originalTitle: document.title,
         appliedTitle: null,
         generation: 0,
     };
-    observer.observe(document.head, {childList: true, subtree: true, characterData: true});
     state = active;
+    observeTitleRoots(active);
 
     // 首次不进入合并窗口：会话启动时标题已经稳定，等待只会让标签页延迟变化。
     void translateCurrentTitle(active);

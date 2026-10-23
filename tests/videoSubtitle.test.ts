@@ -16,27 +16,17 @@ vi.mock('webextension-polyfill', () => ({
     default: { runtime: { sendMessage: vi.fn() } },
 }));
 import {
-    getVideoSubtitleDownloadErrorMessage,
-    getVideoServiceLabel,
-    getVideoPretranslationWindowMs,
-    getVisibleVideoAiCue,
-    mergeVideoAiSubtitleCues,
-    isYouTubeVideoPage,
-    isXHostPage,
-    isXVideoPage,
-    isSupportedVideoPage,
-    normalizeVideoSubtitleDisplayMode,
-    normalizeVideoCaptionText,
-    readVisibleCaptionText,
-    revealVideoSubtitleTranslation,
-    translateVideoSubtitleCues,
-    VIDEO_CAPTION_SEGMENT_SELECTOR,
-} from '@/src/features/video-subtitle/content/runtime';
+    getVideoSubtitleDownloadErrorMessage, isYouTubeVideoPage, isXHostPage, isXVideoPage, isSupportedVideoPage,
+    normalizeVideoSubtitleDisplayMode, readVisibleCaptionText, VIDEO_CAPTION_SEGMENT_SELECTOR,
+} from '@/src/features/video-subtitle/content/ui';
+import {getVideoServiceLabel, getVideoPretranslationWindowMs} from '@/src/features/video-subtitle/content/serviceProfile';
+import {getVisibleVideoAiCue, mergeVideoAiSubtitleCues} from '@/src/features/video-subtitle/content/video-ai/cueTimeline';
+import {normalizeVideoCaptionText, revealVideoSubtitleTranslation, translateVideoSubtitleCues} from '@/src/features/video-subtitle/content/subtitleLogic';
 import {applyVideoDisplayState, findVideoPlayer, findCaptionContainer, getVisibleCaptionSegments, renderVideoReadingAnnotation, clearRenderedVideoTranslation} from '@/src/features/video-subtitle/content/ui';
 import {validateYoutubeTimedTextMessage} from '@/src/features/video-subtitle/content/youtubeTimedTextMessage';
 import {config} from '@/src/services/config/store';
 import { normalizeVideoSubtitleFontSize } from '@/src/core/config/model';
-import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
+import {registerAllUiLanguageBundles} from './helpers/uiLanguageBundles';
 
 // 本文件断言非中文界面文案；扩展运行时按需加载，测试中一次注册全部语言资源包。
 registerAllUiLanguageBundles();

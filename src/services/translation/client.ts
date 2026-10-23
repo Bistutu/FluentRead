@@ -416,7 +416,7 @@ export async function translateText(origin: string, context: string = document.t
 
     // 开始执行翻译任务
     return translationTask();
-  }, queueSession);
+  }, queueSession, signal);
   // 只统计已成功完成的调用；同一富文本回退产生的短请求仍由延迟队列合并落盘。
   scheduleTranslationCountSave();
   return result;
@@ -529,7 +529,7 @@ export async function translateTextBatch(
     };
 
     return translationTask();
-  }, queueSession);
+  }, queueSession, signal);
   scheduleTranslationCountSave();
   return result;
 }
@@ -590,7 +590,7 @@ export async function translateVideoText(origin: string, signal?: AbortSignal, s
       }
     };
     return translationTask();
-  });
+  }, undefined, signal);
   // 视频字幕是高频短文本；成功后才记账，并合并为低频写入。
   scheduleVideoCountSave();
   return result;

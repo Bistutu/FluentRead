@@ -13,7 +13,7 @@
  */
 
 import {readJsonResponse} from '@/src/platform/http/errors';
-import {runtimeFetch} from '@/src/platform/http/runtime';
+import {cancelUnreadResponseBody, runtimeFetch} from '@/src/platform/http/runtime';
 import {
   buildEdgeTtsSsml,
   concatEdgeTtsAudio,
@@ -77,9 +77,9 @@ function randomId(): string {
   return (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`).replace(/-/gu, '');
 }
 
-async function createSignature(url: string): Promise<string> {
+async function createSignature(): Promise<string> {
   const formattedDate = `${new Date().toUTCString().replace('GMT', '').trim().toLowerCase()} GMT`;
-  const encodedUrl = encodeURIComponent(url.split('://')[1] ?? '');
+  const encodedUrl = encodeURIComponent(ENDPOINT_URL.split('://')[1]!);
   const requestId = randomId();
   const payload = `${SIGNATURE_APP_ID}${encodedUrl}${formattedDate}${requestId}`.toLowerCase();
   const key = base64ToBytes(SIGNATURE_SECRET_BASE64);
@@ -94,7 +94,7 @@ async function getEndpointToken(signal?: AbortSignal): Promise<EndpointToken> {
   throwIfAborted(signal);
   if (endpointToken && Date.now() < endpointToken.expiresAt - 3 * 60 * 1000) return endpointToken;
 
-  const signature = await createSignature(ENDPOINT_URL);
+  const signature = await createSignature();
   throwIfAborted(signal);
   const response = await runtimeFetch(ENDPOINT_URL, {
     method: 'POST',
@@ -111,7 +111,7 @@ async function getEndpointToken(signal?: AbortSignal): Promise<EndpointToken> {
     body: '',
     signal,
   });
-  if (!response.ok) throw new Error(`Edge TTS endpoint failed: ${response.status}`);
+  if (!response.ok) {cancelUnreadResponseBody(response); throw new Error(`Edge TTS endpoint failed: ${response.status}`);}
   const payload = await readJsonResponse<{ t?: unknown; r?: unknown } | null>(
     response,
     'Edge TTS endpoint returned invalid JSON',
@@ -142,7 +142,7 @@ async function synthesizeWithVoice(voice: string, endpoint: EndpointToken, chunk
       body: buildEdgeTtsSsml(chunk, voice),
       signal,
     });
-    if (!response.ok) throw new Error(`Edge TTS synthesis failed: ${response.status}`);
+    if (!response.ok) {cancelUnreadResponseBody(response); throw new Error(`Edge TTS synthesis failed: ${response.status}`);}
     audioBuffers.push(await response.arrayBuffer());
   }
   throwIfAborted(signal);

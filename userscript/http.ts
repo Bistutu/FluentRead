@@ -57,8 +57,34 @@ function headersToRecord(headers: Headers): Record<string, string> {
     return result;
 }
 
-/** 合并 Request 与 RequestInit；必要时先克隆并读取一次性请求体，供 GM API 复用。 */
-async function resolveRequest(input: RequestInfo | URL, init?: RequestInit): Promise<{
+/** 只读取自有克隆；取消立即结束准备，不等待 tee 另一分支或底层取消握手。 */
+async function readRequestBody(request: Request, signal: AbortSignal): Promise<ArrayBuffer> {
+    const reader = request.body?.getReader();
+    if (!reader) return new ArrayBuffer(0);
+    const onAbort = () => {void reader.cancel().catch(() => undefined);};
+    signal.addEventListener('abort', onAbort, {once: true});
+    try {
+        const chunks: Uint8Array[] = [];
+        let length = 0;
+        while (true) {
+            const {done, value} = await reader.read();
+            if (signal.aborted) throw abortError();
+            if (done) break;
+            chunks.push(value);
+            length += value.byteLength;
+        }
+        const bytes = new Uint8Array(length);
+        let offset = 0;
+        for (const chunk of chunks) {bytes.set(chunk, offset); offset += chunk.byteLength;}
+        return bytes.buffer;
+    } finally {
+        signal.removeEventListener('abort', onAbort);
+        reader.releaseLock();
+    }
+}
+
+/** 合并 Request 与 RequestInit；仅 GM 传输需要读取克隆正文，原生 fetch 直接接管原请求。 */
+async function resolveRequest(input: RequestInfo | URL, init: RequestInit | undefined, bufferBody: boolean): Promise<{
     url: string;
     method: string;
     headers: Headers;
@@ -67,12 +93,14 @@ async function resolveRequest(input: RequestInfo | URL, init?: RequestInit): Pro
     signal?: AbortSignal | null;
 }> {
     if (input instanceof Request) {
-        const request = input.clone();
+        const request = input;
+        const signal = init?.signal || request.signal;
+        if (bufferBody && signal.aborted) throw abortError();
         const headers = new Headers(request.headers);
         new Headers(init?.headers).forEach((value, key) => headers.set(key, value));
         let body = init?.body;
-        if (body === undefined && request.method !== 'GET' && request.method !== 'HEAD') {
-            body = await request.arrayBuffer();
+        if (bufferBody && body === undefined && request.method !== 'GET' && request.method !== 'HEAD') {
+            body = await readRequestBody(request.clone(), signal);
         }
         return {
             url: request.url,
@@ -80,7 +108,7 @@ async function resolveRequest(input: RequestInfo | URL, init?: RequestInit): Pro
             headers,
             body,
             credentials: init?.credentials || request.credentials,
-            signal: init?.signal || request.signal,
+            signal,
         };
     }
 
@@ -116,11 +144,13 @@ function supportsAnonymousDoubao(): boolean {
 
 /** 以旧式或现代 GM 请求 API 实现兼容 fetch 的传输层。 */
 export const userscriptFetch: RuntimeFetch = async (input, init) => {
-    const request = await resolveRequest(input, init);
-    const guest = readDoubaoGuestRequest(request.url, request.method, request.headers);
     const gmRequest = getUserscriptFunction('GM_xmlhttpRequest', 'xmlHttpRequest');
+    const url = input instanceof Request ? input.url : input instanceof URL ? input.href : String(input);
+    const native = !gmRequest || shouldUseNativeFetch(url);
+    const request = await resolveRequest(input, init, !native);
+    const guest = readDoubaoGuestRequest(request.url, request.method, request.headers);
     // GM_xmlhttpRequest 只接管 HTTP(S) 跨域请求；blob/data 等协议仍交给网页原生 fetch。
-    if (!gmRequest || shouldUseNativeFetch(request.url)) {
+    if (native) {
         if (guest) throw new Error('豆包匿名访客请求需要脚本管理器的跨域请求能力。');
         return globalThis.fetch(input, init);
     }
@@ -162,7 +192,7 @@ export const userscriptFetch: RuntimeFetch = async (input, init) => {
 
         request.signal?.addEventListener('abort', onAbort, {once: true});
         try {
-            const result = gmRequest({
+            const result = gmRequest!({
                 method: request.method,
                 url: request.url,
                 headers: headersToRecord(request.headers),

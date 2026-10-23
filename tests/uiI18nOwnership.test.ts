@@ -5,6 +5,7 @@
  * 模块边界：组件细测使用可控存储端口；集成组直接 import 实际 i18n/store/repository/storage，只控制后台消息和语言资源加载，不调用浏览器或翻译供应商。
  */
 import 'fake-indexeddb/auto'
+import * as runtime from 'vue'
 import {resolve} from 'node:path'
 import {Server as TcpServer} from 'node:net'
 import {promises as dnsPromises} from 'node:dns'
@@ -47,7 +48,10 @@ afterEach(async ctx => {
 })
 
 async function createActualStoreHarness() {
-  vi.resetModules();vi.stubGlobal('location', {protocol:'chrome-extension:'})
+  vi.resetModules();vi.doUnmock('@/src/services/config/store')
+  vi.doMock('webextension-polyfill',()=>({default:{runtime:{sendMessage:actualPorts.send}}}))
+  vi.doMock('@/src/platform/i18n/uiLanguageBundles',()=>({ensureUiLanguageBundle:async()=>true}))
+  vi.stubGlobal('location', {protocol:'chrome-extension:'})
   const database = new FluentReadConfigDatabase(`FluentRead-ui-i18n-ownership-${crypto.randomUUID()}`)
   const repository = new EncryptedConfigRepository({database, getSessionKeyMaterial: async () => 'ui-i18n-test-session'})
   await repository.set('local:config', {...sanitizeConfigCredentials(normalizeConfig({uiLanguage:'zh-CN',uiLanguageSetupCompleted:false})), __fluentConfigRevision:10})
@@ -170,13 +174,14 @@ describe('实际 i18n DOM observer 生命周期', () => {
     let queued!: () => void
     vi.spyOn(globalThis,'setTimeout').mockImplementation(((fn: () => void) => {queued=fn;return 0}) as unknown as typeof setTimeout)
     const clear=vi.spyOn(globalThis,'clearTimeout').mockImplementation(()=>undefined)
-    let rootUnmount!: () => void, directive: any
-    const app={config:{globalProperties:{}},provide:vi.fn(),directive:(_name: string,value: unknown)=>{directive=value},mixin:(hooks: {beforeUnmount: () => void})=>{rootUnmount=hooks.beforeUnmount}}
-    h.uiModule.createUiI18nPlugin(target==='document'?{documentRoot:h.document.body}:{}).install(app)
-    if(target==='directive')directive.mounted(h.document.body)
+    const app=runtime.createApp({render:()=>null})
+    app.use(h.uiModule.createUiI18nPlugin(target==='document'?{documentRoot:h.document.body}:{}))
+    const directive=app.directive('ui-i18n') as import('vue').ObjectDirective
+    const rootUnmount=app._context.mixins.at(-1)!.beforeUnmount!
+    if(target==='directive')Reflect.apply(directive.mounted!,undefined,[h.document.body])
     const calls=observers.reduce((sum,observer)=>sum+observer.observe.mock.calls.length,0)
-    if(target==='directive')directive.beforeUnmount(h.document.body)
-    const root:{$root?:unknown}={};root.$root=root;rootUnmount.call(root)
+    if(target==='directive')Reflect.apply(directive.beforeUnmount!,undefined,[h.document.body])
+    const root:{$root?:unknown}={};root.$root=root;Reflect.apply(rootUnmount,root,[])
     expect(clear).toHaveBeenCalledWith(0);queued();expect(observers.reduce((sum,observer)=>sum+observer.observe.mock.calls.length,0)).toBe(calls)
   })
 })

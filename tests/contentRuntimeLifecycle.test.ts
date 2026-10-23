@@ -50,7 +50,7 @@ vi.mock('@/src/app/content/features', () => ({
     ...Object.fromEntries([
         'autoTranslateEnglishPage', 'cancelPendingHoverTranslation', 'handleTranslation', 'noteBilingualHostGesture',
         'inputBoxTranslationConfigKey', 'isAreaTranslatorMounted', 'isFullPageTranslationActive',
-        'mountAreaTranslator', 'mountFloatingBall', 'mountImageTranslator', 'mountSelectionTranslator',
+        'mountAreaTranslator', 'startAreaTranslationFromContextMenu', 'mountFloatingBall', 'mountImageTranslator', 'mountSelectionTranslator',
         'isImageTranslatorNeeded', 'isMangaReaderPage', 'mountMangaEntry', 'unmountMangaEntry',
         'mountTranslationProgressPanel', 'mountVideoSubtitleTranslation', 'isSupportedVideoPage',
         'mountParagraphCopyContentFeature', 'mountSectionTranslationContentFeature',
@@ -422,6 +422,7 @@ describe('content composition root 冷启动与暂停恢复', () => {
         mocks.config.on = true;
         mocks.pageFontEnabled = false;
         mocks.config.autoTranslate = false;
+        Object.assign(mocks.config, {disableFloatingBall: true, disableSelectionTranslator: true, disableImageTranslator: true, selectionAreaEnabled: false, translationProgressPanelEnabled: false, imageTranslationMangaEnabled: false, selectionTranslatorMode: 'bilingual'});
         mocks.config.alwaysTranslateDomains = [];
         mocks.fullPageActive = false;
         mocks.siteAdaptationRouteChanged.mockReset();
@@ -754,6 +755,40 @@ describe('content composition root 冷启动与暂停恢复', () => {
         invalidated();
         expect((mocks.mountReencounter.mock.calls[1][1] as AbortSignal).aborted).toBe(true);
         expect(mocks.mountReencounter).toHaveBeenCalledTimes(2);
+    });
+
+    it('mounts enabled public feature entries once, reconciles disabled tools, and preserves independent features after a failed mount', async () => {
+        const features = await import('@/src/app/content/features');
+        const {resolveBrowserCapabilities} = await import('@/src/platform/browser/capabilities');
+        const hosts = new Set<string>();Object.assign(document, {getElementById: (id: string) => hosts.has(id) ? {} : null});
+        const rows = [
+            [features.mountFloatingBall, features.unmountFloatingBall, 'fluent-read-floating-ball-container'],
+            [features.mountSelectionTranslator, features.unmountSelectionTranslator, 'fluent-read-selection-translator-container'],
+            [features.mountTranslationProgressPanel, features.unmountTranslationProgressPanel, 'fluent-read-translation-status-container'],
+        ] as const;
+        for (const [mount, unmount, id] of rows) {vi.mocked(mount).mockImplementation((() => {hosts.add(id);}) as never);vi.mocked(unmount).mockImplementation(() => {hosts.delete(id);});}
+        let areaMounted = false;vi.mocked(features.mountAreaTranslator).mockImplementation((() => {areaMounted = true;}) as never);
+        vi.mocked(features.unmountAreaTranslator).mockImplementation(() => {areaMounted = false;});vi.mocked(features.isAreaTranslatorMounted).mockImplementation(() => areaMounted);
+        vi.mocked(features.isImageTranslatorNeeded).mockReturnValue(true);vi.mocked(features.isMangaReaderPage).mockReturnValue(true);
+        Object.assign(mocks.config, {disableFloatingBall: false, disableSelectionTranslator: false, disableImageTranslator: false, selectionAreaEnabled: true, translationProgressPanelEnabled: true, imageTranslationMangaEnabled: true});
+        const failure = new Error('Selection surface temporarily unavailable');vi.mocked(features.mountSelectionTranslator).mockImplementationOnce(() => {throw failure;});
+        const diagnostic = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const {startContentApp} = await import('@/src/app/content/runtime');const starting = startContentApp(context as never, resolveBrowserCapabilities({browser: 'chrome', manifestVersion: 3}));ready();await starting;
+        expect(diagnostic).toHaveBeenCalledWith('[FluentRead] 内容功能 selection-translator mount 失败:', failure);
+        expect(features.mountFloatingBall).toHaveBeenCalledOnce();expect(features.mountAreaTranslator).toHaveBeenCalledOnce();expect(features.mountImageTranslator).toHaveBeenCalledOnce();expect(features.mountMangaEntry).toHaveBeenCalledWith(context, {startAreaTranslation: features.startAreaTranslationFromContextMenu});expect(features.mountTranslationProgressPanel).toHaveBeenCalledOnce();
+        mocks.subscribeConfig.mock.calls[0][0](mocks.config);await vi.waitFor(() => expect(hosts.has('fluent-read-selection-translator-container')).toBe(true));
+        expect(features.mountFloatingBall).toHaveBeenCalledOnce();expect(features.mountImageTranslator).toHaveBeenCalledOnce();
+        Object.assign(mocks.config, {disableFloatingBall: true, disableSelectionTranslator: true, selectionAreaEnabled: false, translationProgressPanelEnabled: false, imageTranslationMangaEnabled: false});
+        vi.mocked(features.isImageTranslatorNeeded).mockReturnValue(false);mocks.subscribeConfig.mock.calls[0][0](mocks.config);
+        for (const [, unmount] of rows) expect(unmount).toHaveBeenCalled();expect(features.unmountAreaTranslator).toHaveBeenCalledOnce();expect(features.unmountImageTranslator).toHaveBeenCalledOnce();expect(features.unmountMangaEntry).toHaveBeenCalledOnce();expect(hosts.size).toBe(0);
+        invalidated();diagnostic.mockRestore();
+    });
+    it('keeps image, manga and area feature entry points disabled for a browser without their capabilities', async () => {
+        const features = await import('@/src/app/content/features');const {resolveBrowserCapabilities} = await import('@/src/platform/browser/capabilities');
+        Object.assign(mocks.config, {selectionAreaEnabled: true, imageTranslationMangaEnabled: true});vi.mocked(features.isImageTranslatorNeeded).mockReturnValue(true);vi.mocked(features.isMangaReaderPage).mockReturnValue(true);
+        const {startContentApp} = await import('@/src/app/content/runtime');const starting = startContentApp(context as never, resolveBrowserCapabilities({browser: 'thunderbird', manifestVersion: 2}));ready();await starting;
+        expect(features.mountAreaTranslator).not.toHaveBeenCalled();expect(features.mountImageTranslator).not.toHaveBeenCalled();expect(features.mountMangaEntry).not.toHaveBeenCalled();expect(mocks.mountShareCard).toHaveBeenCalledOnce();
+        invalidated();
     });
 
     it('宿主伪造相同 URL 的路由通知不能反复失效正在执行的翻译', async () => {

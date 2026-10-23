@@ -80,7 +80,7 @@ async function loadProtocolWorker(transcriber: any, backend: 'webgpu' | 'wasm' =
     vi.stubGlobal('navigator', {hardwareConcurrency: 1});
     webGpuMocks.probeWebGpu.mockReset().mockResolvedValue({available: backend === 'webgpu', info: 'native GPU'});
     workerMocks.pipeline.mockReset().mockResolvedValue(transcriber);
-    (await import('@/src/features/video-subtitle/offscreen/transcription.worker')).startVideoTranscriptionWorker();
+    (await import('@/src/app/offscreen/videoTranscriptionWorker')).startVideoTranscriptionWorkerApp();
     return scope;
 }
 

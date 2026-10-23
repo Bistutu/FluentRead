@@ -35,7 +35,7 @@ vi.mock('tldts', async importOriginal => {
 
 import {createApp, h, nextTick, reactive, ref, type App} from 'vue';
 import {translate, type UiLanguage} from '@/src/core/i18n';
-import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
+import {registerAllUiLanguageBundles} from './helpers/uiLanguageBundles';
 import FloatingBall from '@/src/features/floating-ball/ui/FloatingBall.vue';
 import AreaTranslator from '@/src/features/area-translation/ui/AreaTranslator.vue';
 import {canonicalizeHotkey, matchesConfiguredHotkey, normalizeHotkeyEventKey, parseHotkey} from '@/src/core/hotkey';

@@ -4,61 +4,54 @@
  * 主要内容：执行真实缓存客户端模板与 DOM 事件，覆盖旧回调、字符容量、连续插入、有效配置选择和凭据读取范围；验证B站固定模型、免密钥提示、基础动作预览与默认动作临时回退、禁用动作偏好保留和完整AI切回恢复。
  * 模块边界：Linkedom 保留实际节点树，展示控件与焦点为受控端口；不调用翻译或验证系统输入法。
  */
-import {createRequire} from 'node:module'
-import {readFileSync} from 'node:fs'
-import {resolve} from 'node:path'
 import {parseHTML} from 'linkedom'
-import vue from '@vitejs/plugin-vue'
-import {createServer, type ViteDevServer} from 'vite'
-import {compileScript, compileTemplate, parse} from 'vue/compiler-sfc'
-import ts from 'typescript'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {Config} from '@/src/core/config/model'
 import {createApiKeyRequirementKey} from '@/src/core/config/validation'
 import {BILIBILI_FREE_TRANSLATION_MODEL} from '@/src/core/config/freeTranslation'
 
-const runtime = createRequire(import.meta.url)('vue') as typeof import('vue')
-let server: ViteDevServer, app: import('vue').App, document: Document, win: any, focused: Element | null
+import * as runtime from 'vue'
+import PromptTemplateEditor from '@/src/features/settings/ui/services/PromptTemplateEditor.vue'
+import InputTranslationSettings from '@/src/features/settings/ui/InputTranslationSettings.vue'
+import HarnessSettings from '@/src/features/settings/ui/HarnessSettings.vue'
+import WritingSettings from '@/src/features/settings/ui/WritingSettings.vue'
+let app: import('vue').App, document: Document, win: any, focused: Element | null
 let state: Record<string, any>, props: Record<string, any>, shown: import('vue').Ref<boolean>
 let events: Map<Element, Record<string, any>>
 const updates = vi.fn(), focus = vi.fn(), selectionRange = vi.fn()
 const promptPath = 'src/features/settings/ui/services/PromptTemplateEditor.vue', inputPath = 'src/features/settings/ui/InputTranslationSettings.vue'
 const harnessPath = 'src/features/settings/ui/HarnessSettings.vue'
 const writingPath = 'src/features/settings/ui/WritingSettings.vue'
+vi.mock('@/src/ui/i18n', () => ({useUiI18n: () => ({language: runtime.ref('zh-CN'), t: (key: string) => key, translateLegacy: (text: string) => text})}))
+vi.mock('@/src/features/reading-assistant/public', () => ({ReadingAnswer: {render: () => runtime.h('div')}}))
+vi.mock('element-plus', () => ({ElPopover: {setup(_: unknown, {attrs, slots}: any) {const instance = runtime.getCurrentInstance()!;return () => runtime.h('div', {...attrs, 'data-timing-port-key': instance.vnode.key}, [slots.reference?.(), slots.default?.()])}}}))
+vi.mock('@element-plus/icons-vue', () => ({ArrowDown: {}, WarningFilled: {}}))
+vi.mock('@/src/features/settings/ui/components/SettingsGroup.vue', () => ({default: {setup(_: unknown, {slots}: any) {return () => runtime.h('div', null, [slots.copy?.(), slots.default?.()])}}}))
+vi.mock('@/src/features/settings/ui/components/SettingsItem.vue', () => ({default: {setup(_: unknown, {slots}: any) {return () => runtime.h('div', null, [slots.copy?.(), slots.description?.(), slots.default?.()])}}}))
+vi.mock('@/src/features/settings/ui/components/FieldHelp.vue', () => ({default: {setup(_: unknown, {slots}: any) {return () => runtime.h('div', null, [slots.copy?.(), slots.default?.()])}}}))
+vi.mock('@/src/ui/components/ServiceIcon.vue', () => ({default: {setup(_: unknown, {slots}: any) {return () => runtime.h('div', null, [slots.copy?.(), slots.default?.()])}}}))
+vi.mock('@/src/ui/components/FeatureEnableCard.vue', () => ({default: {props: ['modelValue'], emits: ['update:modelValue'], setup(props: any, {emit}: any) {
+  return () => runtime.h('input', {type: 'checkbox', 'data-feature-toggle': '', checked: props.modelValue, onChange: (event: Event) => emit('update:modelValue', (event.target as HTMLInputElement).checked)})
+}}}))
+vi.mock('@/src/features/settings/ui/components/WritingStylePreview.vue', () => ({default: {setup(_: unknown, {slots}: any) {return () => runtime.h('div', null, [slots.copy?.(), slots.default?.()])}}}))
+vi.mock('@/src/features/settings/ui/HarnessPromptSettings.vue', () => ({default: {setup(_: unknown, {slots}: any) {return () => runtime.h('div', null, [slots.copy?.(), slots.default?.()])}}}))
+vi.mock('@/src/features/settings/ui/components/SettingsPreviewLayout.vue', () => ({default: {setup(_: unknown, {slots}: any) {return () => runtime.h('div', null, [slots.preview?.(), slots.default?.()])}}}))
+vi.mock('@/src/features/settings/ui/components/SettingsNumberInput.vue', () => ({default: {props: ['modelValue'], emits: ['update:modelValue'], setup(props: any, {attrs, emit}: any) {
+  return () => runtime.h('input', {...attrs, value: props.modelValue, onInput: (event: Event) => emit('update:modelValue', Number((event.target as HTMLInputElement).value))})
+}}}))
+vi.mock('@/src/features/settings/ui/components/SegmentedControl.vue', () => ({default: {props: ['modelValue', 'options', 'label'], emits: ['update:modelValue'], setup(props: any, {emit}: any) {
+  return () => runtime.h('div', {'data-segmented': props.label}, props.options.map((item: {value: string; label: string}) => runtime.h('button', {'data-value': item.value, 'aria-pressed': props.modelValue === item.value, onClick: () => emit('update:modelValue', item.value)}, item.label)))
+}}}))
 async function settle() {await runtime.nextTick();await Promise.resolve();await runtime.nextTick()}
 beforeEach(async () => {
   vi.clearAllMocks();events = new Map();const parsed = parseHTML('<html><body><div id="app"></div></body></html>');win = parsed.window;document = win.document;focused = document.body
   Object.defineProperty(document, 'activeElement', {configurable: true, get: () => focused})
   for (const [key, value] of Object.entries({document, window: win, HTMLTextAreaElement: win.HTMLTextAreaElement, HTMLElement: win.HTMLElement, Event: win.Event, Node: win.Node})) vi.stubGlobal(key, value)
-  server = await createServer({root: process.cwd(), configFile: false, appType: 'custom', logLevel: 'silent', resolve: {alias: {'@': process.cwd()}}, server: {hmr: false, middlewareMode: true},
-    ssr: {noExternal: ['element-plus', '@element-plus/icons-vue']}, plugins: [{name: 'prompt-profile-controlled-ports', enforce: 'pre', resolveId(id) {
-      if (/\/src\/ui\/i18n(?:\.ts)?$/u.test(id)) return '\0prompt-i18n'
-      if (/\/src\/features\/reading-assistant\/public(?:\.ts)?$/u.test(id)) return '\0harness-reading-display'
-      if (id === 'element-plus') return '\0prompt-element'
-      if (id === '@element-plus/icons-vue') return '\0prompt-icons'
-      if (id.endsWith('.vue') && !/\/(?:PromptTemplateEditor|InputTranslationSettings|HarnessSettings|WritingSettings)\.vue$/u.test(id)) return '\0prompt-display'
-      return null
-    }, load(id) {
-      if (id === '\0prompt-i18n') return "import {ref} from 'vue';export const useUiI18n = () => ({language: ref('zh-CN'), t: key => key, translateLegacy: text => text})"
-      if (id === '\0harness-reading-display') return "import {h} from 'vue';export const ReadingAnswer = {setup() {return () => h('div')}}"
-      if (id === '\0prompt-element') return "import {h, getCurrentInstance} from 'vue';export const ElPopover = {setup(_, {attrs, slots}) {const instance = getCurrentInstance();return () => h('div', {...attrs, 'data-timing-port-key': instance.vnode.key}, [slots.reference?.(), slots.default?.()])}}"
-      if (id === '\0prompt-icons') return 'export const ArrowDown = {}, WarningFilled = {}'
-      if (id === '\0prompt-display') return "import {h} from 'vue';export default {setup(_, {slots}) {return () => h('div', null, [slots.copy?.(), slots.default?.()])}}"
-      return null
-    }}, vue()]})
+
 })
-afterEach(async () => {app?.unmount();await settle();await server?.close();vi.unstubAllGlobals()})
-async function compile(path: string) {
-  const filename = resolve(path), {descriptor} = parse(readFileSync(filename, 'utf8'), {filename})
-  const bindings = compileScript(descriptor, {id: 'prompt-profile-test'}).bindings
-  const template = compileTemplate({source: descriptor.template!.content, filename, id: 'prompt-profile-test', compilerOptions: {mode: 'function', cacheHandlers: true, bindingMetadata: bindings, expressionPlugins: ['typescript']}})
-  expect(template.errors).toEqual([])
-  const component = (await server.ssrLoadModule(`/${path}`)).default;component.ssrRender = undefined
-  component.render = new Function('Vue', ts.transpileModule(template.code, {compilerOptions: {target: ts.ScriptTarget.ES2022}}).outputText)(runtime)
-  return component
-}
-async function mount(path: string, values: Record<string, unknown>, listeners: Record<string, unknown> = {}) {
-  await compile(promptPath);const component = await compile(path), source = runtime.shallowReactive({active: true, context: {}, contextKey: 'service-a', ...values});shown = runtime.ref(true)
+afterEach(async () => {app?.unmount();await settle();vi.unstubAllGlobals()})
+async function mount(path: typeof promptPath | typeof inputPath | typeof harnessPath | typeof writingPath, values: Record<string, unknown>, listeners: Record<string, unknown> = {}) {
+  const component = path === promptPath ? PromptTemplateEditor : path === inputPath ? InputTranslationSettings : path === harnessPath ? HarnessSettings : WritingSettings, source = runtime.shallowReactive({active: true, context: {}, contextKey: 'service-a', ...values});shown = runtime.ref(true)
   const renderer = runtime.createRenderer({patchProp(el: any, key: string, previous: any, next: any) {
     const handlers = events.get(el) || {};events.set(el, handlers)
     if (/^on[A-Z]/u.test(key)) {handlers[key] = next;const event = key.slice(2).toLowerCase();if (previous) el.removeEventListener(event, previous);if (next) el.addEventListener(event, next);return}
@@ -73,9 +66,10 @@ async function mount(path: string, values: Record<string, unknown>, listeners: R
     querySelector: selector => document.querySelector(selector), setScopeId: () => {}, cloneNode: (n: any) => n.cloneNode(true),
     insertStaticContent: (html: string, parent: any, anchor: any) => {const t = document.createElement('template');t.innerHTML = html;const first = t.content.firstChild!, last = t.content.lastChild!;parent.insertBefore(t.content, anchor);return [first, last]}})
   app = renderer.createApp({setup: () => () => runtime.h(runtime.KeepAlive, null, {default: () => shown.value
-    ? runtime.h(component, {...source, ...listeners, ref: (vm: any) => {if (vm) {state = vm.$.setupState;props = vm.$.props}}}) : runtime.h({render: () => null}, {key: 'other'})})})
-  const control = {setup(_props: unknown, {attrs}: any) {return () => runtime.h('input', attrs)}}
+    ? runtime.h(component as runtime.Component, {...source, ...listeners, ref: (vm: any) => {if (vm) {state = vm.$.setupState;props = vm.$.props}}}) : runtime.h({render: () => null}, {key: 'other'})})})
+  const control = {setup(_props: unknown, {attrs, slots}: any) {return () => runtime.h('div', null, [runtime.h('input', attrs), slots.default?.()])}}
   app.component('el-input-number', control);app.component('el-select', control);app.component('el-option', {render: () => null})
+  app.component('el-input', control);app.component('el-switch', control)
   app.component('el-icon', {render: () => null})
   app.provide(runtime.ssrContextKey, {modules: new Set<string>()});app.config.warnHandler = () => {};app.mount(document.getElementById('app')!);await settle()
 }
@@ -98,6 +92,72 @@ function invalidate(reason: string) {
 function profile() {const config = runtime.reactive(new Config());config.service = 'openai';config.inputBoxTranslationService = 'openai';config.model.openai = 'model-a';config.customModels.openai = ['model-a', 'model-b'];config.inputBoxTranslationTrigger = 'triple_space';return config}
 const services = [{value: 'openai', label: 'OpenAI'}, {value: 'microsoft', label: 'Microsoft'}, {value: 'custom:input', label: 'Custom'}, {value: 'blocked', label: 'Blocked', disabled: true}]
 async function mountInput(config = profile(), values: Record<string, unknown> = {}) {await mount(inputPath, {config, serviceOptions: services, ...values}, {'onTrigger-change': updates})}
+
+describe('写作和阅读偏好的真实模板工作流', () => {
+  function chooseWriting(label: string, text: string) {
+    const group = document.querySelector(`[role="radiogroup"][aria-label="${label}"]`)!;
+    const button = [...group.querySelectorAll<HTMLButtonElement>('button')].find(item => item.textContent === text)!;
+    expect(button).toBeTruthy();button.click();
+  }
+
+  it('恢复单个网站、切换独立服务和语言，并通过真实风格选项保存自定义偏好', async () => {
+    const config = profile();config.writing.enabled = false;config.writing.disabledDomains = ['one.test', 'two.test'];
+    config.customOpenAIProviders = [{id: 'custom:writing', name: 'Writing service', endpoint: 'http://localhost:11434/v1', models: ['writer-a', 'writer-b']}];
+    const navigate = vi.fn();await mount(writingPath, {config}, {'onConfigure-service': navigate});
+    const enable = document.querySelector<HTMLInputElement>('[data-feature-toggle]')!;
+    enable.checked = true;enable.dispatchEvent(new win.Event('change'));await settle();expect(config.writing.enabled).toBe(true);
+    document.querySelector<HTMLButtonElement>('[data-writing-disabled-site="one.test"] button')!.click();await settle();
+    expect(config.writing.disabledDomains).toEqual(['two.test']);
+    config.writing.model = 'old-model';
+    const service = document.querySelector('[aria-label="写作服务"]')!;
+    eventOf(service, 'onUpdate:modelValue')('custom:writing');eventOf(service, 'onChange')();await settle();
+    expect(config.writing.model).toBe('');expect(config.service).toBe('openai');
+    eventOf(document.querySelector('[aria-label="写作模型"]')!, 'onUpdate:modelValue')('writer-b');
+    eventOf(document.querySelector('[aria-label="输出语言"]')!, 'onUpdate:modelValue')('en');
+    eventOf(document.querySelector('[aria-label="writing.referenceLanguage"]')!, 'onUpdate:modelValue')('ja');await settle();
+    expect(config.writing).toMatchObject({service: 'custom:writing', model: 'writer-b', language: 'en', referenceLanguage: 'ja'});
+    document.querySelector<HTMLButtonElement>('.writing-model-label button')!.click();expect(navigate).toHaveBeenCalledOnce();
+    for (const label of ['长度', '风格']) {
+      const group = document.querySelector(`[role="radiogroup"][aria-label="${label}"]`)!;
+      const next = [...group.querySelectorAll<HTMLButtonElement>('button')].find(button => button.getAttribute('aria-checked') !== 'true')!;
+      next.click();await settle();expect(next.getAttribute('aria-checked')).toBe('true');
+    }
+    const {WRITING_TONE_MAX_LENGTH, WRITING_ROLE_MAX_LENGTH} = await import('@/src/core/config/writing');
+    for (const [label, field, inputLabel, limit, fallback] of [['语气', 'tone', '自定义语气', WRITING_TONE_MAX_LENGTH, 'natural'], ['您的角色', 'role', '自定义角色', WRITING_ROLE_MAX_LENGTH, 'auto']] as const) {
+      chooseWriting(label, '自定义');await settle();
+      const input = document.querySelector(`[aria-label="${inputLabel}"]`)!;
+      const update = eventOf(input, 'onUpdate:modelValue');
+      update('patient\n' + 'x'.repeat(limit));await settle();
+      expect(config.writing[field]).toBe(('patient ' + 'x'.repeat(limit)).slice(0, limit));
+      update('patient\n' + 'x'.repeat(limit));await settle();
+      update(' \u0000 ');await settle();expect(config.writing[field]).toBe(fallback);
+      const preset = [...document.querySelectorAll<HTMLButtonElement>(`[role="radiogroup"][aria-label="${label}"] button`)].find(button => button.textContent !== '自定义')!;
+      preset.click();await settle();expect(preset.getAttribute('aria-checked')).toBe('true');
+      config.writing[field] = `External ${field}`;await settle();
+      expect(document.querySelector<HTMLInputElement>(`[aria-label="${inputLabel}"]`)!.value).toBe(`External ${field}`);
+    }
+  });
+
+  it('阅读预览、默认偏好、上下文范围和学习中心入口通过实际控件更新', async () => {
+    const config = profile();config.harness.enabled = false;const navigate = vi.fn();
+    await mount(harnessPath, {config}, {onNavigate: navigate});
+    const enable = document.querySelector<HTMLInputElement>('[data-feature-toggle]')!;
+    enable.checked = true;enable.dispatchEvent(new win.Event('change'));expect(config.harness.enabled).toBe(true);
+    const preview = [...document.querySelectorAll<HTMLButtonElement>('.harness-preview-tabs button')].find(button => button.getAttribute('aria-pressed') !== 'true')!;
+    preview.click();await settle();expect(preview.getAttribute('aria-pressed')).toBe('true');
+    for (const [label, value, field] of [['解释深度', 'detailed', 'explanationDepth'], ['学习程度', 'advanced', 'learningLevel'], ['上下文范围', 'selection', 'contextMode']] as const) {
+      document.querySelector<HTMLButtonElement>(`[data-segmented="${label}"] [data-value="${value}"]`)!.click();await settle();
+      expect(config.harness[field]).toBe(value);
+    }
+    expect(document.querySelector('[aria-label="上下文上限"]')).toBeNull();
+    document.querySelector<HTMLButtonElement>('[data-segmented="上下文范围"] [data-value="paragraph"]')!.click();await settle();
+    const maximum = document.querySelector<HTMLInputElement>('[aria-label="上下文上限"]')!;
+    maximum.value = '1600';maximum.dispatchEvent(new win.Event('input'));expect(config.harness.maxContextChars).toBe(1600);
+    eventOf(document.querySelector('[aria-label="settings.memoryEnabled"]')!, 'onUpdate:modelValue')(true);
+    expect(config.harness.memoryEnabled).toBe(true);
+    document.querySelector<HTMLButtonElement>('.harness-memory-footer button')!.click();expect(navigate).toHaveBeenCalledWith('settings-vocabulary');
+  });
+});
 
 describe('学习讲解服务设置的实际组件切换', () => {
   it('ChatGPT空静态目录仍显示全局和讲解直存slug，选择与服务切回不写自定义哨兵', async () => {
@@ -184,14 +244,14 @@ describe('提示词实际 DOM 的输入与焦点归属', () => {
   it('容量不足、未知或已移除变量不写入，合法替换选区可以恰好达到上限', async () => {
     await mountPrompt({modelValue: 'abcd', maxLength: 6});eventOf(token(), 'onClick')();state.insertToken('unknown');expect(updates).not.toHaveBeenCalled()
     const old = eventOf(token('{{origin}}'), 'onClick');props.tokens = [{value: '{{to}}', label: 'Target'}];await settle();old();expect(updates).not.toHaveBeenCalled()
-    state.selection = {start: 0, end: 4};eventOf(token(), 'onClick')();expect(updates).toHaveBeenCalledWith('{{to}}')
+    textarea().selectionStart=0;textarea().selectionEnd=4;textarea().dispatchEvent(new win.Event('select'));eventOf(token(), 'onClick')();expect(updates).toHaveBeenCalledWith('{{to}}')
   })
   it('组合输入期间禁用变量并保留最终组合文本', async () => {
     await mountPrompt();startComposition();input('ni', true);await settle();expect(textarea().value).toBe('ni');expect(token().hasAttribute('disabled')).toBe(true);eventOf(token(), 'onClick')();expect(updates).not.toHaveBeenCalled()
     const el = textarea();el.value = '你';el.dispatchEvent(new win.Event('compositionend', {bubbles: true}));input('你');expect(updates).toHaveBeenCalledOnce();expect(updates).toHaveBeenCalledWith('你')
   })
   it('连续变量插入使用本地最新值和选区，父级尚未回传也不会丢失前一次', async () => {
-    await mountPrompt({modelValue: 'P'});state.selection = {start: 1, end: 1};eventOf(token(), 'onClick')();eventOf(token('{{origin}}'), 'onClick')();await settle()
+    await mountPrompt({modelValue: 'P'});textarea().selectionStart=1;textarea().selectionEnd=1;textarea().dispatchEvent(new win.Event('select'));eventOf(token(), 'onClick')();eventOf(token('{{origin}}'), 'onClick')();await settle()
     expect(updates.mock.calls.map(x => x[0])).toEqual(['P{{to}}', 'P{{to}}{{origin}}']);expect(textarea().value).toBe('P{{to}}{{origin}}');expect(selectionRange).toHaveBeenLastCalledWith(17, 17);expect(focus).toHaveBeenCalledOnce()
   })
   it('父级回传前撤销到原值仍提交，不被旧 modelValue 去重吞掉', async () => {
@@ -218,6 +278,17 @@ describe('提示词实际 DOM 的输入与焦点归属', () => {
 })
 
 describe('输入框设置实际组件与缓存事件归属', () => {
+  it('through the current DOM edits both prompts, restores defaults, and resets the triple-key interval',async()=>{
+    const config=profile();await mountInput(config);
+    const popover=document.querySelector('[data-timing-port-key]')!;eventOf(popover,'onUpdate:visible')(true);await settle();expect(state.timingOpen).toBe(true);
+    eventOf(control('input-translation-interval'),'onUpdate:modelValue')(700);await settle();expect(config.inputBoxTranslationInterval).toBe(700);
+    control('input-translation-interval-reset').dispatchEvent(new win.Event('click'));await settle();expect(config.inputBoxTranslationInterval).toBe(1000);expect(control('input-translation-interval-reset').hasAttribute('disabled')).toBe(true);
+    control('input-translation-prompt-toggle').dispatchEvent(new win.Event('click'));await settle();let fields=document.querySelectorAll('textarea');
+    input('Use plain wording.',false,fields[0]);input('Translate {{origin}} into {{to}}.',false,fields[1]);await settle();expect(config.inputBoxTranslationSystemPrompt).toBe('Use plain wording.');expect(config.inputBoxTranslationPrompt).toBe('Translate {{origin}} into {{to}}.');
+    const resetButtons=document.querySelectorAll('.input-translation-prompt-section > button');expect(resetButtons).toHaveLength(2);resetButtons.forEach(button=>button.dispatchEvent(new win.Event('click')));await settle();expect(config.inputBoxTranslationSystemPrompt).toBe('');expect(config.inputBoxTranslationPrompt).toBe('');
+    control('input-translation-user-default').dispatchEvent(new win.Event('click'));await settle();expect(config.inputBoxTranslationPrompt).toBe(state.defaultUserPrompt);expect(config.inputBoxTranslationSystemPrompt).toBe('');
+    control('input-translation-system-default').dispatchEvent(new win.Event('click'));await settle();expect(config.inputBoxTranslationSystemPrompt).toBe(state.defaultSystemPrompt);expect(config.model.openai).toBe('model-a');
+  })
   it.each(['hidden', 'cached', 'unmount', 'config'])('%s之后旧目标、输出、服务与间隔事件不能修改配置', async reason => {
     await mountInput();const target = eventOf(control('input-translation-target'), 'onUpdate:modelValue'), output = eventOf(control('input-translation-output-mode'), 'onUpdate:modelValue')
     const service = eventOf(control('input-translation-service'), 'onUpdate:modelValue'), interval = eventOf(control('input-translation-interval'), 'onUpdate:modelValue');invalidate(reason);await settle();const before = JSON.stringify(props.config)

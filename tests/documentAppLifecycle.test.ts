@@ -29,7 +29,10 @@ vi.mock('@/src/features/document-translation/ui/documentZoom', () => ({installDo
     const dispose = vi.fn(); ports.zoomBindings.push({target, options, dispose}); return dispose;
 }}));
 vi.mock('@/src/features/document-translation/services/pdfSource', async () => ({...await vi.importActual<typeof import('@/src/features/document-translation/services/pdfSource')>('@/src/features/document-translation/services/pdfSource'), fetchOnlinePdf: ports.fetchPdf}));
-vi.mock('@/src/features/document-translation/ui/PdfReader.vue', () => ({default: {props: ['document', 'translations', 'mode', 'sourceUrl'], setup: () => () => h('div', {'data-document-reader': 'pdf'})}}));
+vi.mock('@/src/features/document-translation/ui/PdfReader.vue', () => ({default: {props: ['document', 'translations', 'mode', 'sourceUrl', 'presentation'], emits: ['update:presentation', 'page-change'], setup: (_props: any, {emit}: any) => () => h('div', {'data-document-reader': 'pdf'}, [
+    h('button', {'data-pdf-port': 'presentation', onClick: () => emit('update:presentation', 'readable')}, 'Reading presentation'),
+    h('button', {'data-pdf-port': 'page', onClick: () => emit('page-change', 2)}, 'Second PDF page'),
+])}}));
 vi.mock('@/src/app/document-translation/selectionRuntime', () => ({mountDocumentSelectionTranslation: () => ({dispose: () => {}})}));
 vi.mock('webextension-polyfill', () => ({default: {runtime: {sendMessage: ports.sendMessage, getURL: (path: string) => `chrome-extension://fixture/${path}`}, tabs: {create: vi.fn()}, extension: {get inIncognitoContext() {return ports.privateContext;}}}}));
 vi.mock('@/src/services/config/store', async () => {
@@ -109,6 +112,115 @@ beforeEach(async () => {
 afterEach(async () => {ports.pagePending?.resolve(ports.tasks.find(value => value.role === 'preview')?.page); ports.renderPending?.resolve(); app?.unmount(); await flush(); await vi.dynamicImportSettled(); windowTimers.forEach(timer => clearTimeout(timer)); windowTimers.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals();});
 
 describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
+    it('consumes online URL input and PDF child navigation events without requesting translation', async () => {
+        const input = walkHost(root).find(entry => entry.props.id === 'online-pdf-url')! as any;
+        input.value = 'https://example.test/paper.pdf'; input.dispatchEvent(new Event('input'));
+        expect(state.onlinePdfUrl).toBe('https://example.test/paper.pdf');
+        await walkHost(root).find(entry => entry.props.class === 'online-pdf-form')!.props.onSubmit({preventDefault() {}}); await flush();
+        expect(state.parsedDocument.format).toBe('pdf');
+        walkHost(root).find(entry => entry.type === 'select' && entry.props['aria-label'] === '目标语言')!.props.onChange({target: {value: 'en'}});
+        expect(state.config.to).toBe('en');
+        walkHost(root).find(entry => entry.props['data-pdf-port'] === 'presentation')!.props.onClick();
+        walkHost(root).find(entry => entry.props['data-pdf-port'] === 'page')!.props.onClick(); await flush();
+        expect(state.pdfPresentation).toBe('readable'); expect(state.pdfPage).toBe(2); expect(ports.translate).not.toHaveBeenCalled();
+    });
+
+    it('expires only the completed download notice while keeping the downloaded correction', async () => {
+        await state.loadFiles([file('notice.txt')]); state.editSegment(0, 'Reviewed'); await flush();
+        vi.useFakeTimers();
+        try {const pending = state.downloadDocument();
+            for (let attempt = 0; attempt < 20 && !state.downloadNotice; attempt++) {await vi.advanceTimersByTimeAsync(50); await flush();}
+            await pending; expect(state.downloadNotice).toContain('已生成下载文件');
+            await vi.advanceTimersByTimeAsync(5000); expect(state.downloadNotice).toBe(''); expect(state.translatedSegments).toEqual(['Reviewed']);
+        } finally {vi.useRealTimers();}
+    });
+
+    it('shows missing-model feedback for incomplete and removed custom services instead of launching', async () => {
+        await state.loadFiles([file('models.txt')]);
+        state.config.customOpenAIProviders = [{id: 'custom:empty', name: 'Empty', endpoint: 'https://model.invalid/v1', models: []}];
+        state.config.documentService = 'custom:empty'; await flush();
+        expect(state.selectedDocumentModel).toBe(''); expect(state.credentialWarning).toContain('这个自定义服务尚未保存模型');
+        state.config.customOpenAIProviders[0].models = ['first-model']; await flush(); expect(state.selectedDocumentModel).toBe('first-model');
+        state.config.documentModel['custom:empty'] = 'saved-model'; await flush(); expect(state.selectedDocumentModel).toBe('saved-model');
+        state.config.documentService = 'custom:removed'; await flush(); expect(state.credentialWarning).toContain('文档翻译模型尚未配置');
+        await state.startTranslation(); expect(ports.translate).not.toHaveBeenCalled();
+    });
+
+    it.each([new Error('material disconnected'), 'material disconnected'])('reports material recovery failure %s without leaving a restoring shell', async cause => {
+        ports.sendMessage.mockRejectedValueOnce(cause); state.restoring = true;
+        await state.restoreMaterialDocument('unreachable');
+        expect(state.importError).toContain(cause instanceof Error ? cause.message : '恢复材料失败'); expect(state.restoring).toBe(false);
+    });
+
+    it('opens a bundled sample through its control, toggles focus and sidebar, and follows native fullscreen and theme events', async () => {
+        const sample = walkHost(root).find(entry => entry.props.class === 'sample-buttons')!.children.find(entry => entry.type === 'button')!;
+        await sample.props.onClick(); await flush(); expect(state.parsedDocument).toBeTruthy(); expect(state.parsedDocument.segments.length).toBeGreaterThan(0);
+        win.document.documentElement = {requestFullscreen: vi.fn().mockResolvedValue(undefined)};
+        win.document.exitFullscreen = vi.fn().mockResolvedValue(undefined);
+        const button = (css: string) => walkHost(root).find(entry => entry.type === 'button' && String(entry.props.class).split(' ').includes(css))!;
+        button('focus-toggle').props.onClick(); await flush(); expect(state.focusMode).toBe(true); expect(win.document.documentElement.requestFullscreen).toHaveBeenCalledOnce();
+        win.document.fullscreenElement = {}; button('focus-exit').props.onClick(); await flush(); expect(state.focusMode).toBe(false); expect(win.document.exitFullscreen).toHaveBeenCalledOnce();
+        state.setFocusMode(true); state.leaveFocusOnEscape({key: 'a'}); expect(state.focusMode).toBe(true);
+        state.leaveFocusOnEscape({key: 'Escape'}); expect(state.focusMode).toBe(false);
+        state.setFocusMode(true); state.leaveFocusWithFullscreen(); expect(state.focusMode).toBe(true);
+        win.document.fullscreenElement = null; state.leaveFocusWithFullscreen(); expect(state.focusMode).toBe(false);
+        win.document.documentElement.requestFullscreen.mockImplementationOnce(() => {throw new Error('fullscreen blocked');});
+        state.setFocusMode(true); expect(state.focusMode).toBe(true); state.setFocusMode(false);
+        const before = state.sidebarOpen; button('sidebar-toggle').props.onClick(); await flush(); expect(state.sidebarOpen).toBe(!before);
+        state.colorSchemeMedia.matches = true; state.colorSchemeMedia.dispatchEvent(new Event('change')); await flush(); expect(state.isDark).toBe(true);
+    });
+
+    it('removes and reopens actual IndexedDB history through rendered controls, then clears the retained list', async () => {
+        const factory = new IDBFactory(), history = createDocumentHistory(factory);
+        for (const [index, name] of ['first.txt', 'second.txt'].entries()) {
+            const bytes = new TextEncoder().encode(`Original ${index}`), parsed = parseDocument(name, new TextDecoder().decode(bytes));
+            await history.save({id: await documentHistoryId(bytes), name, format: parsed.format, size: bytes.length, total: 1, completed: 0, updatedAt: index + 1, bytes, mimeType: 'text/plain', translations: [], fingerprint: '', parsed, parsedVersion: 20});
+        }
+        app.unmount(); vi.stubGlobal('indexedDB', factory); root = node('root'); app = renderer.createApp(DocumentApp); app.mount(root); state = app._instance.setupState;
+        await vi.waitFor(() => expect(state.historyEntries).toHaveLength(2)); await flush();
+        await walkHost(root).find(entry => entry.props.class === 'history-remove')!.props.onClick(); await flush(); expect(state.historyEntries).toHaveLength(1);
+        await walkHost(root).find(entry => entry.props.class === 'history-open')!.props.onClick(); await flush(); expect(state.parsedDocument.fileName).toBe('first.txt');
+        await state.persistHistory(); state.resetDocument(); await flush(); await state.refreshHistory(); await flush();
+        const entry = state.historyEntries[0];
+        ports.sendMessage.mockImplementation(async (message: any) => message.type === 'fluentReadMaterials' ? {success: true, data: {id: 'history-material', kind: 'document', source: {kind: 'document', fingerprint: entry.id}, locator: {kind: 'document', page: 1, quote: 'Original 0'}}} : undefined);
+        await state.restoreMaterialDocument('history-material'); await flush(); expect(state.documentMaterialId).toBe('history-material');
+        state.resetDocument(); await flush(); await state.refreshHistory(); await flush();
+        await walkHost(root).find(entry => entry.type === 'button' && hostText(entry) === '清空记录')!.props.onClick(); await flush();
+        expect(state.historyEntries).toEqual([]); expect(await history.list()).toEqual([]);
+    });
+
+    it('renders actual Word table cells and part headings, navigates their outline and preserves source and correction', async () => {
+        const zip = await JSZip.loadAsync(readFileSync('examples/document-translation/sample.docx'));
+        const paragraph = (text: string, heading = false) => `<w:p>${heading ? '<w:pPr><w:pStyle w:val="Heading1"/></w:pPr>' : ''}<w:r><w:t>${text}</w:t></w:r></w:p>`;
+        zip.file('word/document.xml', `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${paragraph('Main heading', true)}<w:tbl><w:tr><w:tc>${paragraph('Left table cell')}</w:tc><w:tc>${paragraph('Right table cell')}</w:tc></w:tr></w:tbl></w:body></w:document>`);
+        zip.file('word/header1.xml', `<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">${paragraph('Header heading', true)}${paragraph('Header body')}</w:hdr>`);
+        const bytes = await zip.generateAsync({type: 'uint8array'}); await state.loadFiles([new File([bytes], 'tables.docx')]); await flush();
+        const table = walkHost(root).find(entry => entry.type === 'table' && entry.props.class === 'docx-table')!;
+        expect(hostText(table)).toContain('Left table cell'); expect(hostText(table)).toContain('Right table cell');
+        state.editSegment(1, 'Reviewed left cell'); state.previewMode = 'bilingual'; await flush(); expect(hostText(table)).toContain('Reviewed left cell');
+        const tabs = walkHost(root).filter(entry => entry.props.role === 'tab'); tabs[1].props.onClick(); await flush(); expect(state.activeSidebarTab).toBe('outline');
+        const languages = walkHost(root).find(entry => entry.props.class === 'document-outline-language')!;
+        languages.children.filter(entry => entry.type === 'button')[1].props.onClick(); await flush(); expect(state.richOutlineLanguage).toBe('translated');
+        languages.children.filter(entry => entry.type === 'button')[0].props.onClick(); await flush();
+        const toolbar = walkHost(root).find(entry => entry.props['aria-label'] === 'Word 文档部分')!;
+        toolbar.children.filter(entry => entry.type === 'button')[1].props.onClick(); await flush(); expect(state.docxPartIndex).toBe(1);
+        const target = walkHost(root).find(entry => entry.type === 'button' && hostText(entry) === 'Main heading')!;
+        await target.props.onClick(); await flush(); expect(state.docxPartIndex).toBe(0); expect(state.readerPage).toBe(1);
+        tabs[0].props.onClick(); await flush(); expect(state.activeSidebarTab).toBe('files');
+    });
+
+    it('native JSON reading accepts background pointer focus while retaining interactive controls and gesture scale', async () => {
+        await state.loadFiles([file('reader.json', '["Original sentence"]')]); await flush();
+        const {document} = parseHTML('<html><body><div><span>Text</span><button>Control</button></div></body></html>');
+        const focus = vi.fn(); state.readingContent.focus = focus;
+        const background = {composedPath: () => [document.querySelector('span')!], isTrusted: true, type: 'pointerdown'};
+        state.materialReadingPointerDown(background); expect(focus).toHaveBeenCalledWith({preventScroll: true});
+        state.materialReadingPointerDown({composedPath: () => [document.querySelector('button')!], isTrusted: true, type: 'pointerdown'}); expect(focus).toHaveBeenCalledOnce();
+        state.readingContent.ownerDocument = document; state.bindReaderZoomGestures();
+        expect(ports.zoomBindings.at(-1)!.options.getScale()).toBe(1);
+        state.readerTab = 'edit'; state.materialReadingPointerDown(background); expect(focus).toHaveBeenCalledOnce();
+    });
+
     const taskButton = (label: string) => {
         const taskbar = walkHost(root).find(entry => entry.props['aria-label'] === '当前文档与翻译任务');
         const button = taskbar && walkHost(taskbar).find(entry => entry.type === 'button' && hostText(entry) === label);
@@ -117,6 +229,16 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
     };
     const restartConfirmation = () => walkHost(root).find(entry => entry.type === 'dialog' && entry.props['aria-labelledby'] === 'confirm-document-heading')!;
     const confirmButton = (label: string) => walkHost(restartConfirmation()).find(entry => entry.type === 'button' && hostText(entry) === label)!;
+
+    it.each(['</HEAD>', '</Head >', '</head>'])('HTML 阅读器在合法的 %s 结束标签前插入暗色主题', async closing => {
+        state.isDark = true;
+        await state.loadFiles([file('theme.html', `<HTML><HEAD><TITLE>Source</TITLE>${closing}<BODY><P>Original paragraph</P></BODY></HTML>`)]);
+        await flush();
+        const frame = walkHost(root).find(entry => entry.type === 'iframe');
+        expect(frame?.props.srcdoc).toContain('color-scheme: dark');
+        expect(frame?.props.srcdoc).toContain('Original paragraph');
+        expect(frame?.props.sandbox).toBe('allow-same-origin');
+    });
 
     it('keeps PDF retranslation and download available after completion, preserving the result until restart is confirmed', async () => {
         await state.loadFiles([file('repeat.pdf')]); await flush();
@@ -248,7 +370,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         const factory = new IDBFactory(), history = createDocumentHistory(factory);
         await history.save({id, name: parsed.fileName, format: 'pdf', size: bytes.length, total: parsed.segments.length,
             completed: parsed.segments.length, updatedAt: 1, bytes, mimeType: 'application/pdf', translations: ['历史完整译文'],
-            fingerprint: state.currentFingerprint, parsed, parsedVersion: 19});
+            fingerprint: state.currentFingerprint, parsed, parsedVersion: 20});
         app.unmount(); vi.stubGlobal('indexedDB', factory);
         root = node('root'); app = renderer.createApp(DocumentApp); app.mount(root); state = app._instance.setupState;
         await flush(); await state.openHistory({id}); await flush();
@@ -739,7 +861,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         const factory = new IDBFactory();
         const history = createDocumentHistory(factory);
         await history.save({id, name: 'history.txt', format: parsed.format, size: bytes.length, total: parsed.segments.length,
-            completed: 0, updatedAt: 1, bytes, mimeType, translations: [], fingerprint: '', parsed, parsedVersion: 19});
+            completed: 0, updatedAt: 1, bytes, mimeType, translations: [], fingerprint: '', parsed, parsedVersion: 20});
         app.unmount();
         vi.stubGlobal('indexedDB', factory);
         root = node('root'); app = renderer.createApp(DocumentApp); app.mount(root); state = (app._instance as any).setupState;
@@ -905,7 +1027,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         }
         await vi.waitFor(async () => {
             const saved = await history.load(id);
-            expect(saved?.parsedVersion).toBe(19);
+            expect(saved?.parsedVersion).toBe(20);
             expect(saved?.translations).toEqual(expectedTranslations);
             expect((saved?.parsed as any).segments.map((segment: any) => segment.source)).toEqual(expectedSources);
             expect(saved?.parsed).not.toHaveProperty('segmentOrigins');
@@ -922,7 +1044,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         expect(ports.batch).not.toHaveBeenCalled();
     });
 
-    it.each([15, 17])('reparses version %i native PDF glyph bounds while preserving revisions and progress, then reuses the refreshed snapshot', async obsoleteVersion => {
+    it.each([15, 17, 19])('reparses version %i native PDF glyph bounds while preserving revisions and progress, then reuses the refreshed snapshot', async obsoleteVersion => {
         ports.pageProvider = async (_pageNumber, page) => ({...page, getTextContent: async () => ({
             items: [
                 {str: 'A full native paragraph with text.', transform: [12, 0, 0, 12, 5, 20], width: 80, height: 12, fontName: 'body'},
@@ -967,7 +1089,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
             .toBeLessThan(old.binary.pages[0].blocks[0].lines![0].runs![0].y);
         await vi.waitFor(async () => {
             const saved = await history.load(id);
-            expect(saved?.parsedVersion).toBe(19);
+            expect(saved?.parsedVersion).toBe(20);
             expect(saved?.completed).toBe(1); expect(saved?.total).toBe(2);
             expect(saved?.translations).toEqual(translations);
             expect((saved?.parsed as typeof fresh).binary).toEqual(fresh.binary);
@@ -1015,7 +1137,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         expect(hostText(retained)).not.toContain(conditionRetained.translation);
         await vi.waitFor(async () => {
             const saved = await history.load(id);
-            expect(saved?.parsedVersion).toBe(19);
+            expect(saved?.parsedVersion).toBe(20);
             expect(saved?.translations).toEqual(['保留正文校订']);
             expect(saved?.retainedRevisions).toEqual([previousRetained, conditionRetained]);
             expect(saved?.completed).toBe(1); expect(saved?.total).toBe(1);
@@ -1767,17 +1889,28 @@ it('documentbinaryAudit selecting the active PDF preserves its task and reviewed
 });
 
 it('documentbinaryAudit mounts the actual page assembly with its app, document theme and i18n plugin', async () => {
-    const mount = vi.fn(); const use = vi.fn();
+    const captureDocumentMaterialSelection = vi.fn(() => undefined);
+    const mount = vi.fn(() => ({captureDocumentMaterialSelection})); const use = vi.fn();
     const onUnmount = vi.fn();
     const create = vi.fn(() => ({mount, use, onUnmount}));
+    const disposeSelection = vi.fn();
+    const mountSelection = vi.fn((_options: unknown) => ({dispose: disposeSelection}));
+    vi.doMock('@/src/app/document-translation/selectionRuntime', () => ({mountDocumentSelectionTranslation: mountSelection}));
     vi.doMock('vue', async () => ({...await vi.importActual<typeof import('vue')>('vue'), createApp: create}));
-    const {mountDocumentTranslationApp} = await import('@/src/app/document-translation/page');
-    mountDocumentTranslationApp('#document-root');
-    expect(create).toHaveBeenCalledWith(DocumentApp);
-    expect(use).toHaveBeenCalledWith({documentRoot: (document as any).body, documentTitleKey: 'metadata.documentTitle'});
-    expect(mount).toHaveBeenCalledWith('#document-root');
-    expect(onUnmount).toHaveBeenCalledWith(expect.any(Function));
-    vi.doUnmock('vue');
+    try {
+        const {mountDocumentTranslationApp} = await import('@/src/app/document-translation/page');
+        mountDocumentTranslationApp('#document-root');
+        expect(create).toHaveBeenCalledWith(DocumentApp);
+        expect(use).toHaveBeenCalledWith({documentRoot: (document as any).body, documentTitleKey: 'metadata.documentTitle'});
+        expect(mount).toHaveBeenCalledWith('#document-root');
+        const {document: selectionDocument} = parseHTML('<html><body><p>Selected document text</p></body></html>');
+        const range = selectionDocument.createRange(); range.selectNodeContents(selectionDocument.querySelector('p')!);
+        const selectionOptions = mountSelection.mock.calls[0][0] as unknown as {captureMaterial: (range: Range, quote: string) => unknown};
+        expect(selectionOptions.captureMaterial(range as unknown as Range, 'Selected document text')).toBeUndefined();
+        expect(captureDocumentMaterialSelection).toHaveBeenCalledWith(range, 'Selected document text');
+        expect(onUnmount).toHaveBeenCalledWith(disposeSelection);
+        onUnmount.mock.calls[0][0](); expect(disposeSelection).toHaveBeenCalledOnce();
+    } finally {vi.doUnmock('vue'); vi.doUnmock('@/src/app/document-translation/selectionRuntime');}
 });
 
 it('glossary gate document settings buttons open the modal and translate back to complete 1/1', async () => {

@@ -487,7 +487,6 @@ interface PopupQuickFeatureViewModel {
   id: PopupQuickFeatureId;
   label: string;
   summary: string;
-  icon: string;
   iconTone: PopupQuickFeatureIconTone;
   showStatus: boolean;
   active?: boolean;
@@ -746,7 +745,6 @@ const popupQuickFeatureViewModels = computed<Record<PopupQuickFeatureId, PopupQu
     id: 'hover',
     label: '鼠标悬停翻译',
     summary: hoverSummary.value,
-    icon: '↖',
     iconTone: popupQuickFeatureIconTones.hover,
     showStatus: true,
     active: hoverProfileCount.value > 0,
@@ -756,7 +754,6 @@ const popupQuickFeatureViewModels = computed<Record<PopupQuickFeatureId, PopupQu
     id: 'selection',
     label: '划词翻译',
     summary: selectionSummary.value,
-    icon: 'I',
     iconTone: popupQuickFeatureIconTones.selection,
     showStatus: true,
     active: config.value.selectionTranslatorMode !== 'disabled',
@@ -766,7 +763,6 @@ const popupQuickFeatureViewModels = computed<Record<PopupQuickFeatureId, PopupQu
     id: 'appearance',
     label: '译文显示',
     summary: displaySummary.value,
-    icon: 'Aa',
     iconTone: popupQuickFeatureIconTones.appearance,
     showStatus: false,
     open: () => {if (current()) openDrawer('appearance')},
@@ -775,7 +771,6 @@ const popupQuickFeatureViewModels = computed<Record<PopupQuickFeatureId, PopupQu
     id: 'image',
     label: '图片翻译',
     summary: imageTranslationSummary.value,
-    icon: '▧',
     iconTone: popupQuickFeatureIconTones.image,
     showStatus: true,
     active: (browserCapabilities.imageTranslation && !config.value.disableImageTranslator) || (browserCapabilities.areaTranslation && config.value.selectionAreaEnabled),
@@ -785,7 +780,6 @@ const popupQuickFeatureViewModels = computed<Record<PopupQuickFeatureId, PopupQu
     id: 'document',
     label: '文档翻译',
     summary: 'PDF / Word / …',
-    icon: '文',
     iconTone: popupQuickFeatureIconTones.document,
     showStatus: false,
     className: 'document-feature-card',
@@ -997,11 +991,12 @@ const pageFontRetry = computed(() => {
   const current = pageFontButtonContext.capture();
   return () => {if (current()) return pageFontActions.load()};
 });
+// 按钮仅在能力可用时渲染；能力切换同步撤销 drawerContext，旧事件不能修改已隐藏功能。
 const drawerActions = computed(() => {
   const current = drawerContext.capture(), section = drawerSettingsSection[activeDrawer.value];
   const bind = (run: () => void | Promise<void>) => () => {if (current()) return run()};
   return {close: bind(() => {drawerVisible.value = false}), aiContext: bind(toggleAIContext), hover: bind(toggleDefaultHoverShortcut),
-    selection: bind(toggleSelectionTranslation), image: bind(() => setImageTranslatorEnabled(config.value.disableImageTranslator)),
+    selection: bind(toggleSelectionTranslation), image: bind(() => {config.value.disableImageTranslator = !config.value.disableImageTranslator}),
     area: bind(() => setAreaEnabled(!config.value.selectionAreaEnabled)), options: bind(() => openOptions(section)),
     services: bind(() => openDrawer('services')), serviceSettings: bind(() => openOptions('settings-services', undefined, config.value.service)),
     translationSettings: bind(() => openOptions('settings-translation'))};
@@ -1324,22 +1319,11 @@ function setSelectionMode(mode: 'disabled' | 'bilingual' | 'translation-only') {
   config.value.disableSelectionTranslator = mode === 'disabled';
 }
 function setAreaEnabled(enabled: boolean) {
-  if (!browserCapabilities.areaTranslation) {
-    showNotice('当前浏览器暂不支持圈选翻译', 'error');
-    return;
-  }
   const conflictMessage = enabled ? quickTranslationConflictMessage(areaHotkey.value) : '';
   if (conflictMessage) {
     showNotice(conflictMessage, 'error');
     return;
   }
   config.value.selectionAreaEnabled = enabled;
-}
-function setImageTranslatorEnabled(enabled: boolean) {
-  if (!browserCapabilities.imageTranslation) {
-    showNotice('当前浏览器暂不支持图片翻译与 OCR', 'error');
-    return;
-  }
-  config.value.disableImageTranslator = !enabled;
 }
 </script>

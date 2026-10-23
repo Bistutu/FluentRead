@@ -16,6 +16,7 @@ export {buildUserscriptSettingsUrl, isUserscriptSettingsUrl};
 let settingsUi: ShadowRootContentScriptUi<VueShadowMount> | null = null;
 let settingsMountPromise: Promise<void> | null = null;
 let settingsGeneration = 0;
+let tabOpenSequence = 0;
 let settingsPreviewFonts: UserscriptInterfaceFontPreviewMount | null = null;
 let hiddenBallHost: HTMLElement | null = null;
 let previousBallSuspendedAttribute: string | null = null;
@@ -66,6 +67,11 @@ function showInPageFallback(ctx: unknown, section?: string): void {
 }
 
 function openSettingsTab(ctx: unknown, section?: string): boolean {
+    const sequence = ++tabOpenSequence;
+    const generation = settingsGeneration;
+    const fallback = () => {
+        if (sequence === tabOpenSequence && generation === settingsGeneration) showInPageFallback(ctx, section);
+    };
     const settingsUrl = buildUserscriptSettingsUrl(window.location.href, section);
     if (settingsUrl === window.location.href) return false;
 
@@ -80,7 +86,7 @@ function openSettingsTab(ctx: unknown, section?: string): boolean {
     if (legacyOpenInTab) {
         try {
             const result = legacyOpenInTab(settingsUrl, {active: true, insert: true, setParent: true});
-            void Promise.resolve(result).catch(() => showInPageFallback(ctx, section));
+            void Promise.resolve(result).catch(fallback);
             return true;
         } catch {
             // 部分管理器只声明 API 但运行时不可用，继续尝试现代接口。
@@ -94,7 +100,7 @@ function openSettingsTab(ctx: unknown, section?: string): boolean {
             // a Promise. Invoke it before any async work so the current click
             // remains a valid user gesture for opening a new tab.
             void Promise.resolve(modernOpenInTab(settingsUrl, false))
-                .catch(() => showInPageFallback(ctx, section));
+                .catch(fallback);
             return true;
         } catch {
             // 直接使用页内面板。

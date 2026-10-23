@@ -226,6 +226,17 @@ describe('Writing editor native action ownership', () => {
 });
 
 describe('Writing context belongs to the selected conversation', () => {
+    it('stops reading long source fragments once the context budget is filled without cloning the page subtree', () => {
+        const doc = page(`<main><div class="js-comment-body">${'O'.repeat(15000)}<span class="beyond-budget">${'x'.repeat(15000)}</span></div></main>`);
+        const source = doc.querySelector('.js-comment-body')!;
+        const clone = vi.spyOn(source, 'cloneNode');
+        const style = vi.fn((_element: Element) => ({display: 'block', visibility: 'visible'}));
+        doc.defaultView!.getComputedStyle = style as never;
+        expect(collectReplyContext(doc, 'github')).toBe('原帖：' + 'O'.repeat(11997));
+        expect(clone).not.toHaveBeenCalled();
+        expect(style.mock.calls.map(([element]) => element)).not.toContain(doc.querySelector('.beyond-budget'));
+    });
+
     it('keeps issue 421 about duplicate translations separate from the repository linked in its image-only body', () => {
         const doc = page(`<main><div data-testid="issue-header"><h1><bdi data-testid="issue-title">同一段话出现了两次翻译</bdi></h1></div>
           <div data-testid="issue-metadata-fixed"><span data-testid="header-state"><svg><title>icon</title></svg>Open</span></div>

@@ -45,6 +45,23 @@ afterEach(async () => {
 });
 
 describe('大模型用量 IndexedDB repository', () => {
+    it('导入不构造数据库，首次消费和并发消费者共用同一惰性实例', async () => {
+        vi.resetModules();
+        const {default: Dexie} = await import('dexie');
+        const version = vi.spyOn(Dexie.prototype, 'version');
+        const module = await import('@/src/platform/storage/modelUsageRepository');
+        expect(version).not.toHaveBeenCalled();
+        const first = module.getModelUsageRepository();
+        databases.push(first.database);
+        expect(version.mock.calls.map(([number]) => number)).toEqual([1, 2]);
+        const concurrent = await Promise.all([Promise.resolve().then(module.getModelUsageRepository),
+            Promise.resolve().then(module.getModelUsageRepository)]);
+        expect(concurrent[0]).toBe(first); expect(concurrent[1]).toBe(first);
+        expect(module.getModelUsageRepository()).toBe(first);
+        expect(first.database.name).toBe('FluentReadModelUsage');
+        expect(version).toHaveBeenCalledTimes(2);
+    });
+
     it.each([1, MODEL_USAGE_MAX_STORED_EVENTS])('已有 %i 条时写入和裁剪仅访问索引，不读回完整事件', async (count) => {
         const repository = createRepository('index-only-retention');
         await repository.recordMany(Array.from({length: count}, (_, index) => usageEvent({

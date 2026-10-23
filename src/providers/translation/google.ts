@@ -16,6 +16,7 @@ import {
 } from '@/src/services/translation/freeRoutingPolicy';
 import {
     abortErrorFromSignal,
+    cancelUnreadResponseBody,
     createRuntimeAbortContext,
     runtimeFetch,
 } from '@/src/platform/http/runtime';
@@ -109,7 +110,8 @@ function createGoogleBatchRequest(texts: readonly string[], fromLang: string, to
 
 function googleLanguage(code: string): string {
     const normalized = normalizeChineseLanguageCode(code);
-    return ({'zh-Hans': 'zh-CN', 'zh-Hant': 'zh-TW', nb: 'no', fil: 'tl'} as Record<string, string>)[normalized] ?? normalized;
+    const aliases: Record<string, string> = {'zh-Hans': 'zh-CN', 'zh-Hant': 'zh-TW', nb: 'no', fil: 'tl'};
+    return Object.hasOwn(aliases, normalized) ? aliases[normalized]! : normalized;
 }
 
 function escapeGoogleText(text: string): string {
@@ -260,7 +262,13 @@ async function fetchGoogleResponse(
 
         // 在读取响应体之前冻结整个 Google 队列；慢速错误响应也不能让别的入口继续突发请求。
         const statusError = !response.ok ? createHttpStatusError(response) : undefined;
-        if (response.status === 429) googleRequestGate.pause(statusError!);
+        if (response.status === 429) {
+            googleRequestGate.pause(statusError!);
+            // 限流状态及冷却都已由响应头确定，正文没有可用译文；不可等待无限错误流。
+            cancelUnreadResponseBody(response);
+            statusError!.message = `${statusError!.message}（${GOOGLE_CAPTCHA_HINT}）`;
+            throw statusError;
+        }
         // 自定义 transport 可能忽略 abort 后仍返回响应；即便调用方已结束，真实正文
         // 也要结算后才归还传输许可。迟到结果在读取后继续检查取消，不能标记探测成功。
         let responseBody: string;
@@ -279,7 +287,7 @@ async function fetchGoogleResponse(
             if (response.status === 400 && /"xsrf"/u.test(responseBody)) {
                 Object.assign(statusError!, {googleXsrfRejected: true});
             }
-            if (response.status === 429 || isHtmlResponse(responseBody)) {
+            if (isHtmlResponse(responseBody)) {
                 // CAPTCHA 提示只扩展安全文案，保留标准 HTTP 状态供外层判断冷却。
                 statusError!.message = `${statusError!.message}（${GOOGLE_CAPTCHA_HINT}）`;
             }
@@ -535,12 +543,10 @@ function enqueueGoogleText(
     if (!hasTranslationContent(text)) return Promise.resolve(text);
     return new Promise((resolve, reject) => {
         const task: PendingGoogleText = {text, fromLang, toLang, signal, deadlineAt, lease,
-            settled: false, resolve, reject, removeAbortListener: () => undefined};
-        const onAbort = () => {
-            settleGoogleText(task, abortErrorFromSignal(signal), true);
-            task.cancelBatch?.();
-        };
-        task.removeAbortListener = subscribeAbort(onAbort);
+            settled: false, resolve, reject, removeAbortListener: subscribeAbort(() => {
+                settleGoogleText(task, abortErrorFromSignal(signal), true);
+                task.cancelBatch?.();
+            })};
         pendingTexts.push(task);
         const matching = pendingTexts.filter(item => item.fromLang === fromLang && item.toLang === toLang);
         const characters = matching.reduce((total, item) => total + escapeGoogleText(item.text).length + 11, 0);

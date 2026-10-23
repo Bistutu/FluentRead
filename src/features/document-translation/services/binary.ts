@@ -1,7 +1,7 @@
 /**
  * @file src/features/document-translation/services/binary.ts
  * 文件职责：处理 PDF、EPUB 与 DOCX 二进制文档的受限解析和导出，把压缩包或页面文本转换为统一 ParsedDocument，并生成可下载的双语产物；扫描页以图像并集和原生正文证据判定，兼容独立页码、图像外的少量原生页眉页脚及拼接扫描图。
- * 主要内容：相同译文回退原文；Word 段落记下表格单元格供阅读视图排版；按实际字节限制导入、按需加载二进制依赖，包含归档安全上限、可取消 PDF 提取与译文回填；原生旋转内容必要时沿用 sourceRotation 展示坐标，PDF 字形边界回退无效的零/负 ascent 并包含有限负 descent，字号与基线保持不变；零宽文字项使用受限同行位置估算，不把组合标记当作额外字形；默认逐页原版左右对照，保留旋转裁剪并直接嵌入 JPEG，支持文字几何的光栅端口添加可搜索复制的 Unicode 层和溢出段落的可见全文续页，批注仍保留完整译文；ePub/DOCX 导出让出主线程并使用可取消归档流，ePub 保持首项 mimetype 无压缩及 XHTML 章节格式；未改资源保留原压缩方式，文本导出直接使用 core 的回退规则避免重复规范化。
+ * 主要内容：相同译文回退原文；Word 段落记下表格单元格供阅读视图排版；按实际字节限制导入、按需加载二进制依赖，包含归档安全上限、可取消 PDF 提取与译文回填；原生旋转内容必要时沿用 sourceRotation 展示坐标，PDF 字形边界回退无效的零/负 ascent 并包含有限负 descent，原始字号与基线保持不变；复用已加载数学字形轮廓收紧通用字体边界，非剪切拉伸分隔符的横向字号只供行归组；零宽文字项使用受限同行位置估算，不把组合标记当作额外字形；默认逐页原版左右对照，保留旋转裁剪并直接嵌入 JPEG，支持文字几何的光栅端口添加可搜索复制的 Unicode 层和溢出段落的可见全文续页，批注仍保留完整译文，候选标记避让复用已有几何数组而不逐候选复制；ePub/DOCX 导出让出主线程并使用可取消归档流，ePub 保持首项 mimetype 无压缩及 XHTML 章节格式；未改资源保留原压缩方式，文本导出直接使用 core 的回退规则避免重复规范化。
  * 模块边界：此服务可以依赖 JSZip、pdf-lib 和二进制 I/O，但不负责调用翻译服务或渲染设置页；文本格式规则归 core/document，浏览器 Canvas 光栅实现由 ui/pdfPreview 通过接口注入。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
@@ -74,6 +74,7 @@ export interface PdfTextStyle {
     descent?: number;
     fontFamily?: string;
     vertical?: boolean;
+    glyphBounds?: ReadonlyMap<string, readonly [number, number]>;
 }
 
 export interface PdfTextAtom {
@@ -85,6 +86,7 @@ export interface PdfTextAtom {
     fontFamily: string;
     baseline?: number;
     fontSize?: number;
+    layoutFontSize?: number;
 }
 
 export interface PdfTextLine {
@@ -335,6 +337,9 @@ export function median(values: number[]): number {
     return sorted.length % 2 === 0 ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle];
 }
 
+/** 数学字体常以整套字库极值声明 ascent/descent；短数学项使用已加载轮廓，普通长正文不额外解析路径。 */
+const MATH_GLYPH_TOKEN = /^[A-Za-z\d\p{Script=Greek}\p{Sm}\p{P}\s]{1,32}$/u;
+
 export function pdfTextAtoms(
     items: PdfTextItem[],
     styles: Record<string, PdfTextStyle>,
@@ -364,13 +369,27 @@ export function pdfTextAtoms(
                 ? 1 + style.descent
                 : 0.8;
         const x = transform[4];
-        const y = transform[5] - fontHeight * ascent;
+        let y = transform[5] - fontHeight * ascent;
         // 高 ascent 字体的一个 em 不一定覆盖 p/g 降部；按声明的负 descent 补足字形下界。
         // 只扩展边界，保留既有最小高度；字号、基线、advance 和遮罩 padding 不变。
-        const height = typeof style.descent === 'number' && Number.isFinite(style.descent) && style.descent < 0
+        let height = typeof style.descent === 'number' && Number.isFinite(style.descent) && style.descent < 0
             ? fontHeight * Math.max(1, ascent - style.descent)
             : fontHeight;
         let width = Math.max(fontHeight * 0.2, Math.abs(item.width));
+        const fontWidth = Math.hypot(transform[0], transform[1]);
+        const stretchedDelimiter = fontWidth > 0 && fontHeight > fontWidth * 1.4 && /^[|¦∥()[\]{}=+\-−?.,;:!\s]+$/u.test(text);
+        let layoutFontSize: number | undefined;
+        if (style.glyphBounds && Math.abs(transform[1]) < .01 && Math.abs(transform[2]) < .01) {
+            const bounds = Array.from(text.replace(/\s/gu, ''), character => style.glyphBounds!.get(character));
+            if (bounds.every((value): value is readonly [number, number] => !!value)) {
+                const top = Math.max(...bounds.map(value => value[1])), bottom = Math.min(...bounds.map(value => value[0]));
+                y = transform[5] - fontHeight * top;
+                height = fontHeight * (top - bottom);
+                width = Math.max(fontWidth * 0.2, Math.abs(item.width));
+                // 原始纵向字号供导出矩阵使用；已证实的非剪切拉伸字形按横向字号参与基线与脚标归组。
+                if (stretchedDelimiter && Math.abs(transform[1]) < .01 && Math.abs(transform[2]) < .01) layoutFontSize = fontWidth;
+            }
+        }
         if (!Number.isFinite(item.width) || item.width === 0) {
             // PDF.js 的多码点字形（如含 variation selector 的数学字母）可能丢失 advance。
             // 只在此时估算：组合/格式字符不占额外 em；孤立组合符沿用原来的小矩形。
@@ -396,7 +415,7 @@ export function pdfTextAtoms(
             width,
             height,
             fontFamily: style.fontFamily || 'sans-serif',
-            ...(includeLineDetails ? {baseline: transform[5], fontSize: fontHeight} : {}),
+            ...(includeLineDetails ? {baseline: transform[5], fontSize: fontHeight, ...(layoutFontSize ? {layoutFontSize} : {})} : {}),
         }];
     }).filter((atom) => atom.x < viewport.width && atom.y < viewport.height && atom.x + atom.width > 0 && atom.y + atom.height > 0);
 }
@@ -724,6 +743,70 @@ function isScannedPdfPage(atoms: readonly PdfLayoutAtom[], blocks: readonly PdfL
     return false;
 }
 
+/** 解析阶段本已禁用 FontFace；复用 PDF.js 已加载的数学分隔符、括号组件和重音轮廓，不保留额外字库或解析普通字体。 */
+function pdfMathGlyphStyles(items: readonly PdfTextItem[], styles: Record<string, PdfTextStyle>,
+    operators: {fnArray: readonly number[]; argsArray: readonly any[]}, ops: Record<string, number>,
+    objects?: {has(key: string): boolean; get(key: string): any}): Record<string, PdfTextStyle> {
+    if (!objects) return styles;
+    const requested = new Map<string, Set<string>>();
+    for (const item of items) {
+        const matrix = item.transform as number[];
+        const style = styles[item.fontName];
+        if (style?.vertical) continue;
+        if (!/^[⎛⎜⎝⎞⎟⎠⎡⎢⎣⎤⎥⎦⎧⎨⎩⎫⎬⎭→^\s]+$/u.test(item.str)
+            && !(style && (style.ascent ?? 0) - (style.descent ?? 0) >= 1.25 && MATH_GLYPH_TOKEN.test(item.str))
+            && (!/^[|¦∥()[\]{}=+\-−\s]+$/u.test(item.str) || Math.hypot(matrix[2], matrix[3]) <= Math.hypot(matrix[0], matrix[1]) * 1.4)) continue;
+        let characters = requested.get(item.fontName);
+        if (!characters) requested.set(item.fontName, characters = new Set());
+        for (const character of item.str.replace(/\s/gu, '')) characters.add(character);
+    }
+    if (!requested.size) return styles;
+    const result = {...styles};
+    const boundsByFont = new Map<string, Map<string, readonly [number, number]>>();
+    const visited = new Set<string>();
+    const unsupported = new Map<string, Set<string>>();
+    const fontStack: string[] = [];
+    let font = '';
+    for (let index = 0; index < operators.fnArray.length; index++) {
+        const args = operators.argsArray[index];
+        if (operators.fnArray[index] === ops.save || operators.fnArray[index] === ops.paintFormXObjectBegin) {fontStack.push(font); continue;}
+        if (operators.fnArray[index] === ops.restore || operators.fnArray[index] === ops.paintFormXObjectEnd) {font = fontStack.pop() ?? font; continue;}
+        if (operators.fnArray[index] === ops.setFont) {font = args[0]; continue;}
+        if (operators.fnArray[index] !== ops.showText || !requested.has(font)) continue;
+        for (const glyph of args[0]) {
+            if (!glyph || typeof glyph.unicode !== 'string') continue;
+            if (glyph.accent || glyph.vmetric || Array.from(glyph.unicode).length !== 1) {
+                let characters = unsupported.get(font);
+                if (!characters) unsupported.set(font, characters = new Set());
+                for (const character of glyph.unicode) characters.add(character);
+                continue;
+            }
+            if (!requested.get(font)!.has(glyph.unicode)) continue;
+            const id = `${font}_path_${glyph.fontChar}`;
+            if (visited.has(id)) continue;
+            visited.add(id);
+            try {
+                if (!objects.has(id)) continue;
+                const path: unknown = objects.get(id);
+                // PDF.js 输出归一化的绝对 M/L/C/Q/Z 路径；曲线控制点包围盒保持保守，不执行字体代码。
+                if (typeof path !== 'string' || path.length > 4096 || !path.startsWith('M') || /[^MLCQZ\d\s.,eE+\-]/u.test(path)) continue;
+                const values = (path.match(/[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/gu) ?? []).map(Number);
+                if (!values.length || values.length % 2 || !values.every(Number.isFinite)) continue;
+                const ys = values.filter((_value, index) => index % 2 === 1), low = Math.min(...ys), high = Math.max(...ys);
+                if (low < -4 || high > 4 || high <= low) continue;
+                let bounds = boundsByFont.get(font);
+                if (!bounds) {boundsByFont.set(font, bounds = new Map()); result[font] = {...styles[font], glyphBounds: bounds};}
+                const previous = bounds.get(glyph.unicode);
+                // 同一 Unicode 可映射多种字体字形；取并集，不能只按首个较小字形裁切后续变体。
+                bounds.set(glyph.unicode, previous ? [Math.min(previous[0], low), Math.max(previous[1], high)] : [low, high]);
+            } catch { /* 缺失或不可读轮廓保持原字体边界，不能使整页导入失败。 */ }
+        }
+    }
+    // 未解析组合重音位移、竖排指标及连字映射时，整项回退原字体范围，不能借其它同Unicode轮廓代替。
+    for (const [font, characters] of unsupported) for (const character of characters) boundsByFont.get(font)?.delete(character);
+    return result;
+}
+
 async function parsePdf(fileName: string, bytes: Uint8Array, signal?: AbortSignal, onProgress?: ParseDocumentFileOptions['onPdfProgress']): Promise<ParsedDocument> {
     if (new TextDecoder('latin1').decode(bytes.slice(0, 5)) !== '%PDF-') {
         throw new Error('PDF 文件签名无效，文件可能已损坏或扩展名不正确');
@@ -765,14 +848,16 @@ async function parsePdf(fileName: string, bytes: Uint8Array, signal?: AbortSigna
                 // /Rotate 是页面展示元数据，不能让原本横排的正文被竖排过滤器误删。
                 const textContent = await awaitDocumentRead(page.getTextContent(), signal);
                 signal?.throwIfAborted();
+                const items = textContent.items.filter((item): item is PdfTextItem => 'str' in item);
+                const operators = typeof page.getOperatorList === 'function' ? await awaitDocumentRead(page.getOperatorList(), signal) : undefined;
+                const styles = operators ? pdfMathGlyphStyles(items, textContent.styles as Record<string, PdfTextStyle>, operators, pdfJs.OPS, page.commonObjs) : textContent.styles as Record<string, PdfTextStyle>;
                 const {viewport, atoms, ...orientation} = pdfPageTextGeometry(
-                    textContent.items.filter((item): item is PdfTextItem => 'str' in item),
-                    textContent.styles as Record<string, PdfTextStyle>,
+                    items,
+                    styles,
                     displayViewport,
                     displayViewport.rotation ? page.getViewport({scale: 1, rotation: 0}) : displayViewport,
                 );
-                const graphics = typeof page.getOperatorList === 'function'
-                    ? extractPdfGraphicsShapes(await awaitDocumentRead(page.getOperatorList(), signal), pdfJs.OPS, viewport) : [];
+                const graphics = operators ? extractPdfGraphicsShapes(operators, pdfJs.OPS, viewport) : [];
                 signal?.throwIfAborted();
                 const {blocks: layoutBlocks, preservedRegions} = analyzePdfPageLayout({atoms, graphics, width: viewport.width, height: viewport.height});
                 const {blocks, segmentIndexes} = pdfPageSegments(layoutBlocks, pageNumber, segments);
@@ -1168,7 +1253,8 @@ async function renderPdf(
                     candidates.push({x: pageData.width - 18, y, width: 14, height: 14}, {x: 4, y, width: 14, height: 14});
                 }
             }
-            let marker = candidates.find(candidate => ![...occupied, ...markers].some(other => intersects(candidate, other)));
+            let marker = candidates.find(candidate => !occupied.some(other => intersects(candidate, other))
+                && !markers.some(other => intersects(candidate, other)));
             const gutter = offsetX - pageData.width;
             if (!marker && gutter > 2) marker = candidates.map(candidate => ({x: -gutter + 1, y: candidate.y, width: Math.min(14, gutter - 2), height: 14}))
                 .find(candidate => !markers.some(other => intersects(candidate, other)));

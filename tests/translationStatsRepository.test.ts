@@ -4,7 +4,7 @@ import {
     FluentReadTranslationStatsDatabase,
     TranslationStatsRepository,
     normalizeTranslationRequestEvent,
-    translationStatsRepository,
+    getTranslationStatsRepository,
     type TranslationStatsRepositoryOptions,
 } from '@/src/platform/storage/translationStatsRepository';
 import {localHourBucketStart} from '@/src/services/translation-stats/aggregation';
@@ -63,6 +63,23 @@ afterEach(async () => {
 });
 
 describe('翻译统计事件白名单', () => {
+    it('导入不构造数据库，首次消费和并发消费者共用同一惰性队列实例', async () => {
+        vi.resetModules();
+        const {default: Dexie} = await import('dexie');
+        const version = vi.spyOn(Dexie.prototype, 'version');
+        const module = await import('@/src/platform/storage/translationStatsRepository');
+        expect(version).not.toHaveBeenCalled();
+        const first = module.getTranslationStatsRepository();
+        databases.push(first.database);
+        expect(version.mock.calls.map(([number]) => number)).toEqual([1, 2]);
+        const concurrent = await Promise.all([Promise.resolve().then(module.getTranslationStatsRepository),
+            Promise.resolve().then(module.getTranslationStatsRepository)]);
+        expect(concurrent[0]).toBe(first); expect(concurrent[1]).toBe(first);
+        expect(module.getTranslationStatsRepository()).toBe(first);
+        expect(first.database.name).toBe('FluentReadTranslationStats');
+        expect(version).toHaveBeenCalledTimes(2);
+    });
+
     it('只保留数值与标识字段，并清理标识中的控制字符', () => {
         const stored = normalizeTranslationRequestEvent({
             ...requestEvent({id: ' request-1 ', serviceId: ' open\u0007ai ', model: ' gpt  5 '}),
@@ -416,7 +433,7 @@ describe('翻译统计 IndexedDB 仓库', () => {
 
         repository.record(requestEvent({mode: 'bad' as never}));
         expect(consoleWarn).toHaveBeenCalledWith('[FluentRead] translation stats event rejected:', expect.any(TypeError));
-        expect(translationStatsRepository).toBeInstanceOf(TranslationStatsRepository);
-        expect(translationStatsRepository.database.name).toBe('FluentReadTranslationStats');
+        expect(getTranslationStatsRepository()).toBeInstanceOf(TranslationStatsRepository);
+        expect(getTranslationStatsRepository().database.name).toBe('FluentReadTranslationStats');
     });
 });

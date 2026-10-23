@@ -224,7 +224,7 @@ describe('配置 IndexedDB storage port', () => {
             state: 'verified',
             keys: ['local:config'],
         });
-        const rawMarker = await repository.getRawRecord(CONFIG_LEGACY_CLEANUP_MARKER_KEY);
+        const rawMarker = await repository.database.records.get(CONFIG_LEGACY_CLEANUP_MARKER_KEY);
         expect(rawMarker?.payload.ciphertext).toEqual(expect.any(String));
         expect(rawMarker).not.toHaveProperty('value');
 
@@ -301,7 +301,7 @@ describe('配置 IndexedDB storage port', () => {
             ['local:config', CONFIG_LEGACY_CLEANUP_MARKER_KEY],
         );
 
-        const raw = await repository.getRawRecord('local:config');
+        const raw = await repository.database.records.get('local:config');
         if (!raw) throw new Error('测试准备失败：缺少 local:config 密文');
         await repository.database.records.put({
             ...raw,
@@ -437,7 +437,7 @@ describe('配置 IndexedDB storage port', () => {
             state: 'verified',
             keys: ['local:config'],
         });
-        const markerRecord = await repository.getRawRecord(CONFIG_LEGACY_CLEANUP_MARKER_KEY);
+        const markerRecord = await repository.database.records.get(CONFIG_LEGACY_CLEANUP_MARKER_KEY);
         if (!markerRecord) throw new Error('测试准备失败：缺少清理标记');
         await repository.database.records.put({
             ...markerRecord,

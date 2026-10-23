@@ -4,63 +4,36 @@
  * 主要内容：执行真实缓存客户端模板，覆盖隐藏、缓存、配置替换、方案重用、字段变化、录制容量/冲突及模型、语言、展示、术语偏好。
  * 模块边界：Linkedom 保留实际节点树，展示控件与焦点为受控端口；不调用翻译或验证系统输入法。
  */
-import {createRequire} from 'node:module'
-import {readFileSync} from 'node:fs'
-import {resolve} from 'node:path'
 import {parseHTML} from 'linkedom'
-import vue from '@vitejs/plugin-vue'
-import {createServer, type ViteDevServer} from 'vite'
-import {compileScript, compileTemplate, parse} from 'vue/compiler-sfc'
-import ts from 'typescript'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {Config} from '@/src/core/config/model'
+import {customModelString} from '@/src/core/config/catalog'
 import {createQuickTranslationProfile, type QuickTranslationAction, type QuickTranslationProfile} from '@/src/core/config/quickTranslation'
 
-const runtime = createRequire(import.meta.url)('vue') as typeof import('vue')
-let server: ViteDevServer, app: import('vue').App, document: Document, win: any, focused: Element | null
+import * as runtime from 'vue'
+import QuickTranslationProfiles from '@/src/features/settings/ui/QuickTranslationProfiles.vue'
+let app: import('vue').App, document: Document, win: any, focused: Element | null
 let state: Record<string, any>, props: Record<string, any>, shown: import('vue').Ref<boolean>
 let events: Map<Element, Record<string, any>>
+const recorderPort = vi.hoisted(() => ({actual: false}))
 const warning=vi.fn(),info=vi.fn(),updates = vi.fn(), focus = vi.fn(), selectionRange = vi.fn()
-const quickPath = 'src/features/settings/ui/QuickTranslationProfiles.vue'
 let capabilities: Record<string, unknown>
+vi.mock('@/src/ui/i18n', () => ({useUiI18n: () => ({language: runtime.ref('zh-CN'), t: (key: string) => key, translateLegacy: (text: string) => text})}))
+vi.mock('element-plus', () => ({ElIcon: {render: () => null}, ElMessage: {warning: (...args: unknown[]) => warning(...args), info: (...args: unknown[]) => info(...args)}}))
+vi.mock('@/src/platform/browser/capabilities', () => ({get browserCapabilities() {return capabilities}}))
+vi.mock('@/src/ui/components/CustomHotkeyInput.vue', async importOriginal => {const actual = await importOriginal<{default: runtime.Component}>();return {__esModule: true, default: {setup(_: unknown, {attrs}: any) {const instance = runtime.getCurrentInstance()!;return () => recorderPort.actual ? runtime.h(actual.default, attrs) : runtime.h('div', {...attrs, class: 'recorder-port', 'data-session-key': instance.vnode.key})}}}})
+vi.mock('@/src/ui/components/GlossaryLibrarySelect.vue', () => ({default: {setup(_: unknown, {attrs}: any) {return () => runtime.h('div', {...attrs, class: 'glossary-port'})}}}))
+vi.mock('@/src/ui/components/ServiceIcon.vue', () => ({default: {render: () => null}}))
 async function settle() {await runtime.nextTick();await Promise.resolve();await runtime.nextTick()}
 beforeEach(async () => {
-  vi.clearAllMocks();(globalThis as any).__quickMessages={warning,info};capabilities = runtime.reactive({browser: 'chrome', areaTranslation: true, imageTranslation: true});(globalThis as any).__featureMenuCapabilities = capabilities;events = new Map();const parsed = parseHTML('<html><body><div id="app"></div></body></html>');win = parsed.window;document = win.document;focused = document.body
+  vi.clearAllMocks();recorderPort.actual=false;capabilities = runtime.reactive({browser: 'chrome', areaTranslation: true, imageTranslation: true});events = new Map();const parsed = parseHTML('<html><body><div id="app"></div></body></html>');win = parsed.window;document = win.document;focused = document.body
   Object.defineProperty(document, 'activeElement', {configurable: true, get: () => focused})
   for (const [key, value] of Object.entries({document, window: win, HTMLTextAreaElement: win.HTMLTextAreaElement, HTMLElement: win.HTMLElement, Event: win.Event, Node: win.Node})) vi.stubGlobal(key, value)
-  server = await createServer({root: process.cwd(), configFile: false, appType: 'custom', logLevel: 'silent', resolve: {alias: {'@': process.cwd()}}, server: {hmr: false, middlewareMode: true},
-    ssr: {noExternal: ['element-plus', '@element-plus/icons-vue']}, plugins: [{name: 'prompt-profile-controlled-ports', enforce: 'pre', resolveId(id) {
-      if (/\/src\/ui\/i18n(?:\.ts)?$/u.test(id)) return '\0prompt-i18n'
-      if (id === 'element-plus') return '\0quick-element'
-      if (id.endsWith('/CustomHotkeyInput.vue')) return '\0quick-recorder'
-      if (id.endsWith('/GlossaryLibrarySelect.vue')) return '\0quick-glossary'
-      if (/\/src\/platform\/browser\/capabilities(?:\.ts)?$/u.test(id)) return '\0feature-menu-capabilities'
-      if (id === '@element-plus/icons-vue') return '\0prompt-icons'
-      if (id.endsWith('.vue') && !/\/(?:QuickTranslationProfiles)\.vue$/u.test(id)) return '\0prompt-display'
-      return null
-    }, load(id) {
-      if (id === '\0prompt-i18n') return "import {ref} from 'vue';export const useUiI18n = () => ({language: ref('zh-CN'), t: key => key, translateLegacy: text => text})"
-      if (id === '\0quick-element') return "export const ElMessage = {warning: (...args) => globalThis.__quickMessages.warning(...args), info: (...args) => globalThis.__quickMessages.info(...args)}"
-      if (id === '\0quick-recorder') return "import {h,getCurrentInstance} from 'vue';export default {setup(_, {attrs}) {const instance=getCurrentInstance();return () => h('div',{...attrs,class:'recorder-port','data-session-key':instance.vnode.key})}}"
-      if (id === '\0quick-glossary') return "import {h} from 'vue';export default {setup(_, {attrs}) {return () => h('div',{...attrs,class:'glossary-port'})}}"
-      if (id === '\0feature-menu-capabilities') return 'export const browserCapabilities = globalThis.__featureMenuCapabilities;'
-      if (id === '\0prompt-icons') return 'export const ArrowDown = {}, WarningFilled = {}'
-      if (id === '\0prompt-display') return "import {h} from 'vue';export default {setup(_, {slots}) {return () => h('div', null, [slots.copy?.(), slots.default?.()])}}"
-      return null
-    }}, vue()]})
+
 })
-afterEach(async () => {app?.unmount();await settle();await server?.close();delete (globalThis as any).__featureMenuCapabilities;delete (globalThis as any).__quickMessages;vi.unstubAllGlobals()})
-async function compile(path: string) {
-  const filename = resolve(path), {descriptor} = parse(readFileSync(filename, 'utf8'), {filename})
-  const bindings = compileScript(descriptor, {id: 'prompt-profile-test'}).bindings
-  const template = compileTemplate({source: descriptor.template!.content, filename, id: 'prompt-profile-test', compilerOptions: {mode: 'function', cacheHandlers: true, bindingMetadata: bindings, expressionPlugins: ['typescript']}})
-  expect(template.errors).toEqual([])
-  const component = (await server.ssrLoadModule(`/${path}`)).default;component.ssrRender = undefined
-  component.render = new Function('Vue', ts.transpileModule(template.code, {compilerOptions: {target: ts.ScriptTarget.ES2022}}).outputText)(runtime)
-  return component
-}
-async function mount(path: string, values: Record<string, unknown>, listeners: Record<string, unknown> = {}) {
-  const component = await compile(path), source = runtime.shallowReactive({active: true, context: {}, contextKey: 'service-a', ...values});shown = runtime.ref(true)
+afterEach(async () => {app?.unmount();await settle();vi.unstubAllGlobals()})
+async function mount(values: Record<string, unknown>, listeners: Record<string, unknown> = {}) {
+  const component = QuickTranslationProfiles as runtime.Component, source = runtime.shallowReactive({active: true, context: {}, contextKey: 'service-a', ...values});shown = runtime.ref(true)
   const renderer = runtime.createRenderer({patchProp(el: any, key: string, previous: any, next: any) {
     const handlers = events.get(el) || {};events.set(el, handlers)
     if (/^on[A-Z]/u.test(key)) {handlers[key] = next;const event = key.slice(2).toLowerCase();if (previous) el.removeEventListener(event, previous);if (next) el.addEventListener(event, next);return}
@@ -93,7 +66,7 @@ async function settleRecorder() {for(let i=0;i<60;i++){await settle();if(recorde
 async function expand(id='quick-1') {eventOf(card(id).querySelector('.profile-summary')!,'onClick')();await settle()}
 async function record(id?:string) {if(id)eventOf(control('hotkey',id),'onClick')();else eventOf(document.querySelector('.add-button')!,'onClick')();await settleRecorder();expect(recorder()).not.toBeNull()}
 async function mountQuick(config=runtime.reactive(new Config()),profiles:QuickTranslationProfile[]=[p()],action:QuickTranslationAction='hover',autoAck=true,values:Record<string,unknown>={}) {
-  config.service='openai';config.model.openai='gpt-4o';config.paragraphCopyEnabled=false;await mount(quickPath,{config,profiles:runtime.reactive(profiles),action,...values},{'onUpdate:profiles':(next:QuickTranslationProfile[])=>{updates(next);if(autoAck)props.profiles=runtime.reactive(next)}})
+  config.service='openai';config.model.openai='gpt-4o';config.paragraphCopyEnabled=false;await mount({config,profiles:runtime.reactive(profiles),action,...values},{'onUpdate:profiles':(next:QuickTranslationProfile[])=>{updates(next);if(autoAck)props.profiles=runtime.reactive(next)}})
 }
 function latest():QuickTranslationProfile[] {return updates.mock.calls.at(-1)?.[0] || props.profiles}
 function invalidate(reason:string) {if(reason==='hidden')props.active=false;if(reason==='cached')shown.value=false;if(reason==='unmount')app.unmount();if(reason==='config')props.config=runtime.reactive(new Config());if(reason==='action')props.action='full-page'}
@@ -133,6 +106,30 @@ describe('实际快捷方案缓存模板与最新草稿',()=>{
   it('移除自定义服务后拒绝旧选择，保留旧选择显示并允许恢复继承',async()=>{
     const cfg=runtime.reactive(new Config());cfg.customOpenAIProviders=[{id:'custom:local',name:'Local',endpoint:'http://localhost/v1',models:['private-model']}];await mountQuick(cfg,[p({service:'custom:local',model:'private-model'})]);await expand();const old=eventOf(control('service')),model=eventOf(control('model'));cfg.customOpenAIProviders=[];await settle();expect(card().classList.contains('is-unavailable')).toBe(true);old('custom:local');model('private-model');expect(updates).not.toHaveBeenCalled();eventOf(control('service'))('');expect(latest()[0]).toMatchObject({service:'',model:''})
   })
+  it('键盘删除当前方案后聚焦相邻方案，删除最后一项回到添加按钮',async()=>{
+    await mountQuick(undefined,[p(),p({id:'quick-2',hotkey:'F6'})]);await expand();
+    const remove=card().querySelector<HTMLButtonElement>('.delete-button')!;remove.focus();remove.click();await settle();
+    expect(card()).toBeNull();expect(focused).toBe(card('quick-2').querySelector('.profile-summary'));
+    await expand('quick-2');const last=card('quick-2').querySelector<HTMLButtonElement>('.delete-button')!;last.focus();last.click();await settle();
+    expect(document.querySelector('.profile-card')).toBeNull();expect(focused).toBe(document.querySelector('.add-button'));expect(latest()).toEqual([]);
+  })
+  it('有效的显示方式、启停和术语选择完整往返，重复或非法术语不发布',async()=>{
+    const cfg=runtime.reactive(new Config());cfg.glossaryEnabled=true;cfg.glossaryLibraries=[{id:'terms',name:'Terms',enabled:true,domains:[],sourceLanguage:'auto',targetLanguage:'zh-Hans',entries:[]}];
+    await mountQuick(cfg);await expand();eventOf(card().querySelector('input.profile-switch')!)(false);await settle();expect(latest()[0].enabled).toBe(false);
+    eventOf(card().querySelector('input.profile-switch')!)(true);await settle();expect(latest()[0].enabled).toBe(true);
+    eventOf(control('display'))('translation-only');await settle();expect(latest()[0].displayMode).toBe('translation-only');
+    eventOf(control('display'))('bilingual');await settle();expect(latest()[0].displayMode).toBe('bilingual');
+    const glossary=()=>eventOf(card().querySelector('.glossary-port')!);glossary()(['terms']);await settle();expect(latest()[0].glossaryIds).toEqual(['terms']);
+    updates.mockClear();glossary()(['unknown']);glossary()([true]);expect(updates).not.toHaveBeenCalled();glossary()(null);await settle();expect(latest()[0].glossaryIds).toBeNull();
+  })
+  it('保留未知旧目标语言与自定义默认模型，显示系统冲突并可恢复语言继承',async()=>{
+    const cfg=runtime.reactive(new Config());await mountQuick(cfg,[p({hotkey:'Ctrl+C',targetLanguage:'xx-legacy',model:'saved-private-model'})]);
+    cfg.model.openai=customModelString;cfg.customModel.openai='private-default';await expand();
+    expect(card().querySelector('.service-summary strong')?.textContent).toContain('saved-private-model');
+    expect(card().querySelector('.service-summary small')?.textContent).toContain('xx-legacy');expect(card().querySelector('.field-warning')).not.toBeNull();
+    eventOf(control('model'))('private-default');await settle();expect(latest()[0].model).toBe('private-default');
+    eventOf(control('target'))('');await settle();expect(latest()[0].targetLanguage).toBe('');expect(card().querySelector('.service-summary small')?.textContent).not.toContain('xx-legacy');
+  })
   it('Google 仅限制当次控件显示，不能覆盖保存的显示偏好',async()=>{
     await mountQuick(undefined,[p({displayMode:'translation-only'})]);await expand();const old=eventOf(control('display'));eventOf(control('service'))('google');await settle();for(const v of ['inherit','bilingual','translation-only'])eventOf(control('display'))(v);old('bilingual');expect(latest()[0].displayMode).toBe('translation-only');eventOf(control('service'))('microsoft');await settle();expect(control('display').getAttribute('data-model-value')).toBe('translation-only')
   })
@@ -167,6 +164,22 @@ describe('录制会话、容量与完整冲突',()=>{
   })
   it('拒绝无效/空的新录制和错误类型，编辑清除会停用方案，划词优先提示只在启用时显示',async()=>{
     await mountQuick();await record();const confirm=eventOf(recorder(),'onConfirm');for(const value of ['none','',true,'garbage'])confirm(value);expect(updates).not.toHaveBeenCalled();eventOf(recorder(),'onCancel')();await settle();await expand();await record('quick-1');eventOf(recorder(),'onConfirm')('none');await settle();expect(latest()[0]).toMatchObject({hotkey:'',enabled:false});eventOf(card().querySelector('input.profile-switch')!)(true);expect(latest()[0].enabled).toBe(false);props.config.disableSelectionTranslator=false;props.config.selectionTranslatorMode='bilingual';props.config.selectionTranslatorTrigger='custom';props.config.customSelectionTranslatorHotkey='F9';await record('quick-1');eventOf(recorder(),'onConfirm')('F9');expect(info).toHaveBeenCalledWith('quickTranslation.selectionPrecedence')
+  })
+  it('实际录制子组件随方案和旧入口配置即时复验冲突，合法后才能保存',async()=>{
+    recorderPort.actual=true;await mountQuick(undefined,[p(),p({id:'other',action:'section',hotkey:'F9'})]);await expand();
+    (control('hotkey') as HTMLElement).click();
+    for(let i=0;i<60&&!document.querySelector('.custom-hotkey-dialog');i++){await settle();await new Promise(resolve=>setTimeout(resolve,5))}
+    expect(document.querySelector('.custom-hotkey-dialog')).not.toBeNull();
+    (document.querySelector('.preset-button[aria-label="F9"]') as HTMLElement).click();await settle();
+    expect(document.querySelector('.hotkey-status[role="alert"]')?.textContent).toContain('quickTranslation.duplicate');
+    expect(document.querySelector('.custom-hotkey-dialog .primary-button')?.hasAttribute('disabled')).toBe(true);
+    props.profiles[1].hotkey='F10';await settle();expect(document.querySelector('.hotkey-status[role="alert"]')).toBeNull();
+    props.config.hotkey='custom';props.config.customHotkey='F9';await settle();
+    expect(document.querySelector('.hotkey-status[role="alert"]')?.textContent).toContain('quickTranslation.legacyConflictEdit');
+    expect(updates).not.toHaveBeenCalled();props.config.hotkey='none';await settle();
+    expect(document.querySelector('.custom-hotkey-dialog .primary-button')?.hasAttribute('disabled')).toBe(false);
+    (document.querySelector('.custom-hotkey-dialog .primary-button') as HTMLElement).click();await settle();
+    expect(latest()[0]).toMatchObject({hotkey:'F9',enabled:true});expect(updates).toHaveBeenCalledOnce();expect(document.querySelector('.custom-hotkey-dialog')).toBeNull();
   })
   it('隐藏、配置替换或新录制使旧延迟焦点无效，用户移动焦点后不抢回',async()=>{
     await mountQuick();await expand();const trigger=control('hotkey') as HTMLElement;trigger.focus();await record('quick-1');const outside=document.createElement('button');document.body.append(outside);focused=outside;eventOf(recorder(),'onCancel')();focus.mockClear();await settle();expect(focus).not.toHaveBeenCalled();trigger.focus();await record('quick-1');eventOf(recorder(),'onCancel')();props.active=false;focus.mockClear();await settle();expect(focus).not.toHaveBeenCalled()

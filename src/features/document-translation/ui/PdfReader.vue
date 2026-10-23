@@ -245,9 +245,10 @@ function storedStyle(): {scale: number; font: typeof FONT_CHOICES[number]; highl
   } catch {return {scale: 1, font: 'auto', highlight: true};}
 }
 /** 悬停译文时在原文页标出对应段落；觉得干扰可以关掉。 */
-const hoverHighlight = ref(storedStyle().highlight);
-const textScale = ref(storedStyle().scale);
-const textFont = ref<typeof FONT_CHOICES[number]>(storedStyle().font);
+const initialTextStyle = storedStyle();
+const hoverHighlight = ref(initialTextStyle.highlight);
+const textScale = ref(initialTextStyle.scale);
+const textFont = ref<typeof FONT_CHOICES[number]>(initialTextStyle.font);
 watch([textScale, textFont, hoverHighlight], ([scaleValue, font, highlightValue]) => {if (!highlightValue) highlight.value = undefined; try {globalThis.localStorage?.setItem(STYLE_KEY, JSON.stringify({scale: scaleValue, font, highlight: highlightValue}));} catch { /* 无法写入时只在本次阅读生效。 */ }});
 /** 搜索同时匹配原文与译文，按阅读顺序列出命中的段落；回车跳到下一处，Shift+回车回到上一处。 */
 const searchInput = ref<HTMLInputElement>();
@@ -279,7 +280,14 @@ function toggleSearch(): void {
   openMenu.value = openMenu.value === 'search' ? null : 'search';
   if (openMenu.value === 'search') void nextTick(() => searchInput.value?.focus());
 }
-watch(searchQuery, () => {searchIndex.value = 0; showSearchHit();});
+watch([searchQuery, searchHits, () => props.document], ([query, hits, document], [previousQuery, previousHits, previousDocument]) => {
+  const previous = previousHits[searchIndex.value];
+  const preserved = query === previousQuery && document === previousDocument && previous
+    ? hits.findIndex(hit => hit.pageNumber === previous.pageNumber && hit.x === previous.x && hit.y === previous.y) : -1;
+  searchIndex.value = Math.max(0, preserved);
+  // 翻译分批完成可能在当前命中前新增结果；保留当前段落，只有原命中消失才跳回首个结果。
+  if (preserved < 0) showSearchHit();
+});
 const zoomOptions = computed(() => [{value: 'fit', label: t('document.pdfReading.fitWidth')}, {value: 'page', label: t('document.pdfReading.fitPage')}, ...ZOOM_STEPS.map(step => ({value: String(step), label: `${Math.round(step * 100)}%`}))]);
 const zoomLabel = computed(() => zoomOptions.value.find(option => option.value === zoom.value)?.label ?? `${Math.round(Number(zoom.value) * 100)}%`);
 function closeMenu(restoreFocus = false): void {

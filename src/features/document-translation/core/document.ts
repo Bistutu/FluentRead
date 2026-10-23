@@ -1,7 +1,7 @@
 /**
  * @file src/features/document-translation/core/document.ts
  * 文件职责：定义文档翻译的纯领域模型，并负责把多种文本格式解析为可翻译片段，再按双语或纯译文模式无损还原原格式结构。
- * 主要内容：覆盖文本格式识别、片段切分、HTML 中被链接或强调等行内标签隔开的文字合成整句并以编号占位符保留标签（句中的行内代码整个保留、不翻译）、给出带占位符片段替换前的原文供校订显示、字幕译文丢了硬换行时按原文行数重新断行、被翻译服务转成实体的字幕样式标签还原成标签、纯文本里按固定宽度折行的段落合成一个片段、Markdown 可选地把一行作为一个片段整句翻译并以成对占位符保护强调和链接，恢复强调时把服务正文边缘的 CommonMark 空白移到分隔符外而保留内部间隔，仅在标点/符号或 underscore 词内边界要求时补外侧分隔空格，以单占位符保护行内代码与网址、Markdown 标题、列表、容器指令与独立 HTML 标记保留，以及围栏、受控缩进代码与行内位置保护、字幕标签保留、有界深度的非递归 JSON 遍历、空译文回退、MIME 信息、按格式区分的文件大小上限和下载文件命名；文本导出支持有界编码，下载摘录无需处理全文；相同译文保留原文且不重复展示。
+ * 主要内容：覆盖文本格式识别、片段切分、HTML 中被链接或强调等行内标签隔开的文字合成整句并以编号占位符保留标签（句中的行内代码整个保留、不翻译）、给出带占位符片段替换前的原文供校订显示、字幕译文丢了硬换行时按原文行数重新断行、被翻译服务转成实体或括号的字幕样式标签按真实闭合名还原（包含 VTT 样式类）、纯文本里按固定宽度折行的段落（含 LF、CRLF、CR）合成一个片段、Markdown 可选地把一行作为一个片段整句翻译并以成对占位符保护强调和链接，恢复强调时把服务正文边缘的 CommonMark 空白移到分隔符外而保留内部间隔，仅在标点/符号或 underscore 词内边界要求时补外侧分隔空格，以单占位符保护行内代码与网址、Markdown 标题、列表、容器指令与独立 HTML 标记保留，以及围栏、受控缩进代码与行内位置保护、字幕标签保留、有界深度的非递归 JSON 遍历、空译文回退、MIME 信息、按格式区分的文件大小上限和下载文件命名；文本导出支持有界编码，下载摘录无需处理全文；相同译文保留原文且不重复展示。
  * 模块边界：该文件不读取 File、不解析 PDF/EPUB/DOCX 二进制，也不发起翻译请求；文件 I/O 与压缩包处理归 services/binary，批处理归 services/translation，展示归 preview/presentation。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
@@ -739,7 +739,7 @@ function parseTextDocument(content: string, format: 'txt' | 'markdown', sentence
             return;
         } else if (wrapStart !== undefined) {
             // 按固定宽度折行的一段话作为一个片段翻译；折行处在送翻的原文里是空格（中日韩文字之间不留空格）。
-            addSegment(parts, segments, content.slice(lines[wrapStart].start, line.textEnd), {}, source => source.replace(/[^\S\r\n]*\r?\n[^\S\r\n]*/gu, (_, offset: number, text: string) =>
+            addSegment(parts, segments, content.slice(lines[wrapStart].start, line.textEnd), {}, source => source.replace(/[^\S\r\n]*(?:\r\n?|\n)[^\S\r\n]*/gu, (_, offset: number, text: string) =>
                 UNSPACED_SCRIPT.test(text[offset - 1]) && UNSPACED_SCRIPT.test(text.slice(offset).trimStart()[0]) ? '' : ' '));
             wrapStart = undefined;
         } else {
@@ -1269,10 +1269,10 @@ function restoreSubtitleBreaks(source: string, translation: string): string {
 export function restoreSubtitleTags(source: string, translation: string): string {
     if (!/&lt;|[(（＜]\s*\/?\s*[a-z]/iu.test(translation)) return translation;
     const names = new Set(Array.from(source.matchAll(/<\s*\/?\s*([a-z][\w.]*)/giu), match => match[1].toLowerCase()));
-    const closed = (name: string) => new RegExp(`[(（＜]\\s*[/／]\\s*${name}\\s*[)）＞]`, 'iu').test(translation);
+    const closed = new Set(Array.from(translation.matchAll(/[(（＜]\s*[/／]\s*([a-z][\w.]*)\s*[)）＞]/giu), match => match[1].toLowerCase()));
     return translation.replace(/(\s?)(&lt;|[(（＜])\s*([\/／]?)\s*([a-z][\w.]*)([^&<>()（）＜＞]*?)\s*(?:&gt;|[)）＞])(\s?)/giu,
         (whole, before: string, open: string, slash: string, name: string, rest: string, after: string) =>
-            names.has(name.toLowerCase()) && (open === '&lt;' || closed(name)) ? `${slash ? '' : before}<${slash ? '/' : ''}${name}${rest}>${slash ? after : ''}` : whole);
+            names.has(name.toLowerCase()) && (open === '&lt;' || closed.has(name.toLowerCase().split('.')[0])) ? `${slash ? '' : before}<${slash ? '/' : ''}${name}${rest}>${slash ? after : ''}` : whole);
 }
 
 function preserveSubtitleMarkup(source: string, received: string): string {

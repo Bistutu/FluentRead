@@ -1,13 +1,24 @@
-import {createRequire} from 'node:module';
-import {resolve} from 'node:path';
-import vue from '@vitejs/plugin-vue';
-import {createServer, type Plugin, type ViteDevServer} from 'vite';
-import {compileVueFixture} from './helpers/compiledVueFixture';
+import * as runtime from 'vue';
+import ReadingPanel from '@/src/features/reading-assistant/ui/ReadingPanel.vue';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {Config} from '@/src/core/config/model';
 import {getHarnessModelCacheKey, DEFAULT_HARNESS_PREFERENCES} from '@/src/core/config/harness';
 import type {HarnessSession} from '@/src/services/harness/sessionTypes';
 import type {ReadingRequest, ReadingProgress, ReadingResponse} from '@/src/features/reading-assistant/types';
+
+
+// Rendered-template tests retain a plain host port for v-show/model directives;
+// setup, event handlers and the client render function are the real instrumented SFC.
+vi.mock('vue', async importOriginal => ({...await importOriginal<typeof import('vue')>(), vModelText: {}, vShow: {}}));
+vi.mock('@/src/services/config/store', () => ({config: {uiLanguage: 'zh-CN'}, configReady: Promise.resolve(), subscribeConfig: () => () => {}}));
+vi.mock('webextension-polyfill', () => ({default: {get runtime() {return (globalThis as any).__frReadingLifecycle.browser.runtime;}}}));
+vi.mock('@/src/features/vocabulary/material/public', () => ({
+  beginMaterialCapture: (...args: unknown[]) => (globalThis as any).__frReadingLifecycle.beginMaterialCapture(...args),
+  completeMaterialCapture: (...args: unknown[]) => (globalThis as any).__frReadingLifecycle.completeMaterialCapture(...args),
+}));
+vi.mock('@/src/features/reading-assistant/client', () => Object.fromEntries([
+  'streamReading','getHarnessSession','listHarnessSessions','saveLearningMemory',
+].map(name => [name, (...args: unknown[]) => (globalThis as any).__frReadingLifecycle[name](...args)])));
 
 const TEST_KEY = '__frReadingLifecycle';
 interface StreamCall {
@@ -15,20 +26,17 @@ interface StreamCall {
   callbacks: {progress: (value: ReadingProgress) => void; result: (value: ReadingResponse) => void; error: (error: Error) => void};
   cancel: ReturnType<typeof vi.fn>;
 }
-let server: ViteDevServer | undefined;
 let unmount: (() => void) | undefined;
-const runtime = createRequire(import.meta.url)('vue') as typeof import('vue');
 
 afterEach(async () => {
   unmount?.(); unmount = undefined;
-  await server?.close(); server = undefined;
   vi.unstubAllGlobals();
   delete (globalThis as Record<string, unknown>)[TEST_KEY];
 });
 
-async function mountPanel(overrides: Record<string, unknown> = {}, sessions: HarnessSession[] = [], renderTemplate = false, syncView = false) {
+async function mountPanel(overrides: Record<string, unknown> = {}, sessions: HarnessSession[] = [], renderTemplate = true, syncView = false) {
   const calls: StreamCall[] = [];
-  const sendMessage = vi.fn(async () => ({success: true}));
+  const sendMessage = vi.fn(async (_message: unknown) => ({success: true}));
   const state = {
     browser: {runtime: {sendMessage}},
     streamReading: (request: ReadingRequest, callbacks: StreamCall['callbacks']) => {
@@ -37,38 +45,11 @@ async function mountPanel(overrides: Record<string, unknown> = {}, sessions: Har
     getHarnessSession: vi.fn(async (id: string) => sessions.find(session => session.id === id) || null),
     listHarnessSessions: vi.fn(async () => ({sessions: [], hasMore: false})),
     saveLearningMemory: vi.fn(async () => ({})),
+    beginMaterialCapture: vi.fn(async (): Promise<unknown> => undefined),
+    completeMaterialCapture: vi.fn(async () => false),
   };
   (globalThis as Record<string, unknown>)[TEST_KEY] = state;
-  const mocks: Plugin = {
-    name: 'reading-lifecycle-mocks', enforce: 'pre',
-    resolveId(id, importer) {
-      if (id === 'webextension-polyfill') return '\0reading-browser';
-      if (id === '../client' && importer?.includes('/reading-assistant/ui/')) return '\0reading-client';
-      return null;
-    },
-    load(id) {
-      if (id === '\0reading-browser') return `export default globalThis.${TEST_KEY}.browser;`;
-      if (id === '\0reading-client') return `export const {streamReading,getHarnessSession,listHarnessSessions,saveLearningMemory} = globalThis.${TEST_KEY};`;
-      return null;
-    },
-    transform(code, id) {
-      if (id !== resolve('src/features/reading-assistant/ui/ReadingPanel.vue')) return null;
-      // 无DOM端口也控制共享渲染函数中的输入指令；真实输入/IME/样式由 streamingResize 的 DOM 夹具验证。
-      return {code: code.replace(/\bvModelText(?=\s*,)/u, 'vModelText as domVModelText')
-        .replace('<script setup lang="ts">', '<script setup lang="ts">\nconst vModelText = {};'), map: null};
-    },
-  };
-  server = await createServer({configFile: false, appType: 'custom', logLevel: 'silent', root: process.cwd(), plugins: [mocks, vue()], resolve: {alias: {'@': resolve(process.cwd())}}, server: {hmr: false, middlewareMode: true}, ssr: {noExternal: ['webextension-polyfill']}});
-  const loaded = await server.ssrLoadModule('/src/features/reading-assistant/ui/ReadingPanel.vue');
-  const component = loaded.default;
-  component.ssrRender = undefined;
-  if (renderTemplate) {
-    const filename = resolve('src/features/reading-assistant/ui/ReadingPanel.vue');
-    const compiled = compileVueFixture(filename, {id: 'reading-capability-test', cacheHandlers: true, includeScript: false});
-    expect(compiled.templateErrors).toEqual([]);
-    // 无DOM宿主只核对真实模板分支；输入赋值和显示样式属于受控端口，动作由真实setup执行。
-    component.render = new Function('Vue', compiled.renderCode)({...runtime, vShow: {}, vModelText: {}});
-  } else component.render = () => null;
+  const component = renderTemplate ? ReadingPanel : {...ReadingPanel, render: () => null};
   type HostNode = {parent?: HostNode; children: HostNode[]};
   const removeNode = (node: HostNode) => {
     if (!node.parent) return;
@@ -94,8 +75,7 @@ async function mountPanel(overrides: Record<string, unknown> = {}, sessions: Har
     if (syncView) Object.assign(props, {initialAction: view.action, historyOnly: view.history});
   });
   let panel: any, panelInstance: any;
-  const app = renderer.createApp({setup: () => () => runtime.h(component, {...props, onViewChange: viewChange, ref: (instance: any) => { if (instance) {panel = instance.$.setupState; panelInstance = instance.$;} }})});
-  app.provide(runtime.ssrContextKey, {modules: new Set<string>()});
+  const app = renderer.createApp({setup: () => () => runtime.h(component as runtime.Component, {...props, onViewChange: viewChange, ref: (instance: any) => { if (instance) {panel = instance.$.setupState; panelInstance = instance.$;} }})});
   app.config.warnHandler = () => undefined;
   app.mount({children: []}); unmount = () => app.unmount();
   await runtime.nextTick();
@@ -184,6 +164,17 @@ describe('Bilibili basic reading capabilities', () => {
     expect(panel.intent).toBe('grammar'); expect(panel.retrySupported).toBe(true);
     expect(renderedNodes(rendered()).find(node => node.type === 'input' && node.props?.['aria-label'] === '继续追问')?.props.disabled).toBe(false);
     panel.retry(); expect(calls).toHaveLength(1); expect(calls[0].request).toMatchObject({intent: 'grammar', question: ''});
+  });
+
+  it('delegates cancellation once to the stream owner without a second raw runtime message', async () => {
+    const {panel, calls, sendMessage} = await mountPanel();
+    expect(calls).toHaveLength(1);
+    panel.stop(); panel.stop();
+    expect(calls[0].cancel).toHaveBeenCalledOnce();
+    expect((sendMessage.mock.calls as unknown[][]).some(([message]) => (message as {action?: string})?.action === 'cancel')).toBe(false);
+    expect(panel.busy).toBe(false);
+    calls[0].callbacks.progress({kind: 'text', text: 'late'});
+    expect(panel.answer).not.toBe('late');
   });
 
   it.each(['bilibili', 'deepseek'])('returns from empty records once, preserves existing reading, and still handles explicit action/activation changes (%s)', async service => {
@@ -291,7 +282,7 @@ describe('reading action ownership and reuse', () => {
     panel.question = 'Can you give an example?'; panel.ask(); finish('Current answer'); await tick();
     const ids = panel.priorAnswers.map((turn: any) => turn.id);
     const before = calls.length;
-    panel.historyDetails = {open: true};
+    panel.historyDetails.open = true;
     panel.toggleHistoryTurn(ids[0]); expect(panel.expandedTurnId).toBe(ids[0]);
     panel.toggleHistoryTurn(ids[1]); expect(panel.expandedTurnId).toBe(ids[1]);
     panel.toggleHistoryTurn(ids[1]); expect(panel.expandedTurnId).toBe('');
@@ -306,8 +297,7 @@ describe('reading action ownership and reuse', () => {
   it('keeps the current tab position and unsent follow-up, and offers a focused source shortcut without a request', async () => {
     const {panel, finish, calls, tick} = await mountPanel();
     finish('Current answer'); await tick();
-    const viewport = {scrollTop: 0, focus: vi.fn()};
-    panel.answerScroll = viewport;
+    const viewport = Object.assign(panel.answerScroll, {scrollTop: 0, focus: vi.fn()});
     panel.question = 'An unsent follow-up';
     panel.chooseAction('meaning'); await tick();
     expect(viewport.scrollTop).toBe(0); expect(panel.question).toBe('An unsent follow-up'); expect(calls).toHaveLength(1);
@@ -322,9 +312,8 @@ describe('reading action ownership and reuse', () => {
     vi.stubGlobal('cancelAnimationFrame', (id: number) => { frames.delete(id); });
     const flushFrame = () => { const callbacks = [...frames.values()]; frames.clear(); callbacks.forEach(callback => callback(0)); };
     const {panel, tick} = await mountPanel();
-    const viewport = {scrollTop: 0};
-    const body = {offsetTop: 40};
-    panel.answerScroll = viewport; panel.answerBody = body;
+    const viewport = Object.assign(panel.answerScroll, {scrollTop: 0});
+    const body = Object.assign(panel.answerBody, {offsetTop: 40});
     flushFrame();
     expect(viewport.scrollTop).toBe(0);
     body.offsetTop = 120; flushFrame();
@@ -340,9 +329,8 @@ describe('reading action ownership and reuse', () => {
 
   it('starts each action after the source and preserves an upward scroll during streaming and completion', async () => {
     const {panel, finish, calls, tick} = await mountPanel();
-    const viewport = {scrollTop: 0};
-    panel.answerScroll = viewport;
-    panel.answerBody = {offsetTop: 80};
+    const viewport = Object.assign(panel.answerScroll, {scrollTop: 0});
+    Object.assign(panel.answerBody, {offsetTop: 80});
     finish('Initial explanation');
     for (const action of ['meaning', 'grammar', 'usage', 'practice']) {
       panel.startAction(action); await tick();
@@ -510,8 +498,7 @@ it('keeps only the translation matching the displayed source and preserves the a
 it('preserves the answer offset for late translations and respects manual upward scrolling', async () => {
   const {panel, props, finish, calls, tick} = await mountPanel({sourceTranslation: {source: 'Practice helps.', text: '', pending: true}});
   finish('Explanation'); await tick();
-  const viewport = {scrollTop: 120}; const body = {offsetTop: 100};
-  panel.answerScroll = viewport; panel.answerBody = body;
+  const viewport = Object.assign(panel.answerScroll, {scrollTop: 120}); const body = Object.assign(panel.answerBody, {offsetTop: 100});
   props.sourceTranslation = {source: 'Practice helps.', text: '练习有帮助。'};
   await tick(); body.offsetTop = 160; await tick();
   expect(viewport.scrollTop).toBe(180); expect(calls).toHaveLength(1);
@@ -523,4 +510,32 @@ it('preserves the answer offset for late translations and respects manual upward
   props.sourceTranslation = {source: 'Practice helps.', text: '再更新的译文。'};
   await tick(); panel.cancelReadingPosition(); body.offsetTop = 240; await tick();
   expect(viewport.scrollTop).toBe(220);
+});
+
+
+it.each(['word', 'note'] as const)('does not begin a %s write after its material capture outlives the panel', async kind => {
+  const {panel, state, sendMessage, finish} = await mountPanel();
+  finish('Completed explanation');
+  await runtime.nextTick(); state.completeMaterialCapture.mockClear();
+  let release!: () => void;
+  state.beginMaterialCapture.mockReturnValueOnce(new Promise<void>(resolve => {release = resolve;}));
+  const saving = kind === 'word' ? panel.saveWord() : panel.rememberLearning();
+  unmount?.(); unmount = undefined;
+  release(); await saving;
+  expect(sendMessage.mock.calls.filter(([message]) => (message as any)?.action === 'upsert')).toEqual([]);
+  expect(state.saveLearningMemory).not.toHaveBeenCalled();
+  expect(state.completeMaterialCapture).not.toHaveBeenCalled();
+});
+
+it.each(['word', 'note'] as const)('does not begin a %s write if privacy changes while capturing its material', async kind => {
+  const {panel, props, state, sendMessage, finish, tick} = await mountPanel();
+  finish('Completed explanation');
+  await runtime.nextTick(); state.completeMaterialCapture.mockClear();
+  let release!: () => void;
+  state.beginMaterialCapture.mockReturnValueOnce(new Promise<void>(resolve => {release = resolve;}));
+  const saving = kind === 'word' ? panel.saveWord() : panel.rememberLearning();
+  props.privateContext = true; await tick();
+  release(); await saving;
+  expect(sendMessage.mock.calls.filter(([message]) => (message as any)?.action === 'upsert')).toEqual([]);
+  expect(state.saveLearningMemory).not.toHaveBeenCalled();
 });

@@ -10,7 +10,7 @@
     ],
     "forbiddenSelectors": ["header svg"],
     "interactionSelectors": [".contents a[href]"],
-    "prepareClickText": "OK",
+    "prepareClickText": "Reject All",
     "modes": ["hover", "full"],
     "tier": "required",
     "hoverHotkey": "Control",

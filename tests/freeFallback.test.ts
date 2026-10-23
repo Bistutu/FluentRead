@@ -223,6 +223,29 @@ describe('free provider fallback coordinator', () => {
         expect(first.translate).toHaveBeenCalledTimes(3);
     });
 
+    it('新限流不能被更早发出的成功响应解除，已完成译文仍交付原调用者', async () => {
+        const run = createFreeFallbackRunner(3, {random: () => 0});
+        const pending = deferred();
+        const first = candidate('first', vi.fn().mockImplementationOnce(() => pending.promise)
+            .mockRejectedValueOnce(Object.assign(failure(429), {retryAfterMs: 5000})).mockResolvedValue('恢复'));
+        const second = candidate('second');
+        const old = run([first, second], options);
+        await flush();
+        await expect(run([first, second], options)).resolves.toBe('译:second');
+        const limited = (await run.getHealthSnapshot()).find(item => item.identity === 'first');
+        expect(limited).toMatchObject({failures: 1, category: 'rate-limit'});
+        pending.resolve('早发请求的完整译文');
+        await expect(old).resolves.toBe('早发请求的完整译文');
+        expect((await run.getHealthSnapshot()).find(item => item.identity === 'first')).toMatchObject({
+            failures: limited!.failures, retryAt: limited!.retryAt, category: limited!.category,
+        });
+        await expect(run([first, second], options)).resolves.toBe('译:second');
+        expect(first.translate).toHaveBeenCalledTimes(2);
+        await vi.advanceTimersByTimeAsync(5000);
+        await expect(run([first, second], options)).resolves.toBe('恢复');
+        expect(first.translate).toHaveBeenCalledTimes(3);
+    });
+
     it('超时的迟到成功不能提前清除冷却', async () => {
         const run = createFreeFallbackRunner(3, {random: () => 0});
         const pending = deferred();

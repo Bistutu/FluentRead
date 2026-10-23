@@ -141,7 +141,7 @@ export const chatGPTPlanMessages: Readonly<Record<UiLanguage, Readonly<Record<Ch
 
 /** 独立目录沿用共享界面语言，未知语言按中文回退，不修改用户或账号文本。 */
 export function chatGPTPlanText(key: ChatGPTPlanTextKey, language: UiLanguage): string {
-    return (chatGPTPlanMessages[language] ?? zhCN)[key];
+    return (Object.hasOwn(chatGPTPlanMessages, language) ? chatGPTPlanMessages[language] : zhCN)[key];
 }
 
 /** 只本地化已知安全错误类别；原始服务器错误可能包含凭据，不向界面透传。 */
@@ -154,5 +154,5 @@ export function chatGPTPlanErrorText(error: unknown, language: UiLanguage): stri
         oauth_cancelled: 'cancelled', oauth_failed: 'signInFailed', timeout: 'timedOut',
         revoke_unconfirmed: 'revocationUnconfirmed', revocation_unconfirmed: 'revocationUnconfirmed',
     };
-    return chatGPTPlanText(keys[code] ?? 'operationFailed', language);
+    return chatGPTPlanText(Object.hasOwn(keys, code) ? keys[code] : 'operationFailed', language);
 }

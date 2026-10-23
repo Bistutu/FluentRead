@@ -50,17 +50,7 @@ const englishUiLanguageLabels: Readonly<Record<UiLanguage, string>> = {
     'es-ES': 'Spanish / Español',
 };
 
-const bilingualUiLanguageLabels: Readonly<Record<UiLanguage, string>> = {
-    'zh-CN': '中文 / Chinese',
-    'en-US': '英语 / English',
-    'ja-JP': '日语 / Japanese',
-    'ko-KR': '韩语 / Korean',
-    'fr-FR': '法语 / French',
-    'ru-RU': '俄语 / Russian',
-    'es-ES': '西班牙语 / Spanish',
-};
-
-const localizedUiLanguageLabels: Readonly<Partial<Record<UiLanguage, Readonly<Record<UiLanguage, string>>>>> = {
+const localizedUiLanguageLabels: Readonly<Record<Exclude<UiLanguage, 'zh-CN' | 'en-US'>, Readonly<Record<UiLanguage, string>>>> = {
     'ja-JP': {
         'zh-CN': '中国語 / Chinese / 中文',
         'en-US': '英語 / English',
@@ -108,7 +98,7 @@ const localizedUiLanguageLabels: Readonly<Partial<Record<UiLanguage, Readonly<Re
     },
 };
 
-const uiLanguageLabelsByInterfaceLanguage: Readonly<Partial<Record<UiLanguage, Readonly<Record<UiLanguage, string>>>>> = {
+const uiLanguageLabelsByInterfaceLanguage: Readonly<Record<UiLanguage, Readonly<Record<UiLanguage, string>>>> = {
     ...localizedUiLanguageLabels,
     'zh-CN': multilingualUiLanguageLabels,
     'en-US': englishUiLanguageLabels,
@@ -138,21 +128,7 @@ export function resolveUiLanguageFromLocale(value: unknown): UiLanguage {
     return DEFAULT_UI_LANGUAGE;
 }
 
-export function getUiLanguageLabel(language: UiLanguage): string {
-    if (language === 'en-US') return 'English';
-    if (language === 'ja-JP') return '日本語';
-    if (language === 'ko-KR') return '한국어';
-    if (language === 'fr-FR') return 'Français';
-    if (language === 'ru-RU') return 'Русский';
-    if (language === 'es-ES') return 'Español';
-    return '中文';
-}
-
-export function getUiLanguageBilingualLabel(language: UiLanguage): string {
-    return bilingualUiLanguageLabels[language] || getUiLanguageLabel(language);
-}
-
 export function getUiLanguageDisplayLabel(language: UiLanguage, interfaceLanguage: UiLanguage = DEFAULT_UI_LANGUAGE): string {
-    const labels = uiLanguageLabelsByInterfaceLanguage[interfaceLanguage] || multilingualUiLanguageLabels;
-    return labels[language] || getUiLanguageLabel(language);
+    const labels = uiLanguageLabelsByInterfaceLanguage[normalizeUiLanguage(interfaceLanguage)];
+    return Object.hasOwn(labels, language) ? labels[language] : '中文';
 }

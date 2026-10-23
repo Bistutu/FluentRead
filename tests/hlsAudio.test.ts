@@ -18,6 +18,17 @@ const textBytes = (value: string) => new TextEncoder().encode(value);
 const flush = () => new Promise<void>(resolve => setTimeout(resolve, 0));
 
 describe('HLS audio', () => {
+  it.each([{status: 503}, {headers: {'content-length': '11'}}])('releases rejected media response headers without awaiting stream cancellation: %j', async init => {
+    let rejectCancel!: (error: Error) => void;
+    const cancellation = new Promise<void>((_resolve, reject) => {rejectCancel = reject;});
+    const cancel = vi.fn(() => cancellation);
+    const result = new Response(new ReadableStream({cancel}), init);
+    await expect(readBoundedMediaResponse(result, 10, new AbortController().signal)).rejects.toThrow('无效');
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(result.body!.locked).toBe(false);
+    rejectCancel(new Error('Late media cancellation failure'));
+    await Promise.resolve();
+  });
   it('checks actual MP4 track metadata, including multiple tracks and extended box sizes', () => {
     expect(hasMp4AudioTrack(audioInit)).toBe(true);
     expect(hasMp4AudioTrack(videoInit)).toBe(false);

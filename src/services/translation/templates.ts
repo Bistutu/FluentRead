@@ -377,9 +377,9 @@ export function tongyiMsgTemplate(request: TranslationTemplateRequest) {
         // Qwen-MT 使用 zh / zh_tw 区分简繁体；未知语言交由服务明确拒绝，不能悄悄译成中文。
         const normalizedTarget = normalizeChineseLanguageCode(targetLanguage);
         const langMap: Record<string, string> = {'zh-Hans': 'zh', 'zh-Hant': 'zh_tw'};
-        const targetLang = langMap[normalizedTarget] ?? normalizedTarget;
+        const targetLang = Object.hasOwn(langMap, normalizedTarget) ? langMap[normalizedTarget] : normalizedTarget;
         const normalizedSource = normalizeChineseLanguageCode(sourceLanguage);
-        const sourceLang = langMap[normalizedSource] ?? normalizedSource;
+        const sourceLang = Object.hasOwn(langMap, normalizedSource) ? langMap[normalizedSource] : normalizedSource;
         const payload: any = {
             "model": model,
             "messages": [

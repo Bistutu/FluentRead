@@ -11,7 +11,7 @@ import {parseBinaryDocument, pdfPageSegments, pdfTextAtoms, type PdfTextStyle} f
 import {analyzePdfPageLayout, extractPdfGraphicsShapes, type PdfLayoutAtom} from '@/src/features/document-translation/core/pdfLayoutAnalysis';
 import {pdfOverlayBlocks} from '@/src/features/document-translation/core/pdfBlockFit';
 import type {DocumentSegment, PdfDocumentPage} from '@/src/features/document-translation/core/document';
-import {restoreDocumentHistoryTranslations} from '@/src/features/document-translation/services/history';
+import {restoreDocumentHistoryRevisions} from '@/src/features/document-translation/services/history';
 
 async function fixture(): Promise<Uint8Array> {
     const pdf = await PDFDocument.create(); const font = await pdf.embedFont(StandardFonts.Helvetica);
@@ -139,8 +139,8 @@ describe('real PDF structural parsing', () => {
                 const oldSegments = segments.filter(segment => segment.source === 'Document Translation Example' || /^\d+\s/u.test(segment.source))
                     .map((segment, id) => ({...segment, id}));
                 const translations = oldSegments.map(segment => `校订：${segment.source}`);
-                const restored = restoreDocumentHistoryTranslations({parsed: {segments: oldSegments}, parsedVersion: 7, total: oldSegments.length, translations},
-                    {fileName: 'sample.pdf', format: 'pdf', label: 'PDF', parts: [], segments}, 8);
+                const restored = restoreDocumentHistoryRevisions({parsed: {segments: oldSegments}, parsedVersion: 7, total: oldSegments.length, translations},
+                    {fileName: 'sample.pdf', format: 'pdf', label: 'PDF', parts: [], segments}, 8).translations;
                 expect(restored[heading.block.segmentIndex]).toBe('校订：4 VISUAL INVARIANTS');
                 expect(restored[paragraph.segmentIndex]).toBe('');
                 const tablePage = await pdf.getPage(2);

@@ -86,6 +86,16 @@ beforeEach(() => {vi.restoreAllMocks(); transport.mockReset(); install('googleCl
 afterEach(() => {setRuntimeFetch(); vi.restoreAllMocks(); vi.useRealTimers();});
 
 describe('cloudprovidersAudit actual broker and adapter boundaries', () => {
+    it.each(['baiduTranslation', 'googleCloudTranslation', 'azureTranslator', 'volcTranslation', 'youdao',
+        'tencent', 'huanYuanTranslation', 'xiaoniu'] as const)('%s releases an unread HTTP failure without waiting for its endless body', async service => {
+        install(service);
+        const cancel = vi.fn(() => new Promise<void>(() => {}));
+        transport.mockResolvedValueOnce(new Response(new ReadableStream({cancel}), {status: 429, headers: {'Retry-After': '2'}}));
+        await expect(adapters[service](withProviderSnapshot(request, config))).rejects.toMatchObject({statusCode: 429, retryAfterMs: 2000});
+        expect(cancel).toHaveBeenCalledOnce();
+        expect(transport).toHaveBeenCalledOnce();
+    });
+
     it.each(fixed)('%s ignores an unused proxy for successful cache identity', async service => {
         install(service); const b = broker();
         config.proxy[service] = 'https://first.invalid/unused';

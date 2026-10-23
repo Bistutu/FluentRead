@@ -4,62 +4,34 @@
  * 主要内容：执行真实缓存客户端模板，覆盖隐藏、缓存、配置替换、选择会话切换、查询、目录权限、九种功能模型和默认继承；验证B站免费阅读选项、固定模型与写作拒绝边界；通过实际抽屉祖先与受控 DOM 几何验证进入/返回的局部滚动及同步、迟到、焦点保护。
  * 模块边界：Linkedom 保留实际节点树，展示控件与焦点为受控端口；不调用翻译或验证系统输入法。
  */
-import {createRequire} from 'node:module'
-import {readFileSync} from 'node:fs'
-import {resolve} from 'node:path'
+import * as runtime from 'vue'
 import {parseHTML} from 'linkedom'
-import vue from '@vitejs/plugin-vue'
-import {createServer, type ViteDevServer} from 'vite'
-import {compileScript, compileTemplate, parse} from 'vue/compiler-sfc'
-import ts from 'typescript'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {Config} from '@/src/core/config/model'
 import {createApiKeyRequirementKey} from '@/src/core/config/validation'
 import {BILIBILI_FREE_TRANSLATION_MODEL} from '@/src/core/config/freeTranslation'
 
-const runtime = createRequire(import.meta.url)('vue') as typeof import('vue')
-let server: ViteDevServer, app: import('vue').App, document: Document, win: any, focused: Element | null
+let app: import('vue').App, document: Document, win: any, focused: Element | null
 let state: Record<string, any>, props: Record<string, any>, shown: import('vue').Ref<boolean>
 let events: Map<Element, Record<string, any>>
 let scrollPort: HTMLElement | undefined
 const scrollWrites: number[] = []
 const updates = vi.fn(), focus = vi.fn(), selectionRange = vi.fn()
-const popupPath = 'src/app/popup/PopupServices.vue'
 let capabilities: Record<string, unknown>
 async function settle() {await runtime.nextTick();await Promise.resolve();await runtime.nextTick()}
 beforeEach(async () => {
-  vi.clearAllMocks();scrollPort=undefined;scrollWrites.length=0;capabilities = runtime.reactive({browser: 'chrome', areaTranslation: true, imageTranslation: true});(globalThis as any).__featureMenuCapabilities = capabilities;events = new Map();const parsed = parseHTML('<html><body><div id="app"></div></body></html>');win = parsed.window;document = win.document;focused = document.body
+  vi.clearAllMocks();scrollPort=undefined;scrollWrites.length=0;capabilities = runtime.reactive({browser: 'chrome', areaTranslation: true, imageTranslation: true});events = new Map();const parsed = parseHTML('<html><body><div id="app"></div></body></html>');win = parsed.window;document = win.document;focused = document.body
   Object.defineProperty(document, 'activeElement', {configurable: true, get: () => focused})
   for (const [key, value] of Object.entries({document, window: win, HTMLTextAreaElement: win.HTMLTextAreaElement, HTMLElement: win.HTMLElement, Event: win.Event, Node: win.Node})) vi.stubGlobal(key, value)
-  server = await createServer({root: process.cwd(), configFile: false, appType: 'custom', logLevel: 'silent', resolve: {alias: {'@': process.cwd()}}, server: {hmr: false, middlewareMode: true},
-    ssr: {noExternal: ['element-plus', '@element-plus/icons-vue']}, plugins: [{name: 'prompt-profile-controlled-ports', enforce: 'pre', resolveId(id) {
-      if (/\/src\/ui\/i18n(?:\.ts)?$/u.test(id)) return '\0prompt-i18n'
-      if (id === 'element-plus') return '\0prompt-element'
-      if (/\/src\/platform\/browser\/capabilities(?:\.ts)?$/u.test(id)) return '\0feature-menu-capabilities'
-      if (id === '@element-plus/icons-vue') return '\0prompt-icons'
-      if (id.endsWith('.vue') && !/\/(?:PopupServices)\.vue$/u.test(id)) return '\0prompt-display'
-      return null
-    }, load(id) {
-      if (id === '\0prompt-i18n') return "import {ref} from 'vue';export const useUiI18n = () => ({language: ref('zh-CN'), t: (key, params) => params?.model ? `${key} ${params.model}` : key, translateLegacy: text => text})"
-      if (id === '\0prompt-element') return "import {h, getCurrentInstance} from 'vue';export const ElPopover = {setup(_, {attrs, slots}) {const instance = getCurrentInstance();return () => h('div', {...attrs, 'data-timing-port-key': instance.vnode.key}, [slots.reference?.(), slots.default?.()])}}"
-      if (id === '\0feature-menu-capabilities') return 'export const browserCapabilities = globalThis.__featureMenuCapabilities;'
-      if (id === '\0prompt-icons') return 'export const ArrowDown = {}, WarningFilled = {}'
-      if (id === '\0prompt-display') return "import {h} from 'vue';export default {setup(_, {slots}) {return () => h('div', null, [slots.copy?.(), slots.default?.()])}}"
-      return null
-    }}, vue()]})
+  vi.resetModules()
+  vi.doMock('@/src/ui/i18n', () => ({useUiI18n: () => ({language: runtime.ref('zh-CN'), t: (key: string, params?: {model?: string}) => params?.model ? `${key} ${params.model}` : key, translateLegacy: (text: string) => text})}))
+  vi.doMock('@/src/platform/browser/capabilities', () => ({browserCapabilities: capabilities}))
+  vi.doMock('@/src/ui/components/ServiceIcon.vue', () => ({default: {setup(_: unknown, {slots}: any) {return () => runtime.h('div', null, [slots.copy?.(), slots.default?.()])}}}))
 })
-afterEach(async () => {app?.unmount();await settle();await server?.close();delete (globalThis as any).__featureMenuCapabilities;vi.unstubAllGlobals()})
-async function compile(path: string) {
-  const filename = resolve(path), {descriptor} = parse(readFileSync(filename, 'utf8'), {filename})
-  const bindings = compileScript(descriptor, {id: 'prompt-profile-test'}).bindings
-  const template = compileTemplate({source: descriptor.template!.content, filename, id: 'prompt-profile-test', compilerOptions: {mode: 'function', cacheHandlers: true, bindingMetadata: bindings, expressionPlugins: ['typescript']}})
-  expect(template.errors).toEqual([])
-  const component = (await server.ssrLoadModule(`/${path}`)).default;component.ssrRender = undefined
-  component.render = new Function('Vue', ts.transpileModule(template.code, {compilerOptions: {target: ts.ScriptTarget.ES2022}}).outputText)(runtime)
-  return component
-}
-async function mount(path: string, values: Record<string, unknown>, listeners: Record<string, unknown> = {}) {
-  const component = await compile(path), source = runtime.shallowReactive({active: true, context: {}, contextKey: 'service-a', ...values});shown = runtime.ref(true)
+afterEach(async () => {app?.unmount();await settle();vi.unstubAllGlobals()})
+async function mount(values: Record<string, unknown>, listeners: Record<string, unknown> = {}) {
+  const component = (await import('@/src/app/popup/PopupServices.vue')).default
+  const source = runtime.shallowReactive({active: true, context: {}, contextKey: 'service-a', ...values});shown = runtime.ref(true)
   const renderer = runtime.createRenderer({patchProp(el: any, key: string, previous: any, next: any) {
     const handlers = events.get(el) || {};events.set(el, handlers)
     if (/^on[A-Z]/u.test(key)) {handlers[key] = next;const event = key.slice(2).toLowerCase();if (previous) el.removeEventListener(event, previous);if (next) el.addEventListener(event, next);return}
@@ -74,11 +46,11 @@ async function mount(path: string, values: Record<string, unknown>, listeners: R
     querySelector: selector => document.querySelector(selector), setScopeId: () => {}, cloneNode: (n: any) => n.cloneNode(true),
     insertStaticContent: (html: string, parent: any, anchor: any) => {const t = document.createElement('template');t.innerHTML = html;const first = t.content.firstChild!, last = t.content.lastChild!;parent.insertBefore(t.content, anchor);return [first, last]}})
   app = renderer.createApp({setup: () => () => runtime.h(runtime.KeepAlive, null, {default: () => shown.value
-    ? runtime.h(component, {...source, ...listeners, ref: (vm: any) => {if (vm) {state = vm.$.setupState;props = vm.$.props}}}) : runtime.h({render: () => null}, {key: 'other'})})})
+    ? runtime.h(component as runtime.Component, {...source, ...listeners, ref: (vm: any) => {if (vm) {state = vm.$.setupState;props = vm.$.props}}}) : runtime.h({render: () => null}, {key: 'other'})})})
   const control = {setup(_props: unknown, {attrs}: any) {return () => runtime.h('input', attrs)}}
   app.component('el-switch', control);app.component('el-select', control);app.component('el-option', {render: () => null})
   app.component('el-icon', {render: () => null})
-  app.provide(runtime.ssrContextKey, {modules: new Set<string>()});app.config.warnHandler = () => {};app.mount(document.getElementById('app')!);await settle()
+  app.config.warnHandler = () => {};app.mount(document.getElementById('app')!);await settle()
 }
 
 
@@ -89,7 +61,7 @@ function option(id: string) {return document.querySelector(`[data-service-choice
 function invalidate(reason: string) {if (reason === 'hidden') props.active = false;if (reason === 'cached') shown.value = false;if (reason === 'unmount') app.unmount();if (reason === 'config') props.config = runtime.reactive(new Config())}
 function snapshot(config: Config) {return {service: config.service, hover: config.hoverTranslationService, selection: config.selectionTranslationService, input: config.inputBoxTranslationService, inputModel: config.inputBoxTranslationModel, reading: {...config.harness}, writing: {...config.writing}}}
 // 待配置的服务收在折叠的更多区；夹具默认填好凭据，让 OpenAI 与 DeepSeek 留在常用区供事件归属用例直接点击。
-async function mountPopup(config = runtime.reactive(new Config()), values: Record<string, unknown> = {}, credentials = true) {config.service = 'openai';if (credentials) for (const id of ['openai', 'deepseek']) config.token[id] ||= 'test-only-key';await mount(popupPath, {config, serviceOptions: services, ...values}, {onClose: updates})}
+async function mountPopup(config = runtime.reactive(new Config()), values: Record<string, unknown> = {}, credentials = true) {config.service = 'openai';if (credentials) for (const id of ['openai', 'deepseek']) config.token[id] ||= 'test-only-key';await mount({config, serviceOptions: services, ...values}, {onClose: updates})}
 async function open(id: string) {const el = row(id) as HTMLElement;el.focus();eventOf(el)();await settle();expect(document.querySelector('[data-service-picker]')?.getAttribute('data-service-picker')).toBe(id)}
 async function search(keyword: string) {const input = document.querySelector('input[type="search"]') as HTMLInputElement;input.value = keyword;eventOf(input, 'onInput')({target: input});await settle()}
 function pickerBack() {return eventOf(document.querySelector('.service-picker-back')!)}

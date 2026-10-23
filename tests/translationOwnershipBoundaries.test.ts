@@ -1,7 +1,8 @@
 import {parseHTML} from 'linkedom';
 import {describe, expect, it} from 'vitest';
 
-import {createDeclarativeAdapter, createTranslationCore} from '@/src/core/translation/public';
+import {createDeclarativeAdapter} from '@/src/core/translation/public';
+import {createTranslationCore} from './helpers/translationCore';
 import type {TranslationScope, TranslationSiteAdapter} from '@/src/core/translation/types';
 
 function fixture(html: string, adapters: readonly TranslationSiteAdapter[] = [], scope: TranslationScope = 'content') {

@@ -8,7 +8,8 @@
  */
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {parseHTML} from 'linkedom';
-import {createTranslationCore, createTranslationLayoutMeasurements, maxComposedAncestorDepth} from '@/src/core/translation/public';
+import {createTranslationLayoutMeasurements, maxComposedAncestorDepth} from '@/src/core/translation/public';
+import {createTranslationCore} from './helpers/translationCore';
 import {createBilingualRemountPreparationBatch, transferEquivalentBilingualOwners} from '@/src/features/full-page-translation/content/bilingualRemount';
 import {beginTranslation, getTranslationState, markTranslationComplete, restoreAllTranslations,
     restoreTranslation, setBilingualContent} from '@/src/features/full-page-translation/content/state';

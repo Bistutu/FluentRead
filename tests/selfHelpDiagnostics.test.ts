@@ -1,11 +1,12 @@
+import {translate, resolveUiLanguageFromLocale} from '@/src/core/i18n';
 import {describe, expect, it} from 'vitest';
 import {
   buildDiagnosticReport, diagnoseFailure, DIAGNOSTIC_CODES,
-  getDiagnosticActionLabel, getDiagnosticSummary, getDiagnosticText, getDiagnosticUiText, normalizeDiagnostic,
+  getDiagnosticText, getDiagnosticUiText, normalizeDiagnostic,
   type DiagnosticCode, type DiagnosticReportInput,
 } from '../src/services/diagnostics';
 import {serializeTranslationError, TranslationRequestError} from '../src/services/translation/errors';
-import {registerAllUiLanguageBundles} from '../src/core/i18n/bundles';
+import {registerAllUiLanguageBundles} from './helpers/uiLanguageBundles';
 
 registerAllUiLanguageBundles();
 
@@ -160,10 +161,10 @@ describe('self help diagnosis', () => {
       }
     }
     for (const action of ['retry', 'services', 'site-settings', 'refresh', 'dismiss'] as const) {
-      expect(getDiagnosticActionLabel(action, 'zh-CN')).not.toBe(getDiagnosticActionLabel(action, 'en'));
+      expect(translate(`diagnostics.action.${action}`, resolveUiLanguageFromLocale('zh-CN'))).not.toBe(translate(`diagnostics.action.${action}`, resolveUiLanguageFromLocale('en')));
     }
     expect(getDiagnosticText({code: 'cancelled'}, 'zh-HK')).toEqual(getDiagnosticText({code: 'cancelled'}));
-    expect(getDiagnosticActionLabel('retry')).toBe('重试');
+    expect(translate(`diagnostics.action.${'retry'}`, resolveUiLanguageFromLocale('zh-CN'))).toBe('重试');
     const copy = getDiagnosticText({code: 'unknown'});
     copy.title = 'changed';
     expect(getDiagnosticText({code: 'unknown'}).title).not.toBe('changed');
@@ -177,15 +178,15 @@ describe('self help diagnosis', () => {
     for (const locale of locales) {
       for (const code of DIAGNOSTIC_CODES) {
         const copy = getDiagnosticText({code}, locale);
-        const summary = getDiagnosticSummary({code}, locale);
+        const summary = translate(`diagnostics.${({code}).code}.summary`, resolveUiLanguageFromLocale(locale));
         expect(summary.trim().length).toBeGreaterThan(2);expect(summary.length).toBeLessThanOrEqual(40);
         expect(summary).not.toMatch(/diagnostics\.|https?:|API Key/);
         expect(copy.title.trim().length).toBeGreaterThan(3);expect(copy.detail.trim().length).toBeGreaterThan(15);
         if (locale !== 'en-US') {expect(copy.title).not.toBe(getDiagnosticText({code}, 'en-US').title);expect(copy.detail).not.toBe(getDiagnosticText({code}, 'en-US').detail);}
       }
       for (const action of actions) {
-        expect(getDiagnosticActionLabel(action, locale).trim()).not.toBe('');
-        if (locale !== 'en-US') expect(getDiagnosticActionLabel(action, locale)).not.toBe(getDiagnosticActionLabel(action, 'en-US'));
+        expect(translate(`diagnostics.action.${action}`, resolveUiLanguageFromLocale(locale)).trim()).not.toBe('');
+        if (locale !== 'en-US') expect(translate(`diagnostics.action.${action}`, resolveUiLanguageFromLocale(locale))).not.toBe(translate(`diagnostics.action.${action}`, resolveUiLanguageFromLocale('en-US')));
       }
       for (const key of uiKeys) {
         expect(getDiagnosticUiText(key, locale).trim()).not.toBe('');
@@ -193,21 +194,21 @@ describe('self help diagnosis', () => {
       }
     }
     expect(getDiagnosticUiText('preview')).toBe(getDiagnosticUiText('preview', 'zh-CN'));
-    expect(getDiagnosticSummary({code: 'authentication'})).toBe('服务验证失败');
+    expect(translate(`diagnostics.${({code: 'authentication'}).code}.summary`, resolveUiLanguageFromLocale('zh-CN'))).toBe('服务验证失败');
   });
 
   it('routes supported language variants and uses the shared default for unsupported or empty locales', () => {
     for (const [variant, canonical] of [['zh-TW', 'zh-CN'], ['EN-gb', 'en-US'], ['ja_JP', 'ja-JP'], ['ko', 'ko-KR'], ['fr-CA', 'fr-FR'], ['ru', 'ru-RU'], ['es-MX', 'es-ES']]) {
       expect(getDiagnosticText({code: 'authentication'}, variant)).toEqual(getDiagnosticText({code: 'authentication'}, canonical));
-      expect(getDiagnosticSummary({code: 'authentication'}, variant)).toBe(getDiagnosticSummary({code: 'authentication'}, canonical));
-      expect(getDiagnosticActionLabel('retry', variant)).toBe(getDiagnosticActionLabel('retry', canonical));
+      expect(translate(`diagnostics.${({code: 'authentication'}).code}.summary`, resolveUiLanguageFromLocale(variant))).toBe(translate(`diagnostics.${({code: 'authentication'}).code}.summary`, resolveUiLanguageFromLocale(canonical)));
+      expect(translate(`diagnostics.action.${'retry'}`, resolveUiLanguageFromLocale(variant))).toBe(translate(`diagnostics.action.${'retry'}`, resolveUiLanguageFromLocale(canonical)));
       expect(getDiagnosticUiText('first-use-ready', variant)).toBe(getDiagnosticUiText('first-use-ready', canonical));
     }
     for (const locale of ['', 'pt-BR', 'unknown-language']) {
       expect(getDiagnosticText({code: 'page-unavailable'}, locale)).toEqual(getDiagnosticText({code: 'page-unavailable'}, 'zh-CN'));
-      expect(getDiagnosticActionLabel('services', locale)).toBe(getDiagnosticActionLabel('services', 'zh-CN'));
+      expect(translate(`diagnostics.action.${'services'}`, resolveUiLanguageFromLocale(locale))).toBe(translate(`diagnostics.action.${'services'}`, resolveUiLanguageFromLocale('zh-CN')));
       expect(getDiagnosticUiText('privacy', locale)).toBe(getDiagnosticUiText('privacy', 'zh-CN'));
-      expect(getDiagnosticSummary({code: 'page-unavailable'}, locale)).toBe(getDiagnosticSummary({code: 'page-unavailable'}, 'zh-CN'));
+      expect(translate(`diagnostics.${({code: 'page-unavailable'}).code}.summary`, resolveUiLanguageFromLocale(locale))).toBe(translate(`diagnostics.${({code: 'page-unavailable'}).code}.summary`, resolveUiLanguageFromLocale('zh-CN')));
     }
   });
 });

@@ -13,7 +13,7 @@ import hmacSha256 from 'crypto-js/hmac-sha256';
 import base64 from 'crypto-js/enc-base64';
 import {isApiKeyRequired} from "@/src/core/config/validation";
 import {createHttpStatusError, createImageInputHttpError, readJsonResponse} from '@/src/platform/http/errors';
-import {abortErrorFromSignal, runtimeFetch} from '@/src/platform/http/runtime';
+import {abortErrorFromSignal, cancelUnreadResponseBody, runtimeFetch} from '@/src/platform/http/runtime';
 import {
     requireTranslationProviderConfig,
     reportTranslationModelUsage,
@@ -82,7 +82,9 @@ async function zhipu(message: TranslationProviderRequest<string>) {
         if (!resp.ok) {
             reportTranslationModelUsageFailure(message, undefined, startedAt, configuredModel, resp.status);
             attemptReported = true;
-            throw getTranslationImageInput(message) ? await createImageInputHttpError(resp, '翻译失败') : createHttpStatusError(resp, '翻译失败');
+            const error = getTranslationImageInput(message) ? await createImageInputHttpError(resp, '翻译失败') : createHttpStatusError(resp, '翻译失败');
+            cancelUnreadResponseBody(resp);
+            throw error;
         }
         const result = await readJsonResponse<any>(resp, '智谱返回的不是有效 JSON');
         if (message.abortSignal?.aborted) throw abortErrorFromSignal(message.abortSignal);

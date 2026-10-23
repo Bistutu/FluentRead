@@ -18,7 +18,7 @@ const {createRequire} = require('node:module');
 const {randomUUID, createHash} = require('node:crypto');
 const focus = require('./focus-safe-browser.cjs');
 const {guardBrowserClose, getGuardedBrowserPid} = require('./owned-browser-close.cjs');
-const {installControlledProvider} = require('../site-translation/controlled-provider.cjs');
+const {installControlledProvider, isControlledTranslationForSource} = require('../site-translation/controlled-provider.cjs');
 const {assertFreshProductionExtension} = require('../run-site-translation-test.cjs');
 const FEED_URL = 'https://mastodon.social/@Mastodon';
 
@@ -141,12 +141,8 @@ function assertNativeSnapshot(state, {translated, ids, phase}) {
     assert.equal(row.pending, 0, `${phase}/${row.id}: pending or retry artifact`);
     assert.equal(row.translations.length, translated ? 1 : 0, `${phase}/${row.id}: wrong translation count`);
     if (translated) {
-      const normalize = text => text.replace(/\s+/g, ' ').trim();
-      const parts = row.sourceParts || [row.sourceText];
-      const inputs = [row.sourceText, parts.join(''), ...parts].map(normalize)
-        .filter(text => (text.match(/[A-Za-z]{2,}/g) || []).length >= 2);
-      const output = normalize(row.translations[0]);
-      assert.ok(inputs.some(source => output.includes(`测试译文：${source}`)), `${phase}/${row.id}: controlled response not proven`);
+      assert.ok(isControlledTranslationForSource(row.translations[0], row.sourceText, row.sourceParts),
+        `${phase}/${row.id}: controlled response not proven`);
     }
   }
   assert.equal(state.nested, 0, `${phase}: nested wrappers`); assert.equal(state.duplicateParents, 0, `${phase}: duplicate wrappers`);

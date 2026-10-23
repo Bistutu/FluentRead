@@ -15,7 +15,7 @@ import {
 import {stripTranslationReasoning as contentPostHandler} from '@/src/core/translation/prompts';
 import { appendOptionalBearer } from './auth';
 import {createHttpStatusError, createImageInputHttpError, readJsonResponse} from '@/src/platform/http/errors';
-import {abortErrorFromSignal, runtimeFetch} from '@/src/platform/http/runtime';
+import {abortErrorFromSignal, cancelUnreadResponseBody, runtimeFetch} from '@/src/platform/http/runtime';
 import {
     requireTranslationProviderConfig,
     getTranslationImageInput,
@@ -84,7 +84,9 @@ async function deepseek(message: TranslationProviderRequest<string>) {
         if (!resp.ok) {
             reportTranslationModelUsageFailure(message, undefined, startedAt, configuredModel, resp.status);
             attemptReported = true;
-            throw getTranslationImageInput(message) ? await createImageInputHttpError(resp, '翻译失败') : createHttpStatusError(resp, '翻译失败');
+            const error = getTranslationImageInput(message) ? await createImageInputHttpError(resp, '翻译失败') : createHttpStatusError(resp, '翻译失败');
+            cancelUnreadResponseBody(resp);
+            throw error;
         }
 
         const result = await readJsonResponse<any>(resp, 'DeepSeek 返回的不是有效 JSON');

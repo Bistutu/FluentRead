@@ -10,6 +10,22 @@ type Listener = (event: any) => unknown;
 class FakeTarget {
     listeners = new Map<string, Listener[]>();
     visibilityState = 'visible';
+    private frames = new Map<number, FrameRequestCallback>();
+    private frameSequence = 0;
+
+    requestAnimationFrame(callback: FrameRequestCallback): number {
+        const id = ++this.frameSequence;
+        this.frames.set(id, callback);
+        return id;
+    }
+
+    cancelAnimationFrame(id: number): void { this.frames.delete(id); }
+
+    flushFrame(): void {
+        const callbacks = [...this.frames.values()];
+        this.frames.clear();
+        callbacks.forEach(callback => callback(0));
+    }
     options = new Map<string, Array<boolean | AddEventListenerOptions | undefined>>();
 
     addEventListener(
@@ -219,6 +235,92 @@ describe('quick translation content feature', () => {
         expect(firstKeydown.stopImmediatePropagation).toHaveBeenCalledOnce();
         expect(secondKeydown.stopImmediatePropagation).toHaveBeenCalledOnce();
         expect(deps.resetLegacyKeyboardGestures).toHaveBeenCalled();
+    });
+
+    it.each(['disabled', 'removed', 'changed', 'unavailable'])(
+        '按住后方案 %s 时取消旧悬停手势，重新按键才采用最新配置', reason => {
+            let available = true;
+            const {deps, documentTarget, hoverT, windowTarget} = mountHarness({isProfileAvailable: () => available});
+            windowTarget.emit('keydown', keyboardEvent());
+            if (reason === 'disabled') hoverT.enabled = false;
+            if (reason === 'removed') deps.config.quickTranslationProfiles = [];
+            if (reason === 'changed') hoverT.targetLanguage = 'fr';
+            if (reason === 'unavailable') available = false;
+            documentTarget.emit('mousemove', pointerEvent({clientX: 22, clientY: 33}));
+            windowTarget.emit('keyup', keyboardEvent());
+            windowTarget.flushFrame();
+            expect(deps.runHover).not.toHaveBeenCalled();
+            expect(deps.cancelPendingHoverTranslation).toHaveBeenCalledOnce();
+            windowTarget.emit('keyup', keyboardEvent({key: 'Control', code: 'ControlLeft', ctrlKey: false}));
+            hoverT.enabled = true;
+            available = true;
+            deps.config.quickTranslationProfiles = [hoverT];
+            windowTarget.emit('keydown', keyboardEvent());
+            windowTarget.emit('keyup', keyboardEvent());
+            expect(deps.runHover).toHaveBeenCalledWith(hoverT, 22, 33);
+        },
+    );
+
+    it('连续移动首点立即执行，同帧突发只在下一帧采样最新坐标，松键提交末点', () => {
+        const {deps, documentTarget, hoverT, windowTarget} = mountHarness();
+        windowTarget.emit('keydown', keyboardEvent());
+        for (let index = 1; index <= 100; index++) {
+            documentTarget.emit('mousemove', pointerEvent({clientX: index, clientY: index + 1}));
+        }
+        expect(deps.runHover).toHaveBeenCalledTimes(1);
+        expect(deps.runHover).toHaveBeenLastCalledWith(hoverT, 1, 2, {delayMs: 90, continuous: true});
+        windowTarget.flushFrame();
+        expect(deps.runHover).toHaveBeenCalledTimes(2);
+        expect(deps.runHover).toHaveBeenLastCalledWith(hoverT, 100, 101, {delayMs: 90, continuous: true});
+        documentTarget.emit('mousemove', pointerEvent({clientX: 101, clientY: 102}));
+        windowTarget.emit('keyup', keyboardEvent());
+        windowTarget.flushFrame();
+        expect(deps.runHover).toHaveBeenCalledTimes(3);
+        expect(deps.runHover).toHaveBeenLastCalledWith(hoverT, 101, 102, {delayMs: 90, continuous: true});
+    });
+
+    it.each(['disabled', 'changed', 'selection'])(
+        '下一帧执行前 %s 会撤销突发采样，不翻译失效末点', reason => {
+            let selected = false;
+            const {deps, documentTarget, hoverT, windowTarget} = mountHarness({
+                getConfiguredSelectionHotkey: () => 'custom',
+                getCustomSelectionHotkey: () => 'Ctrl+T',
+                hasActiveSelectionTranslationCandidate: () => selected,
+            });
+            windowTarget.emit('keydown', keyboardEvent());
+            documentTarget.emit('mousemove', pointerEvent({clientX: 1, clientY: 2}));
+            documentTarget.emit('mousemove', pointerEvent({clientX: 3, clientY: 4}));
+            if (reason === 'disabled') deps.config.on = false;
+            if (reason === 'changed') hoverT.service = 'updated';
+            if (reason === 'selection') selected = true;
+            windowTarget.flushFrame();
+            expect(deps.runHover).toHaveBeenCalledOnce();
+            expect(deps.cancelPendingHoverTranslation).toHaveBeenCalledOnce();
+        },
+    );
+
+    it('静止重复坐标不增加采样，词库快照不受配置数组原位编辑影响', () => {
+        const {deps, documentTarget, hoverT, windowTarget} = mountHarness();
+        hoverT.glossaryIds = ['terms'];
+        windowTarget.emit('keydown', keyboardEvent());
+        documentTarget.emit('mousemove', pointerEvent({clientX: 1, clientY: 2}));
+        documentTarget.emit('mousemove', pointerEvent({clientX: 1, clientY: 2}));
+        windowTarget.flushFrame();
+        expect(deps.runHover).toHaveBeenCalledOnce();
+        hoverT.glossaryIds.push('other');
+        windowTarget.emit('keyup', keyboardEvent());
+        expect(vi.mocked(deps.runHover).mock.calls[0][0].glossaryIds).toEqual(['terms']);
+        expect(deps.cancelPendingHoverTranslation).toHaveBeenCalledOnce();
+    });
+
+    it('翻译派发中同步卸载后不会登记新的帧工作', () => {
+        const controller = new AbortController();
+        const {deps, documentTarget, windowTarget} = mountHarness({runHover: vi.fn(() => controller.abort())}, controller);
+        windowTarget.emit('keydown', keyboardEvent());
+        documentTarget.emit('mousemove', pointerEvent({clientX: 1, clientY: 2}));
+        windowTarget.flushFrame();
+        expect(deps.runHover).toHaveBeenCalledOnce();
+        expect(deps.cancelPendingHoverTranslation).toHaveBeenCalledOnce();
     });
 
     it('全文方案在命中 keydown 时立即执行并阻止旧单例监听器', () => {

@@ -203,9 +203,9 @@ describe('MyMemory 官方免费翻译适配器', () => {
             .rejects.toThrow('分片已取消');
         expect(fetchMock).not.toHaveBeenCalled();
     });
-    it.each(['http', 'abort'] as const)('MyMemory %s headers 后仍等待真实流式正文结算且保留错误分类', async mode => {
-        let body!: ReadableStreamDefaultController<Uint8Array>;
-        const response = new Response(new ReadableStream<Uint8Array>({start(controller) {body = controller;}}),
+    it.each(['http', 'abort'] as const)('MyMemory %s headers 后取消未读正文，不等待其结束或取消握手', async mode => {
+        const cancel = vi.fn(() => new Promise<void>(() => {}));
+        const response = new Response(new ReadableStream<Uint8Array>({cancel}),
             {status: mode === 'http' ? 429 : 200, headers: {'Retry-After': '12'}});
         const signal = new AbortController();
         const reason = new Error('cancelled after headers');
@@ -216,20 +216,20 @@ describe('MyMemory 官方免费翻译适配器', () => {
             error => {settled = true; return error;},
         );
         await new Promise(resolve => setTimeout(resolve, 0));
-        expect(settled).toBe(false);
-        body.close();
+        expect(settled).toBe(true);
+        expect(cancel).toHaveBeenCalledOnce();
         const error = await result;
         if (mode === 'abort') expect(error).toBe(reason);
         else expect(error).toMatchObject({statusCode: 429, retryAfterMs: 12000});
     });
 
-    it('MyMemory 错误正文读取失败不覆盖原 HTTP 状态', async () => {
-        let body!: ReadableStreamDefaultController<Uint8Array>;
-        const response = new Response(new ReadableStream<Uint8Array>({start(controller) {body = controller;}}), {status: 503});
+    it('MyMemory 错误正文取消失败不覆盖原 HTTP 状态', async () => {
+        const cancel = vi.fn(() => Promise.reject(new Error('cleanup failure')));
+        const response = new Response(new ReadableStream<Uint8Array>({cancel}), {status: 503});
         fetchMock.mockImplementationOnce(async () => response);
         const result = translateMyMemoryText('Hello', withProviderSnapshot({sourceLanguage: 'en'}, mockConfig)).catch(error => error);
         await new Promise(resolve => setTimeout(resolve, 0));
-        body.error(new Error('body failed'));
+        expect(cancel).toHaveBeenCalledOnce();
         expect(await result).toMatchObject({statusCode: 503});
     });
 

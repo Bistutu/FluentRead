@@ -1,4 +1,5 @@
 import {parseHTML} from 'linkedom';
+import {installFilteredTreeWalker} from './helpers/filteredTreeWalker';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {getPageTranslationContext, resetPageTranslationContextCache} from '@/userscript/pageContext';
 
@@ -6,24 +7,7 @@ const filterConstants = {SHOW_ELEMENT: 1, SHOW_TEXT: 4, FILTER_ACCEPT: 1, FILTER
 
 function usePage(html: string, url: string): Document {
     const {document, window} = parseHTML(html);
-    // LinkeDOM does not apply TreeWalker's acceptNode filter; use the DOM-standard
-    // pruning behavior so the test exercises FluentRead's actual exclusion policy.
-    document.createTreeWalker = ((root: Node, _whatToShow: number, filter: NodeFilter) => {
-        const nodes: Node[] = [];
-        const visit = (node: Node): void => {
-            if (node.nodeType === window.Node.ELEMENT_NODE) {
-                const result = typeof filter === 'function' ? filter(node) : filter.acceptNode(node);
-                if (result === filterConstants.FILTER_REJECT) return;
-                nodes.push(node);
-                for (const child of [...node.childNodes]) visit(child);
-            } else if (node.nodeType === window.Node.TEXT_NODE) {
-                nodes.push(node);
-            }
-        };
-        for (const child of [...root.childNodes]) visit(child);
-        let index = 0;
-        return {nextNode: () => nodes[index++] || null} as TreeWalker;
-    }) as typeof document.createTreeWalker;
+    installFilteredTreeWalker(document as unknown as Document);
     vi.stubGlobal('document', document);
     vi.stubGlobal('Node', window.Node);
     vi.stubGlobal('NodeFilter', filterConstants);

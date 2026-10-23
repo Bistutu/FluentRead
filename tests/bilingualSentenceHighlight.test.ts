@@ -8,6 +8,20 @@ import {DEFAULT_SENTENCE_HIGHLIGHT_APPEARANCE, MAX_SENTENCE_HIGHLIGHT_PROFILES, 
 
 describe('sentence highlight custom appearance', () => {
     afterEach(() => vi.unstubAllGlobals());
+    it('restores the enabled marker after the page replaces its root without reinstalling the document controller', () => {
+        const f = fixture();
+        syncBilingualSentenceHighlight(f.document, true, 'mint');
+        const originalRegistry = f.registry.get(BILINGUAL_HIGHLIGHT_NAME);
+        const root = f.document.createElement('html');
+        root.innerHTML = '<head></head><body><p>Next page</p></body>';
+        f.document.documentElement.replaceWith(root);
+        syncBilingualSentenceHighlight(f.document, true, 'mint');
+        expect(root.getAttribute('data-fr-bilingual-sentence-highlight')).toBe('true');
+        expect(root.getAttribute('data-fr-bilingual-sentence-highlight-style')).toBe('mint');
+        expect(f.registry.get(BILINGUAL_HIGHLIGHT_NAME)).toBe(originalRegistry);
+        syncBilingualSentenceHighlight(f.document, false);
+        expect(root.hasAttribute('data-fr-bilingual-sentence-highlight')).toBe(false);
+    });
     it('migrates old settings without changing the preset or enabled state, and keeps defaults independent', () => {
         for (const value of [undefined, null, false, 42, '', 'broken', [], {}]) {
             expect(normalizeSentenceHighlightAppearance(value)).toEqual(DEFAULT_SENTENCE_HIGHLIGHT_APPEARANCE);
@@ -263,6 +277,33 @@ describe('paint-only bilingual hover lifecycle', () => {
         f.document.dispatchEvent(new f.window.Event('pointermove')); f.flush(); expect(f.highlighted()).toEqual([]);
         f.select(); f.move(); expect(f.highlighted()).toEqual([]);
         f.move('#owner', 20, 15, 0, false); dispose(); expect(f.frames.size).toBe(0);
+    });
+    it('observes the actual ShadowRoot and clears stale sentence ranges after its text changes', () => {
+        const f = fixture();
+        const owner = f.document.querySelector('#owner')!;
+        const host = f.document.createElement('div');
+        f.document.body.appendChild(host);
+        const outerShadow = host.attachShadow({mode: 'open'});
+        const innerHost = f.document.createElement('section');
+        outerShadow.appendChild(innerHost);
+        const shadow = innerHost.attachShadow({mode: 'open'});
+        shadow.appendChild(owner);
+        const dispose = installBilingualSentenceHighlight(f.document);
+        const point = new f.window.Event('pointermove');
+        Object.assign(point, {clientX: 20, clientY: 15, buttons: 0, composedPath: () => [owner, shadow, host, f.document]});
+        f.document.dispatchEvent(point); f.flush();
+        expect(f.highlighted()).toEqual(['First.', '一句。']);
+        expect(f.observe.mock.calls.some(([root]) => root === shadow)).toBe(true);
+        expect(f.observe.mock.calls.some(([root]) => root === outerShadow)).toBe(true);
+        owner.firstChild!.textContent = 'Changed. Second.';
+        f.mutate(owner.firstChild!);
+        expect(f.highlighted()).toEqual([]);
+        f.document.dispatchEvent(point); f.flush();
+        expect(f.highlighted()).toEqual(['Changed.', '一句。']);
+        f.mutate(host);
+        expect(f.highlighted()).toEqual([]);
+        dispose();
+        expect(f.highlighted()).toEqual([]);
     });
     it('invalidates changed sentences and detached owners, but ignores unrelated mutations', () => {
         const f = fixture(); const dispose = installBilingualSentenceHighlight(f.document);

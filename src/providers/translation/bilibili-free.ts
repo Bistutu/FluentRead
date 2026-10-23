@@ -11,7 +11,7 @@ import {translationLanguageOptions} from '@/src/core/language/catalog';
 import {serializeTranslationSlots} from '@/src/core/translation/slotProtocol';
 import {getTranslationGlossarySourceText, requireTranslationProviderConfig} from '@/src/services/translation/requestSnapshot';
 import type {TranslationProviderRequest} from '@/src/services/translation/types';
-import {abortErrorFromSignal, runtimeFetch} from '@/src/platform/http/runtime';
+import {abortErrorFromSignal, cancelUnreadResponseBody, runtimeFetch} from '@/src/platform/http/runtime';
 import {createHttpStatusError, readJsonResponse} from '@/src/platform/http/errors';
 
 export const BILIBILI_FREE_TRANSLATION_URL = `https://${BILIBILI_FREE_TRANSLATION_DOMAIN}/v1/chat/completions`;
@@ -55,11 +55,7 @@ async function translateChunk(text: string, source: string, target: string, sign
         if (!result || result.includes('<think>') || result.includes('</think>')) throw new Error('B站翻译没有返回有效译文');
         return result;
     } finally {
-        // 错误页和取消后的正文已无消费价值：直接终止原始流，不复制排空。
-        // cancel 会立即请求停止传输，但其确认 Promise 也可能不结算，不能阻塞原始 HTTP/取消错误。
-        if (!response.bodyUsed) {
-            try { void response.body?.cancel().catch(() => undefined); } catch {}
-        }
+        cancelUnreadResponseBody(response);
     }
 }
 

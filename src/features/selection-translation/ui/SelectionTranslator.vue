@@ -170,7 +170,7 @@
       <div v-for="edge in popupResizeEdges" :key="edge" class="fr-popup-resize-handle" :class="`fr-popup-resize-${edge}`" :data-resize-edge="edge" aria-hidden="true" />
     </section>
 
-    <div v-if="noticeMessage" class="fr-action-toast" :class="{ 'fr-dark-theme': isDarkTheme }" :style="noticeViewportStyle" role="status"><span>{{ noticeMessage }}</span><button v-if="noticeAction === 'open-vocabulary'" type="button" @click="openVocabularyBook">查看</button><button v-else-if="noticeAction === 'open-local-tts'" type="button" @click="openLocalTtsSettings">设置</button></div>
+    <div v-if="noticeMessage" class="fr-action-toast" :class="{ 'fr-dark-theme': isDarkTheme }" :style="noticeViewportStyle" role="status"><span>{{ noticeMessage }}</span><button v-if="noticeAction === 'open-vocabulary'" type="button" @click="openNoticeSettings">查看</button><button v-else-if="noticeAction === 'open-local-tts'" type="button" @click="openNoticeSettings">设置</button></div>
     <div v-else-if="copySuccess" class="fr-copy-success-toast" :class="{ 'fr-dark-theme': isDarkTheme }" role="status">{{ copySuccessMessage }}</div>
   </div>
 </template>
@@ -1197,11 +1197,14 @@ function scheduleIndicatorHover(event: PointerEvent): void {
 }
 
 async function openSelectionSettings(): Promise<void> {
+  const selection = snapshot.value, requestId = translationRequestId;
+  const isCurrent = () => !componentDisposed && showTooltip.value && snapshot.value === selection && translationRequestId === requestId;
+  if (!isCurrent()) return;
   try {
     const response = await browser.runtime.sendMessage({type: 'openOptionsPage', section: 'settings-selection'});
-    if (response && typeof response === 'object' && 'success' in response && response.success === false) showNotice('请从扩展设置进入划词翻译');
+    if (response && typeof response === 'object' && 'success' in response && response.success === false && isCurrent()) showNotice('请从扩展设置进入划词翻译');
   }
-  catch { showNotice('请从扩展设置进入划词翻译'); }
+  catch { if (isCurrent()) showNotice('请从扩展设置进入划词翻译'); }
 }
 
 function isAuthenticationErrorCurrent(authentication: SelectionAuthenticationError | null): boolean {
@@ -1441,16 +1444,25 @@ function showNotice(message: string, action: 'open-vocabulary' | 'open-local-tts
   noticeTimer = window.setTimeout(() => { noticeMessage.value = ''; noticeAction.value = null; }, 2600);
 }
 
-function openVocabularyBook(): void {
-  void browser.runtime.sendMessage({type: 'openOptionsPage', section: 'settings-vocabulary'});
-  noticeMessage.value = '';
-  noticeAction.value = null;
-}
-
-function openLocalTtsSettings(): void {
-  void browser.runtime.sendMessage({type: 'openOptionsPage', section: 'settings-selection'});
-  noticeMessage.value = '';
-  noticeAction.value = null;
+async function openNoticeSettings(): Promise<void> {
+  const action = noticeAction.value, timer = noticeTimer;
+  if (!action || !noticeMessage.value || componentDisposed) return;
+  const isCurrent = () => !componentDisposed && noticeTimer === timer && noticeAction.value === action && Boolean(noticeMessage.value);
+  try {
+    const response = await browser.runtime.sendMessage({type: 'openOptionsPage',
+      section: action === 'open-vocabulary' ? 'settings-vocabulary' : 'settings-selection'}) as {success?: unknown} | undefined;
+    if (!isCurrent()) return;
+    if (response?.success !== true) {
+      showNotice('无法打开设置，请从扩展菜单打开设置后重试', action);
+      return;
+    }
+    if (noticeTimer !== null) window.clearTimeout(noticeTimer);
+    noticeTimer = null;
+    noticeMessage.value = '';
+    noticeAction.value = null;
+  } catch {
+    if (isCurrent()) showNotice('无法打开设置，请从扩展菜单打开设置后重试', action);
+  }
 }
 
 async function requestTranslation(request: SelectionContentRequest): Promise<void> {
@@ -1584,8 +1596,10 @@ function copyButtonTitle(kind: CopyKind): string {
 async function copyText(text: string, kind: CopyKind): Promise<void> {
   const value = text.trim();
   if (!value) return;
+  const owner = translationRequestId;
   try {
     await navigator.clipboard.writeText(value);
+    if (componentDisposed || owner !== translationRequestId) return;
     copiedTextKind.value = kind;
     copySuccess.value = true;
     if (copyTimer !== null) window.clearTimeout(copyTimer);

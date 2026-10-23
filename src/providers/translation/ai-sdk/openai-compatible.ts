@@ -1,8 +1,8 @@
 /**
  * @file src/providers/translation/ai-sdk/openai-compatible.ts
- * 文件职责：为扩展与标准 userscript 保持原 AI SDK 的 OpenAI 兼容非流式执行入口。
+ * 文件职责：为扩展与 Greasy Fork 保持原 AI SDK 的 OpenAI 兼容非流式执行入口。
  * 主要内容：将共享准备层提供的请求、HTTP 包装器和取消信号交给锁定 SDK，保留 SDK 重试与异常识别；公开请求类型和常量沿用原路径。
- * 模块边界：仅负责 SDK 装配，payload、租约、用量、请求预算和文本清洗由 openai-transport 统一管理；standalone 构建通过自有入口选择紧凑 HTTP 执行器，不替换 SDK API。
+ * 模块边界：仅负责 SDK 装配，payload、租约、用量、请求预算和文本清洗由 openai-transport 统一管理；直接安装的脚本通过自有入口选择紧凑 HTTP 执行器，不替换 SDK API。
  */
 import {createOpenAICompatible} from '@ai-sdk/openai-compatible';
 import {generateText} from 'ai';

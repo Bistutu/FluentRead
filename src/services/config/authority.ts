@@ -1,7 +1,7 @@
 /**
  * @file src/services/config/authority.ts
  * 文件职责：独立持有一个配置权威实例的公开快照、凭据水合、存储观察和唯一落盘状态。
- * 主要内容：保护 revision、计数日志与凭据迁移，保留原子多键提交和失败重试；客户端拥有在途字段与 ACK，历史拥有自己的快照队列，权威端只通过类型化端口协作。
+ * 主要内容：保护 revision、计数日志与凭据迁移，保留原子多键提交和失败重试；客户端拥有在途字段与 ACK，历史拥有自己的快照队列，权威端只通过类型化端口协作；订阅者异常与水合、落盘和后续通知隔离。
  * 模块边界：导入和构造均不启动 I/O；start 明确注册观察并水合，具体浏览器存储与可信上下文由默认组装根注入。
  */
 import type {ConfigStoragePort} from '@/src/platform/storage/configStorage';
@@ -129,9 +129,15 @@ export function createConfigAuthority(dependencies: ConfigAuthorityDependencies)
         };
     }
 
+    function notifyListener(listener: ConfigListener, snapshot: Config): void {
+        try {listener(snapshot);}
+        catch {console.warn('[FluentRead] 配置订阅通知失败');}
+    }
+
     function notifyListeners(nextConfig: Config): void {
         const snapshot = normalizeConfig(nextConfig);
-        listeners.forEach((listener) => listener(snapshot));
+        // UI/副作用订阅失败不能被 initializeConfig 误判为迁移失败，也不能阻止落盘。
+        listeners.forEach((listener) => notifyListener(listener, snapshot));
     }
 
     function applyConfig(nextConfig: Config): void {
@@ -575,7 +581,7 @@ export function createConfigAuthority(dependencies: ConfigAuthorityDependencies)
 
     function subscribeConfig(listener: ConfigListener): () => void {
         listeners.add(listener);
-        if (initialized) listener(normalizeConfig(config));
+        if (initialized) notifyListener(listener, normalizeConfig(config));
         return () => listeners.delete(listener);
     }
 

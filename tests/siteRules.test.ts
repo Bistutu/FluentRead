@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {listSitePreferences, previewSitePreferences, updateSitePreference} from '@/src/features/settings/model/sitePreferences';
-import {createSiteRuleText, getSiteRuleTextSources} from '@/src/core/i18n/messages/siteRules';
+import {createSiteRuleText, siteRuleTextRows} from '@/src/core/i18n/messages/siteRules';
 
 import {
     getSiteBaseDomain,
@@ -123,7 +123,7 @@ describe('页面私有网站规则索引', () => {
 
 describe('网站规则工作区文案', () => {
     it('为全部六种非中文界面提供独立、无重复且非空的完整文案', () => {
-        const sources = getSiteRuleTextSources();
+        const sources = siteRuleTextRows.map(row => row[0]);
         expect(new Set(sources).size).toBe(sources.length);
         for (const locale of ['en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES'] as const) {
             const translated = createSiteRuleText(locale);
@@ -279,8 +279,6 @@ describe('统一网站偏好与生效解释', () => {
             {domain: 'example.com', alwaysTranslate: true, extensionDisabled: true, floatingBallHidden: true},
             {domain: 'other.test', alwaysTranslate: false, extensionDisabled: false, floatingBallHidden: true},
         ]);
-        expect(listSitePreferences(source, '  EXAMPLE ')).toEqual([rows[0]]);
-        expect(listSitePreferences(source, 'missing')).toEqual([]);
         expect(source.alwaysTranslateDomains).toHaveLength(2);
     });
     it('编辑与删除只影响目标域名，不突变源名单，撤销可以完整补回', () => {

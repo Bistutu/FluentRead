@@ -1,7 +1,7 @@
 /**
  * @file src/providers/translation/free-chinese-web.ts
  * 文件职责：适配有道网页普通翻译和金山词霸匿名网页翻译接口。
- * 主要内容：按码点预算且不切术语标记，生成公开网页协议所需签名，解密词霸响应，限制支持的中英方向；auto 使用解码正文槽的可信语言证据，明确非中英时以请求错误交回既有换线流程，不让英文协议标记决定源语言；有道按安全长度分块，拒绝响应明确声明的反向翻译，仅按本块完整身份恢复服务删除下划线的术语标记，缺失、重复或身份变化仍失败；保留文本槽、换行、边缘空白、取消和结构化失败分类，取消或 HTTP 失败后等待未读正文结算再归还免费池容量。
+ * 主要内容：按码点预算且不切术语标记，生成公开网页协议所需签名，解密词霸响应，限制支持的中英方向；auto 使用解码正文槽的可信语言证据，明确非中英时以请求错误交回既有换线流程，不让英文协议标记决定源语言；有道按安全长度分块，拒绝响应明确声明的反向翻译，仅按本块完整身份恢复服务删除下划线的术语标记，缺失、重复或身份变化仍失败；保留文本槽、换行、边缘空白、取消和结构化失败分类，取消或 HTTP 失败后直接取消未读正文，不等待错误页 EOF。
  * 模块边界：本文件只负责固定匿名 HTTP provider；不读取账号、Cookie、用户密钥、代理或存储，不负责免费服务编排、重试和并发。
  */
 import AES from 'crypto-js/aes';
@@ -15,7 +15,7 @@ import {detectChineseScript} from '@/src/core/language/detect';
 import {identifyTextLanguage} from '@/src/core/language/identify';
 import {serializeTranslationSlots} from '@/src/core/translation/serialization';
 import {getTranslationGlossarySourceText} from '@/src/services/translation/requestSnapshot';
-import {abortErrorFromSignal, runtimeFetch} from '@/src/platform/http/runtime';
+import {abortErrorFromSignal, cancelUnreadResponseBody, runtimeFetch} from '@/src/platform/http/runtime';
 import {createHttpStatusError, readJsonResponse} from '@/src/platform/http/errors';
 import {GlossaryPlaceholderError, validateGlossaryProtectedTokens} from '@/src/core/glossary/protection';
 
@@ -179,10 +179,7 @@ async function fetchJson(provider: FreeChineseWebProvider, query: string, from: 
         if (typeof result.out !== 'string' || !result.out.trim()) throw failure('词霸返回内容无效', 'unavailable');
         return result.out;
     } finally {
-        // 取消或 HTTP 错误也须等未消费的正文结算，免费池才能归还真实在途容量。
-        if (response.bodyUsed === false) {
-            try { await response.clone().arrayBuffer(); } catch { /* 正文排空失败保留原来的 HTTP、取消或解析分类。 */ }
-        }
+        cancelUnreadResponseBody(response);
     }
 }
 

@@ -11,7 +11,7 @@ import {geminiMsgTemplate} from '@/src/services/translation/templates';
 import {customModelString} from "@/src/core/config/catalog";
 import {appendOptionalHeader} from './auth';
 import {createHttpStatusError, createImageInputHttpError, readJsonResponse} from '@/src/platform/http/errors';
-import {abortErrorFromSignal, createRuntimeAbortContext, runtimeFetch} from '@/src/platform/http/runtime';
+import {abortErrorFromSignal, cancelUnreadResponseBody, createRuntimeAbortContext, runtimeFetch} from '@/src/platform/http/runtime';
 import {normalizeAiRequestTimeoutMs} from '@/src/core/config/aiRequestTimeout';
 import {
     requireTranslationProviderConfig,
@@ -74,7 +74,9 @@ async function gemini(message: TranslationProviderRequest<string>) {
         if (!resp.ok) {
             reportTranslationModelUsageFailure(message, undefined, startedAt, model, resp.status);
             attemptReported = true;
-            throw getTranslationImageInput(message) ? await createImageInputHttpError(resp, '翻译失败') : createHttpStatusError(resp, '翻译失败');
+            const error = getTranslationImageInput(message) ? await createImageInputHttpError(resp, '翻译失败') : createHttpStatusError(resp, '翻译失败');
+            cancelUnreadResponseBody(resp);
+            throw error;
         }
         const result = await readJsonResponse<any>(resp, 'Gemini 返回的不是有效 JSON');
         if (abortContext.signal.aborted) throw abortErrorFromSignal(abortContext.signal);

@@ -4,12 +4,24 @@ import {mkdtempSync, readFileSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {parseHTML} from 'linkedom';
+import {isClearlyWrongLanguageResponse, isLikelyUntranslatedResponse} from '@/src/core/translation/resultValidation';
+import {shouldSkipTranslationForTarget} from '@/src/core/language/detect';
+import {protectGlossaryText} from '@/src/core/glossary/protection';
+import {createTranslationSourceSnapshot, applyTranslationsToSnapshot, buildWholeBlockTranslationSource} from '@/src/core/translation/serialization';
+import {createTranslationCore} from './helpers/translationCore';
+import {appendBilingualTranslation} from '@/src/features/full-page-translation/content/renderer';
+import {translateMicrosoftTextsWithTransport} from '@/src/providers/translation/microsoftTransport';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+
+vi.mock('@/src/services/config/store', () => ({config: {style: 1, to: 'zh-Hans'}}));
+vi.mock('@/src/core/config/catalog', () => ({options: {styles: []}}));
+vi.mock('@/src/features/full-page-translation/content/layout', () => ({ensureTranslationTruncationLayout: vi.fn()}));
 
 const require = createRequire(import.meta.url);
 const {installStabilityProbeInPage, assertStableSnapshot, runStabilityProbes, runNativeCommentToggle} = require('../scripts/site-translation/stability-probes.cjs');
 const {MarionetteClient, parseArgs: parseFirefoxArgs, assertPageSnapshot} = require('../scripts/testing/run-web-stability-firefox-test.cjs');
 const {parseArgs: parseNativeFeedArgs, installNativeFeedTracker, assertNativeSnapshot} = require('../scripts/testing/run-web-native-feed-test.cjs');
+const {encodeControlledTranslation, decodeControlledTranslationText, isControlledTranslationForSource, readControlledPageEvidenceInPage, assertControlledPageEvidence} = require('../scripts/site-translation/controlled-provider.cjs');
 const key = '__testStabilityProbe';
 const wrapper = '.fluent-read-bilingual-content';
 const source = 'This paragraph is a complete source passage with a protected ';
@@ -378,7 +390,7 @@ describe('controlled provider attribution', () => {
   const originalFetch = globalThis.fetch;
   afterEach(() => {globalThis.fetch = originalFetch; delete transportGlobal.__frCompatibilityTransport;});
   async function setup() {
-    const worker = {url: () => 'chrome-extension://isolated/background.js', evaluate: async (fn: () => unknown) => fn()};
+    const worker = {url: () => 'chrome-extension://isolated/background.js', evaluate: async (fn: (value?: boolean) => unknown, value?: boolean) => fn(value)};
     let workers = [worker];
     const context = Object.assign(new EventEmitter(), {serviceWorkers: () => workers});
     const popup = {goto: vi.fn(), evaluate: vi.fn().mockResolvedValue({success: true}), close: vi.fn()};
@@ -391,11 +403,321 @@ describe('controlled provider attribution', () => {
     const {api, context} = await setup();
     await expect(api.snapshot()).rejects.toThrow('no completed request evidence');
     const result = await fetch('https://edge.microsoft.com/translate/translatetext', {method: 'POST', body: JSON.stringify(['Reading source'])});
-    expect(await result.json()).toEqual([{translations: [{text: '测试译文：Reading source'}]}]);
+    expect(await result.json()).toEqual([{translations: [{text: encodeControlledTranslation('Reading source')}]}]);
     await expect(api.snapshot()).resolves.toMatchObject({mode: 'controlled-microsoft-response', workerCount: 1, requests: 1, texts: 1, active: 0});
     expect(await (await fetch('https://example.test/public')).text()).toBe('public page');
     expect(fetchOther).toHaveBeenCalledOnce();
     api.dispose(); expect(context.listenerCount('serviceworker')).toBe(0);
+  });
+  it('passes the real Microsoft transport and language validator for long English prose without echoing the source', async () => {
+    const source = 'The researchers discovered that modern translation systems require careful evaluation across different websites because unexpected changes in document structure can interrupt the reading experience and prevent readers from understanding important information.';
+    expect(isClearlyWrongLanguageResponse(source, `测试译文：${source}`, 'zh-Hans')).toBe(true);
+    const {api} = await setup();
+    try {
+      const [translated] = await translateMicrosoftTextsWithTransport(fetch, [source], 'en', 'zh-Hans');
+      expect(isClearlyWrongLanguageResponse(source, translated!, 'zh-Hans')).toBe(false);
+      expect(isLikelyUntranslatedResponse(source, translated!, 'zh-Hans')).toBe(false);
+      expect(translated).not.toContain(source);
+    } finally {api.dispose();}
+  });
+  it('round-trips Unicode and complete concatenated slots, rejecting echoes, missing slots, swapped sources and extra text', () => {
+    for (const source of ['Reading source', 'Café researchers — 中文与 emoji 🦊', 'A complete source with 123 numeric values.']) {
+      const encoded = encodeControlledTranslation(source);
+      expect(decodeControlledTranslationText(encoded)).toBe(source);
+      expect(isControlledTranslationForSource(encoded, source)).toBe(true);
+      expect(isControlledTranslationForSource(`测试译文：${source}`, source)).toBe(false);
+      expect(isControlledTranslationForSource(encoded, `${source} missing`)).toBe(false);
+      expect(isControlledTranslationForSource(`${encoded} foreign residue`, source)).toBe(false);
+      expect(isControlledTranslationForSource(encoded + encodeControlledTranslation('another source'), source)).toBe(false);
+    }
+    const parts = ['Public source ', 'and another paragraph'];
+    const translated = parts.map(encodeControlledTranslation).join('');
+    expect(isControlledTranslationForSource(translated, parts.join(''), parts)).toBe(true);
+    expect(isControlledTranslationForSource(encodeControlledTranslation(parts[0]), parts.join(''), parts)).toBe(false);
+    expect(isControlledTranslationForSource(parts.toReversed().map(encodeControlledTranslation).join(''), parts.join(''), parts)).toBe(false);
+    expect(decodeControlledTranslationText('测试译文：仿')).toBeNull(); // Invalid standalone UTF-8 byte.
+    expect(decodeControlledTranslationText('测试译文：')).toBeNull();
+    expect(encodeControlledTranslation('  \n')).toBe('  \n');
+    expect(() => encodeControlledTranslation(null)).toThrow('requires a string');
+  });
+  it('preserves inline slot delimiters, tags and literal entities through the real Microsoft escaping boundary', async () => {
+    const {api} = await setup();
+    try {
+      const source = 'A readable paragraph with &amp; &copy; &#169; &#xA9; "quoted text" & symbols <g1>inside text</g1> ___FLUENTREAD_test_0_BEGIN___another readable slot___FLUENTREAD_test_0_END___.';
+      const [translated] = await translateMicrosoftTextsWithTransport(fetch, [source], 'en', 'zh-Hans');
+      for (const token of ['&amp;', '&copy;', '&#169;', '&#xA9;', '<g1>', '</g1>', '___FLUENTREAD_test_0_BEGIN___', '___FLUENTREAD_test_0_END___']) {
+        expect(translated!.split(token)).toHaveLength(2);
+      }
+      expect(translated).not.toContain('readable');
+      expect(isClearlyWrongLanguageResponse(source, translated!, 'zh-Hans')).toBe(false);
+      const [entityText] = await translateMicrosoftTextsWithTransport(fetch, ['Reading &copy; and & quotation "example"'], 'en', 'zh-Hans');
+      expect(isControlledTranslationForSource(entityText, 'Reading &copy; and & quotation "example"')).toBe(true);
+      const requested = new Request('https://edge.microsoft.com/translate/translatetext', {method: 'POST', body: JSON.stringify(['Request body'])});
+      expect(await (await fetch(requested)).json()).toEqual([{translations: [{text: encodeControlledTranslation('Request body')}]}]);
+      await expect(fetch('https://edge.microsoft.com/translate/translatetext', {method: 'POST', body: '{}'})).rejects.toThrow('text array');
+      await expect(api.snapshot()).resolves.toMatchObject({protocol: 'utf8-han-v1', active: 0});
+    } finally {api.dispose();}
+  });
+  it('preserves real glossary and literal-symbol placeholders through Microsoft and restores them exactly once', async () => {
+    const original = '© roadmap.sh Terms and Privacy. Read the complete documentation.';
+    const packet = protectGlossaryText(original, [], 'controlled-site', [], undefined, [{start: 0, end: 1}]);
+    expect(packet.tokens).toHaveLength(1);
+    const {api} = await setup();
+    try {
+      const [translated] = await translateMicrosoftTextsWithTransport(fetch, [packet.text], 'en', 'zh-Hans');
+      const restored = packet.restore(translated);
+      expect(isControlledTranslationForSource(restored, original)).toBe(true);
+      expect(isClearlyWrongLanguageResponse(original, restored, 'zh-Hans')).toBe(false);
+      expect(() => packet.restore(translated!.replace(packet.tokens[0]!, ''))).toThrow('术语');
+      expect(() => packet.restore(translated + packet.tokens[0]!)).toThrow('术语');
+      expect(() => packet.restore(translated!.replace(packet.tokens[0]!, '__FRTERM_wrong_0__'))).toThrow('术语');
+    } finally {api.dispose();}
+  });
+  it('checks real rendered formula skeletons using presentation text without double-counting nested MathML annotations', () => {
+    const {document, window} = parseHTML('<html><body><p>Read the algorithm <math class="ltx_Math"><semantics><mrow><mn>1</mn><mo>−</mo><mi>b</mi><mi>i</mi><mi>t</mi></mrow><annotation encoding="application/x-tex">1-bit</annotation></semantics></math> and <span class="katex"><span class="katex-mathml"><math><mi>x</mi></math></span><span class="katex-html" aria-hidden="true"><span>x</span></span></span> carefully.</p></body></html>');
+    vi.stubGlobal('document', document);vi.stubGlobal('Node', window.Node);
+    try {
+      const owner = document.querySelector('p')!;
+      const snapshot = createTranslationSourceSnapshot(owner);
+      const html = applyTranslationsToSnapshot(snapshot, snapshot.slots.map(slot => encodeControlledTranslation(slot.source)));
+      const translation = appendBilingualTranslation(owner, html, {sourceSkeleton: snapshot.clone});
+      expect(translation.querySelector('annotation,.katex-mathml')).toBeNull();
+      const evidence = readControlledPageEvidenceInPage();
+      expect(evidence[0].protectedMatches).toHaveLength(2);
+      expect(assertControlledPageEvidence(evidence, 'real-formula')).toMatchObject({owners: 1});
+      translation.querySelector('math mi')!.textContent = 'wrong';
+      expect(() => assertControlledPageEvidence(readControlledPageEvidenceInPage(), 'changed-formula')).toThrow('complete source');
+      translation.querySelector('math')!.remove();
+      expect(() => assertControlledPageEvidence(readControlledPageEvidenceInPage(), 'missing-formula')).toThrow('complete source');
+    } finally {vi.unstubAllGlobals();}
+  });
+  it('exempts only observed hidden decoration, keeping visible or unreadable-style omissions as failures', () => {
+    const {document, window} = parseHTML('<html><body><h1>Energy-Efficient Naming in Beeping Networks<span class="journal-decoration">Volume: 178 Issue: 1</span></h1></body></html>');
+    let hidden = true, unavailable = false;
+    Object.defineProperty(window, 'getComputedStyle', {configurable: true, value: (node: Element) => {
+      if (unavailable) throw new Error('style unavailable');
+      return {display: 'inline', visibility: node.classList.contains('journal-decoration') && hidden ? 'hidden' : 'visible', fontFamily: 'Arial'};
+    }});
+    vi.stubGlobal('document', document);vi.stubGlobal('Node', window.Node);
+    try {
+      const owner = document.querySelector('h1')!;
+      const snapshot = createTranslationSourceSnapshot(owner);
+      appendBilingualTranslation(owner, applyTranslationsToSnapshot(snapshot, snapshot.slots.map(slot => encodeControlledTranslation(slot.source))), {sourceSkeleton: snapshot.clone});
+      const evidence = readControlledPageEvidenceInPage();
+      expect(evidence[0].omittedParts).toContainEqual({tag: 'span', text: 'Volume: 178 Issue: 1', reason: 'computed-hidden'});
+      expect(assertControlledPageEvidence(evidence, 'computed-hidden-decoration')).toMatchObject({owners: 1});
+      hidden = false;
+      expect(() => assertControlledPageEvidence(readControlledPageEvidenceInPage(), 'visible-decoration')).toThrow('complete source');
+      hidden = true;unavailable = true;
+      expect(() => assertControlledPageEvidence(readControlledPageEvidenceInPage(), 'missing-style-evidence')).toThrow('complete source');
+    } finally {vi.unstubAllGlobals();}
+  });
+  it.each([
+    {clip: 'rect(0px, 0px, 0px, 0px)'},
+    {clip: 'rect(1px 1px 1px 1px)'},
+    {clip: 'auto', clipPath: 'inset(50%)'},
+  ])('projects observed clipped accessibility boxes exactly as the real snapshot does: %j', clipping => {
+    const {document, window} = parseHTML('<html><body><li><a href="#note"><span class="cite-accessibility-label">Jump up to: </span></a> U.S. nominal and PPP-adjusted GDP are the same.</li></body></html>');
+    const hiddenStyle = {display: 'inline', visibility: 'visible', fontFamily: 'Arial', position: 'absolute', overflow: 'hidden', overflowX: 'hidden', overflowY: 'hidden', width: '1px', height: '1px', clipPath: 'none', ...clipping};
+    let style: Record<string, string> = {...hiddenStyle}, unavailable = false;
+    Object.defineProperty(window, 'getComputedStyle', {configurable: true, value: (node: Element) => {
+      if (unavailable) throw new Error('Style unavailable');
+      return node.classList.contains('cite-accessibility-label') ? style : {display: 'block', visibility: 'visible', fontFamily: 'Arial'};
+    }});
+    vi.stubGlobal('document', document);vi.stubGlobal('Node', window.Node);
+    try {
+      const owner = document.querySelector('li')!, snapshot = createTranslationSourceSnapshot(owner);
+      expect(snapshot.slots.map(slot => slot.source)).toEqual(['U.S. nominal and PPP-adjusted GDP are the same.']);
+      appendBilingualTranslation(owner, applyTranslationsToSnapshot(snapshot, snapshot.slots.map(slot => encodeControlledTranslation(slot.source))), {sourceSkeleton: snapshot.clone});
+      const evidence = readControlledPageEvidenceInPage();expect(evidence[0].omittedParts).toContainEqual({tag: 'span', text: 'Jump up to: ', reason: 'computed-clipped-accessibility'});
+      expect(assertControlledPageEvidence(evidence, 'clipped-accessibility')).toMatchObject({owners: 1});
+      for (const changed of [{position: 'static'}, {overflow: 'visible', overflowX: 'visible', overflowY: 'visible'}, {clip: 'auto', clipPath: 'none'}, {width: '200px'}, {height: '20px'}, {clip: 'rect(0px 10px 0px 10px)', clipPath: 'none'}]) {
+        style = {...hiddenStyle, ...changed};
+        expect(() => assertControlledPageEvidence(readControlledPageEvidenceInPage(), 'visible-or-partial-clip')).toThrow('complete source');
+      }
+      style = {...hiddenStyle};unavailable = true;
+      expect(() => assertControlledPageEvidence(readControlledPageEvidenceInPage(), 'unobserved-clip')).toThrow('complete source');
+    } finally {vi.unstubAllGlobals();}
+  });
+  it('requires exact unchanged link identifier text and href and never exempts ordinary linked prose', () => {
+    const {document} = parseHTML('<html><body><p>Read more at <a href="https://hummingbot.org">hummingbot.org</a>.</p></body></html>');
+    vi.stubGlobal('document', document);
+    try {
+      const owner = document.querySelector('p')!, link = owner.querySelector('a')!;
+      const output = document.createElement('span');output.className = 'fluent-read-bilingual-content';
+      output.innerHTML = encodeControlledTranslation('Read more at ') + link.outerHTML + encodeControlledTranslation('.');owner.append(output);
+      expect(assertControlledPageEvidence(readControlledPageEvidenceInPage(), 'identifier')).toMatchObject({owners: 1});
+      output.querySelector('a')!.setAttribute('href', 'https://wrong.example');
+      expect(() => assertControlledPageEvidence(readControlledPageEvidenceInPage(), 'wrong-href')).toThrow('complete source');
+      output.querySelector('a')!.setAttribute('href', 'https://hummingbot.org');
+      link.textContent = 'Read the full documentation';output.querySelector('a')!.textContent = link.textContent;
+      expect(() => assertControlledPageEvidence(readControlledPageEvidenceInPage(), 'untranslated-prose-link')).toThrow('complete source');
+    } finally {vi.unstubAllGlobals();}
+  });
+  it('attributes every rendered owner after removing paired protected skeletons, and rejects a missing or unrelated owner', () => {
+    const {document} = parseHTML('<html><body><p>First readable <a href="/source">linked source</a> <code>protected()</code> and final text.<span hidden>Hidden source</span></p><p>Second complete paragraph</p></body></html>');
+    vi.stubGlobal('document', document);
+    try {
+      const owners = document.querySelectorAll('p');
+      const first = document.createElement('span'); first.className = 'fluent-read-bilingual-content';
+      first.innerHTML = encodeControlledTranslation('First readable ') + '<a href="/source">' + encodeControlledTranslation('linked source') + '</a> <code>protected()</code> ' + encodeControlledTranslation('and final text.');
+      owners[0]!.append(first);
+      const second = document.createElement('span'); second.className = 'fluent-read-bilingual-content'; second.textContent = encodeControlledTranslation('Second complete paragraph'); owners[1]!.append(second);
+      const evidence = readControlledPageEvidenceInPage();
+      expect(assertControlledPageEvidence(evidence, 'complete')).toMatchObject({owners: 2, completeSourceMatched: true});
+      expect(() => assertControlledPageEvidence([], 'missing')).toThrow('owners missing');
+      second.textContent = encodeControlledTranslation('An unrelated paragraph');
+      expect(() => assertControlledPageEvidence(readControlledPageEvidenceInPage(), 'wrong-source')).toThrow('complete source');
+      second.textContent = encodeControlledTranslation('Second complete paragraph');
+      first.querySelector('a')!.textContent = '';
+      expect(() => assertControlledPageEvidence(readControlledPageEvidenceInPage(), 'missing-slot')).toThrow('complete source');
+    } finally {vi.unstubAllGlobals();}
+  });
+  it('accepts an exact preserved time node only when the source DOM establishes its protected role', () => {
+    const {document} = parseHTML('<html><body><p><a>Bistutu</a> opened <relative-time role="timer">Oct 23, 2026</relative-time></p></body></html>');
+    vi.stubGlobal('document', document);
+    try {
+      const source = document.querySelector('p')!, time = source.querySelector('relative-time')!;
+      const wrapper = document.createElement('span'); wrapper.className = 'fluent-read-bilingual-content';
+      const date = document.createTextNode('Oct 23, 2026');
+      wrapper.append(document.createTextNode(encodeControlledTranslation('Bistutu') + ' ' + encodeControlledTranslation('opened') + ' '), date);source.append(wrapper);
+      expect(assertControlledPageEvidence(readControlledPageEvidenceInPage(), 'protected-timer')).toMatchObject({owners: 1});
+      time.removeAttribute('role');
+      expect(() => assertControlledPageEvidence(readControlledPageEvidenceInPage(), 'ordinary-prose')).toThrow('complete source');
+      time.setAttribute('role', 'timer');date.nodeValue = 'Oct 22, 2026';
+      expect(() => assertControlledPageEvidence(readControlledPageEvidenceInPage(), 'wrong-time')).toThrow('complete source');
+      date.nodeValue = 'Oct 23, 2026 extra untranslated prose';
+      expect(() => assertControlledPageEvidence(readControlledPageEvidenceInPage(), 'time-prefix-only')).toThrow('complete source');
+      date.remove();
+      expect(() => assertControlledPageEvidence(readControlledPageEvidenceInPage(), 'missing-time')).toThrow('complete source');
+    } finally {vi.unstubAllGlobals();}
+  });
+  it.each(['relative-time', 'time-ago', 'local-time'])('recognizes GitHub %s through the actual adapter, without exempting dates on ordinary sites', tag => {
+    const {document, window} = parseHTML(`<html><body><p>reviewed <${tag} datetime="2026-08-15T00:00:00Z">Aug 15, 2026</${tag}></p></body></html>`);
+    vi.stubGlobal('document', document);vi.stubGlobal('Node', window.Node);vi.stubGlobal('location', {hostname:'github.com'});
+    try {
+      const core = createTranslationCore({url:new URL('https://github.com/Bistutu/FluentRead/pull/999')});
+      const owner = document.querySelector('p')!;
+      const snapshot = createTranslationSourceSnapshot(owner, core.shouldStayOriginal, undefined, undefined, core.shouldOmitFromTranslation);
+      expect(snapshot.slots.map(slot=>slot.source)).toEqual(['reviewed']);
+      appendBilingualTranslation(owner, applyTranslationsToSnapshot(snapshot,snapshot.slots.map(slot=>encodeControlledTranslation(slot.source))), {sourceSkeleton:snapshot.clone});
+      expect(assertControlledPageEvidence(readControlledPageEvidenceInPage(),'github-time')).toMatchObject({owners:1});
+      vi.stubGlobal('location',{hostname:'ordinary.example'});
+      expect(()=>assertControlledPageEvidence(readControlledPageEvidenceInPage(),'ordinary-site-time')).toThrow('complete source');
+      vi.stubGlobal('location',{hostname:'github.com'});const original=owner.querySelector(tag)!;const prose=document.createElement('span');prose.textContent=original.textContent;original.replaceWith(prose);
+      expect(()=>assertControlledPageEvidence(readControlledPageEvidenceInPage(),'ordinary-date-prose')).toThrow('complete source');
+    } finally {vi.unstubAllGlobals();}
+  });
+  it('pairs an unwrapped GitHub time Text only within its original link target', () => {
+    const url='https://github.com/Bistutu/FluentRead/pull/999';
+    const {document,window}=parseHTML('<html><body><p>reviewed <span><a href="#pullrequestreview-4943999925"><relative-time datetime="2026-08-15T00:00:00Z">Aug 15, 2026</relative-time></a></span></p></body></html>');
+    Object.defineProperty(document,'baseURI',{value:url});vi.stubGlobal('document',document);vi.stubGlobal('Node',window.Node);vi.stubGlobal('location',{hostname:'github.com'});
+    try{
+      const core=createTranslationCore({url:new URL(url)}),owner=document.querySelector('p')!;
+      const snapshot=createTranslationSourceSnapshot(owner,core.shouldStayOriginal,undefined,undefined,core.shouldOmitFromTranslation);
+      const output=appendBilingualTranslation(owner,applyTranslationsToSnapshot(snapshot,snapshot.slots.map(slot=>encodeControlledTranslation(slot.source))),{sourceSkeleton:snapshot.clone});
+      expect(output.querySelector('relative-time')).toBeNull();expect(assertControlledPageEvidence(readControlledPageEvidenceInPage(),'linked-github-time')).toMatchObject({owners:1});
+      const link=output.querySelector('a')!,href=link.getAttribute('href')!;
+      link.setAttribute('href','#wrong-review');expect(()=>assertControlledPageEvidence(readControlledPageEvidenceInPage(),'changed-time-reference')).toThrow('complete source');
+      link.removeAttribute('href');expect(()=>assertControlledPageEvidence(readControlledPageEvidenceInPage(),'missing-time-reference')).toThrow('complete source');
+      link.setAttribute('href',href);link.textContent='Aug 14, 2026';expect(()=>assertControlledPageEvidence(readControlledPageEvidenceInPage(),'changed-linked-time')).toThrow('complete source');
+      link.textContent='Aug 15, 2026 extra';expect(()=>assertControlledPageEvidence(readControlledPageEvidenceInPage(),'time-substring')).toThrow('complete source');
+    }finally{vi.unstubAllGlobals()}
+  });
+  it('matches Ubuntu manpage command tokens using the actual site adapter and retains the surrounding linked prose', () => {
+    const path='/manpages/noble/man8/apt.8.html';
+    const {document,window}=parseHTML('<html><body><main id="manpage-content"><section class="Sh"><p class="Pp"><b>apt</b> provides a high-level commandline interface for the\n    package management system. It is intended for interactive usage compared to <a href="/manpages/noble/man8/apt-get.8.html"><b>apt-get</b>(8)</a> and\n    <a href="/manpages/noble/man8/apt-cache.8.html"><b>apt-cache</b>(8)</a>.</p></section></main></body></html>');
+    Object.defineProperty(document,'baseURI',{value:'https://manpages.ubuntu.com'+path});
+    vi.stubGlobal('document',document);vi.stubGlobal('Node',window.Node);vi.stubGlobal('location',{hostname:'manpages.ubuntu.com',pathname:path});
+    try{
+      const core=createTranslationCore({url:new URL('https://manpages.ubuntu.com'+path)}),owner=document.querySelector('p')!;
+      const snapshot=createTranslationSourceSnapshot(owner,core.shouldStayOriginal,undefined,undefined,core.shouldOmitFromTranslation);
+      expect(snapshot.slots.some(slot=>slot.source.includes('apt'))).toBe(false);
+      const wrapper=appendBilingualTranslation(owner,applyTranslationsToSnapshot(snapshot,snapshot.slots.map(slot=>encodeControlledTranslation(slot.source))),{sourceSkeleton:snapshot.clone});
+      const evidence=readControlledPageEvidenceInPage();expect(evidence[0].protectedMatches.map((part:any)=>part.text)).toEqual(['apt','apt-get','apt-cache']);
+      expect(assertControlledPageEvidence(evidence,'ubuntu-commands')).toMatchObject({owners:1});
+      const target=wrapper.querySelector('a')!;const href=target.getAttribute('href')!;target.setAttribute('href','/wrong-reference');expect(()=>assertControlledPageEvidence(readControlledPageEvidenceInPage(),'changed-command-link')).toThrow('complete source');target.setAttribute('href',href);
+      wrapper.querySelector('b')!.textContent='wrong';expect(()=>assertControlledPageEvidence(readControlledPageEvidenceInPage(),'changed-command')).toThrow('complete source');wrapper.querySelector('b')!.textContent='apt';
+      vi.stubGlobal('location',{hostname:'ordinary.example',pathname:path});expect(()=>assertControlledPageEvidence(readControlledPageEvidenceInPage(),'ordinary-bold')).toThrow('complete source');
+      vi.stubGlobal('location',{hostname:'manpages.ubuntu.com',pathname:'/ordinary/article'});expect(()=>assertControlledPageEvidence(readControlledPageEvidenceInPage(),'ordinary-ubuntu-article')).toThrow('complete source');
+      vi.stubGlobal('location',{hostname:'manpages.ubuntu.com',pathname:path});owner.querySelector('b')!.textContent='an ordinary bold sentence';wrapper.querySelector('b')!.textContent='an ordinary bold sentence';expect(()=>assertControlledPageEvidence(readControlledPageEvidenceInPage(),'untranslated-bold-prose')).toThrow('complete source');
+    }finally{vi.unstubAllGlobals()}
+  });
+  it('proves SQLite document button protection through the actual adapter and rejects unrelated or changed prose', () => {
+    const path = '/lang_select.html';const {document, window} = parseHTML('<html><body><p><b><a href="syntax/select-stmt.html">select-stmt:</a></b>\n<button>hide</button></p></body></html>');
+    Object.defineProperty(document, 'baseURI', {value: 'https://www.sqlite.org'+path});
+    vi.stubGlobal('document', document);vi.stubGlobal('Node', window.Node);vi.stubGlobal('location', {hostname: 'www.sqlite.org', pathname: path});
+    try {
+      const core = createTranslationCore({url: new URL('https://www.sqlite.org'+path)}), owner = document.querySelector('p')!;
+      const snapshot = createTranslationSourceSnapshot(owner, core.shouldStayOriginal, undefined, undefined, core.shouldOmitFromTranslation);
+      expect(snapshot.slots.map(slot => slot.source)).toEqual(['select-stmt:']);
+      const translated = appendBilingualTranslation(owner, applyTranslationsToSnapshot(snapshot, snapshot.slots.map(slot => encodeControlledTranslation(slot.source))), {sourceSkeleton: snapshot.clone});
+      expect(translated.querySelector('button')).toBeNull();expect(translated.textContent).toContain('hide');
+      expect(assertControlledPageEvidence(readControlledPageEvidenceInPage(), 'sqlite-button')).toMatchObject({owners: 1});
+      const findHide = () => {const walk=document.createTreeWalker(translated,4);while(walk.nextNode()) if(walk.currentNode.nodeValue==='hide') return walk.currentNode;throw new Error('missing preserved button text');};
+      const label = findHide();
+      for (const wrong of ['show', 'hide extra', '']) {label.nodeValue=wrong;expect(()=>assertControlledPageEvidence(readControlledPageEvidenceInPage(),'changed-button')).toThrow('complete source');}
+      label.nodeValue='hide';
+      for (const location of [{hostname:'ordinary.test',pathname:path},{hostname:'www.sqlite.org',pathname:'/ordinary-article'}]) {
+        vi.stubGlobal('location', location);expect(()=>assertControlledPageEvidence(readControlledPageEvidenceInPage(),'unregistered-button')).toThrow('complete source');
+      }
+      vi.stubGlobal('location',{hostname:'www.sqlite.org',pathname:path});
+      const button=owner.querySelector('button')!, replacement=document.createElement('span');replacement.textContent='hide';button.replaceWith(replacement);
+      expect(()=>assertControlledPageEvidence(readControlledPageEvidenceInPage(),'ordinary-text-not-button')).toThrow('complete source');replacement.replaceWith(button);
+      const nearby=document.createTextNode(' Untranslated adjacent sentence.');owner.insertBefore(nearby,button);expect(()=>assertControlledPageEvidence(readControlledPageEvidenceInPage(),'missing-nearby-prose')).toThrow('complete source');
+    } finally {vi.unstubAllGlobals();}
+  });
+  it.each([
+    ['target-language slots', '<li>在 <code>unwrapManualChunk</code> 中，对 <code>querySelector</code> 使用非空断言（<code>!</code>）假设源 span 一定存在；建议更防御性地处理缺失的 <code>.fluent-read-translation-chunk-source</code>，以避免在 DOM 结构发生变化或被部分清理时出现运行时错误。</li>', 'li'],
+    ['nested link identifier', '<a href="https://twitter.com/@squidfunk">Follow <strong>@squidfunk</strong> on <strong>Twitter</strong></a>', 'a'],
+    ['standalone live number', '<p><span>+90k</span>every month</p>', 'p'],
+  ])('attributes %s through actual snapshot and same-language policies while rejecting changed literals', (_name, html, selector) => {
+    const {document,window}=parseHTML('<html><body>'+html+'</body></html>');
+    Object.defineProperty(document,'baseURI',{value:'https://example.test/article'});
+    vi.stubGlobal('document',document);vi.stubGlobal('Node',window.Node);
+    try{
+      const owner=document.querySelector<HTMLElement>(selector)!, snapshot=createTranslationSourceSnapshot(owner);
+      const outputs=snapshot.slots.map(slot=>shouldSkipTranslationForTarget(slot.source,'zh-Hans')?slot.source:encodeControlledTranslation(slot.source));
+      expect(outputs.some(value=>value.includes('测试译文：'))).toBe(true);
+      const wrapper=appendBilingualTranslation(owner,applyTranslationsToSnapshot(snapshot,outputs),{sourceSkeleton:snapshot.clone});
+      expect(assertControlledPageEvidence(readControlledPageEvidenceInPage(),'real-preserved-text')).toMatchObject({owners:1});
+      const walk=document.createTreeWalker(wrapper,4);let changed=false;
+      while(walk.nextNode())if(walk.currentNode.nodeValue?.trim()&&!walk.currentNode.nodeValue.includes('测试译文：')&&!walk.currentNode.parentElement?.closest('code')){walk.currentNode.nodeValue+=' extra';changed=true;break;}
+      expect(changed).toBe(true);
+      expect(()=>assertControlledPageEvidence(readControlledPageEvidenceInPage(),'changed-literal')).toThrow('complete source');
+    }finally{vi.unstubAllGlobals()}
+  });
+  it('does not exempt ordinary English text, numeric prose, out-of-link handles, changed links or reordered literal slots', () => {
+    const {document,window}=parseHTML('<html><body></body></html>');
+    Object.defineProperty(document,'baseURI',{value:'https://example.test/article'});
+    vi.stubGlobal('document',document);vi.stubGlobal('Node',window.Node);
+    try{
+      for(const [source,output] of [
+        ['<span>untranslated English prose</span> every month','<span>untranslated English prose</span> '+encodeControlledTranslation('every month')],
+        ['<span>+90k readers</span> every month','<span>+90k readers</span> '+encodeControlledTranslation('every month')],
+        ['<strong>@squidfunk</strong> every month','<strong>@squidfunk</strong> '+encodeControlledTranslation('every month')],
+        ['<a href="/right"><strong>@squidfunk</strong></a> every month','<a href="/wrong"><strong>@squidfunk</strong></a> '+encodeControlledTranslation('every month')],
+        ['<span>+90k</span> every month <span>+80k</span>','<span>+80k</span> '+encodeControlledTranslation('every month')+' <span>+90k</span>'],
+      ]){
+        document.body.innerHTML='<p>'+source+'<span class="fluent-read-bilingual-content">'+output+'</span></p>';
+        expect(()=>assertControlledPageEvidence(readControlledPageEvidenceInPage(),'unproven-literal')).toThrow('complete source');
+      }
+    }finally{vi.unstubAllGlobals()}
+  });
+  it('retains real BR boundaries in whole-block rendered translations without accepting lost spaces or removed lines', () => {
+    const {document, window}=parseHTML('<html><body><p>\n  We want the camera to move.<br>\n  Because the system moves the entire scene. \n</p></body></html>');
+    vi.stubGlobal('document',document);vi.stubGlobal('Node',window.Node);
+    try {
+      const owner=document.querySelector('p')!, snapshot=createTranslationSourceSnapshot(owner);
+      const source=buildWholeBlockTranslationSource(snapshot)!;expect(source).toBe('We want the camera to move.\nBecause the system moves the entire scene.');
+      const wrapper=appendBilingualTranslation(owner,applyTranslationsToSnapshot(snapshot,[encodeControlledTranslation(source),'']),{sourceSkeleton:snapshot.clone});
+      expect(wrapper.querySelector('br')).not.toBeNull();
+      expect(assertControlledPageEvidence(readControlledPageEvidenceInPage(),'whole-block-lines')).toMatchObject({owners:1});
+      wrapper.querySelector('br')!.remove();
+      expect(()=>assertControlledPageEvidence(readControlledPageEvidenceInPage(),'missing-line-boundary')).toThrow('complete source');
+      wrapper.textContent=encodeControlledTranslation(source.replace('the camera','thecamera'));
+      expect(()=>assertControlledPageEvidence(readControlledPageEvidenceInPage(),'missing-word-space')).toThrow('complete source');
+    } finally {vi.unstubAllGlobals();}
   });
   it('fails closed if the instrumented worker is missing, its state is absent, or the worker restarts', async () => {
     const {api, context, worker, setWorkers} = await setup();
@@ -411,7 +733,7 @@ describe('controlled provider attribution', () => {
 describe('native public feed evidence negative controls', () => {
   const validState = () => ({sources: [{id: 1, visible: true, eligible: true, sourceText: 'Public source paragraph',
     firstObservedWrappers: 0, sourceIntact: true, protectedIntact: true, protectedCount: 1,
-    translations: ['测试译文：Public source paragraph'], pending: 0}], nested: 0, duplicateParents: 0, wrappers: 1, pending: 0});
+    translations: [encodeControlledTranslation('Public source paragraph')], pending: 0}], nested: 0, duplicateParents: 0, wrappers: 1, pending: 0});
   it('requires explicit network authorization and refuses foreground modes and unbounded scroll loops', () => {
     expect(() => parseNativeFeedArgs([])).toThrow('allow-network');
     expect(() => parseNativeFeedArgs(['--headed'])).toThrow('Unsupported argument');
@@ -444,7 +766,7 @@ describe('native public feed evidence negative controls', () => {
       expect(state.sources).toHaveLength(1);
       expect(state.sources[0]).toMatchObject({eligible: true, sourceText: 'Hello public prose with and .', firstObservedWrappers: 0, protectedIntact: true});
       const wrapper = document.createElement('span'); wrapper.className = 'fluent-read-bilingual-content';
-      wrapper.innerHTML = '<a href="/@sample">测试译文：@sample</a> 测试译文：Hello public prose with and .';
+      wrapper.innerHTML = '<a href="/@sample">测试译文：@sample</a> ' + encodeControlledTranslation('Hello public prose with and .');
       document.querySelector('p')!.append(wrapper);
       state = (window as any)[trackerKey].snapshot();
       expect(state.sources[0].renderedTranslations[0]).toMatch(/^测试译文：@sample/);
@@ -470,6 +792,9 @@ describe('native public feed evidence negative controls', () => {
     ['pending translation', state => {state.sources[0].pending = 1;}, /pending or retry/],
     ['unproven response', state => {state.sources[0].translations = ['Unknown provider response'];}, /controlled response not proven/],
     ['prefix without matching source', state => {state.sources[0].translations = ['测试译文：An unrelated sentence'];}, /controlled response not proven/],
+    ['old echoed source', state => {state.sources[0].translations = ['测试译文：Public source paragraph'];}, /controlled response not proven/],
+    ['partial matching source', state => {state.sources[0].translations = [encodeControlledTranslation('Public source')];}, /controlled response not proven/],
+    ['extra encoded source', state => {state.sources[0].translations[0] += encodeControlledTranslation('Extra paragraph');}, /controlled response not proven/],
     ['nested wrapper', state => {state.nested = 1;}, /nested wrappers/],
     ['duplicate parent', state => {state.duplicateParents = 1;}, /duplicate wrappers/],
     ['protected-only source translated', state => {state.sources.push({...state.sources[0], id: 2, eligible: false, sourceText: ''});}, /protected-only source received/],

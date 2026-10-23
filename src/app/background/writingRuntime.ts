@@ -13,7 +13,7 @@ import {createWritingHandler} from '@/src/features/writing-assistant/background'
 import {createWritingRuntime} from '@/src/services/writing/runtime';
 import {createLearningMemoryRecall} from '@/src/services/harness/memoryRecall';
 import {learningMemoryRepository} from '@/src/platform/storage/learningMemoryRepository';
-import {modelUsageRepository} from '@/src/platform/storage/modelUsageRepository';
+import {getModelUsageRepository} from '@/src/platform/storage/modelUsageRepository';
 import {resolveWritingReadiness} from '@/src/core/config/writingReadiness';
 import {getHarnessModelInputKey} from '@/src/services/harness/modelGateway';
 
@@ -28,9 +28,9 @@ export function installWritingBackgroundRuntime(): () => void {
             return undefined;
         },
         run: (request, signal, progress, sender) => {
-            const generation = modelUsageRepository.captureGeneration();
+            const generation = getModelUsageRepository().captureGeneration();
             return createWritingRuntime(() => config, event => {
-                void modelUsageRepository.recordMany([event], generation).catch(() => undefined);
+                void getModelUsageRepository().recordMany([event], generation).catch(() => undefined);
             }, {recall: createLearningMemoryRecall(learningMemoryRepository)})(request, signal, progress, Boolean(sender.tab?.incognito || browser.extension.inIncognitoContext));
         },
     });

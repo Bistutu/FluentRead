@@ -1,55 +1,202 @@
 import {readFileSync} from 'node:fs';
-import {createRequire} from 'node:module';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
-import {compileScript, compileStyle, parse} from 'vue/compiler-sfc';
-import ts from 'typescript';
+import {compileStyle, parse} from 'vue/compiler-sfc';
+import {parseHTML} from 'linkedom';
 import * as vue from 'vue';
 import {Config, normalizeConfig} from '@/src/core/config/model';
-import * as catalog from '@/src/core/config/catalog';
-import * as profiles from '@/src/core/config/customOpenAI';
-import * as composites from '@/src/core/config/compositeTranslation';
-import * as validation from '@/src/core/config/validation';
-import * as comparison from '@/src/features/translation-center/model/comparison';
 import {translate} from '@/src/core/i18n';
 import {TranslationRequestError, serializeTranslationError} from '@/src/services/translation/errors';
 
 const filename = 'src/features/translation-center/ui/TranslationCenter.vue';
 const source = readFileSync(filename, 'utf8');
 const {descriptor} = parse(source, {filename});
-const compiled = ts.transpileModule(compileScript(descriptor, {id: 'translation-center-test'}).content, {
-  compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true},
-}).outputText;
-const require = createRequire(import.meta.url);
-let state: Record<string, any>, scope: vue.EffectScope, config: Config;
+import TranslationCenter from '@/src/features/translation-center/ui/TranslationCenter.vue';
+let state: Record<string, any>, config: Config;
 let requestPatch: ReturnType<typeof vi.fn>, translateText: ReturnType<typeof vi.fn>, copy: ReturnType<typeof vi.fn>;
-let mounted: (() => Promise<void>)[], unmounted: (() => void)[], subscription: (next: Config) => void;
-let emit: ReturnType<typeof vi.fn>;
+let subscription: (next: Config) => void;
+let emit: ReturnType<typeof vi.fn>, unmount: (() => void) | undefined, host: HTMLElement;
+let configReady: Promise<void>;
+vi.mock('webextension-polyfill', () => ({default: {runtime: {sendMessage: vi.fn()}}}));
+vi.mock('@/src/services/config/store', () => ({
+  get config() {return config;}, get configReady() {return configReady;},
+  subscribeConfig: (fn: typeof subscription) => {subscription = fn; return vi.fn();},
+  requestConfigPatch: (...args: unknown[]) => requestPatch(...args),
+}));
+vi.mock('@/src/services/translation/client', () => ({translateText: (...args: unknown[]) => translateText(...args)}));
+vi.mock('@/src/services/translation/capabilities', () => ({
+  filterAvailableTranslationServices: (items: any[]) => items.filter(item => item.value !== 'chromeTranslator'),
+  isTranslationServiceAvailable: (service: string) => service !== 'chromeTranslator',
+}));
+vi.mock('@/src/ui/i18n', () => ({useUiI18n: () => ({language: vue.ref('zh-CN'), translateLegacy: (value: string) => value, t: (key: string, params: any) => translate(key, 'zh-CN', params)})}));
+vi.mock('element-plus', () => ({ElOption: {props: ['value', 'label'], setup: (props: any) => () => vue.h('option', {value: props.value}, props.label)}}));
+vi.mock('@/src/ui/components/UiSelect.vue', () => ({default: {props: ['modelValue'], emits: ['update:modelValue', 'change', 'visible-change'], setup: (props: any, context: any) => () => vue.h('select', {
+  value: props.modelValue, onFocus: () => context.emit('visible-change', true), onBlur: () => context.emit('visible-change', false),
+  onChange: (event: Event) => {const value = (event.target as HTMLSelectElement).value; context.emit('update:modelValue', value); context.emit('change', value);},
+}, context.slots.default?.())}}));
+vi.mock('@/src/ui/components/UiIcon.vue', () => ({default: {render: () => null}}));
+vi.mock('@/src/ui/components/ServiceIcon.vue', () => ({default: {render: () => null}}));
 const deferred = () => {let resolve!: (text: string) => void; const promise = new Promise<string>(done => {resolve = done;}); return {promise, resolve};};
+const close = () => {unmount?.(); unmount = undefined;};
 beforeEach(async () => {
-  config = new Config(); mounted = []; unmounted = []; emit = vi.fn();
+  config = new Config(); emit = vi.fn();
   requestPatch = vi.fn().mockResolvedValue(undefined); translateText = vi.fn().mockResolvedValue('translated'); copy = vi.fn().mockResolvedValue(undefined);
+  const {document} = parseHTML('<html><body></body></html>'); document.body.style.userSelect = 'text';
+  Object.assign(document, {elementFromPoint: vi.fn()});
+  vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('navigator', {platform: 'MacIntel', clipboard: {writeText: copy}});
-  vi.stubGlobal('document', {body: {style: {userSelect: 'text'}}, addEventListener: vi.fn(), removeEventListener: vi.fn(), elementFromPoint: vi.fn()});
-  const api = {...catalog, ...profiles, ...composites, ...validation, ...comparison, config, configReady: Promise.resolve(),
-    subscribeConfig: (fn: typeof subscription) => {subscription = fn; return vi.fn();}, requestConfigPatch: requestPatch, translateText, TranslationRequestError,
-    filterAvailableTranslationServices: (items: any[]) => items.filter(item => item.value !== 'chromeTranslator'),
-    isTranslationServiceAvailable: (service: string) => service !== 'chromeTranslator',
-    useUiI18n: () => ({language: vue.ref('zh-CN'), translateLegacy: (value: string) => value, t: (key: string, params: any) => translate(key, 'zh-CN', params)}),
-  };
-  const exports: Record<string, any> = {};
-  new Function('require', 'exports', compiled)((id: string) => {
-    if (id === 'vue') return {...vue, onMounted: (fn: () => Promise<void>) => mounted.push(fn), onUnmounted: (fn: () => void) => unmounted.push(fn)};
-    if (id === 'webextension-polyfill') return {runtime: {sendMessage: vi.fn()}};
-    if (id === 'element-plus' || id.endsWith('.vue')) return {};
-    if (id.startsWith('@/src/') || id === '../model/comparison') return api;
-    return require(id);
-  }, exports);
-  scope = vue.effectScope(); state = scope.run(() => vue.proxyRefs(exports.default.setup({}, {expose: () => {}, emit})))!;
-  await Promise.all(mounted.map(fn => fn())); await vue.nextTick();
+  vi.stubGlobal('document', document);
+  configReady = Promise.resolve();
+  await mountCenter();
 });
-afterEach(() => {unmounted.forEach(fn => fn()); scope.stop(); vi.unstubAllGlobals(); vi.useRealTimers();});
+async function mountCenter(): Promise<void> {
+  const document = globalThis.document;
+  const renderer = vue.createRenderer<any, any>({
+    createElement: (tag, namespace) => vue.markRaw(namespace === 'svg' ? document.createElementNS('http://www.w3.org/2000/svg', tag) : document.createElement(tag)),
+    createText: value => document.createTextNode(value), createComment: value => document.createComment(value),
+    setText: (node, value) => {node.nodeValue = value;}, setElementText: (node, value) => {node.textContent = value;},
+    parentNode: node => node.parentNode, nextSibling: node => node.nextSibling,
+    insert: (node, parent, anchor) => parent.insertBefore(node, anchor || null), remove: node => node.remove(),
+    patchProp: (node, key, previous, value) => {
+      if (key.startsWith('on')) {if (key.includes(':')) return; const event = key.slice(2).replace(/(?:Once|Passive|Capture)+$/, '').toLowerCase(); if (previous) node.removeEventListener(event, previous); if (value) node.addEventListener(event, value);}
+      else if (key === 'style') Object.assign(node.style, value || {});
+      else if (key === 'value') {if (node.tagName === 'SELECT') for (const option of node.querySelectorAll('option')) option.toggleAttribute('selected', option.value === value); else node.value = value;}
+      else if (value == null || (value === false && !key.startsWith('aria-'))) node.removeAttribute(key);
+      else node.setAttribute(key, String(value));
+    },
+  });
+  host = document.createElement('div'); document.body.appendChild(host);
+  const app = renderer.createApp(TranslationCenter, {'onConfigure-service': (service: string) => emit('configure-service', service)});
+  app.mount(host); state = (app as any)._instance.setupState;
+  unmount = () => {app.unmount(); host.remove();};
+  for (let i = 0; i < 4; i++) {await Promise.resolve(); await vue.nextTick();}
+}
+afterEach(() => {close(); vi.unstubAllGlobals(); vi.useRealTimers();});
 
 describe('translation center product workflow', () => {
+  it.each(['empty result', 'empty error'])('renders a useful error and retry control for %s', async result => {
+    if (result === 'empty result') translateText.mockResolvedValueOnce('   '); else translateText.mockRejectedValueOnce(new Error(''));
+    state.sourceText = 'Original'; state.retryService('google'); await vi.waitFor(() => expect(state.cards[1].status).toBe('error')); await vue.nextTick();
+    const error = host.querySelector('.translation-result-error')!;
+    expect(error.querySelector('p')!.textContent?.trim()).toBeTruthy();
+    expect(error.textContent).toContain(state.ct(result === 'empty result' ? 'emptyResult' : 'requestError'));
+    error.querySelector('button')!.dispatchEvent(new document.defaultView!.Event('click')); await vi.waitFor(() => expect(state.cards[1].status).toBe('success'));
+  });
+  it('visible stop and retry controls isolate individual cards and expose configuration before launch', async () => {
+    const click = async (selector: string) => {const button = host.querySelector(selector)!; expect(button).toBeTruthy(); button.dispatchEvent(new document.defaultView!.Event('click', {bubbles: true})); await vue.nextTick(); await Promise.resolve(); await vue.nextTick();};
+    state.sourceText = 'Original'; await vue.nextTick();
+    const one = deferred(), two = deferred(); translateText.mockReturnValueOnce(one.promise).mockReturnValueOnce(two.promise);
+    await click('.translate-primary-button');
+    await click('[data-service="freeTranslation"] .loading-placeholder button');
+    expect(state.cards[0].status).toBe('cancelled'); expect(state.cards[1].status).toBe('loading');
+    await click('.translate-stop-button'); expect(state.cards[1].status).toBe('cancelled');
+    one.resolve('late one'); two.resolve('late two'); await vue.nextTick();
+    translateText.mockRejectedValueOnce(new Error('service unavailable'));
+    await click('[data-service="freeTranslation"] .translation-result-placeholder button');
+    expect(host.querySelector('.translation-result-error')?.textContent).toContain('service unavailable');
+    await click('.translation-result-error button'); expect(state.cards[0].result).toBe('translated');
+    state.addService('openai'); await vue.nextTick(); await click('[data-service="openai"] .needs-configuration button');
+    expect(emit).toHaveBeenCalledWith('configure-service', 'openai');
+  });
+
+  it('normalizes invalid persisted languages, searches custom models and renders model identity on completed cards', async () => {
+    config.translationCenterSourceLanguage = 'bad-language'; config.translationCenterTargetLanguage = 'bad-language'; subscription(config);
+    expect(state.sourceLanguage).toBe('auto'); expect(state.targetLanguage).toBe('zh-Hans');
+    config.translationCenterSourceLanguage = ''; config.translationCenterTargetLanguage = ''; config.from = ''; config.to = ''; subscription(config);
+    expect(state.sourceLanguage).toBe('auto'); expect(state.targetLanguage).toBe('zh-Hans');
+    config.customOpenAIProviders = [{id: 'custom:search', name: 'Private model service', endpoint: 'https://model.invalid/v1', models: ['unique-search-model']}];
+    config.model['custom:search'] = 'unique-search-model'; config.token['custom:search'] = 'fixture-only'; config.translationCenterServices = ['custom:search']; subscription(config);
+    state.serviceSearchQuery = 'unique-search-model'; expect(state.filteredServiceGroups[0].items.map((item: any) => item.value)).toContain('custom:search');
+    expect(state.serviceLabel('gone-service')).toBe('gone-service'); expect(state.languageLabel('gone-language')).toContain('gone-language');
+    state.sourceText = 'Original'; state.runTranslation(); await vi.waitFor(() => expect(state.cards[0].status).toBe('success')); await vue.nextTick();
+    expect(host.querySelector('.translation-result-content footer')?.textContent).toContain('unique-search-model');
+    state.sourceLanguage = state.targetLanguage; await vue.nextTick();
+    expect(host.querySelector('.translate-primary-button')?.hasAttribute('disabled')).toBe(true);
+    expect(host.querySelectorAll('.input-notice').length).toBeGreaterThan(0);
+  });
+
+  it('removes omitted stored services on save and ignores invalid drag targets and secondary pointers', async () => {
+    config.translationCenterServices = ['google', 'freeTranslation', 'microsoft']; subscription(config);
+    state.removeService('microsoft'); expect(requestPatch.mock.calls.at(-1)![0].translationCenterServices).toEqual(['google', 'freeTranslation']);
+    const before = state.cards.map((card: any) => card.service); state.reorderCards('gone', 'google'); state.reorderCards('google', 'gone'); state.reorderCards('google', 'google');
+    state.startPointerDrag('google', {button: 2, pointerId: 1}); expect(state.draggingService).toBe('');
+    state.handlePointerMove({pointerId: 1, clientX: 0, clientY: 0}); state.finishPointerDrag({pointerId: 1});
+    state.startPointerDrag('google', {button: 0, pointerId: 1});
+    state.finishPointerDrag({pointerId: 2}); expect(state.draggingService).toBe('google');
+    vi.mocked(document.elementFromPoint).mockReturnValue(host.querySelector('[data-service="google"]'));
+    state.handlePointerMove({pointerId: 1, clientX: 0, clientY: 0}); expect(state.dragOverService).toBe('');
+    vi.mocked(document.elementFromPoint).mockReturnValue(null); state.handlePointerMove({pointerId: 1, clientX: 0, clientY: 0});
+    state.finishPointerDrag({pointerId: 1, type: 'pointerup'}); expect(state.cards.map((card: any) => card.service)).toEqual(before);
+  });
+
+  it('does not hydrate or save after closing before configuration is ready, and shows Windows shortcuts on reopen', async () => {
+    close(); let ready!: () => void; configReady = new Promise<void>(resolve => {ready = resolve;});
+    vi.stubGlobal('navigator', {platform: 'Win32', clipboard: {writeText: copy}}); await mountCenter();
+    expect(state.shortcutLabel).toBe('Ctrl ↵'); expect(state.cards).toEqual([]);
+    state.setLayout('grid'); expect(requestPatch).not.toHaveBeenCalled();
+    close(); ready(); await vue.nextTick(); await vue.nextTick(); expect(state.configHydrated).toBe(false);
+    state.setLayout('list'); expect(requestPatch).not.toHaveBeenCalled();
+    await mountCenter(); state.sourceText = 'Original';
+    state.handleEditorKeydown({key: 'Enter', metaKey: true, ctrlKey: false, isComposing: false, preventDefault: vi.fn()});
+    await vi.waitFor(() => expect(state.successfulCards).toHaveLength(2));
+  });
+
+  it('ignores late clipboard and configuration settlements after unmount', async () => {
+    const clipboard = deferred(), settings = deferred(); copy.mockReturnValueOnce(clipboard.promise); requestPatch.mockReturnValueOnce(settings.promise);
+    const copying = state.copyText('Reviewed text', 'google'); state.setLayout('grid'); close();
+    clipboard.resolve(''); settings.resolve(''); await copying; await vue.nextTick();
+    expect(state.feedback).toBe(''); expect(state.saveState).toBe('idle');
+  });
+
+  it('runs the visible input, language, service-picker, card and copy controls through the actual template', async () => {
+    const click = async (selector: string, parent: ParentNode = host) => {const button = parent.querySelector(selector) as HTMLButtonElement; expect(button).toBeTruthy(); expect(button.hasAttribute('disabled')).toBe(false); button.dispatchEvent(new document.defaultView!.Event('click', {bubbles: true})); await vue.nextTick(); await Promise.resolve(); await vue.nextTick();};
+    const input = async (element: HTMLInputElement | HTMLTextAreaElement, value: string) => {element.value = value; element.dispatchEvent(new document.defaultView!.Event('input', {bubbles: true})); await vue.nextTick();};
+    await click('.example-button'); expect(state.sourceText).toContain('Good design');
+    const editor = host.querySelector('textarea')!; await input(editor, 'A source to compare'); expect(state.sourceText).toBe('A source to compare');
+    const select = async (id: string, value: string) => {const element = host.querySelector(id) as HTMLSelectElement;
+      element.dispatchEvent(new document.defaultView!.Event('focus')); await vue.nextTick();
+      for (const option of element.querySelectorAll('option')) option.toggleAttribute('selected', option.value === value);
+      element.dispatchEvent(new document.defaultView!.Event('change')); await vue.nextTick();
+      element.dispatchEvent(new document.defaultView!.Event('blur')); await vue.nextTick();};
+    await select('#translation-center-source', 'en'); await select('#translation-center-target', 'ja');
+    expect(state.sourceLanguage).toBe('en'); expect(state.targetLanguage).toBe('ja');
+    await click('.language-swap-button'); expect(state.sourceLanguage).toBe('ja'); expect(state.targetLanguage).toBe('en');
+    await click('.add-service-button'); expect(host.querySelector('[role="dialog"]')).toBeTruthy();
+    await input(host.querySelector('.service-picker-search input')!, 'a service that cannot exist'); expect(host.querySelector('.picker-empty')).toBeTruthy();
+    await input(host.querySelector('.service-picker-search input')!, '');
+    const row = (service: string) => [...host.querySelectorAll('.service-picker-row')].find(node => node.querySelector('strong')?.textContent === state.serviceLabel(service))!;
+    await click('.service-picker-option', row('google')); expect(state.cards.map((card: any) => card.service)).not.toContain('google');
+    await click('.service-picker-option', row('google')); expect(state.cards.map((card: any) => card.service)).toContain('google');
+    await click('.picker-configure', row('openai')); expect(emit).toHaveBeenCalledWith('configure-service', 'openai'); expect(host.querySelector('[role="dialog"]')).toBeNull();
+    await click('.add-service-button'); await click('.service-picker-close'); expect(state.servicePickerOpen).toBe(false);
+    await click('.results-layout-control button:last-child'); expect(host.querySelector('.translation-result-list')?.getAttribute('class')).toContain('is-grid');
+    await click('.results-layout-control button:first-child'); expect(state.resultLayout).toBe('list');
+    await click('.translate-primary-button'); await vi.waitFor(() => expect(state.successfulCards).toHaveLength(2)); await vue.nextTick();
+    expect(host.querySelectorAll('.translation-result-content')).toHaveLength(2);
+    await click('.translation-result-content footer button:last-child'); expect(copy).toHaveBeenLastCalledWith('translated');
+    await click('.copy-all-button'); expect(copy.mock.lastCall?.[0]).toContain('translated');
+    await input(editor, 'Edited source'); expect(host.querySelector('.results-stale-notice')).toBeTruthy();
+    await click('.translation-result-content footer button:first-child'); await vi.waitFor(() => expect(state.successfulCards).toHaveLength(1));
+    await click('.card-connection-footer button'); expect(emit).toHaveBeenCalled();
+    await click('.remove-service-button'); expect(state.cards).toHaveLength(1);
+    await click('.translation-input-panel .translation-panel-heading .text-button'); expect(state.sourceText).toBe('');
+  });
+
+  it('routes actual pointer and focus events to picker dismissal and card reordering, retaining the selected pointer owner', async () => {
+    const dispatch = (target: EventTarget, type: string, fields: Record<string, unknown> = {}) => {const event = new document.defaultView!.Event(type, {bubbles: true, cancelable: true}); Object.assign(event, fields); target.dispatchEvent(event);};
+    const open = async () => {dispatch(host.querySelector('.add-service-button')!, 'click'); await vue.nextTick();};
+    await open(); dispatch(host.querySelector('.service-picker-search input')!, 'focusin'); expect(state.servicePickerOpen).toBe(true);
+    dispatch(host.querySelector('textarea')!, 'focusin'); await vue.nextTick(); expect(state.servicePickerOpen).toBe(false);
+    await open(); dispatch(host.querySelector('.service-picker-search input')!, 'pointerdown'); expect(state.servicePickerOpen).toBe(true);
+    dispatch(document.body, 'pointerdown'); await vue.nextTick(); expect(state.servicePickerOpen).toBe(false);
+    await open(); await open(); expect(state.servicePickerOpen).toBe(false);
+    const cards = host.querySelectorAll('.translation-result-card');
+    dispatch(cards[0].querySelector('.drag-handle')!, 'pointerdown', {button: 0, pointerId: 9});
+    vi.mocked(document.elementFromPoint).mockReturnValue(cards[1]);
+    dispatch(document, 'pointermove', {pointerId: 8, clientX: 10, clientY: 20}); expect(state.dragOverService).toBe('');
+    dispatch(document, 'pointermove', {pointerId: 9, clientX: 10, clientY: 20}); expect(state.dragOverService).toBe('google');
+    dispatch(document, 'pointerup', {pointerId: 9}); await vue.nextTick(); expect(state.cards[0].service).toBe('google'); expect(document.body.style.userSelect).toBe('text');
+  });
+
   it('keeps a combination label and marks completed results stale after member configuration changes', async () => {
     const service = 'composite:center';
     config.compositeTranslationProviders = [{id: service, name: 'Everyday', strategy: 'sequential', services: ['google', 'microsoft'], timeoutMs: 12000}];
@@ -201,6 +348,19 @@ describe('translation center product workflow', () => {
     state.startPointerDrag('freeTranslation', {button: 0, pointerId: 2}); state.dragOverService = 'google';
     expect(document.body.style.userSelect).toBe('none'); state.finishPointerDrag({pointerId: 2, type: 'pointercancel'});
     expect(document.body.style.userSelect).toBe('text'); expect(state.cards[0].service).toBe('freeTranslation');
+  });
+  it('cancels dragging on window blur and removes the blur listener on disposal', () => {
+    const remove = vi.spyOn(window, 'removeEventListener');
+    state.startPointerDrag('freeTranslation', {button: 0, pointerId: 2}); state.dragOverService = 'google';
+    window.dispatchEvent(new Event('blur'));
+    expect(document.body.style.userSelect).toBe('text');
+    expect(state.draggingService).toBe('');
+    expect(state.cards[0].service).toBe('freeTranslation');
+    expect(requestPatch).not.toHaveBeenCalled();
+    state.startPointerDrag('google', {button: 0, pointerId: 3});
+    close();
+    expect(document.body.style.userSelect).toBe('text');
+    expect(remove).toHaveBeenCalledWith('blur', state.endCardDrag);
   });
   it('receives model updates during dragging and reconciles deferred order after cancellation', () => {
     state.startPointerDrag('freeTranslation', {button: 0, pointerId: 2});

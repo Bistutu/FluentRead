@@ -1,6 +1,6 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {MANGA_INPAINT_ASSET, MANGA_OCR_ASSETS, MANGA_OCR_CACHE, MANGA_OCR_MODEL_BYTES,
-    assertMangaOcrActive, loadMangaInpaintAsset, loadMangaOcrAssets, mangaOcrModelStatus, removeMangaOcrAssets, getMangaModelSource, setMangaModelSource, importMangaModel} from '@/src/features/image-translation/services/mangaOcrAssets';
+    assertMangaOcrActive, loadMangaInpaintAsset, loadMangaOcrAssets, mangaOcrModelStatus, removeMangaOcrAssets, importMangaModel} from '@/src/features/image-translation/services/mangaOcrAssets';
 import {createVirtualModelResponsePort, virtualModelBuffer} from './helpers/virtualModelResponse';
 const allAssets=[...MANGA_OCR_ASSETS,MANGA_INPAINT_ASSET];
 const NativeResponse=globalThis.Response;
@@ -22,6 +22,18 @@ beforeEach(async()=>{
 afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();});
 
 describe('漫画模型固定版本和完整性',()=>{
+    it.each(['network','cache'])('释放 %s 拒绝正文，未结束取消不阻塞自动恢复',async stage=>{
+        let rejectCancel!:(reason:unknown)=>void;
+        const cancel=vi.fn(()=>new Promise<void>((_resolve,reject)=>{rejectCancel=reject;}));
+        const rejected=new NativeResponse(new ReadableStream({cancel}),{status:503});
+        if(stage==='network') vi.mocked(fetch).mockResolvedValueOnce(rejected);
+        else cache.match.mockResolvedValueOnce(rejected);
+        await loadMangaOcrAssets();
+        expect(cancel).toHaveBeenCalledOnce();expect(rejected.body?.locked).toBe(false);
+        expect(cache.put).toHaveBeenCalledTimes(3);
+        rejectCancel(new Error('late cleanup failure'));await Promise.resolve();
+    });
+
     it('仅显式虚拟容量绕过原生复制，普通字节和流保真，未标记的伪容量仍被拒绝',async()=>{
         const plain=new Response('public source');
         expect(await plain.clone().text()).toBe('public source');expect(plain.bodyUsed).toBe(false);
@@ -39,13 +51,11 @@ describe('漫画模型固定版本和完整性',()=>{
     });
     it('历史来源设置不影响自动下载，损坏来源仍校验失败后回退',async()=>{
         vi.stubGlobal('navigator',{language:'en-US'});
-        expect(await getMangaModelSource()).toBe('auto');preferences.match.mockResolvedValue(new Response('bad'));expect(await getMangaModelSource()).toBe('auto');
-        await expect(setMangaModelSource('bad' as never)).rejects.toThrow('无效');
-        await setMangaModelSource('mirror');expect(preferences.put).toHaveBeenCalled();preferences.match.mockImplementation(async()=>new Response('mirror'));
+        preferences.match.mockImplementation(async()=>new Response('mirror'));
         vi.mocked(fetch).mockResolvedValueOnce(response(1));await loadMangaOcrAssets();
         expect(vi.mocked(fetch).mock.calls[0][0]).toContain('huggingface.co');expect(vi.mocked(fetch).mock.calls[1][0]).toContain('hf-mirror.com');
         expect(await mangaOcrModelStatus()).toMatchObject({source:'auto'});
-        preferences.match.mockImplementation(async()=>new Response('official'));expect(await getMangaModelSource()).toBe('official');
+        preferences.match.mockImplementation(async()=>new Response('official'));
         vi.stubGlobal('navigator',{language:'zh-CN'});vi.mocked(fetch).mockClear();await loadMangaInpaintAsset();
         expect(vi.mocked(fetch).mock.calls[0][0]).toContain('hf-mirror.com');expect(await mangaOcrModelStatus()).toMatchObject({source:'auto'});
     });

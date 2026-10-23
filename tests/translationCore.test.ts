@@ -7,7 +7,6 @@ import {
     buildWholeBlockTranslationSource,
     collectLiveTranslationTextSlots,
     createDeclarativeAdapter,
-    createTranslationCore,
     createCurrentTranslationResolverBatch,
     createTranslationSourceSnapshot,
     extractTranslationText,
@@ -22,6 +21,7 @@ import {
     TranslationCandidateCore,
     resolveTranslationCandidateAtPoint,
 } from '@/src/core/translation/public';
+import {createTranslationCore} from './helpers/translationCore';
 import {shouldSkipTranslationForTarget} from '@/src/core/language/detect';
 import productionReleaseCases from './fixtures/target-language-releases.json';
 import {

@@ -3,10 +3,10 @@ import {parseHTML} from 'linkedom';
 import {describe, expect, it, vi} from 'vitest';
 import {
     collectLiveTranslationTextSlots,
-    createTranslationCore,
     extractTranslationText,
     TranslationCandidateCore,
 } from '@/src/core/translation/public';
+import {createTranslationCore} from './helpers/translationCore';
 import {
     classifyGenericCandidate,
     findTranslationControlOwner,

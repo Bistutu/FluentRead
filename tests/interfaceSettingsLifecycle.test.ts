@@ -1,49 +1,66 @@
-import {createRequire} from 'node:module'
 import {readFileSync} from 'node:fs'
 import {resolve} from 'node:path'
 import {parseHTML} from 'linkedom'
-import vue from '@vitejs/plugin-vue'
-import {createServer, type Plugin, type ViteDevServer} from 'vite'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 
 // 实际 SFC setup/watch/KeepAlive；原生弹窗和缓存由隔离生产扩展另验。
-const runtime = createRequire(import.meta.url)('vue') as typeof import('vue')
-const {renderToString} = createRequire(import.meta.url)('vue/server-renderer') as typeof import('vue/server-renderer')
-const key = '__frInterfaceSettingsLifecycle'
-let server: ViteDevServer, app: import('vue').App, state: Record<string, any>
-let mocks: Plugin
+import * as runtime from 'vue'
+import InterfaceSettings from '@/src/features/settings/ui/InterfaceSettings.vue'
+import PopupPreview from '@/src/features/settings/ui/components/PopupPreview.vue'
+import {popupQuickFeatureIconPaths} from '@/src/ui/popupQuickFeatureIcons'
+let document: Document, win: any, host: HTMLElement
+let app: import('vue').App, state: Record<string, any>
 let props: {config: Record<string, any>; active: boolean; activePanel?: string}, visible: import('vue').Ref<boolean>
 let cache: import('vue').Ref<string[]>, status: import('vue').Ref<{font: string; status: string}>
 let capabilities: {browser: string}
-let acceptLegacy!: () => void, cancelLegacy!: () => void, legacyOpen = false, begun: Promise<void> | undefined
-const feedback = vi.fn(), clear = vi.fn(), refresh = vi.fn(), retry = vi.fn(), confirm = vi.fn()
+const feedback = vi.fn(), clear = vi.fn(), refresh = vi.fn(), retry = vi.fn()
+vi.mock('element-plus', () => ({ElMessage: (...args: unknown[]) => feedback(...args)}))
+vi.mock('@/src/ui/i18n', () => ({useUiI18n: () => ({t: (key: string) => key, translateLegacy: (text: string) => text})}))
+vi.mock('@/src/platform/browser/capabilities', () => ({get browserCapabilities() {return capabilities}}))
+vi.mock('@/src/ui/interfaceAppearance', () => ({
+  get availableInterfaceFonts() {return cache},get cachedInterfaceFonts() {return cache},get interfaceFontLoadState() {return status},
+  clearInterfaceFont: (...args: unknown[]) => clear(...args),refreshInterfaceFontAvailability: (...args: unknown[]) => refresh(...args),retryInterfaceFont: (...args: unknown[]) => retry(...args),
+}))
+vi.mock('@/src/features/settings/ui/components/SettingsPanel.vue', () => ({default: {props:['name','active'],setup:(props:any,{slots}:any)=>()=>!props.active||props.active===props.name?runtime.h('section',slots.default?.()):null}}))
+vi.mock('@/src/features/settings/ui/components/SettingsGroup.vue', () => ({default: {setup(_: unknown, {slots}: any) {return () => runtime.h('div', null, [slots.copy?.(), slots.default?.()])}}}))
+vi.mock('@/src/features/settings/ui/components/SettingsItem.vue', () => ({default: {setup(_: unknown, {slots}: any) {return () => runtime.h('div', null, [slots.copy?.(), slots.default?.()])}}}))
+vi.mock('@/src/features/settings/ui/components/InterfaceSkinPreview.vue', () => ({default: {setup(_: unknown, {slots}: any) {return () => runtime.h('div', null, [slots.copy?.(), slots.default?.()])}}}))
+vi.mock('@/src/features/settings/ui/components/PopupLayoutPreview.vue', () => ({default: {setup(_: unknown, {slots}: any) {return () => runtime.h('div', null, [slots.copy?.(), slots.default?.()])}}}))
+vi.mock('@/src/features/settings/ui/VideoSentenceLearningAppearanceSettings.vue', () => ({default: {setup(_: unknown, {slots}: any) {return () => runtime.h('div', null, [slots.copy?.(), slots.default?.()])}}}))
+vi.mock('@/src/features/settings/ui/TranslationLoadingStyleSettings.vue', () => ({default: {setup(_: unknown, {slots}: any) {return () => runtime.h('div', null, [slots.copy?.(), slots.default?.()])}}}))
+vi.mock('@/src/features/settings/ui/TranslationStyleSettings.vue', () => ({default: {setup(_: unknown, {slots}: any) {return () => runtime.h('div', null, [slots.copy?.(), slots.default?.()])}}}))
+vi.mock('@/src/features/settings/ui/SentenceHighlightStyleSettings.vue', () => ({default: {setup(_: unknown, {slots}: any) {return () => runtime.h('div', null, [slots.copy?.(), slots.default?.()])}}}))
+vi.mock('@/src/ui/components/ServiceIcon.vue', () => ({default: {setup(_: unknown, {slots}: any) {return () => runtime.h('div', null, [slots.copy?.(), slots.default?.()])}}}))
+vi.mock('@/src/features/settings/ui/components/PopupLayoutPreviewItem.vue', () => ({default: {setup(_: unknown, {slots}: any) {return () => runtime.h('div', null, [slots.copy?.(), slots.default?.()])}}}))
 function deferred() {let resolve!: () => void;let reject!: (error: unknown) => void
   const promise = new Promise<void>((yes, no) => {resolve = yes;reject = no});return {promise, resolve, reject}}
 async function settle() {await runtime.nextTick();await runtime.nextTick()}
+function mountPoint() {const root = document.createElement('div');document.body.append(root);return root}
 function createTestRenderer() {
-  return runtime.createRenderer<Record<string, never>, Record<string, unknown>>({patchProp: () => {}, insert: () => {},
-    remove: () => {}, createElement: () => ({}), createText: () => ({}), createComment: () => ({}), setText: () => {},
-    setElementText: () => {}, parentNode: () => null, nextSibling: () => null, querySelector: () => null,
-    setScopeId: () => {}, cloneNode: () => ({}), insertStaticContent: () => [{}, {}]})
+  return runtime.createRenderer<any, any>({
+    patchProp(el,key,_previous,value) {
+      if (/^on[A-Z]/u.test(key)) {const event=key.slice(2).toLowerCase();el.__events??=new Map();const prior=el.__events.get(event);if(prior)el.removeEventListener(event,prior);if(value){const listener=(event:Event)=>{for(const handler of Array.isArray(value)?value:[value])handler(event)};el.__events.set(event,listener);el.addEventListener(event,listener)}}
+      else if(key==='style')Object.assign(el.style,value||{})
+      else if(key==='value')el.value=value??''
+      else if(key==='checked')el.checked=!!value
+      else if(value==null||value===false&&!key.startsWith('aria-'))el.removeAttribute(key)
+      else el.setAttribute(key,String(value))
+    }, insert:(node,parent,anchor)=>parent.insertBefore(node,anchor||null),remove:node=>node.remove(),
+    createElement:(tag,ns)=>ns==='svg'?document.createElementNS('http://www.w3.org/2000/svg',tag):document.createElement(tag),
+    createText:text=>document.createTextNode(text),createComment:text=>document.createComment(text),setText:(node,text)=>{node.nodeValue=text},setElementText:(node,text)=>{node.textContent=text},
+    parentNode:node=>node.parentNode,nextSibling:node=>node.nextSibling,setScopeId:(node,id)=>node.setAttribute(id,''),
+    insertStaticContent(html,parent,anchor){const box=document.createElement('div');box.innerHTML=html;const first=box.firstChild!,last=box.lastChild!;while(box.firstChild)parent.insertBefore(box.firstChild,anchor||null);return[first,last]},
+  })
 }
-function createFixtureServer(buildBrowser = 'chrome') {
-  return createServer({root: process.cwd(), configFile: false, appType: 'custom', logLevel: 'silent',
-    define: {'import.meta.env.BROWSER': JSON.stringify(buildBrowser)},
-    plugins: [mocks, vue()], resolve: {alias: {'@': resolve(process.cwd())}}, ssr: {noExternal: ['element-plus']},
-    server: {hmr: false, middlewareMode: true}})
+function configure(app: import('vue').App) {
+  app.component('el-dialog',{props:['modelValue'],emits:['update:modelValue'],setup:(props:any,{slots,emit}:any)=>()=>props.modelValue?runtime.h('section',{role:'dialog'},[runtime.h('button',{'data-dialog-dismiss':'',onClick:()=>emit('update:modelValue',false)},'Close'),slots.default?.(),slots.footer?.()]):null})
+  app.component('el-button',{setup:(_:unknown,{attrs,slots}:any)=>()=>runtime.h('button',attrs,slots.default?.())})
+  app.config.warnHandler=()=>{}
 }
-function begin(font = 'inter') {const result = state.confirmClearFont(font);if (result?.then) begun = result}
-async function accept() {
-  if (state.performClearFont) await state.performClearFont()
-  else {acceptLegacy();await begun}
-  await settle()
-}
-async function cancel() {
-  if (state.closeFontClearDialog) state.closeFontClearDialog()
-  else {cancelLegacy();await begun}
-  await settle()
-}
-function open() {return state.fontClearDialogOpen === undefined ? legacyOpen : state.fontClearDialogOpen}
+function begin(font = 'inter') {state.confirmClearFont(font)}
+async function accept() {await state.performClearFont();await settle()}
+async function cancel() {state.closeFontClearDialog();await settle()}
+function open() {return state.fontClearDialogOpen}
 function mutate(reason: string) {
   if (reason === 'hidden') props.active = false
   if (reason === 'config') props.config = {...props.config}
@@ -53,34 +70,13 @@ function mutate(reason: string) {
   if (reason === 'unmount') app.unmount()
 }
 beforeEach(async () => {
-  vi.clearAllMocks();legacyOpen = false;begun = undefined
+  vi.clearAllMocks()
   cache = runtime.ref(['system', 'inter', 'noto-sans-sc', 'noto-serif-sc']);status = runtime.ref({font: 'system', status: 'system'})
   clear.mockResolvedValue(undefined);refresh.mockResolvedValue(undefined);retry.mockReturnValue(undefined)
-  confirm.mockImplementation(() => {
-    legacyOpen = true;const pending = deferred();acceptLegacy = () => {legacyOpen = false;pending.resolve()}
-    cancelLegacy = () => {legacyOpen = false;pending.reject('cancel')};return pending.promise
-  })
   capabilities = runtime.reactive({browser: 'chrome'})
-  Object.assign(globalThis, {[key]: {cache, status, feedback, clear, refresh, retry, confirm, capabilities}})
-  mocks = {name: 'interface-settings-ports', enforce: 'pre', resolveId(id) {
-    if (id === 'element-plus') return '\0interface-element'
-    if (id.endsWith('.vue') && !id.endsWith('InterfaceSettings.vue') && !id.endsWith('PopupPreview.vue')) return '\0interface-child'
-    if (/\/src\/ui\/i18n(?:\.ts)?$/u.test(id)) return '\0interface-i18n'
-    if (id.includes('platform/browser/capabilities')) return '\0interface-capabilities'
-    if (/\/src\/ui\/interfaceAppearance(?:\.ts)?$/u.test(id)) return '\0interface-appearance'
-    return null
-  }, load(id) {
-    if (id === '\0interface-element') return `export const ElMessage = globalThis.${key}.feedback;export const ElMessageBox = {confirm: globalThis.${key}.confirm};`
-    if (id === '\0interface-child') return 'export default {}'
-    if (id === '\0interface-i18n') return 'export const useUiI18n = () => ({t: key => key, translateLegacy: text => text});'
-    if (id === '\0interface-capabilities') return `export const browserCapabilities = globalThis.${key}.capabilities;`
-    if (id === '\0interface-appearance') return `export const {cache: availableInterfaceFonts, cache: cachedInterfaceFonts,
-      status: interfaceFontLoadState, clear: clearInterfaceFont, refresh: refreshInterfaceFontAvailability, retry: retryInterfaceFont} = globalThis.${key};`
-    return null
-  }}
-  server = await createFixtureServer()
-  const component = (await server.ssrLoadModule('/src/features/settings/ui/InterfaceSettings.vue')).default
-  component.ssrRender = undefined;component.render = () => null
+  const parsed = parseHTML('<html><body></body></html>');document=parsed.document;win=parsed.window
+  for (const [name,value] of Object.entries({document,window:win,Node:win.Node,Element:win.Element,HTMLElement:win.HTMLElement,Event:win.Event})) vi.stubGlobal(name,value)
+  const component = InterfaceSettings as runtime.Component
   const renderer = createTestRenderer()
   props = runtime.reactive({active: true, config: {interfaceFont: 'inter', interfaceSkin: 'default',
     interfaceVisibility: {popupQuickFeatures: true, popupSiteRule: true, popupFooter: true},
@@ -90,13 +86,13 @@ beforeEach(async () => {
     informationHighlight: {mode: 'surprisal-local', density: 'high', color: 'mint', style: 'underline'}}})
   visible = runtime.ref(true);app = renderer.createApp({setup: () => () => runtime.h(runtime.KeepAlive, null, {default: () => visible.value
     ? runtime.h(component, {...props, ref: (vm: any) => {if (vm) state = vm.$.setupState}}) : runtime.h({render: () => null}, {key: 'other'})})})
-  app.provide(runtime.ssrContextKey, {modules: new Set<string>()});app.config.warnHandler = () => {};app.mount({});await settle()
+  configure(app);host=mountPoint();app.mount(host);await settle()
 })
-afterEach(async () => {app?.unmount();cancelLegacy?.();await begun;await server?.close();delete (globalThis as any)[key]})
+afterEach(async () => {app?.unmount();vi.restoreAllMocks();vi.unstubAllGlobals();vi.unstubAllEnvs()})
 
 describe('实际界面字体设置与所属确认', () => {
   it('取消和重复打开不清除缓存、不改字体，重复请求只保留一次确认', async () => {
-    begin();begin();expect(open()).toBe(true);expect(confirm.mock.calls.length).toBeLessThanOrEqual(1)
+    begin();const operation = state.pendingClear;begin();expect(open()).toBe(true);expect(state.pendingClear).toBe(operation);expect(clear).not.toHaveBeenCalled()
     await cancel();expect(clear).not.toHaveBeenCalled();expect(props.config.interfaceFont).toBe('inter')
   })
   it('确认清除当前字体只执行一次，成功回到系统字体并反馈', async () => {
@@ -116,7 +112,6 @@ describe('实际界面字体设置与所属确认', () => {
   })
   it('新确认框的旧按钮句柄不能确认或取消后来打开的另一个字体', async () => {
     // 这是新增所属确认框的回归约束，旧源码的服务 Promise 没有这些按钮句柄。
-    if (!state.fontClearActions) return
     begin();const old = state.fontClearActions;await cancel();begin('noto-serif-sc')
     old.cancel();await old.confirm();expect(open()).toBe(true);expect(clear).not.toHaveBeenCalled()
     await state.fontClearActions.confirm();expect(clear).toHaveBeenCalledWith('noto-serif-sc')
@@ -217,14 +212,13 @@ describe('实际界面字体设置与所属确认', () => {
     expect(state.popupQuickFeatureEditorItems.some((item: {id: string}) => item.id === 'highlight')).toBe(false)
   })
   it('所有皮肤样例与传入布局都不预览已移除的高亮或未知入口，保留传入对象', async () => {
-    const component = (await server.ssrLoadModule('/src/features/settings/ui/components/PopupPreview.vue')).default
-    component.ssrRender = undefined; component.render = () => null
+    const component = PopupPreview as runtime.Component
     let preview: Record<string, any> = {}
     const inputs = runtime.reactive({skin: {value: 'default'}, quickFeatures: undefined as undefined | {id: string; label: string}[]})
     const previewApp = createTestRenderer().createApp({setup: () => () => runtime.h(component, {...inputs, ref: (vm: any) => {if (vm) preview = vm.$.setupState}})})
     previewApp.provide(runtime.ssrContextKey, {modules: new Set<string>()}); previewApp.config.warnHandler = () => {}
     try {
-      previewApp.mount({}); await settle()
+      previewApp.mount(mountPoint()); await settle()
       expect(preview.orderedQuickFeatures.some((item: {id: string}) => item.id === 'highlight')).toBe(false)
       capabilities.browser = 'userscript'; await settle()
       expect(preview.orderedQuickFeatures.some((item: {id: string}) => item.id === 'highlight')).toBe(false)
@@ -236,25 +230,23 @@ describe('实际界面字体设置与所属确认', () => {
     } finally {previewApp.unmount()}
   })
   it('userscript 构建条件独立阻止高亮配置与预览，并移除专属图标数据', async () => {
-    app.unmount(); await server.close(); server = await createFixtureServer('userscript')
+    app.unmount();vi.stubEnv('BROWSER','userscript')
     const saved = JSON.stringify(props.config)
-    const component = (await server.ssrLoadModule('/src/features/settings/ui/InterfaceSettings.vue')).default
-    component.ssrRender = undefined; component.render = () => null
+    const component = InterfaceSettings as runtime.Component
     app = createTestRenderer().createApp({setup: () => () => runtime.h(component, {...props, ref: (vm: any) => {if (vm) state = vm.$.setupState}})})
-    app.provide(runtime.ssrContextKey, {modules: new Set<string>()}); app.config.warnHandler = () => {}; app.mount({}); await settle()
+    configure(app);host=mountPoint();app.mount(host);await settle()
     expect(capabilities.browser).toBe('chrome')
     expect(state.popupQuickFeatureEditorItems.some((item: {id: string}) => item.id === 'highlight')).toBe(false)
     state.setPopupQuickFeatureVisibility('highlight', false); expect(JSON.stringify(props.config)).toBe(saved)
-    const previewComponent = (await server.ssrLoadModule('/src/features/settings/ui/components/PopupPreview.vue')).default
-    previewComponent.ssrRender = undefined; previewComponent.render = () => null
+    const previewComponent = PopupPreview as runtime.Component
     let preview: Record<string, any> = {}
     const previewApp = createTestRenderer().createApp({setup: () => () => runtime.h(previewComponent,
       {skin: {value: 'default'}, ref: (vm: any) => {if (vm) preview = vm.$.setupState}})})
     previewApp.provide(runtime.ssrContextKey, {modules: new Set<string>()}); previewApp.config.warnHandler = () => {}
     try {
-      previewApp.mount({}); await settle()
+      previewApp.mount(mountPoint()); await settle()
       expect(preview.orderedQuickFeatures.some((item: {id: string}) => item.id === 'highlight')).toBe(false)
-      expect((await server.ssrLoadModule('/src/ui/popupQuickFeatureIcons.ts')).popupQuickFeatureIconPaths).not.toHaveProperty('highlight')
+      expect(popupQuickFeatureIconPaths).not.toHaveProperty('highlight')
     } finally {previewApp.unmount()}
   })
   it.each(['missing', 'empty', 'embedded'] as const)('实际 Popup 预览图标 %s 时复用官方脚本资源或扩展回退', async kind => {
@@ -263,19 +255,92 @@ describe('实际界面字体设置与所属确认', () => {
     try {
       if (kind === 'missing') delete globalThis.__FLUENTREAD_ICON_DATA__
       else Object.defineProperty(globalThis, '__FLUENTREAD_ICON_DATA__', {configurable: true, writable: true, value: kind === 'empty' ? '' : officialIcon})
-      const component = (await server.ssrLoadModule('/src/features/settings/ui/components/PopupPreview.vue')).default
-      const previewApp = runtime.createSSRApp({render: () => runtime.h(component, {skin: {value: 'default'}})})
+      const component = PopupPreview as runtime.Component
+      const previewApp = createTestRenderer().createApp({render: () => runtime.h(component, {skin: {value: 'default'}})})
       previewApp.config.warnHandler = () => {}
-      const html = await renderToString(previewApp)
-      const {document} = parseHTML(`<html><body>${html}</body></html>`)
-      const logos = document.querySelectorAll('img.preview-logo')
+      const root = mountPoint();previewApp.mount(root);await settle()
+      const logos = root.querySelectorAll('img.preview-logo')
       expect(logos).toHaveLength(1)
       expect(logos[0].getAttribute('src')).toBe(kind === 'embedded' ? officialIcon : '/icon/128.png')
       expect(logos[0].getAttribute('width')).toBe('32')
       expect(logos[0].getAttribute('height')).toBe('32')
+      previewApp.unmount()
     } finally {
       if (original) Object.defineProperty(globalThis, '__FLUENTREAD_ICON_DATA__', original)
       else delete globalThis.__FLUENTREAD_ICON_DATA__
     }
   })
 })
+
+async function dispatchUi(node: Element, type: string, values: Record<string, unknown> = {}) {
+  const event = new win.Event(type, {bubbles: true, cancelable: true});Object.assign(event, values);
+  node.dispatchEvent(event);await settle();return event;
+}
+it('selects a skin and font, retries a failed download, and confirms or cancels cache removal through rendered controls', async () => {
+  props.activePanel = 'skin';await settle();
+  const skin = host.querySelector('[data-skin="compact"]')!;await dispatchUi(skin, 'click');expect(props.config.interfaceSkin).toBe('compact');expect(skin.getAttribute('aria-checked')).toBe('true');
+  await dispatchUi(skin, 'keydown', {key: 'Home'});expect(props.config.interfaceSkin).toBe('default');
+  props.activePanel = 'font';await settle();
+  await dispatchUi(host.querySelector('[data-font="roboto"] input')!, 'change');expect(props.config.interfaceFont).toBe('roboto');
+  status.value = {font: 'roboto', status: 'error'};await settle();await dispatchUi(host.querySelector('[data-font="roboto"] .is-error button')!, 'click');expect(retry).toHaveBeenCalledOnce();
+  status.value = {font: 'system', status: 'system'};await settle();
+  await dispatchUi(host.querySelector('[data-font="inter"] .interface-font-clear')!, 'click');expect(host.querySelector('[role="dialog"]')).not.toBeNull();
+  await dispatchUi([...host.querySelectorAll('[role="dialog"] button')].find(button=>button.textContent==='settings.interface.font.clearConfirmCancel')!, 'click');expect(host.querySelector('[role="dialog"]')).toBeNull();expect(clear).not.toHaveBeenCalled();
+  await dispatchUi(host.querySelector('[data-font="inter"] .interface-font-clear')!, 'click');await dispatchUi(host.querySelector('[role="dialog"] button[type="primary"]')!, 'click');
+  expect(clear).toHaveBeenCalledWith('inter');expect(props.config.interfaceFont).toBe('roboto');expect(host.querySelector('[role="dialog"]')).toBeNull();
+});
+it('reorders and hides actual layout cards, then restores their order and keyboard focus without mutating hidden feature slots', async () => {
+  props.activePanel = 'layout';await settle();
+  Object.defineProperty(document, 'hasFocus', {configurable: true, value: () => true});
+  const focus = vi.spyOn(win.HTMLElement.prototype, 'focus').mockImplementation(() => {});
+  const moduleCard = (id: string) => host.querySelector(`[data-popup-layout-module="${id}"]`)!;
+  await dispatchUi(moduleCard('translation').querySelector('.popup-layout-handle')!, 'keydown', {key: 'ArrowDown'});
+  expect(props.config.popupModuleOrder.slice(0, 2)).toEqual(['siteRule', 'translation']);
+  await dispatchUi(moduleCard('siteRule').querySelector('.popup-layout-hide')!, 'click', {detail: 0});
+  expect(props.config.interfaceVisibility.popupSiteRule).toBe(false);expect(moduleCard('siteRule')).toBeNull();expect(focus).toHaveBeenCalledWith({preventScroll: true});
+  const modules = host.querySelector('.popup-layout-editor--popupModule')!;
+  await dispatchUi(modules.querySelector('.popup-layout-add')!, 'click', {detail: 0});expect(props.config.interfaceVisibility.popupSiteRule).toBe(true);
+  await dispatchUi(modules.querySelector('.popup-layout-toolbar button')!, 'click');expect(props.config.popupModuleOrder).toEqual(['translation', 'siteRule', 'quickFeatures', 'footer']);
+  await dispatchUi(host.querySelector('#popup-layout-features-tab')!, 'click');expect(host.querySelector('#popup-layout-features-tab')?.getAttribute('aria-selected')).toBe('true');
+  const feature = host.querySelector('[data-popup-quick-feature-layout="hover"] .popup-layout-handle')!;
+  await dispatchUi(feature, 'keydown', {key: 'ArrowRight'});expect(props.config.popupQuickFeatureOrder.slice(0, 3)).toEqual(['selection', 'hover', 'appearance']);
+  await dispatchUi(feature, 'keydown', {key: 'ArrowLeft'});expect(props.config.popupQuickFeatureOrder[0]).toBe('hover');
+  await dispatchUi(moduleCard('quickFeatures').querySelector('.popup-layout-hide')!, 'click', {detail: 1});expect(host.querySelector('.popup-layout-section-hidden')).not.toBeNull();
+  await dispatchUi(host.querySelector('.popup-layout-section-hidden button')!, 'click');expect(props.config.interfaceVisibility.popupQuickFeatures).toBe(true);
+  expect(modules.querySelector('.popup-layout-announcement')?.textContent).toContain('settings.interface.popupLayout');
+});
+it('drags actual module and feature cards using their geometry and rejects dragging a card action', async () => {
+  props.activePanel = 'layout';await settle();
+  win.getComputedStyle = () => ({gridTemplateColumns: '100px 100px'});
+  const transfer = {setData: vi.fn(), effectAllowed: '', dropEffect: ''};
+  const geometry = {left: 0, top: 0, width: 100, height: 40, right: 100, bottom: 40};
+  const modules = host.querySelector('.popup-layout-editor--popupModule')!;
+  const first = modules.querySelector('[data-popup-layout-module="translation"]')!, last = modules.querySelector('[data-popup-layout-module="footer"]')!;
+  Object.defineProperty(last, 'getBoundingClientRect', {value: () => geometry});
+  await dispatchUi(first, 'dragstart', {dataTransfer: transfer});expect(transfer.setData).toHaveBeenCalledWith('text/plain', 'translation');
+  await dispatchUi(last, 'dragover', {dataTransfer: transfer, clientY: 30});expect(last.classList.contains('drop-after')).toBe(true);
+  await dispatchUi(last, 'dragleave', {relatedTarget: last.firstChild});expect(last.classList.contains('drop-after')).toBe(true);
+  await dispatchUi(last, 'dragleave', {relatedTarget: null});expect(last.classList.contains('drop-after')).toBe(false);
+  await dispatchUi(last, 'drop', {dataTransfer: transfer, clientY: 30});expect(props.config.popupModuleOrder.at(-1)).toBe('translation');expect(modules.querySelector('.dragging')).toBeNull();
+  await dispatchUi(last.querySelector('.popup-layout-hide')!, 'dragstart', {dataTransfer: transfer});expect(modules.querySelector('.dragging')).toBeNull();
+  await dispatchUi(host.querySelector('#popup-layout-features-tab')!, 'click');
+  const features = host.querySelector('.popup-layout-editor--quickFeature')!, source = features.querySelector('[data-popup-quick-feature-layout="hover"]')!, target = features.querySelector('[data-popup-quick-feature-layout="image"]')!;
+  Object.defineProperty(target, 'getBoundingClientRect', {value: () => geometry});
+  await dispatchUi(source, 'dragstart', {dataTransfer: transfer});await dispatchUi(target, 'dragover', {dataTransfer: transfer, clientX: 80});await dispatchUi(target, 'drop', {dataTransfer: transfer, clientX: 80});
+  expect(props.config.popupQuickFeatureOrder).toEqual(['selection', 'image', 'appearance', 'hover', 'document']);
+  await dispatchUi(source, 'dragstart', {dataTransfer: transfer});await dispatchUi(features, 'keydown', {key: 'Escape'});expect(features.querySelector('.dragging')).toBeNull();
+  await dispatchUi(source, 'dragend');expect(features.querySelector('.dragging')).toBeNull();
+});
+
+it('moves layout cards through visible arrow controls and returns to the module tab, then closes font confirmation through dialog chrome',async()=>{
+  props.activePanel='layout';await settle();
+  const card=()=>host.querySelector('[data-popup-layout-module="translation"]')!;
+  const arrows=()=>card().querySelectorAll<HTMLButtonElement>('.popup-layout-move-buttons button');
+  expect(arrows()[0].disabled).toBe(true);await dispatchUi(arrows()[1],'click');expect(props.config.popupModuleOrder.slice(0,2)).toEqual(['siteRule','translation']);
+  await dispatchUi(arrows()[0],'click');expect(props.config.popupModuleOrder[0]).toBe('translation');
+  await dispatchUi(host.querySelector('#popup-layout-features-tab')!,'click');await dispatchUi(host.querySelector('#popup-layout-modules-tab')!,'click');
+  expect(host.querySelector('#popup-layout-modules-tab')?.getAttribute('aria-selected')).toBe('true');
+  props.activePanel='font';await settle();await dispatchUi(host.querySelector('[data-font="inter"] .interface-font-clear')!,'click');
+  await dispatchUi(host.querySelector('[data-dialog-dismiss]')!,'click');expect(host.querySelector('[role="dialog"]')).toBeNull();expect(clear).not.toHaveBeenCalled();
+  await dispatchUi(host.querySelector('[data-font="inter"] .interface-font-clear')!,'click');await dispatchUi(host.querySelector('[role="dialog"] button[type="primary"]')!,'click');expect(clear).toHaveBeenCalledOnce();
+});

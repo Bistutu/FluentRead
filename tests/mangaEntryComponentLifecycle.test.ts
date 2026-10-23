@@ -31,8 +31,9 @@ async function mountEntry(toolsDisplay?: 'hover' | 'always') {
   const props = runtime.reactive({
     status:{available:true, active:false, pending:false, errors:0} as MangaTranslationStatus,
     page:{site:'fixture', route:'/chapter/1'},
-    settings:{promptEnabled:true, floatingBallVisible:false, downloadConfirmed:false, animations:true, ...(toolsDisplay === undefined ? {} : {toolsDisplay})},
+    settings:{sourceLanguage:undefined as string | undefined, promptEnabled:true, floatingBallVisible:false, downloadConfirmed:false, animations:true, ...(toolsDisplay === undefined ? {} : {toolsDisplay})},
     toggle:vi.fn(), inspectResources:vi.fn(async () => false), persist:vi.fn(async (_patch: Record<string, unknown>) => undefined), openSettings:vi.fn(),
+    startAreaTranslation:vi.fn(async () => true),
   });
   const remove = (value: HostNode) => {if (value.parent) {const at = value.parent.children.indexOf(value); if (at >= 0) value.parent.children.splice(at,1); value.parent = null;}};
   const renderer = runtime.createRenderer<HostNode, HostNode>({
@@ -59,6 +60,42 @@ function launcher(panel: any) {
 }
 
 describe('actual manga entry resource consent and lifecycle', () => {
+  it.each([['ru', '俄语和英语', '16 MB'], ['ko', '韩语和英语', '13 MB']])('shows the actual %s resource disclosure and closes it after a source change', async (language, languages, size) => {
+    const {props,tick,find} = await mountEntry();
+    props.settings.sourceLanguage = language; await tick();
+    find(value => value.props.class?.split(/\s+/).includes('fr-manga-launcher'))!.props.onClick({detail:0});
+    await tick(); await tick();
+    expect(find(value => value.tag === 'p' && value.text.includes(languages))?.text).toContain(size);
+    expect(props.inspectResources).toHaveBeenCalledOnce();
+    props.settings.sourceLanguage = 'en'; await tick();
+    expect(find(value => value.props.role === 'dialog')).toBeUndefined(); expect(props.toggle).not.toHaveBeenCalled();
+  });
+  it('routes an area-only manga launcher through the area entry, displays failure and retries without model consent', async () => {
+    const {props,tick,find} = await mountEntry();
+    props.status.areaFallback = true; await tick();
+    const button = find(value => value.props.class?.split(/\s+/).includes('fr-manga-launcher'))!;
+    expect(button.props['aria-label']).toBe('圈选漫画翻译');
+    props.startAreaTranslation.mockResolvedValueOnce(false); button.props.onClick({detail:0}); await tick(); await tick();
+    expect(find(value => value.props.role === 'alert')?.text).toContain('启用圈选翻译');
+    props.startAreaTranslation.mockRejectedValueOnce(new Error('area entry failed'));
+    await find(value => value.props.class === 'fr-manga-primary')!.props.onClick(); await tick();
+    expect(find(value => value.props.role === 'alert')?.text).toBe('area entry failed');
+    props.startAreaTranslation.mockRejectedValueOnce('area message disconnected');
+    await find(value => value.props.class === 'fr-manga-primary')!.props.onClick(); await tick();
+    expect(find(value => value.props.role === 'alert')?.text).toBe('area message disconnected');
+    await find(value => value.props.class === 'fr-manga-primary')!.props.onClick(); await tick();
+    expect(find(value => value.props.role === 'dialog')).toBeUndefined();
+    expect(props.inspectResources).not.toHaveBeenCalled(); expect(props.persist).not.toHaveBeenCalled(); expect(props.toggle).not.toHaveBeenCalled();
+  });
+  it('ignores a late area launch rejection after the reader navigates and allows the new page to launch', async () => {
+    const {props,tick,find} = await mountEntry(), pending = deferred<boolean>();
+    props.status.areaFallback = true; props.startAreaTranslation.mockReturnValueOnce(pending.promise); await tick();
+    find(value => value.props.class?.split(/\s+/).includes('fr-manga-launcher'))!.props.onClick({detail:0}); await tick();
+    props.page.route = '/chapter/2'; await tick(); pending.reject('late area failure'); await tick(); await tick();
+    expect(find(value => value.props.role === 'dialog')).toBeUndefined();
+    find(value => value.props.class?.split(/\s+/).includes('fr-manga-launcher'))!.props.onClick({detail:0}); await tick(); await tick();
+    expect(props.startAreaTranslation).toHaveBeenCalledTimes(2); expect(find(value => value.props.role === 'dialog')).toBeUndefined();
+  });
   it('renders accessible busy, error and completed states, and connects every launcher event to its intended action', async () => {
     const {panel,props,tick,find} = await mountEntry(), {button} = launcher(panel), check = deferred<boolean>();
     props.inspectResources.mockReturnValueOnce(check.promise);

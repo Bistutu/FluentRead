@@ -1,9 +1,11 @@
 /**
  * @file src/features/video-subtitle/content/hlsAudio.ts
  * 文件职责：从 X 播放器已请求的 HLS 清单读取完整音轨，避免按视频时长实时扫描。
- * 主要内容：优先音频 rendition、保留同清单内的备用变体，先校验 fMP4 初始化段中的音频轨，再按原顺序并发读取媒体段，并严格限制大小与取消范围。
+ * 主要内容：优先音频 rendition、保留同清单内的备用变体，先校验 fMP4 初始化段中的音频轨，再按原顺序并发读取媒体段；响应头拒绝即释放未读流，读取取消不依赖底层清理完成，并严格限制大小与取消范围。
  * 模块边界：不解密媒体、不访问页面凭据、不操作播放器；fetch 由调用方注入，解码由独立浏览器音频适配器执行。
  */
+import {cancelUnreadResponseBody} from '@/src/platform/http/runtime';
+
 export interface HlsAudioManifest {next?: string; alternatives?: string[]; segments?: string[]; durationMs: number}
 const MAX_AUDIO_BYTES = 64 * 1024 * 1024;
 
@@ -89,7 +91,10 @@ export async function readBoundedMediaResponse(
     signal: AbortSignal,
     options: ReadBoundedMediaResponseOptions = {},
 ): Promise<Uint8Array> {
-    if (!response.ok || Number(response.headers.get('content-length')) > limit) throw new Error('视频音轨响应无效或过大');
+    if (!response.ok || Number(response.headers.get('content-length')) > limit) {
+        cancelUnreadResponseBody(response);
+        throw new Error('视频音轨响应无效或过大');
+    }
     const reader = response.body?.getReader();
     if (!reader) throw new Error('视频音轨响应为空');
     const chunks: Uint8Array[] = [];

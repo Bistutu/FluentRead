@@ -43,6 +43,22 @@ function scan(fixture: ReturnType<typeof dom>, request: Parameters<typeof scanMa
 afterEach(() => {vi.useRealTimers(); vi.unstubAllGlobals();});
 
 describe('material paragraph scan', () => {
+    it('finds captured source paragraphs in nested open shadow roots and observes their changes', async () => {
+        const f = dom('<div id="outer"></div>');
+        const outer = f.document.getElementById('outer')!.attachShadow({mode:'open'});
+        outer.innerHTML = '<section id="inner"></section>';
+        const inner = outer.getElementById('inner')!.attachShadow({mode:'open'});
+        inner.innerHTML = `<p>${quote}</p>`;
+        const paragraph = inner.querySelector('p')!;
+        const located = await scan(f, {kind:'locate', locator:{kind:'text', quote}}).drain();
+        expect(located.status).toBe('matched'); expect(located.node).toBe(paragraph);
+        inner.innerHTML = Array.from({length:100}, (_, i) => `<p>${i === 99 ? quote : 'Original.'}</p>`).join('');
+        f.nextSlice();
+        const running = scan(f, {kind:'locate', locator:{kind:'text', quote}}); await running.step();
+        inner.querySelector('p')!.textContent = 'Updated original.';
+        expect((await running.drain()).status).toBe('invalidated');
+    });
+
     it('covers paragraphs after 6000 with shared ancestor reads and retains the cursor across batch yields', async () => {
         const f = dom('<div>'.repeat(32) + Array.from({length: 6502}, (_, i) => `<p>${i === 6500 ? quote : `Original paragraph ${i} is readable source prose.`}</p>`).join('') + '</div>'.repeat(32));
         const result = await scan(f, {kind: 'locate', locator: {kind: 'text', quote}}).drain();

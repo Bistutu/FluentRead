@@ -1,7 +1,7 @@
 /**
  * @file src/features/section-translation/core.ts
- * 文件职责：定义局部翻译选择模式里“鼠标指着哪一块区域”的判定规则，把命中的任意节点收敛为可高亮、可翻译的块级容器，并提供向外扩大范围、元素简称与标签文案的纯计算。
- * 主要内容：导出几何判定、范围扩大、界面排除、元素简称、自然语言范围与有界原文预览及动作标签；复用抗表单命名控件遮蔽的标签读取，跨开放 Shadow DOM 排除 FluentRead 界面并提取原文，用 512 步预算限制祖先布局读取，跳过行内、零尺寸与媒体节点，安全映射译文工件的原文父级。
+ * 文件职责：定义局部翻译选择模式里“鼠标指着哪一块区域”的判定规则，把命中的任意节点收敛为可高亮、可翻译的块级容器，并提供向外扩大范围、范围语义与标签文案的纯计算。
+ * 主要内容：导出几何判定、范围扩大、界面排除、自然语言范围及动作标签；复用抗表单命名控件遮蔽的标签读取，跨开放 Shadow DOM 排除 FluentRead 界面，用 512 步预算限制祖先布局读取，跳过行内、零尺寸与媒体节点，安全映射译文工件的原文父级。
  * 模块边界：本模块只读取传入元素与注入的几何/样式端口，不注册监听、不创建界面、不发起翻译，也不读取配置；手势与高亮由 content/picker 负责，区域翻译由全文翻译 feature 的公开接口完成。
  */
 import {getComposedParent, getElementTagName} from '@/src/core/translation/public';
@@ -111,9 +111,6 @@ export function expandSectionElement(current: Element, geometry: SectionGeometry
     return null;
 }
 
-const SIMPLE_CLASS_TOKEN = /^[A-Za-z_-][\w-]*$/u;
-const PREVIEW_EXCLUSION_SELECTOR = `${TRANSLATION_ARTIFACT_SELECTOR},${SECTION_PICKER_UI_SELECTOR},script,style,input,textarea,select`;
-
 /** 用阅读语义介绍范围，用户无需认识 HTML 标签与网页内部类名。 */
 export function describeSectionScope(element: Element): string {
     const tag = tagNameOf(element);
@@ -122,42 +119,6 @@ export function describeSectionScope(element: Element): string {
             : /^(table|thead|tbody|tfoot|tr|td|th)$/u.test(tag) ? 'table'
                 : tag === 'article' || tag === 'main' ? 'article' : 'region';
     return `sectionTranslation.scope.${scope}`;
-}
-
-/** Light DOM 与开放影子树共用 160 节点和 88 字预算，避开译文、扩展界面、脚本与控件。 */
-export function sectionSourcePreview(element: Element): string {
-    let text = '';
-    let steps = 0;
-    const walk = (node: Node): void => {
-        steps += 1;
-        if (node.nodeType === 3) {
-            text += `${node.textContent!.slice(0, 512).replace(/\s+/gu, ' ').trim()} `;
-            return;
-        }
-        if (node.nodeType === 1) {
-            const child = node as Element;
-            if (child.matches(PREVIEW_EXCLUSION_SELECTOR)) return;
-        }
-        for (let child = node.firstChild; child && steps < 160 && text.length < 88; child = child.nextSibling) walk(child);
-        // 区域翻译会发现开放影子树内的正文；宿主与其祖先的原文预览也应覆盖同一范围。
-        if (node.nodeType === 1 && steps < 160 && text.length < 88) {
-            const root = (node as Element).shadowRoot;
-            if (root) walk(root);
-        }
-    };
-    walk(element);
-    text = text.trim();
-    return text.length > 88 ? `${text.slice(0, 87)}…` : text;
-}
-
-/** 生成类似开发者工具的元素简称（如 article.markdown-body），帮助熟悉网页结构的用户确认范围。 */
-export function describeSectionElement(element: Element): string {
-    const tag = tagNameOf(element);
-    const id = typeof element.id === 'string' && SIMPLE_CLASS_TOKEN.test(element.id) ? `#${element.id}` : '';
-    const className = Array.from(element.classList)
-        .find((token) => SIMPLE_CLASS_TOKEN.test(token) && !token.startsWith('fluent-read'));
-    const label = `${tag}${id || (className ? `.${className}` : '')}`;
-    return label.length > 40 ? `${label.slice(0, 39)}…` : label;
 }
 
 /** 标签只需要区域摘要中的这几项，避免 core 依赖全文翻译 feature 的完整类型。 */

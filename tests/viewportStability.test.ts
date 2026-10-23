@@ -45,6 +45,8 @@ describe('全文翻译视口稳定性', () => {
         const {document, window} = globalThis as unknown as {document: Document; window: Window & typeof globalThis};
         Object.defineProperty(document, 'elementFromPoint', {configurable: true, value: undefined});
         expect(withFullPageViewportAnchor(() => 'ok')).toBe('ok');
+        expect(withFullPageRestorationAnchors(() => 'no-hit-test', [document.body])).toBe('no-hit-test');
+        expect(withFullPageViewportAnchor(() => 'no-local-hit-test', [document.body])).toBe('no-local-hit-test');
         Object.defineProperty(document, 'elementFromPoint', {configurable: true, value: () => undefined});
         expect(withFullPageViewportAnchor(() => 'no-anchor')).toBe('no-anchor');
         Object.defineProperty(document, 'elementFromPoint', {

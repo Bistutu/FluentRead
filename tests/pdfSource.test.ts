@@ -30,6 +30,17 @@ describe('PDF source entry URL boundary', () => {
 });
 
 describe('Online PDF streamed import ownership and memory', () => {
+    it('releases a rejected HTTP response immediately and consumes a late cancellation failure', async () => {
+        let rejectCancel!: (error: Error) => void;
+        const cancellation = new Promise<void>((_resolve, reject) => {rejectCancel = reject;});
+        const cancel = vi.fn(() => cancellation);
+        const response = new Response(new ReadableStream({cancel}), {status: 503});
+        await expect(fetchOnlinePdf('https://example.com/a.pdf', {fetch: download(response)})).rejects.toThrow('HTTP 503');
+        expect(cancel).toHaveBeenCalledOnce();
+        expect(response.body!.locked).toBe(false);
+        rejectCancel(new Error('Late HTTP cancellation failure'));
+        await Promise.resolve();
+    });
     it('declared oversize rejection does not wait for stalled body cancellation or leak its late failure', async () => {
         let rejectCancel!: (error: Error) => void;
         const cancellation = new Promise<void>((_resolve, reject) => {rejectCancel = reject;});

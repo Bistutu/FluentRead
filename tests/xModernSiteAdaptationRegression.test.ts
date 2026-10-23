@@ -15,10 +15,11 @@ import {compileSiteRulePack, getSiteAdapterAttributeFilter} from '@/src/core/sit
 import {validateSelectors} from '@/src/core/site-adaptation/schema';
 import {shouldSkipTranslationForTarget} from '@/src/core/language/detect';
 import {
-    applyTranslationsToSnapshot, createTranslationCore, createTranslationSourceSnapshot,
+    applyTranslationsToSnapshot, createTranslationSourceSnapshot,
     extractTranslationText, extractTranslationTextFromNodes, getTranslationCandidateKey,
     hasDistinctTranslation, normalizeTranslationText,
 } from '@/src/core/translation/public';
+import {createTranslationCore} from './helpers/translationCore';
 import type {SiteRulePack} from '@/src/core/site-adaptation/types';
 import type {TranslationCandidate, TranslationScope} from '@/src/core/translation/public';
 

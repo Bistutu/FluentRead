@@ -5,6 +5,7 @@
  * 模块边界：本文件只管理可逆的浏览器视口状态与延迟回调，具体重启目标仍由全文 runtime 决定。
  */
 import {getComposedParent, maxComposedAncestorDepth} from '@/src/core/translation/public';
+import {asHTMLElement, isElementNode} from './mutationObservation';
 
 const TRANSLATION_ARTIFACT_SELECTOR = [
     '[data-fr-translation-segment="true"]',
@@ -13,16 +14,6 @@ const TRANSLATION_ARTIFACT_SELECTOR = [
 ].join(',');
 
 const FULL_PAGE_SCROLL_IDLE_MS = 220;
-
-function isElementNode(node: Node | null | undefined): node is Element {
-    return Boolean(node && node.nodeType === 1 && typeof (node as Element).matches === 'function');
-}
-
-function asHTMLElement(node: unknown): HTMLElement | null {
-    if (!node || typeof node !== 'object' || (node as Node).nodeType !== 1) return null;
-    const element = node as HTMLElement;
-    return typeof element.tagName === 'string' && typeof element.style === 'object' ? element : null;
-}
 
 interface FullPageViewportAnchor {
     element: HTMLElement;

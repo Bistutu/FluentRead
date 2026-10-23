@@ -1,9 +1,10 @@
 <!--
  * @file src/features/settings/ui/SettingsSections.vue
  * 文件职责：承载 FluentRead Options 页面各业务设置分区，连接运行时配置、服务选择、快捷键、站点规则、翻译中心、OCR、词书以及导入导出和历史恢复。
- * 主要内容：扩展设置入口可通过已校验的 service 查询参数选择服务编辑区，目录浏览不改写默认翻译服务，详情标题栏显式设为默认后复用现有配置补丁持久化并同步其他页面；图片设置优先展示语言、服务与识别选择，资源与入口按需展开；翻译设置首先展示带交互示例的阅读辅助，普通页面与网站规则连续展示任务分组并标记顶部导航的滚动定位目标，统计保留按任务切换的视图，集中分配功能服务并将模型用量合并到翻译统计，保留已访问表单实例，自定义快捷键弹窗按显示状态挂载并在离开所属分区时取消草稿；包含正文/全部节点识别范围，网站适配区域复用来源返回条并隔离配置及范围变化后的迟到操作，划词设置顶部提供不带修复说明的来源返回按钮并按所属配置及分区启停；模板按 activeSection 展示业务分区，通用设置首先展示全局翻译开关，再按基础配置、网页辅助、基本偏好组织控件，软件语言控件随分区及缓存活跃状态启停，并保留固定英文标题与说明以便选错语言后恢复，提供当前默认服务的配置入口并保留译文样式跨页入口；图片与圈选合并在同页，共享仅在当前分区挂载的 OCR 管理组件；服务连接在主页面的服务目录内编辑，在界面风格页组织译文样式、风格与菜单栏布局，仅在高级选项激活时挂载缓存管理；脚本复用配置编辑会话隔离草稿与权威基线，批量水合时暂停完整草稿扫描，在途与失败编辑保留字段归属，继续同步保存和离页补丁交接，协调网站入口、配置及凭据保存、历史恢复和能力过滤。
+ * 主要内容：扩展设置入口可通过已校验的 service 查询参数选择服务编辑区，目录浏览不改写默认翻译服务，详情标题栏显式设为默认后复用现有配置补丁持久化并同步其他页面；图片设置优先展示语言、服务与识别选择，资源与入口按需展开；服务能力仅从当前编辑目标派生，翻译设置首先展示带交互示例的阅读辅助，普通页面与网站规则连续展示任务分组并标记顶部导航的滚动定位目标，统计保留按任务切换的视图，集中分配功能服务并将模型用量合并到翻译统计，保留已访问表单实例，自定义快捷键弹窗按显示状态挂载并在离开所属分区时取消草稿；包含正文/全部节点识别范围，网站适配区域复用来源返回条并隔离配置及范围变化后的迟到操作，划词设置顶部提供不带修复说明的来源返回按钮并按所属配置及分区启停；模板按 activeSection 展示业务分区，通用设置首先展示全局翻译开关，再按基础配置、网页辅助、基本偏好组织控件，软件语言控件随分区及缓存活跃状态启停，并保留固定英文标题与说明以便选错语言后恢复，提供当前默认服务的配置入口并保留译文样式跨页入口；图片与圈选合并在同页，共享仅在当前分区挂载的 OCR 管理组件；服务连接在主页面的服务目录内编辑，在界面风格页组织译文样式、风格与菜单栏布局，仅在高级选项激活时挂载缓存管理；脚本复用配置编辑会话隔离草稿与权威基线，批量水合时暂停完整草稿扫描，在途与失败编辑保留字段归属，继续同步保存和离页补丁交接，协调网站入口、配置及凭据保存、历史恢复和能力过滤。
  * 锚点编排：翻译设置保留连续表单，双语逐句阅读辅助与智能高亮各有独立锚点；智能高亮仅在翻译设置分区激活时挂载，定位不隐藏其他分组，既有表单配置保持原归属。新建兼容服务对话框只在首次请求打开时挂载，此后保留实例与关闭动画；加载中或失败时在添加入口旁显示可关闭提示，并停用入口说明气泡以免遮挡反馈，离开后不复活旧提示，草稿仍由原有活跃上下文和关闭流程管理。
- * AI 翻译超时：在高级全局请求限制中以秒编辑，确认后交接毫秒配置补丁；分区、缓存状态、配置同步或卸载变化会失效旧控件回调。
+ * 交互延迟归属：悬浮与划词延迟只在所属活跃分区确认后提交，外部同步或离开使旧输入失效，保留原步长、范围及空值恢复规则。
+ * 请求数值归属：高级页的 AI 超时、重试次数、密钥恢复与退避等待共用活跃配置身份；分区、缓存状态、配置同步或卸载会同步失效旧控件回调，秒/分钟确认后交接毫秒配置，退避上下限一次提交完整快照。
  * 设置同步：Safari 仅保存权威配置，由后台通知实际 content 接收者同步功能；其他浏览器保留合并后的即时标签页广播，卸载后不继续投递。
  * 模块边界：该组件负责设置 UI 编排但不实现 provider 网络、配置仓库或 feature 运行时；校验与迁移来自 core/config，持久化经 services/config，复杂子界面保持在各自 feature/组件内；ChatGPT 登录模块在公开构建中隐藏，旧默认或深链接只回退编辑目标，不迁移或删除用户数据；脚本入口已拦截的扩展专属分区在构建期不引入其子 UI，原入口提示与数据接口保持。
  -->
@@ -128,13 +129,15 @@
     </SettingsItem>
     <SettingsItem v-if="config.selectionTranslatorMode !== 'disabled'" label="划词显示延迟" help="从选区稳定后开始计时，再显示图标、小点或翻译面板；快捷键在等待结束后按下会立即显示">
       <SettingsNumberInput
-        v-model="config.selectionTranslatorDelay"
+        :key="selectionDelayContext.revision.value"
+        :model-value="config.selectionTranslatorDelay"
+        :disabled="!selectionDelayContext.active.value"
         unit="ms"
         aria-label="划词翻译显示延迟"
         :min="SELECTION_TRANSLATOR_DELAY_MIN"
         :max="SELECTION_TRANSLATOR_DELAY_MAX"
         :step="SELECTION_TRANSLATOR_DELAY_STEP"
-        @change="handleSelectionTranslatorDelayChange"
+        :onChange="selectionDelayChange"
       />
     </SettingsItem>
     <SettingsItem
@@ -307,13 +310,15 @@
     </SettingsItem>
     <SettingsItem label="悬浮翻译延迟" help="按住悬浮快捷键并移动鼠标后，等待设定时间再翻译；增加延迟可减少 Ctrl+C 等组合键的误触，松开快捷键触发的单次翻译不受影响">
       <SettingsNumberInput
-        v-model="config.mouseHoverTranslationDelay"
+        :key="hoverDelayContext.revision.value"
+        :model-value="config.mouseHoverTranslationDelay"
+        :disabled="!hoverDelayContext.active.value"
         unit="ms"
         aria-label="悬浮翻译延迟"
         :min="MOUSE_HOVER_TRANSLATION_DELAY_MIN"
         :max="MOUSE_HOVER_TRANSLATION_DELAY_MAX"
         :step="MOUSE_HOVER_TRANSLATION_DELAY_STEP"
-        @change="handleMouseHoverTranslationDelayChange"
+        :onChange="hoverDelayChange"
       />
     </SettingsItem>
     <QuickTranslationProfiles :active="viewActive && props.activeSection === 'settings-translation' && (!props.activePanel || props.activePanel === 'hover')" :config="config" action="hover" :profiles="config.quickTranslationProfiles"
@@ -468,19 +473,19 @@
           <RequestLimitFields :active="viewActive && props.activeSection === 'settings-advanced'" :model-value="config" @update:model-value="Object.assign(config, $event)" />
           <SettingsItem data-testid="ai-request-timeout-settings" :label="t('settings.requestLimits.aiTimeout')" :description="t('settings.requestLimits.aiTimeoutHelp')">
               <SettingsNumberInput
-                :key="aiRequestTimeoutContext.revision.value"
+                :key="requestSettingsContext.revision.value"
                 :model-value="aiRequestTimeoutSeconds"
-                :disabled="!aiRequestTimeoutContext.active.value"
+                :disabled="!requestSettingsContext.active.value"
                 :unit="t('settings.requestLimits.seconds')"
                 :aria-label="t('settings.requestLimits.aiTimeout')"
                 :min="MIN_AI_REQUEST_TIMEOUT_MS / 1000"
                 :max="MAX_AI_REQUEST_TIMEOUT_MS / 1000"
                 :step="1"
-                :onChange="aiRequestTimeoutActions.update"
+                :onChange="requestSettingsActions.timeout"
               />
           </SettingsItem>
           <SettingsItem label="失败后最多重试">
-            <SettingsNumberInput :model-value="config.translationMaxRetries" aria-label="失败后最多重试" :min="0" :max="10" @change="handleTranslationMaxRetriesChange" />
+            <SettingsNumberInput :key="requestSettingsContext.revision.value" :model-value="config.translationMaxRetries" :disabled="!requestSettingsContext.active.value" aria-label="失败后最多重试" :min="0" :max="10" :onChange="requestSettingsActions.retries" />
           </SettingsItem>
           <SettingsItem
             :label="t('settings.requestLimits.apiKeyRecovery')"
@@ -488,23 +493,25 @@
           >
             <div data-testid="api-key-recovery-setting">
               <SettingsNumberInput
+              :key="requestSettingsContext.revision.value"
+              :disabled="!requestSettingsContext.active.value"
               :model-value="apiKeyRecoveryMinutes"
               :unit="t('settings.requestLimits.minutes')"
               :aria-label="t('settings.requestLimits.apiKeyRecovery')"
               :min="MIN_API_KEY_RECOVERY_MINUTES"
               :max="MAX_API_KEY_RECOVERY_MINUTES"
               :step="1"
-              @change="handleApiKeyRecoveryChange"
+              :onChange="requestSettingsActions.keyRecovery"
               />
             </div>
           </SettingsItem>
           <details class="request-retry-settings" data-testid="translation-retry-settings">
             <summary>{{ t('settings.requestLimits.retryIntervals') }}</summary>
             <SettingsItem :label="t('settings.requestLimits.initialRetryWait')">
-              <SettingsNumberInput :model-value="config.translationBackoffBaseMs" unit="ms" :aria-label="t('settings.requestLimits.initialRetryWait')" :min="MIN_TRANSLATION_BACKOFF_BASE_MS" :max="MAX_TRANSLATION_BACKOFF_BASE_MS" :step="100" @change="handleTranslationBackoffBaseChange" />
+              <SettingsNumberInput :key="requestSettingsContext.revision.value" :disabled="!requestSettingsContext.active.value" :model-value="config.translationBackoffBaseMs" unit="ms" :aria-label="t('settings.requestLimits.initialRetryWait')" :min="MIN_TRANSLATION_BACKOFF_BASE_MS" :max="MAX_TRANSLATION_BACKOFF_BASE_MS" :step="100" :onChange="requestSettingsActions.backoffBase" />
             </SettingsItem>
             <SettingsItem :label="t('settings.requestLimits.maximumRetryWait')">
-              <SettingsNumberInput :model-value="config.translationBackoffMaxMs" unit="ms" :aria-label="t('settings.requestLimits.maximumRetryWait')" :min="Math.max(MIN_TRANSLATION_BACKOFF_MAX_MS, config.translationBackoffBaseMs)" :max="MAX_TRANSLATION_BACKOFF_MAX_MS" :step="1000" @change="handleTranslationBackoffMaxChange" />
+              <SettingsNumberInput :key="requestSettingsContext.revision.value" :disabled="!requestSettingsContext.active.value" :model-value="config.translationBackoffMaxMs" unit="ms" :aria-label="t('settings.requestLimits.maximumRetryWait')" :min="Math.max(MIN_TRANSLATION_BACKOFF_MAX_MS, config.translationBackoffBaseMs)" :max="MAX_TRANSLATION_BACKOFF_MAX_MS" :step="1000" :onChange="requestSettingsActions.backoffMax" />
             </SettingsItem>
           </details>
         </div>
@@ -562,7 +569,7 @@ import FeatureEnableCard from '@/src/ui/components/FeatureEnableCard.vue';
 import { computed, defineAsyncComponent, nextTick, ref, watch, onActivated, onBeforeUnmount, onDeactivated, onUnmounted } from 'vue'
 
 import {isValidAzureEndpoint} from '@/src/core/config/azure';
-import { cloudRegionOptions, customModelString, defaultOption, getCloudCredentialLabels, getDefaultCloudRegion, getMultilingualTargetLanguageLabel, models, options, resolveConfiguredModel, services, servicesType } from '@/src/core/config/catalog';
+import { cloudRegionOptions, customModelString, defaultOption, getCloudCredentialLabels, getDefaultCloudRegion, getMultilingualTargetLanguageLabel, options, resolveConfiguredModel, services, servicesType } from '@/src/core/config/catalog';
 import GlossaryLibrarySelect from '@/src/ui/components/GlossaryLibrarySelect.vue';
 import {
   createNextCustomOpenAIProviderId,
@@ -936,16 +943,12 @@ const setConfigurationService = (value: string) => {
   configurationService.value = value;
 };
 
-type ServiceSource = { value: string };
-
 const serviceOptionsWithCustomProviders = computed(() => localizeServiceOptions(
   withCompositeTranslationServiceOptions(withCustomOpenAIServiceOptions(options.services, config.value.customOpenAIProviders), config.value.compositeTranslationProviders),
   [...config.value.customOpenAIProviders, ...config.value.compositeTranslationProviders],
   translateLegacy,
 ));
 const availableServiceOptions = computed(() => filterAvailableTranslationServices(serviceOptionsWithCustomProviders.value));
-// 目录与可选服务采用同一可见性门控，旧配置或深链接不能把隐藏模块加回目录。
-const configurationServiceOptions = availableServiceOptions;
 // 显式设为默认沿用通用设置的配置补丁链；目录浏览本身只改变编辑目标。
 const setDefaultConfigurationService = (value: string) => {
   if (!viewActive.value || props.activeSection !== 'settings-services'
@@ -1177,53 +1180,40 @@ function removeConfigurationModel(model: string): void {
   ));
 }
 
-// 两个页面都需要相同的服务能力判断，但数据源不同：实际翻译使用默认服务，
-// 设置页右侧表单使用正在配置的服务。统一从这里生成，避免两套逻辑继续漂移。
-const createServiceCompute = (serviceSource: ServiceSource) => ({
-  showAI: computed(() => (serviceSource.value !== services.chatgptPlan || chatGPTPlanDevelopmentEnabled) && (isCustomOpenAIProviderId(serviceSource.value) || servicesType.isAI(serviceSource.value))),
-  showMachine: computed(() => servicesType.isMachine(serviceSource.value)),
-  showProxy: computed(() => isCustomOpenAIProviderId(serviceSource.value) || servicesType.isUseProxy(serviceSource.value)),
-  showModel: computed(() => serviceSource.value !== services.chatgptPlan && (isCustomOpenAIProviderId(serviceSource.value) || servicesType.isUseModel(serviceSource.value))),
-  showCustomBody: computed(() => isCustomOpenAIProviderId(serviceSource.value) || servicesType.isUseCustomBody(serviceSource.value)),
-  showToken: computed(() => isCustomOpenAIProviderId(serviceSource.value) || servicesType.isUseToken(serviceSource.value)),
-  allowCustomModels: computed(() => serviceSource.value !== services.localTranslation),
+// 右侧表单只派生当前编辑服务；默认翻译服务仍由 config.service 独立管理。
+const configurationCompute = ref({
+  showAI: computed(() => (selectedConfigurationService.value !== services.chatgptPlan || chatGPTPlanDevelopmentEnabled) && (isCustomOpenAIProviderId(selectedConfigurationService.value) || servicesType.isAI(selectedConfigurationService.value))),
+  showProxy: computed(() => isCustomOpenAIProviderId(selectedConfigurationService.value) || servicesType.isUseProxy(selectedConfigurationService.value)),
+  showModel: computed(() => selectedConfigurationService.value !== services.chatgptPlan && (isCustomOpenAIProviderId(selectedConfigurationService.value) || servicesType.isUseModel(selectedConfigurationService.value))),
+  showCustomBody: computed(() => isCustomOpenAIProviderId(selectedConfigurationService.value) || servicesType.isUseCustomBody(selectedConfigurationService.value)),
+  showToken: computed(() => isCustomOpenAIProviderId(selectedConfigurationService.value) || servicesType.isUseToken(selectedConfigurationService.value)),
+  allowCustomModels: computed(() => selectedConfigurationService.value !== services.localTranslation),
   requireApiKey: computed({
-    get: () => isApiKeyRequired(serviceSource.value, config.value),
+    get: () => isApiKeyRequired(selectedConfigurationService.value, config.value),
     set: (value: boolean) => {
-      config.value.requireApiKey[getApiKeyRequirementKey(serviceSource.value, config.value)] = value;
+      config.value.requireApiKey[getApiKeyRequirementKey(selectedConfigurationService.value, config.value)] = value;
     },
   }),
-  credentialWarning: computed(() => getMissingCredentialMessage(serviceSource.value, config.value)),
-  showAkSk: computed(() => servicesType.isUseAkSk(serviceSource.value)),
-  showYoudao: computed(() => servicesType.isYoudao(serviceSource.value)),
-  showTencent: computed(() => servicesType.isTencent(serviceSource.value)),
+  credentialWarning: computed(() => getMissingCredentialMessage(selectedConfigurationService.value, config.value)),
+  showYoudao: computed(() => servicesType.isYoudao(selectedConfigurationService.value)),
+  showTencent: computed(() => servicesType.isTencent(selectedConfigurationService.value)),
   // 云服务厂商：主密钥沿用 token[service]，第二段密钥与地域分别来自 secret/serviceRegion。
-  showCloudVendor: computed(() => servicesType.isCloudVendor(serviceSource.value)),
-  showServiceSecret: computed(() => servicesType.isUseSecret(serviceSource.value)),
-  showServiceRegion: computed(() => servicesType.isUseRegion(serviceSource.value)),
-  cloudCredentialLabels: computed(() => getCloudCredentialLabels(serviceSource.value)),
-  cloudRegionOptions: computed(() => cloudRegionOptions[serviceSource.value] || []),
-  defaultCloudRegion: computed(() => getDefaultCloudRegion(serviceSource.value)),
-  showOllamaEndpoint: computed(() => serviceSource.value === services.ollama),
-  model: computed(() => models.get(serviceSource.value) || []),
-  showCustom: computed(() => isCustomOpenAIProviderId(serviceSource.value)),
-  showCustomOpenAI: computed(() => Boolean(getCustomOpenAIProvider(config.value.customOpenAIProviders, serviceSource.value))),
-  showDeepLX: computed(() => serviceSource.value === 'deeplx'),
-  showMiniMaxRegion: computed(() => serviceSource.value === services.minimax),
-  showMiMoRegion: computed(() => serviceSource.value === services.mimo),
-  showCustomModel: computed(
-    () =>
-      servicesType.isAI(serviceSource.value) &&
-      config.value.model[serviceSource.value] === customModelString,
-  ),
+  showCloudVendor: computed(() => servicesType.isCloudVendor(selectedConfigurationService.value)),
+  showServiceSecret: computed(() => servicesType.isUseSecret(selectedConfigurationService.value)),
+  showServiceRegion: computed(() => servicesType.isUseRegion(selectedConfigurationService.value)),
+  cloudCredentialLabels: computed(() => getCloudCredentialLabels(selectedConfigurationService.value)),
+  cloudRegionOptions: computed(() => cloudRegionOptions[selectedConfigurationService.value] || []),
+  defaultCloudRegion: computed(() => getDefaultCloudRegion(selectedConfigurationService.value)),
+  showOllamaEndpoint: computed(() => selectedConfigurationService.value === services.ollama),
+  showCustomOpenAI: computed(() => Boolean(getCustomOpenAIProvider(config.value.customOpenAIProviders, selectedConfigurationService.value))),
+  showDeepLX: computed(() => selectedConfigurationService.value === 'deeplx'),
+  showMiniMaxRegion: computed(() => selectedConfigurationService.value === services.minimax),
+  showMiMoRegion: computed(() => selectedConfigurationService.value === services.mimo),
   filteredServices: availableServiceOptions,
-  showNewAPI: computed(() => servicesType.isNewApi(serviceSource.value)),
-  showAzureOpenaiEndpoint: computed(() => servicesType.isAzureOpenai(serviceSource.value)),
-  showDeepseekApiType: computed(() => serviceSource.value === 'deepseek'),
+  showNewAPI: computed(() => servicesType.isNewApi(selectedConfigurationService.value)),
+  showAzureOpenaiEndpoint: computed(() => servicesType.isAzureOpenai(selectedConfigurationService.value)),
+  showDeepseekApiType: computed(() => selectedConfigurationService.value === 'deepseek'),
 });
-
-// config.service 仍表示实际默认翻译服务；这里仅用于设置页正在编辑的服务。
-const configurationCompute = ref({...createServiceCompute(selectedConfigurationService), filteredServices: configurationServiceOptions});
 
 // 监听主题变化
 watch(() => config.value.theme, (newTheme) => {
@@ -1319,59 +1309,69 @@ const handlePluginStateChange = (_isEnabled: boolean) => {
   broadcastFeatureState(['toggleFloatingBall', 'updateSelectionTranslatorMode', 'toggleSelectionAreaTranslator']);
 };
 
-const handleMouseHoverTranslationDelayChange = (value: number | undefined) => {
-  config.value.mouseHoverTranslationDelay = normalizeMouseHoverTranslationDelay(value);
-};
-
-const handleSelectionTranslatorDelayChange = (value: number | undefined) => {
-  config.value.selectionTranslatorDelay = normalizeSelectionTranslatorDelay(value);
-};
-
-const handleTranslationMaxRetriesChange = (currentValue: number | undefined) => {
-  if (currentValue === undefined || !Number.isSafeInteger(currentValue) || currentValue < 0 || currentValue > 10) return;
-  config.value.translationMaxRetries = currentValue;
-};
+const hoverDelayContext = useSettingsActionContext(
+  () => !disposed && viewActive.value && props.activeSection === 'settings-translation'
+    && (!props.activePanel || props.activePanel === 'hover'),
+  () => [config.value, props.activePanel, config.value.mouseHoverTranslationDelay],
+);
+const hoverDelayChange = computed(() => {
+  const owns = hoverDelayContext.capture();
+  return (value: number | undefined) => {
+    if (owns()) config.value.mouseHoverTranslationDelay = normalizeMouseHoverTranslationDelay(value);
+  };
+});
+const selectionDelayContext = useSettingsActionContext(
+  () => !disposed && viewActive.value && props.activeSection === 'settings-selection'
+    && config.value.selectionTranslatorMode !== 'disabled',
+  () => [config.value, config.value.selectionTranslatorDelay, config.value.selectionTranslatorMode],
+);
+const selectionDelayChange = computed(() => {
+  const owns = selectionDelayContext.capture();
+  return (value: number | undefined) => {
+    if (owns()) config.value.selectionTranslatorDelay = normalizeSelectionTranslatorDelay(value);
+  };
+});
 
 const apiKeyRecoveryMinutes = computed(() => Math.round(
   normalizeApiKeyRecoveryMs(config.value.apiKeyRecoveryMs) / API_KEY_RECOVERY_MINUTE_MS,
 ));
 
 const aiRequestTimeoutSeconds = computed(() => normalizeAiRequestTimeoutMs(config.value.aiRequestTimeoutMs) / 1000);
-const aiRequestTimeoutContext = useSettingsActionContext(
+const requestSettingsContext = useSettingsActionContext(
   () => !disposed && viewActive.value && props.activeSection === 'settings-advanced'
     && (!props.activePanel || props.activePanel === 'requests'),
-  () => [config.value, config.value.aiRequestTimeoutMs, props.activePanel],
+  () => [config.value, props.activePanel, config.value.aiRequestTimeoutMs, config.value.translationMaxRetries,
+    config.value.apiKeyRecoveryMs, config.value.translationBackoffBaseMs, config.value.translationBackoffMaxMs],
 );
-const aiRequestTimeoutActions = computed(() => {
-  const owns = aiRequestTimeoutContext.capture();
-  return {update: (value: number | undefined) => {
-    if (!owns() || value === undefined || !Number.isFinite(value)) return;
-    config.value.aiRequestTimeoutMs = normalizeAiRequestTimeoutMs(value * 1000);
-  }};
+const requestSettingsActions = computed(() => {
+  const owns = requestSettingsContext.capture();
+  return {
+    timeout: (value: number | undefined) => {
+      if (!owns() || value === undefined || !Number.isFinite(value)) return;
+      config.value.aiRequestTimeoutMs = normalizeAiRequestTimeoutMs(value * 1000);
+    },
+    retries: (value: number | undefined) => {
+      if (!owns() || value === undefined || !Number.isSafeInteger(value) || value < 0 || value > 10) return;
+      config.value.translationMaxRetries = value;
+    },
+    keyRecovery: (value: number | undefined) => {
+      if (!owns() || value === undefined || !Number.isFinite(value)) return;
+      config.value.apiKeyRecoveryMs = normalizeApiKeyRecoveryMs(value * API_KEY_RECOVERY_MINUTE_MS);
+    },
+    backoffBase: (value: number | undefined) => {
+      if (!owns() || value === undefined || !Number.isSafeInteger(value)) return;
+      const nextBase = normalizeTranslationBackoffBaseMs(value);
+      updateConfigAtomically(next => {
+        next.translationBackoffBaseMs = nextBase;
+        next.translationBackoffMaxMs = Math.max(next.translationBackoffMaxMs, nextBase);
+      });
+    },
+    backoffMax: (value: number | undefined) => {
+      if (!owns() || value === undefined || !Number.isSafeInteger(value)) return;
+      config.value.translationBackoffMaxMs = Math.max(config.value.translationBackoffBaseMs, normalizeTranslationBackoffMaxMs(value));
+    },
+  };
 });
-
-const handleApiKeyRecoveryChange = (currentValue: number | undefined) => {
-  if (currentValue === undefined || !Number.isFinite(currentValue)) return;
-  config.value.apiKeyRecoveryMs = normalizeApiKeyRecoveryMs(currentValue * API_KEY_RECOVERY_MINUTE_MS);
-};
-
-const handleTranslationBackoffBaseChange = (currentValue: number | undefined) => {
-  if (currentValue === undefined || !Number.isSafeInteger(currentValue)) return;
-  const nextBase = normalizeTranslationBackoffBaseMs(currentValue);
-  config.value.translationBackoffBaseMs = nextBase;
-  if (config.value.translationBackoffMaxMs < nextBase) {
-    config.value.translationBackoffMaxMs = nextBase;
-  }
-};
-
-const handleTranslationBackoffMaxChange = (currentValue: number | undefined) => {
-  if (currentValue === undefined || !Number.isSafeInteger(currentValue)) return;
-  const normalized = normalizeTranslationBackoffMaxMs(currentValue);
-  config.value.translationBackoffMaxMs = Math.max(
-    config.value.translationBackoffBaseMs,
-    normalized,
-  );
-};
 
 </script>
 

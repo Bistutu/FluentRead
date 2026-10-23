@@ -6,7 +6,7 @@
  */
 import {localWasmThreads, paceLocalInference} from '@/src/shared/onnx/resources';
 import {mangaInferenceClient, mangaExtensionUrl, type MangaInferenceProgress} from './mangaInferenceClient';
-import {probeMangaGpu} from './mangaGpu';
+import {probeWebGpu} from '@/src/shared/onnx/webgpu';
 import {protectMangaSession} from './mangaSessionFallback';
 import {configureOnnxWasmBackend} from '@/src/shared/onnx/wasmBinary';
 import {assertMangaOcrActive, loadMangaOcrAssets, removeMangaOcrAssets, withMangaModelAdmission, withMangaModelRemoval} from './mangaOcrAssets';
@@ -87,7 +87,7 @@ export async function createBrowserMangaOcr(signal?: AbortSignal, progress?: Pro
         wasm: mangaExtensionUrl('/fluent-read-ai/ort-wasm-simd-threaded.asyncify.wasm'),
     });
     const {PaddleOcrService} = await import('ppu-paddle-ocr/web');
-    const gpu=await probeMangaGpu();
+    const gpu=await probeWebGpu();
     let activeSignal=signal;
     class MangaService extends PaddleOcrService {
         private checks:Array<()=>void>=[];

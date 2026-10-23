@@ -95,6 +95,7 @@ export function extractYoutubeCaptionTracks(
       if (expectedVideoId && responseVideoId && responseVideoId !== expectedVideoId) continue;
 
       const parsedTracks = tracks.flatMap((track) => {
+        if (!track || typeof track !== 'object') return [];
         const baseUrl = typeof track.baseUrl === 'string' ? track.baseUrl : '';
         const languageCode = typeof track.languageCode === 'string' ? track.languageCode : '';
         if (!baseUrl || !languageCode) return [];
@@ -418,10 +419,11 @@ function parseJson3Events(value: unknown): VideoSubtitleCue[] {
   if (!Array.isArray(events)) return [];
 
   return events.flatMap((event) => {
+    if (!event || typeof event !== 'object') return [];
     const startMs = numericValue(event.tStartMs);
     if (startMs === null || startMs < 0 || !Array.isArray(event.segs)) return [];
     const text = cleanCueText(event.segs
-      .map((segment) => typeof segment.utf8 === 'string' ? segment.utf8 : '')
+      .map((segment) => segment && typeof segment.utf8 === 'string' ? segment.utf8 : '')
       .join(''));
     if (!text) return [];
     const durationMs = event.dDurationMs === undefined ? 0 : numericValue(event.dDurationMs);

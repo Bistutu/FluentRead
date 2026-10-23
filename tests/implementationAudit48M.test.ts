@@ -7,7 +7,7 @@
 import {beforeAll, describe, expect, it} from 'vitest';
 import {buildConfigDiff} from '@/src/core/config/diff';
 import {translateLegacyText, type RegisteredUiLanguage} from '@/src/core/i18n';
-import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
+import {registerAllUiLanguageBundles} from './helpers/uiLanguageBundles';
 
 const summarized = '已配置（内容已摘要）';
 const localeCases: Array<[RegisteredUiLanguage, string]> = [

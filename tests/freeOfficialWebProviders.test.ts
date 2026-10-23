@@ -41,46 +41,44 @@ function installBeforeResponse(provider: OfficialFreeWebProvider, stage: typeof 
 }
 
 function streamingResponse(status: number) {
+    const cancel = vi.fn(() => new Promise<void>(() => {}));
     let body!: ReadableStreamDefaultController<Uint8Array>;
-    const response = new Response(new ReadableStream<Uint8Array>({start(controller) {body = controller;}}), {
+    const response = new Response(new ReadableStream<Uint8Array>({start(controller) {body = controller;}, cancel}), {
         status, headers: {'Retry-After': '60'},
     });
-    return {response, body};
+    return {response, body, cancel};
 }
 beforeEach(() => {vi.restoreAllMocks(); fetchMock.mockReset(); setRuntimeFetch(fetchMock);});
 afterEach(() => setRuntimeFetch());
 
 describe('official anonymous web translation providers', () => {
-    it.each(responseStages)('%s %s retains a streaming HTTP failure until its body finishes', async (provider, stage) => {
+    it.each(responseStages)('%s %s cancels a streaming HTTP failure without waiting for EOF or cleanup', async (provider, stage) => {
         installBeforeResponse(provider, stage);
-        const {response, body} = streamingResponse(429);
+        const {response, cancel} = streamingResponse(429);
         fetchMock.mockResolvedValueOnce(response);
-        let settled = false;
         const pending = translateOfficialFreeWebText(provider, 'Hello', 'en', 'zh-Hans')
-            .catch(error => error).finally(() => {settled = true;});
+            .catch(error => error);
         await new Promise<void>(resolve => setTimeout(resolve, 0));
-        try {expect(settled).toBe(false);}
-        finally {body.close();}
+        expect(cancel).toHaveBeenCalledOnce();
         await expect(pending).resolves.toMatchObject({statusCode: 429, retryAfterMs: 60000});
         expect(fetchMock).toHaveBeenCalledTimes(stage === 'translation' && (provider === 'alibabaFree' || provider === 'lingvanexFree') ? 2 : 1);
     });
 
-    it.each(responseStages)('%s %s retains a late cancelled response and preserves cancellation when draining fails', async (provider, stage) => {
+    it.each(responseStages)('%s %s cancels a late response and preserves owner cancellation if cleanup rejects', async (provider, stage) => {
         installBeforeResponse(provider, stage);
         const controller = new AbortController();
         const reason = new Error('owner cancelled before headers');
-        const {response, body} = streamingResponse(200);
+        const {response, cancel} = streamingResponse(200);
+        cancel.mockImplementationOnce(() => Promise.reject(new Error('cleanup failure')));
         let deliver!: (response: Response) => void;
         fetchMock.mockImplementationOnce(() => new Promise<Response>(resolve => {deliver = resolve;}));
-        let settled = false;
         const pending = translateOfficialFreeWebText(provider, 'Hello', 'en', 'zh-Hans', controller.signal)
-            .catch(error => error).finally(() => {settled = true;});
+            .catch(error => error);
         await new Promise<void>(resolve => setTimeout(resolve, 0));
         controller.abort(reason);
         deliver(response);
         await new Promise<void>(resolve => setTimeout(resolve, 0));
-        try {expect(settled).toBe(false);}
-        finally {body.error(new TypeError('response body stopped'));}
+        expect(cancel).toHaveBeenCalledOnce();
         await expect(pending).resolves.toBe(reason);
         expect(fetchMock).toHaveBeenCalledTimes(stage === 'translation' && (provider === 'alibabaFree' || provider === 'lingvanexFree') ? 2 : 1);
     });

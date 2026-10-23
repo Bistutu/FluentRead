@@ -1,7 +1,7 @@
 /**
  * @file src/features/document-translation/ui/pdfPreview.ts
  * 文件职责：在浏览器 Canvas 环境中生成 PDF 预览和原版译页；显式重排导出按嵌入字体分页，仅公式图表编码为图像，由二进制服务绘制可复制文字。
- * 主要内容：共用 PDF.js 与有界单页 Canvas；导出每页一次像素读回，阅读器每个新段只读回包含取样边缘的局部快照；复用保护筛选、表格裁剪和有界拟合，超长译文返回完整批注与逐行搜索层，缺字或离线时可用带相同 Unicode 文字层的有界光栅续页；下载分批绘制并优先 JPEG 编码，预览和重排图表使用 PNG；取消、失败与完成释放画布，租约隔离阅读器与导出，迟到加载不能复活已释放资源。
+ * 主要内容：共用 PDF.js 与有界单页 Canvas；导出每页一次像素读回，阅读器每个新段只读回包含取样边缘的局部快照；重排的光栅与文字导出共用原图旋转裁剪，复用保护筛选、表格裁剪和有界拟合，超长译文返回完整批注与逐行搜索层，缺字或离线时可用带相同 Unicode 文字层的有界光栅续页；下载分批绘制并优先 JPEG 编码，预览和重排图表使用 PNG；取消、失败与完成释放画布，租约隔离阅读器与导出，迟到加载不能复活已释放资源。
  * 模块边界：这里负责视觉光栅化而不决定片段翻译或文件结构；PDF 文本块来自 binary 服务，领域类型来自 core，Canvas/PDF.js 仅应在文档 UI 环境调用，不能进入通用纯算法层。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
@@ -488,6 +488,8 @@ export async function createPdfPagePreview(
 export async function renderPdfPageImage(bytes: Uint8Array, pageNumber: number, width: number, signal?: AbortSignal): Promise<{image: string; width: number; height: number}> {
     const canvas = await renderPdfSourceCanvas(bytes, pageNumber, width, signal);
     try {
+        // 渲染 Promise 结算后仍可能收到取消，避免继续同步编码数百万像素的过期页面。
+        signal?.throwIfAborted();
         return {image: canvas.toDataURL('image/png'), width: canvas.width, height: canvas.height};
     } finally {
         canvas.width = canvas.height = 0;
@@ -558,21 +560,7 @@ export const rasterizePdfReadingPages: PdfReadingRasterizer = async function* (i
                         textItems.push({segmentIndex: item.segmentIndex, text: item.text,
                             x: item.x, y: item.y, width: context.measureText(item.text).width, fontSize: item.font.size});
                     } else if (source) {
-                        const r = item.sourceRect, rotation = input.rotation ?? 0;
-                        const sx = source.width / input.width, sy = source.height / input.height;
-                        const sample = rotation === 90 ? {x: input.width - r.y - r.height, y: r.x, width: r.height, height: r.width}
-                            : rotation === 180 ? {x: input.width - r.x - r.width, y: input.height - r.y - r.height, width: r.width, height: r.height}
-                                : rotation === 270 ? {x: r.y, y: input.height - r.x - r.width, width: r.height, height: r.width} : r;
-                        context.save();
-                        try {
-                            context.translate(item.x, item.y);
-                            if (rotation === 90) {context.translate(0, item.height); context.rotate(-Math.PI / 2);}
-                            else if (rotation === 180) {context.translate(item.width, item.height); context.rotate(-Math.PI);}
-                            else if (rotation === 270) {context.translate(item.width, 0); context.rotate(Math.PI / 2);}
-                            const quarterTurn = rotation === 90 || rotation === 270;
-                            context.drawImage(source, sample.x * sx, sample.y * sy, sample.width * sx, sample.height * sy,
-                                0, 0, quarterTurn ? item.height : item.width, quarterTurn ? item.width : item.height);
-                        } finally {context.restore();}
+                        paintPdfReadingRegion(context, source, item, input);
                     }
                 }
                 if (input.footerLabel) {

@@ -14,34 +14,32 @@ const reply = (text: unknown = '译文') => Response.json({header: {ret_code: 's
 const translate = (provider: FreeWebProvider, text = 'Hello', from = 'auto', to = 'zh-Hans', signal?: AbortSignal) => translateFreeWebText(provider, text, from, to, signal);
 const flush = async () => {for (let step = 0; step < 20; step += 1) await Promise.resolve();};
 function streamResponse(status: number) {
+    const cancel = vi.fn(() => new Promise<void>(() => {}));
     let body!: ReadableStreamDefaultController<Uint8Array>;
     const response = new Response(new ReadableStream<Uint8Array>({start(controller) {
         body = controller;
         controller.enqueue(new TextEncoder().encode('private incomplete response'));
-    }}), {status, headers: {'Retry-After': '2'}});
-    return {response, body};
+    }, cancel}), {status, headers: {'Retry-After': '2'}});
+    return {response, body, cancel};
 }
 beforeEach(() => {fetchMock.mockReset().mockImplementation(async () => reply()); setRuntimeFetch(fetchMock);});
 afterEach(() => setRuntimeFetch());
 
 describe('free-only web providers', () => {
-    it.each(providers)('%s retains a non-success stream until its body ends, preserving HTTP classification', async provider => {
-        const {response, body} = streamResponse(429);
+    it.each(providers)('%s cancels an endless failure without waiting for the cancellation handshake', async provider => {
+        const {response, cancel} = streamResponse(429);
         fetchMock.mockResolvedValueOnce(response);
-        let settled = false;
-        const request = translate(provider).catch(error => {settled = true; return error;});
-        try {
-            await flush();
-            expect(settled).toBe(false);
-        } finally {body.close();}
+        const request = translate(provider).catch(error => error);
+        await flush();
+        expect(cancel).toHaveBeenCalledOnce();
         await expect(request).resolves.toMatchObject({statusCode: 429, retryAfterMs: 2_000});
         expect((await request).message).not.toContain('private incomplete response');
     });
 
-    it.each(providers)('%s retains total capacity through late headers and an unread body after prompt cancellation', async provider => {
+    it.each(providers)('%s cancels late unread headers and releases capacity for the next route', async provider => {
         const run = createFreeFallbackRunner(1);
         const owner = new AbortController();
-        const {response, body} = streamResponse(200);
+        const {response, cancel} = streamResponse(200);
         let deliverHeaders!: (response: Response) => void;
         fetchMock.mockImplementationOnce(() => new Promise<Response>(resolve => {deliverHeaders = resolve;}));
         const first = run([{identity: 'late-headers', label: provider,
@@ -54,28 +52,28 @@ describe('free-only web providers', () => {
         deliverHeaders(response);
         const next = run([{identity: 'after-late-headers', label: provider,
             translate: signal => translate(provider, 'next source', 'en', 'zh-Hans', signal)}], {timeoutMs: 5_000, cooldownMs: 1_000});
-        try {
-            await flush();
-            expect(fetchMock).toHaveBeenCalledOnce();
-        } finally {body.close();}
+        await flush();
+        expect(cancel).toHaveBeenCalledOnce();
         await expect(next).resolves.toBe('译文');
         expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 
     it.each(providers)('%s preserves the original HTTP or abort error when an unread body fails', async provider => {
         const http = streamResponse(429);
+        http.cancel.mockImplementationOnce(() => Promise.reject(new Error('cleanup failure')));
         fetchMock.mockResolvedValueOnce(http.response);
         const rejected = translate(provider).catch(error => error);
         await flush();
-        http.body.error(new TypeError('body delivery failed'));
+        expect(http.cancel).toHaveBeenCalledOnce();
         await expect(rejected).resolves.toMatchObject({statusCode: 429, retryAfterMs: 2_000});
 
         const owner = new AbortController(), reason = new Error('cancelled before late headers');
         const aborted = streamResponse(503);
+        aborted.cancel.mockImplementationOnce(() => Promise.reject(new Error('late cleanup failure')));
         fetchMock.mockImplementationOnce(async () => {owner.abort(reason); return aborted.response;});
         const cancelled = translate(provider, 'Hello', 'en', 'zh-Hans', owner.signal).catch(error => error);
         await flush();
-        aborted.body.error(new TypeError('cancelled body delivery failed'));
+        expect(aborted.cancel).toHaveBeenCalledOnce();
         await expect(cancelled).resolves.toBe(reason);
     });
 

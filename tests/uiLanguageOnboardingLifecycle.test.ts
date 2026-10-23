@@ -4,20 +4,13 @@
  * 主要内容：保留真实 Vue/KeepAlive、模板事件和语言规则，验证七语单一 Tab 入口、循环键盘预览及确认后保存；存储提交/回滚、焦点为可控端口，确认立即交接且不依赖成功动画计时器。
  * 模块边界：不调用浏览器或真实存储，不证明 CSS 动画、Element Plus Teleport 或操作系统焦点；每项清理计时器与组件。
  */
-import {readFileSync} from 'node:fs'
-import {resolve} from 'node:path'
 import {parseHTML} from 'linkedom'
 import * as Vue from 'vue'
-import {compileScript, compileTemplate, parse} from 'vue/compiler-sfc'
-import ts from 'typescript'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import * as languageRules from '@/src/core/i18n/language'
-import * as onboardingMessages from '@/src/core/i18n/messages/onboarding'
-import {useSettingsActionContext} from '@/src/features/settings/model/useSettingsActionContext'
 
-const componentPath = 'src/ui/components/UiLanguageOnboarding.vue'
 let app: Vue.App | undefined, document: Document, win: any, shown: Vue.Ref<boolean>, source: Record<string, any>, componentProps: Record<string, any>, state: Record<string, any>
-let focused: Element | null, events: Map<Element, Record<string, any>>, controls: any[], port: Record<string, any>
+let focused: Element | null, events: Map<Element, Record<string, any>>, port: Record<string, any>
 const focus = vi.fn(), saved = vi.fn(), confirmed = vi.fn(), setLanguage = vi.fn()
 let language: Vue.Ref<languageRules.UiLanguage>, stored: languageRules.UiLanguage, requests: Array<{value: languageRules.UiLanguage; gate: ReturnType<typeof deferred<void>>}>
 function deferred<T>() {let resolve!: (value: T) => void, reject!: (error: unknown) => void;const promise = new Promise<T>((yes, no) => {resolve = yes;reject = no});return {promise, resolve, reject}}
@@ -25,40 +18,14 @@ async function settle() {await Vue.nextTick();await Promise.resolve();await Vue.
 function callback(element: Element, name = 'onClick') {const action = events.get(element)?.[name];expect(action, name).toBeTypeOf('function');return action}
 function button(selector: string) {const element = document.querySelector(selector);expect(Boolean(element), selector).toBe(true);return element!}
 function invalidate(reason: string) {if (reason === 'cached') shown.value = false;if (reason === 'pagehide') win.dispatchEvent(new win.Event('pagehide'));if (reason === 'unmount') {app?.unmount();app = undefined}}
-function compile() {
-  const filename = resolve(componentPath), sourceFile = process.env.FLUENTREAD_UI_LANGUAGE_TEST_SOURCE_DIR
-    ? resolve(process.env.FLUENTREAD_UI_LANGUAGE_TEST_SOURCE_DIR, componentPath.split('/').at(-1)!) : filename
-  const {descriptor} = parse(readFileSync(sourceFile, 'utf8'), {filename})
-  const script = compileScript(descriptor, {id: 'language-lifecycle', inlineTemplate: false}), imports = ts.createSourceFile(filename + '.ts', script.content, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
-  const bindings: Record<string, unknown> = {}, modules: Record<string, any> = {'vue': Vue, '@/src/core/i18n': port.rules,
-    '@/src/ui/i18n': {useUiI18n: () => ({language, setLanguage, t: (key: string) => key})},
-    '@/src/features/settings/model/useSettingsActionContext': {useSettingsActionContext}, '@/src/core/i18n/messages/onboarding': onboardingMessages,
-    '@/src/core/i18n/messages/brand-taglines.json': {default: JSON.parse(readFileSync(resolve('src/core/i18n/messages/brand-taglines.json'), 'utf8'))},
-    'element-plus': {ElOption: {props: ['value', 'label'], setup: (props: any, {slots}: any) => () => Vue.h('div', {'data-option': props.value, 'data-label': props.label}, slots.default?.())}},
-    './UiSelect.vue': {default: {inheritAttrs: false, setup(_props: unknown, {attrs, slots}: any) {const instance = Vue.getCurrentInstance()!;controls.push({instance});return () => Vue.h('section', {...attrs, 'data-control': 'true', tabindex: '0'}, slots.default?.())}}}}
-  for (const node of imports.statements) {
-    if (!ts.isImportDeclaration(node) || !node.importClause || node.importClause.isTypeOnly) continue
-    const module = modules[(node.moduleSpecifier as ts.StringLiteral).text];expect(Boolean(module), node.getText()).toBe(true)
-    if (node.importClause.name) bindings[node.importClause.name.text] = module.default
-    const named = node.importClause.namedBindings
-    if (named && ts.isNamedImports(named)) for (const item of named.elements) if (!item.isTypeOnly) bindings[item.name.text] = module[item.propertyName?.text || item.name.text]
-  }
-  const code = ts.transpileModule(script.content, {compilerOptions: {target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext}, transformers: {before: [context => file => {
-    const visit: ts.Visitor = node => {
-      if (ts.isImportDeclaration(node)) return undefined
-      if (ts.isExportAssignment(node)) return ts.factory.createVariableStatement(undefined, ts.factory.createVariableDeclarationList([ts.factory.createVariableDeclaration('component', undefined, undefined, node.expression)], ts.NodeFlags.Const))
-      return ts.visitEachChild(node, visit, context)
-    }
-    return ts.visitEachChild(file, visit, context)
-  }]}}).outputText.replace(/export\s*\{\s*\};?/gu, '')
-  const component = new Function(...Object.keys(bindings), code + '\nreturn component;')(...Object.values(bindings))
-  const template = compileTemplate({source: descriptor.template!.content.replace(/(<\/?)(Transition)\b/gu, '$1OwnedTransition'), filename, id: 'language-lifecycle', compilerOptions: {mode: 'function', cacheHandlers: true, bindingMetadata: script.bindings, expressionPlugins: ['typescript']}})
-  expect(template.errors).toEqual([])
-  component.render = new Function('Vue', ts.transpileModule(template.code, {compilerOptions: {target: ts.ScriptTarget.ES2022}}).outputText)(Vue)
-  return component
-}
+vi.mock('vue', async importOriginal => {
+  const actual = await importOriginal<typeof import('vue')>()
+  return {...actual, Transition: actual.defineComponent({inheritAttrs:false,setup:(_:unknown,{attrs,slots}:any)=>()=>actual.h('div',{...attrs,'data-transition':'true'},slots.default?.())})}
+})
 beforeEach(() => {
-  vi.useFakeTimers({toFake: ['setTimeout', 'clearTimeout']});vi.clearAllMocks();app = undefined;events = new Map();controls = [];requests = []
+  vi.resetModules();vi.doMock('@/src/core/i18n',()=>port.rules)
+  vi.doMock('@/src/ui/i18n',()=>({useUiI18n:()=>({language,setLanguage,t:(key:string)=>key})}))
+  vi.useFakeTimers({toFake: ['setTimeout', 'clearTimeout']});vi.clearAllMocks();app = undefined;events = new Map();requests = []
   const parsed = parseHTML('<html><body><div id="app"></div></body></html>');win = parsed.window;document = win.document;focused = document.body
   Object.defineProperty(document, 'activeElement', {configurable: true, get: () => focused})
   for (const [key, value] of Object.entries({document, window: win, HTMLElement: win.HTMLElement, Node: win.Node, Event: win.Event})) vi.stubGlobal(key, value)
@@ -73,7 +40,7 @@ beforeEach(() => {
 })
 afterEach(async () => {app?.unmount();await settle();vi.clearAllTimers();vi.useRealTimers();vi.unstubAllGlobals()})
 async function mount(values: Record<string, any> = {}) {
-  const component = compile();source = Vue.shallowReactive(values);shown = Vue.ref(true)
+  const component = (await import('@/src/ui/components/UiLanguageOnboarding.vue')).default;source = Vue.shallowReactive(values);shown = Vue.ref(true)
   const renderer = Vue.createRenderer({patchProp(element: any, key: string, _previous: any, next: any) {
     if (/^on[A-Z]/u.test(key)) {const handlers = events.get(element) || {};handlers[key] = next;events.set(element, handlers);return}
     if (key === 'class') {element.className = next ?? '';return}
@@ -85,9 +52,8 @@ async function mount(values: Record<string, any> = {}) {
     querySelector: value => document.querySelector(value), setScopeId: () => {}, cloneNode: (node: any) => node.cloneNode(true),
     insertStaticContent: (html, parent: any, anchor: any) => {const template = document.createElement('template');template.innerHTML = html;const first = template.content.firstChild!, last = template.content.lastChild!;parent.insertBefore(template.content, anchor);return [first, last]}})
   app = renderer.createApp({setup: () => () => Vue.h(Vue.KeepAlive, null, {default: () => shown.value
-    ? Vue.h(component, {...source, onSaved: saved, onConfirmed: confirmed, ref: (vm: any) => {if (vm) {state = vm.$.setupState;componentProps = vm.$.props}}})
+    ? Vue.h(component as Vue.Component, {...source, onSaved: saved, onConfirmed: confirmed, ref: (vm: any) => {if (vm) {state = vm.$.setupState;componentProps = vm.$.props}}})
     : Vue.h({render: () => null}, {key: 'other'})})})
-  app.component('OwnedTransition', {inheritAttrs: false, setup: (_: unknown, {attrs, slots}: any) => () => Vue.h('div', {...attrs, 'data-transition': 'true'}, slots.default?.())})
   app.config.warnHandler = () => {};app.mount(document.getElementById('app')!);await settle()
   // Vue 开发模式的应用计时器不属于保存流程；从挂载完成后统计新增和清理。
   port.backgroundTimers = vi.getTimerCount()
@@ -228,6 +194,14 @@ describe('UiLanguageOnboarding 实际保存与生命周期', () => {
     else invalidate(reason)
     await settle();expect(focus).not.toHaveBeenCalled()
     if (pending) {requests[0].gate.resolve();await pending;await settle();expect(focus).not.toHaveBeenCalled()}
+  })
+  it('缓存返回时外部控件已聚焦，不把焦点抢回语言列表',async()=>{
+    await mount({initialLanguage:'ja-JP'});shown.value=false;await settle();const outside=document.createElement('button');document.body.append(outside);focused=outside;focus.mockClear()
+    shown.value=true;await settle();expect(focused).toBe(outside);expect(focus).not.toHaveBeenCalled();expect(setLanguage).not.toHaveBeenCalled()
+  })
+  it('键盘选择后所属DOM已脱离，排队焦点不触碰分离按钮',async()=>{
+    await mount({initialLanguage:'ja-JP'});press(keyboardAction('ja-JP'),'ArrowRight');focus.mockClear();document.getElementById('app')!.remove();await settle()
+    expect(focus).not.toHaveBeenCalled();expect(setLanguage).not.toHaveBeenCalled();expect(state.selectedLanguage).toBe('ko-KR')
   })
   it('共享 i18n 返回已被取代时，不宣布保存或交接', async () => {
     await mount({initialLanguage:'en-US'});await languageStep();setLanguage.mockImplementationOnce(async()=>false);await confirmAction()();await settle()

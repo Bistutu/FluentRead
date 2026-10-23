@@ -548,6 +548,8 @@ describe('模板默认值与协议分支', () => {
         ['zh-TW', 'zh_tw'],
         ['de', 'de'],
         ['unsupported', 'unsupported'],
+        ['constructor', 'constructor'],
+        ['__proto__', '__proto__'],
     ])('通义翻译模型将目标语言 %s 映射为 %s', (targetLanguage, expected) => {
         mockConfig.service = services.tongyi;
         mockConfig.model[services.tongyi] = 'qwen-mt-plus';

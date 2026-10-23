@@ -328,3 +328,35 @@ describe('maintained compatibility profile', () => {
     expect(() => parseCase([...child.slice(1), '--mode', 'hover'])).toThrow('requires --mode full');
   });
 });
+
+describe('focus guard is a matrix stop condition', () => {
+  it('does not retry a focus violation as a flaky site failure', async () => {
+    const attempt=vi.fn(async () => ({ok:false,timedOut:false,exitCode:86}));
+    const result=await runJobAttempts(attempt,2);
+    expect(attempt).toHaveBeenCalledOnce();expect(result.attempts).toHaveLength(1);
+  });
+  it('stops dispatch and signals an already running sibling after the owned browser becomes foreground', async () => {
+    const source=new EventEmitter();const started:string[]=[];let siblingAborted=false;
+    const result=await runJobsWithBoundedConcurrency(jobs,async (job,signal)=>{
+      started.push(job.name);
+      if(job.name==='required-0')return {ok:false,timedOut:false,exitCode:86};
+      signal.addEventListener('abort',()=>{siblingAborted=true;},{once:true});
+      await Promise.resolve();await Promise.resolve();
+      return {ok:!signal.aborted,timedOut:false,aborted:signal.aborted};
+    },{signalSource:source});
+    expect(started).toEqual(['required-0','required-1']);expect(siblingAborted).toBe(true);
+    expect(result).toMatchObject({aborted:true,abortSignal:'FOCUS_SAFETY_VIOLATION'});
+    expect(result.results.slice(2).every(item=>item.notStarted&&item.aborted)).toBe(true);
+    expect(source.listenerCount('SIGINT')).toBe(0);expect(source.listenerCount('SIGTERM')).toBe(0);
+  });
+});
+
+it('only propagates a public focus code through own causal errors into the fatal exit status', () => {
+  const {siteTestExitCode}=require('../scripts/testing/site-error-diagnostics.cjs');
+  const focused=Object.assign(new Error('Owned browser is foreground'),{code:'FOCUS_SAFETY_VIOLATION'});
+  expect(siteTestExitCode(focused)).toBe(86);
+  expect(siteTestExitCode(new AggregateError([new Error('cleanup'),new Error('wrapper',{cause:focused})]))).toBe(86);
+  const getter=vi.fn(()=>focused);const accessor=Object.defineProperty({},'cause',{get:getter});
+  for(const error of [new Error('FOCUS_SAFETY_VIOLATION'),{code:'UNKNOWN'},Object.create(focused),accessor])expect(siteTestExitCode(error)).toBe(1);
+  expect(getter).not.toHaveBeenCalled();
+});

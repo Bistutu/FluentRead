@@ -78,6 +78,16 @@ describe('图片翻译 OCR 工具', () => {
         ]);
     });
 
+    it('乱序竖列经后到的桥接列连接后，保留首个原始位置与从右到左的整段顺序', () => {
+        const columns = [0, 5, 4, 3, 2, 1].map((position, index) => ({text: String.fromCharCode(65 + index),
+            bbox: {x0: position * 100, x1: position * 100 + 60, y0: 0, y1: 100},
+            baseline: {x0: position * 100, x1: position * 100, y0: 0, y1: 100}}));
+        const input = [{paragraphs: [{lines: columns}]}];
+        const before = structuredClone(input);
+        expect(normalizeOcrLines(input)).toEqual([{text: 'B C D E F A', bbox: {x0: 0, y0: 0, x1: 560, y1: 100}, vertical: true}]);
+        expect(input).toEqual(before);
+    });
+
     it('只接受支持的语言包并去重，保证下载状态可持久化', () => {
         expect(normalizeImageOcrLanguageCodes(['eng', 'jpn', 'eng', 'unsupported', null])).toEqual(['eng', 'jpn']);
         expect(normalizeImageOcrLanguageCodes(['chi_tra', 'eng', 'chi_tra'])).toEqual(['chi_tra', 'eng']);

@@ -259,6 +259,9 @@ describe('内容脚本 runtime 消息协议', () => {
             success: false,
             error: 'worker stopped as text',
         });
+        mocks.sendMessage.mockImplementationOnce(() => {throw new Error('Extension context invalidated');});
+        expect(handler({message: 'clearCache'}, {}, respond)).toBe(true);
+        expect(respond).toHaveBeenLastCalledWith({success: false, error: 'Extension context invalidated'});
         expect(updateSiteDisabled).not.toHaveBeenCalled();
     });
 

@@ -1,7 +1,7 @@
 /**
  * @file src/features/local-tts/offscreen/modelCache.ts
  * 文件职责：下载、检查和清除 Kokoro 本地 TTS 模型及少量默认音色文件。
- * 主要内容：固定版本与文件清单，验证固定缓存及旧 main 别名来源；保留精确固定版本的历史镜像缓存而不再访问该旧下载源；仅显式准备时迁移已验证旧别名，合并真实字节进度并管理下载与清除互斥。
+ * 主要内容：固定版本与文件清单，优先验证固定缓存，仅在未命中时检查旧 main 别名来源；保留精确固定版本的历史镜像缓存而不再访问该旧下载源；仅显式准备时迁移已验证旧别名，合并真实字节进度并管理下载与清除互斥。
  * 模块边界：只负责缓存文件，不初始化推理 Worker，不决定朗读策略，也不访问网页。
  */
 
@@ -151,8 +151,8 @@ export async function isLocalTtsModelCached(): Promise<boolean> {
         const pinnedUrl = getLocalTtsModelFileUrl(file);
         const loaderUrl = getLocalTtsModelLoaderUrl(file);
         const pinned = await modelCache.match(pinnedUrl);
-        const loader = await modelCache.match(loaderUrl);
-        return usableCachedResponse(pinned, pinnedUrl, true) || usableCachedResponse(loader, pinnedUrl, false);
+        return usableCachedResponse(pinned, pinnedUrl, true)
+            || usableCachedResponse(await modelCache.match(loaderUrl), pinnedUrl, false);
     }));
     const voiceFiles = await Promise.all(LOCAL_TTS_VOICES.map(async (voice) => {
         const url = getLocalTtsVoiceCacheUrl(voice);

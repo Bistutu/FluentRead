@@ -1,7 +1,7 @@
 /**
  * @file src/platform/storage/translationStatsRepository.ts
  * 文件职责：在扩展后台专属 IndexedDB 中保存翻译请求统计，提供低开销的缓冲写入、设置页快照、请求记录分页与独立清除能力。
- * 主要内容：定义 FluentReadTranslationStats Dexie 数据库、事件与线路尝试白名单归一化、按代次失效的内存队列、事务内追加最近请求并折叠服务与线路小时汇总、超额记录与过期汇总清理，以及串行化的读写与清除操作。
+ * 主要内容：定义首次消费时构造的 FluentReadTranslationStats Dexie 单例、事件与线路尝试白名单归一化、按代次失效的内存队列、事务内追加最近请求并折叠服务与线路小时汇总、超额记录与过期汇总清理，以及串行化的读写与清除操作。
  * 模块边界：本文件只拥有翻译统计的本地持久化适配，只接受数值与标识字段；不注册 runtime 消息、不计算界面格式，也不参与翻译结果或缓存。
  */
 
@@ -420,4 +420,9 @@ export class TranslationStatsRepository {
     }
 }
 
-export const translationStatsRepository = new TranslationStatsRepository();
+let translationStatsRepository: TranslationStatsRepository | undefined;
+
+/** 只有统计消费者首次使用时创建数据库；同一 realm 的队列、清除代次保持唯一。 */
+export function getTranslationStatsRepository(): TranslationStatsRepository {
+    return translationStatsRepository ??= new TranslationStatsRepository();
+}

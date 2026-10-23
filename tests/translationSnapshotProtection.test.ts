@@ -9,11 +9,11 @@ vi.mock('@/src/features/full-page-translation/content/layout', () => ({ensureTra
 import {
     applyTranslationsToSnapshot,
     collectLiveTranslationTextSlots,
-    createTranslationCore,
     createTranslationSourceSnapshot,
     extractTranslationText,
     type TranslationCandidateCore,
 } from '@/src/core/translation/public';
+import {createTranslationCore} from './helpers/translationCore';
 import {appendBilingualTranslation} from '@/src/features/full-page-translation/content/renderer';
 import {
     beginTranslation,

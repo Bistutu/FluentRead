@@ -1,10 +1,11 @@
 /**
  * @file src/features/image-translation/services/mangaOcrAssets.ts
  * 文件职责：按固定上游版本加载并缓存本地漫画识别模型，不上传漫画图片。
- * 主要内容：固定模型版本、尺寸和 SHA-256，自动选择下载来源并在断流或损坏时切换已登记的备用来源，流式显示当前下载操作的进度；缓存已完成文件，支持校验后导入离线模型、读取状态与清除，历史来源偏好不再影响下载；删除会话期间暂缓新推理任务入队，普通识别与修补仍各自并行排队。
+ * 主要内容：固定模型版本、尺寸和 SHA-256，自动选择下载来源并在断流或损坏时切换已登记的备用来源，流式显示当前下载操作的进度，失败响应及缓存立即释放未读正文；缓存已完成文件，支持校验后导入离线模型、读取状态与清除，历史来源偏好不再影响下载；删除会话期间暂缓新推理任务入队，普通识别与修补仍各自并行排队。
  * 模块边界：只处理模型数据文件，不加载远程代码、不执行 OCR、不读取用户配置；仅下载 Apache-2.0 模型数据；镜像与离线文件必须通过相同完整性校验，来源偏好不包含用户凭据。
  */
 import {modelDownloadSources} from '@/src/platform/http/modelDownloads';
+import {cancelUnreadResponseBody} from '@/src/platform/http/runtime';
 
 const ROOT = 'https://huggingface.co/snowfluke/ppu-paddle-ocr-models/resolve/bf1d5edb0335d3262be7caf13f766ba274b4cadd/';
 export const MANGA_OCR_CACHE = 'fluent-read-manga-ocr-v1';
@@ -26,10 +27,9 @@ export function assertMangaOcrActive(signal?: AbortSignal): void {
     if (signal?.aborted) throw new DOMException('漫画识别已取消', 'AbortError');
 }
 
+/** 后台状态消息保留跨版本来源类型；下载策略始终自动选择。 */
 export type MangaModelSource = 'auto' | 'official' | 'mirror';
 export interface MangaDownloadState {phase:'downloading'|'verifying'|'error'|'paused';file:string;loaded:number;total:number;source:string}
-const PREFERENCES_CACHE = 'fluent-read-manga-settings-v1';
-const PREFERENCE_URL = 'https://fluent-read.invalid/manga-model-source';
 let download: MangaDownloadState | undefined;
 let downloadOwner: number | undefined;
 let nextDownloadRequest = 0, latestDownloadRequest = 0;
@@ -48,16 +48,6 @@ export function withMangaModelRemoval(operation: () => Promise<void>): Promise<v
     removal = pending;
     return pending;
 }
-/** 兼容历史设置读写；资源下载与状态不再读取这个手动偏好。 */
-export async function getMangaModelSource():Promise<MangaModelSource> {
-    const value=await (await (await caches.open(PREFERENCES_CACHE)).match(PREFERENCE_URL))?.text();
-    return value==='official'||value==='mirror'?value:'auto';
-}
-export async function setMangaModelSource(source:MangaModelSource):Promise<void> {
-    if(!['auto','official','mirror'].includes(source))throw new Error('漫画模型下载来源无效');
-    await (await caches.open(PREFERENCES_CACHE)).put(PREFERENCE_URL,new Response(source));
-}
-
 async function downloadAsset(url:string,asset:{bytes:number;sha256:string},owner:number,signal?:AbortSignal,onProgress?:(bytes:number)=>void):Promise<ArrayBuffer> {
     // 同一公开加载请求的多个文件和备用来源共享身份，旧请求进入下一文件也不能夺回新请求的快照。
     if (owner > latestDownloadRequest) {latestDownloadRequest = owner;downloadOwner = owner;}
@@ -73,7 +63,7 @@ async function downloadAsset(url:string,asset:{bytes:number;sha256:string},owner
         if (downloadOwner === owner) download = state;
         try {
             arm();const response=await fetch(source,{signal:controller.signal,credentials:'omit',referrerPolicy:'no-referrer'});
-            if(!response.ok)throw new Error(`漫画模型下载失败 (${response.status})`);
+            if(!response.ok){cancelUnreadResponseBody(response);throw new Error(`漫画模型下载失败 (${response.status})`);}
             let buffer:ArrayBuffer;
             const reader=response.body?.getReader();
             if(reader){
@@ -112,7 +102,7 @@ export async function importMangaModel(file:File):Promise<void> {
 }
 
 async function verifiedBuffer(response: Response, asset: {bytes: number; sha256: string}): Promise<ArrayBuffer> {
-    if (!response.ok) throw new Error(`漫画识别模型下载失败 (${response.status})`);
+    if (!response.ok) {cancelUnreadResponseBody(response);throw new Error(`漫画识别模型下载失败 (${response.status})`);}
     return verifiedArrayBuffer(await response.arrayBuffer(),asset);
 }
 
@@ -168,7 +158,7 @@ export async function loadMangaOcrAssets(signal?: AbortSignal, onProgress?: (per
     return model;
 }
 
-export async function mangaOcrModelStatus(): Promise<{ready: boolean; bytes: number; inpaintingReady: boolean; source:MangaModelSource; download?:MangaDownloadState}> {
+export async function mangaOcrModelStatus(): Promise<{ready: boolean; bytes: number; inpaintingReady: boolean; source:'auto'; download?:MangaDownloadState}> {
     const cache = await caches.open(MANGA_OCR_CACHE);
     const responses = await Promise.all(MANGA_OCR_ASSETS.map(asset => cache.match(ROOT + asset.path)));
     const bytes = responses.reduce((sum, response, index) => sum + (response ? MANGA_OCR_ASSETS[index].bytes : 0), 0);

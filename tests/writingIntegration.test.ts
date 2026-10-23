@@ -4,7 +4,7 @@ vi.mock('webextension-polyfill', () => ({default: {extension: m.extension, runti
 vi.mock('@/src/services/config/store', () => ({config: m.config, configReady: Promise.resolve(), subscribeConfig: m.subscribe}));
 vi.mock('@/src/features/writing-assistant/background', () => ({createWritingHandler: m.handlerFactory}));
 vi.mock('@/src/services/writing/runtime', () => ({createWritingRuntime: m.runtimeFactory}));
-vi.mock('@/src/platform/storage/modelUsageRepository', () => ({modelUsageRepository: {captureGeneration: () => 3, recordMany: m.record}}));
+vi.mock('@/src/platform/storage/modelUsageRepository', () => ({getModelUsageRepository: () => ({captureGeneration: () => 3, recordMany: m.record})}));
 vi.mock('@/src/platform/storage/learningMemoryRepository', () => ({learningMemoryRepository: {list: m.memoryList}}));
 vi.mock('@/src/services/harness/memoryRecall', () => ({createLearningMemoryRecall: () => m.recall}));
 vi.mock('@/src/platform/shadow-ui/vue', () => ({createVueShadowUi: m.shadow}));

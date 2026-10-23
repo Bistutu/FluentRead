@@ -1,7 +1,7 @@
 /**
  * @file src/platform/storage/modelUsageRepository.ts
  * 文件职责：在扩展后台专属 IndexedDB 中永久保存脱敏的大模型上游调用事件，并提供统计、请求日志、迁移与独立重置能力。
- * 主要内容：定义 FluentReadModelUsage Dexie 数据库、严格事件白名单、稳定游标与指定页分页、幂等批量写入、最近 1000 条记录保留、版本化导入导出，以及最近三十日聚合和全历史维度查询。
+ * 主要内容：定义首次消费时构造的 FluentReadModelUsage Dexie 单例、严格事件白名单、稳定游标与指定页分页、幂等批量写入、最近 1000 条记录保留、版本化导入导出，以及最近三十日聚合和全历史维度查询。
  * 模块边界：本文件只拥有模型用量的本地持久化适配，不采集网页文本、不读取 API Key，也不注册 runtime 消息或渲染设置页面。
  */
 
@@ -512,5 +512,9 @@ export class ModelUsageRepository {
     }
 }
 
-export const modelUsageDb = new FluentReadModelUsageDatabase();
-export const modelUsageRepository = new ModelUsageRepository(modelUsageDb);
+let modelUsageRepository: ModelUsageRepository | undefined;
+
+/** 只有统计消费者首次使用时创建数据库；同一 realm 的所有入口共用代次和实例。 */
+export function getModelUsageRepository(): ModelUsageRepository {
+    return modelUsageRepository ??= new ModelUsageRepository();
+}

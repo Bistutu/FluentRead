@@ -131,13 +131,13 @@ describe('audit48F: actual provider response parsing', () => {
         await expect(translateFreeChineseWebText(provider, 'hello', 'en', 'zh-Hans')).rejects.toMatchObject({freeFailure: 'unavailable'});
     });
     it('Gemini returns every final text part and omits thought and binary parts', async () => {
-        fetchPort.mockResolvedValue(json({candidates: [{content: {parts: [
+        fetchPort.mockResolvedValue(json({modelVersion: 'gemini-runtime-version', candidates: [{content: {parts: [
             {thought: true, text: 'private reasoning'}, {inlineData: {data: 'binary'}},
             {text: '甲'}, {text: '乙'}, null,
         ]}}, {content: {parts: [{text: 'alternative'}]}}],
         usageMetadata: {promptTokenCount: 3, candidatesTokenCount: 2, thoughtsTokenCount: 1}}));
         await expect(gemini(withProviderSnapshot(request('gemini'), config))).resolves.toBe('甲乙');
-        expect(observations).toEqual([expect.objectContaining({outcome: 'success', inputTokens: 3, outputTokens: 3, reasoningTokens: 1})]);
+        expect(observations).toEqual([expect.objectContaining({outcome: 'success', actualModel: 'gemini-runtime-version', inputTokens: 3, outputTokens: 3, reasoningTokens: 1})]);
     });
     it.each([
         null, {}, {candidates: []}, {candidates: [{content: {parts: []}}]},
@@ -171,8 +171,9 @@ describe('audit48F: actual provider response parsing', () => {
     });
     it('preserves whitespace in valid final text for every direct chat adapter', async () => {
         for (const [service, provider] of [['tongyi', tongyi], ['zhipu', zhipu], ['deepseek', deepseek]] as const) {
-            fetchPort.mockResolvedValue(json({choices: [{message: {content: '  译文\n'}}]}));
+            fetchPort.mockResolvedValue(json({model: 'runtime-model-version', choices: [{message: {content: '  译文\n'}}]}));
             await expect(provider(withProviderSnapshot(request(service), config))).resolves.toBe(service === 'deepseek' ? '译文' : '  译文\n');
+            expect(observations.at(-1)).toMatchObject({outcome: 'success', actualModel: 'runtime-model-version'});
         }
         fetchPort.mockResolvedValue(json({translations: [{text: '  译文\n'}]}));
         await expect(deepl(withProviderSnapshot(request('deepL'), config))).resolves.toBe('  译文\n');
@@ -251,6 +252,9 @@ describe('audit48F: cancellation at controlled external boundaries', () => {
         await expect(doubaoSeedTranslation(withProviderSnapshot({...request('doubao'), origin: ['one', 'two'], abortSignal: controller.signal}, config))).rejects.toMatchObject({name: 'AbortError'});
         expect(fetchPort).toHaveBeenCalledOnce();
         expect(observations[0]?.outcome).toBe('cancelled');
+        fetchPort.mockClear();
+        await expect(doubaoSeedTranslation(withProviderSnapshot({...request('doubao'), abortSignal: controller.signal}, config))).rejects.toMatchObject({name: 'AbortError'});
+        expect(fetchPort).not.toHaveBeenCalled();
     });
     it.each([
         ['gemini', gemini, {candidates: [{content: {parts: [{text: 'late'}]}}]}],
@@ -260,13 +264,20 @@ describe('audit48F: cancellation at controlled external boundaries', () => {
         ['deepseek', deepseek, {choices: [{message: {content: 'late'}}]}],
         ['deepL', deepl, {translations: [{text: 'late'}]}],
     ] as const)('%s rejects late JSON after cancellation and prevents pre-cancelled transport', async (service, provider, body) => {
-        const controller = new AbortController();
-        fetchPort.mockResolvedValue({ok: true, json: async () => {controller.abort(); return body;}} as Response);
+        const controller = new AbortController(), reason = new Error('owner left while reading');
+        let finish!: () => void;
+        const received = new Response(new ReadableStream<Uint8Array>({start(stream) {
+            finish = () => {controller.abort(reason);stream.enqueue(new TextEncoder().encode(JSON.stringify(body)));stream.close();};
+        }}));
+        const fetched = new Promise<void>(resolve => fetchPort.mockImplementation(async () => {resolve();return received;}));
         const message = {...request(service), abortSignal: controller.signal};
-        await expect(provider(withProviderSnapshot(message, config))).rejects.toMatchObject({name: 'AbortError'});
+        const pending = provider(withProviderSnapshot(message, config));
+        const rejected = expect(pending).rejects.toBe(reason);
+        await fetched;finish();await rejected;
+        expect(received.bodyUsed).toBe(true);
         if (service !== 'deepL') expect(observations).toEqual([expect.objectContaining({outcome: 'cancelled'})]);
         fetchPort.mockClear(); observations.length = 0;
-        await expect(provider(withProviderSnapshot(message, config))).rejects.toMatchObject({name: 'AbortError'});
+        await expect(provider(withProviderSnapshot(message, config))).rejects.toBe(reason);
         expect(fetchPort).not.toHaveBeenCalled();
         expect(observations).toEqual([]);
     });

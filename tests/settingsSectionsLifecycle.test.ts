@@ -1,27 +1,17 @@
-import {createRequire} from 'node:module';
+import * as runtime from 'vue';
 import {parseHTML} from 'linkedom';
-import {resolve} from 'node:path';
-import vue from '@vitejs/plugin-vue';
-import {createServer, type Plugin, type ViteDevServer} from 'vite';
+import {customModelString, defaultOption, models} from '@/src/core/config/catalog';
+import {getApiKeyRequirementKey} from '@/src/core/config/validation';
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import {compileVueFixture} from './helpers/compiledVueFixture';
 
-const runtime = createRequire(import.meta.url)('vue') as typeof import('vue');
 const key = '__frSettingsSectionsLifecycle';
-let server: ViteDevServer | undefined, app: import('vue').App | undefined;
-afterEach(async () => {app?.unmount(); app = undefined; await server?.close();server = undefined;
+let app: import('vue').App | undefined;
+afterEach(async () => {app?.unmount(); app = undefined;
     delete (globalThis as Record<string, unknown>)[key];vi.restoreAllMocks();vi.unstubAllGlobals();vi.useRealTimers();});
 
 function deferred<T>() {let resolve!: (value: T) => void, reject!: (error: unknown) => void;
     const promise = new Promise<T>((yes, no) => {resolve = yes;reject = no;});return {promise, resolve, reject};}
 async function settle() {await runtime.nextTick();for (let i = 0; i < 8; i++) await Promise.resolve();await runtime.nextTick();}
-function compileClientTemplate(component: any, relative: string) {
-    const filename = resolve(process.cwd(), relative);
-    const {renderCode} = compileVueFixture(filename, {id: 'sections-lifecycle-template', cacheHandlers: true});
-    component.ssrRender = undefined;
-    component.render = new Function('Vue', renderCode)(runtime);
-}
-
 // 实际父/子 SFC 模板使用 LinkeDOM 节点和事件；Element Plus 弹窗动画、浏览器焦点由根任务真实浏览器复验。
 function createDomRenderer(document: Document, focus: ReturnType<typeof vi.fn>) {
     return runtime.createRenderer({patchProp(element: any, name: string, previous: any, next: any) {
@@ -55,11 +45,118 @@ function createDomRenderer(document: Document, focus: ReturnType<typeof vi.fn>) 
     }});
 }
 
-type NumericChange = (value: number | undefined) => void;
-type NumericPort = {disabled: boolean; change: NumericChange};
+/** Import the real SFC with the same external/display ports as the previous SSR fixture. */
+function configureSectionPorts(data: Record<string, any>, {template = false, requestLimits = false,
+    repairReturn = false, development = false, browserName = 'chrome', failureDisplay = false, serviceEvents = false, uiEvents = false}: {
+    template?: boolean; requestLimits?: boolean; serviceSelectors?: boolean; repairReturn?: boolean;
+    development?: boolean; browserName?: string; failureDisplay?: boolean; serviceEvents?: boolean; uiEvents?: boolean} = {}) {
+    vi.resetModules();
+    const empty = {render: () => null};
+    const slots = {setup(_: unknown, {slots}: any) {return () => runtime.h('div', null, slots.default?.());}};
+    const componentPort = (path: string, component: import('vue').Component = empty) => vi.doMock(path, () => ({__esModule: true, default: component}));
+    vi.doMock('@/src/services/config/store', () => data);
+    vi.doMock('webextension-polyfill', () => ({default: data.browser}));
+    vi.doMock('@/src/ui/interfaceAppearance', () => ({applyInterfaceTheme: data.theme}));
+    vi.doMock('@/src/ui/i18n', () => ({useUiI18n: () => ({language: runtime.ref('zh-CN'), bundleRevision: runtime.ref(0),
+        t: (name: string) => failureDisplay ? ({'common.loading': '加载中…', 'learning.panelLoadError': '此栏目暂时无法打开，请重新加载页面后再试。',
+            'learning.reloadPage': '重新加载页面', 'common.close': '关闭'} as Record<string, string>)[name] ?? name : name,
+        translateLegacy: (text: string) => text}), localizeServiceOptions: (options: unknown) => options}));
+    vi.doMock('element-plus', () => ({ElMessage: Object.assign(() => {}, {warning: () => {}})}));
+    vi.doMock('@element-plus/icons-vue', () => ({ArrowRight: {}, InfoFilled: {}, Edit: {}}));
+    vi.doMock('@/src/platform/chatgpt-plan/buildMode', () => ({chatGPTPlanDevelopmentEnabled: development}));
+    vi.doMock('@/src/platform/browser/capabilities', () => ({browserCapabilities: {browser: browserName, extensionDom: true, imageTranslation: true}}));
+    for (const path of [
+        '@/src/ui/components/FeatureEnableCard.vue', '@/src/ui/components/GlossaryLibrarySelect.vue',
+        '@/src/ui/components/CustomHotkeyInput.vue', '@/src/ui/components/ServiceIcon.vue', '@/src/ui/components/UiLanguageSelector.vue',
+        '@/src/features/settings/ui/FeatureServiceSettings.vue', '@/src/features/settings/ui/services/ServiceConfiguration.vue',
+        '@/src/features/settings/ui/WritingSettings.vue', '@/src/features/settings/ui/InformationHighlightSettings.vue',
+        '@/src/features/settings/ui/SelectionSettings.vue', '@/src/features/settings/ui/FloatingBallSettings.vue',
+        '@/src/features/settings/ui/SiteAdaptationSettings.vue', '@/src/features/settings/ui/SitePreferencesSettings.vue',
+        '@/src/features/settings/ui/SiteRulePreview.vue', '@/src/features/settings/ui/VideoLocalModelSettings.vue',
+        '@/src/features/settings/ui/LocalTtsSettings.vue', '@/src/features/settings/ui/VideoSubtitleAppearanceSettings.vue',
+        '@/src/features/settings/ui/InterfaceSettings.vue', '@/src/features/settings/ui/AreaTranslationSettings.vue',
+        '@/src/features/settings/ui/InputTranslationSettings.vue', '@/src/features/settings/ui/ParagraphCopySettings.vue',
+        '@/src/features/settings/ui/SectionTranslationSettings.vue', '@/src/features/settings/ui/ParagraphHandlingSettings.vue',
+        '@/src/features/settings/ui/TranslationCacheSettings.vue', '@/src/features/settings/ui/ExcludedLanguageSettings.vue',
+        '@/src/features/settings/ui/ReadingAssistanceSettings.vue', '@/src/features/settings/ui/ConfigManagement.vue',
+        '@/src/features/settings/ui/QuickTranslationProfiles.vue', '@/src/features/settings/ui/ContextMenuSettings.vue',
+        '@/src/features/settings/ui/components/FieldHelp.vue',
+    ]) componentPort(path);
+    vi.doMock('@/src/features/translation-center/public', () => ({TranslationCenter: empty}));
+    vi.doMock('@/src/features/glossary/public', () => ({GlossarySettings: empty}));
+    vi.doMock('@/src/features/image-translation/ui/public', () => ({ImageOcrSettings: empty, MangaSettings: empty}));
+    vi.doMock('@/src/features/model-usage/public', () => ({ModelUsageDashboard: empty}));
+    vi.doMock('@/src/features/translation-stats/public', () => ({TranslationStatsDashboard: empty}));
+    componentPort('@/src/features/settings/ui/components/SettingsGroup.vue', slots);
+    componentPort('@/src/features/settings/ui/components/SettingsItem.vue', slots);
+    vi.doMock('@/src/features/settings/ui/components/SettingsPanel.vue', () => repairReturn
+        ? vi.importActual('@/src/features/settings/ui/components/SettingsPanel.vue') : {default: slots});
+    vi.doMock('@/src/features/settings/ui/services/ServiceRepairReturn.vue', () => repairReturn
+        ? vi.importActual('@/src/features/settings/ui/services/ServiceRepairReturn.vue') : {default: empty});
+    vi.doMock('@/src/features/settings/ui/services/RequestLimitFields.vue', () => requestLimits
+        ? vi.importActual('@/src/features/settings/ui/services/RequestLimitFields.vue') : {default: empty});
+    vi.doMock('@/src/features/settings/ui/components/SettingsNumberInput.vue', () => requestLimits
+        ? vi.importActual('@/src/features/settings/ui/components/SettingsNumberInput.vue') : {default: empty});
+    vi.doMock('@/src/features/settings/ui/services/CompositeTranslationFields.vue', () => template && !failureDisplay
+        ? vi.importActual('@/src/features/settings/ui/services/CompositeTranslationFields.vue') : {default: empty});
+    vi.doMock('@/src/features/settings/ui/components/SegmentedControl.vue', () => template && !failureDisplay
+        ? vi.importActual('@/src/features/settings/ui/components/SegmentedControl.vue') : {default: empty});
+    vi.doMock('@/src/features/settings/ui/services/CustomOpenAIProviderDialog.vue', async () =>
+        ({__esModule: true, default: template ? await data.loadProvider() : empty}));
+    componentPort('@/src/features/settings/ui/services/ServiceCatalog.vue', template ? {props: ['active','service','modelOptions','selectedModel'], emits: ['add:service','update:service','update:default-service','update:model','add:model','remove:model'],
+        setup(props: any, {emit, slots}: any) {
+            if (serviceEvents) data.serviceCatalog = {props, emit};
+            if (!failureDisplay) runtime.onMounted(data.catalogMounted);
+            return () => {
+                if (!props.active) return null;
+                const button = runtime.h('button', {'data-testid': 'fixture-add-service', onClick: () => emit('add:service')}, '添加服务');
+                return failureDisplay ? runtime.h('section', {'data-fixture-catalog-display': ''},
+                    [runtime.h('div', {'data-fixture-add-service-row': ''}, [button, slots['add-service-status']?.()])]) : serviceEvents ? runtime.h('section', null, [button,slots.configuration?.({connectionActionTarget:undefined})]) : button;
+            };
+        }} : empty);
+    if (uiEvents) {
+        componentPort('@/src/features/settings/ui/components/SettingsItem.vue', {setup(_, {slots}) {return () => runtime.h('div', null, [slots.description?.(),slots.default?.()]);}});
+        // 仅替换已单独测试的子组件边界，保留真实父模板及其 v-model/事件处理器。
+        for (const [name, path] of Object.entries({
+            feature: '@/src/ui/components/FeatureEnableCard.vue',
+            hotkey: '@/src/ui/components/CustomHotkeyInput.vue',
+            assignment: '@/src/features/settings/ui/FeatureServiceSettings.vue',
+            writing: '@/src/features/settings/ui/WritingSettings.vue',
+            selection: '@/src/features/settings/ui/SelectionSettings.vue',
+            adaptation: '@/src/features/settings/ui/SiteAdaptationSettings.vue',
+            reading: '@/src/features/settings/ui/ReadingAssistanceSettings.vue',
+            profiles: '@/src/features/settings/ui/QuickTranslationProfiles.vue',
+            excluded: '@/src/features/settings/ui/ExcludedLanguageSettings.vue',
+            glossary: '@/src/ui/components/GlossaryLibrarySelect.vue',
+            area: '@/src/features/settings/ui/AreaTranslationSettings.vue',
+        })) componentPort(path, childEventPort(name, data.uiPorts));
+        vi.doMock('@/src/features/image-translation/ui/public', () => ({
+            MangaSettings: childEventPort('manga', data.uiPorts), ImageOcrSettings: childEventPort('ocr', data.uiPorts),
+        }));
+    }
+    if (serviceEvents) componentPort('@/src/features/settings/ui/services/ServiceConfiguration.vue', {
+        props:['active','config','service','compute','selectedModelThinking','customProvider'],
+        emits:['update:model-thinking','update:custom-provider','delete:custom-provider','remove:service'],
+        setup(props, {emit}) {data.serviceConfiguration={props,emit};return()=>runtime.h('div',{'data-configuration-port':props.service});},
+    });
+}
 
-async function mountSections({ready = Promise.resolve(), configSnapshot, template = false, providerGate = Promise.resolve(), activeSection = 'settings-translation', requestLimits = false, development = false, serviceSelectors = false, search = '', repairReturn = false, browserName = 'chrome'}:
-    {ready?: Promise<void>; configSnapshot?: Record<string, unknown>; template?: boolean; providerGate?: Promise<void>; activeSection?: string; requestLimits?: boolean; development?: boolean; serviceSelectors?: boolean; search?: string; repairReturn?: boolean; browserName?: string} = {}) {
+type ChildEventPort = {attrs: Record<string, any>; emit: (event: string, ...args: unknown[]) => void};
+function childEventPort(name: string, ports: Map<string, ChildEventPort>) {
+    return runtime.defineComponent({inheritAttrs: false, setup(_, {attrs, emit, slots}) {
+        return () => {
+            const id = `${name}:${attrs.action ?? attrs.title ?? attrs['aria-label'] ?? ''}`;
+            ports.set(id, {attrs, emit});
+            return runtime.h('div', {'data-child-event-port': id}, [slots.default?.(), slots.description?.(), slots.resources?.()]);
+        };
+    }});
+}
+
+type NumericChange = (value: number | undefined) => void;
+type NumericPort = {disabled: boolean; change: NumericChange; update: NumericChange};
+
+async function mountSections({ready = Promise.resolve(), configSnapshot, template = false, providerGate = Promise.resolve(), activeSection = 'settings-translation', requestLimits = false, development = false, serviceSelectors = false, search = '', repairReturn = false, browserName = 'chrome', serviceEvents = false, uiEvents = false}:
+    {ready?: Promise<void>; configSnapshot?: Record<string, unknown>; template?: boolean; providerGate?: Promise<void>; activeSection?: string; requestLimits?: boolean; development?: boolean; serviceSelectors?: boolean; search?: string; repairReturn?: boolean; browserName?: string; serviceEvents?: boolean; uiEvents?: boolean} = {}) {
     const frames = new Map<number, FrameRequestCallback>();let nextFrame = 0;
     const query = vi.fn((_options: Record<string, unknown>) => Promise.resolve([] as {id?: number}[]));
     const send = vi.fn((_id: number, _message: {type: string; isEnabled?: boolean; mode?: string}) => Promise.resolve());
@@ -71,18 +168,17 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
         requestAnimationFrame: (fn: FrameRequestCallback) => {frames.set(++nextFrame, fn);return nextFrame;},
         cancelAnimationFrame: (id: number) => frames.delete(id)});
     vi.stubGlobal('window', pageWindow);
-    const findTarget = vi.fn(() => null as HTMLElement | null);
-    const dom = template ? parseHTML('<html><body><main id="fixture"></main></body></html>') : undefined;
+    const dom = parseHTML('<html><body><main id="fixture"></main></body></html>');
+    const findTarget = vi.spyOn(dom.document, 'querySelector');
     let pageVisibility: 'visible' | 'hidden' = 'visible';
-    const ownerDocument = dom?.document ?? Object.assign(new EventTarget(), {querySelector: findTarget});
+    const ownerDocument = dom.document;
     Object.defineProperty(ownerDocument, 'visibilityState', {configurable: true, get: () => pageVisibility});
     vi.stubGlobal('document', ownerDocument);
     const setVisibility = (value: 'visible' | 'hidden') => {pageVisibility = value;
-        if (dom) dom.document.dispatchEvent(new dom.window.Event('visibilitychange'));
-        else ownerDocument.dispatchEvent(new Event('visibilitychange'));};
+        dom.document.dispatchEvent(new dom.window.Event('visibilitychange'));};
     // window 使用原生 EventTarget；DOM 使用 LinkeDOM 事件，不能混用两个事件实现。
     const pageEvent = (type: 'pagehide' | 'pageshow') => pageWindow.dispatchEvent(new Event(type));
-    if (dom) vi.stubGlobal('HTMLInputElement', dom.window.HTMLInputElement);
+    vi.stubGlobal('HTMLInputElement', dom.window.HTMLInputElement);
     const focus = vi.fn(), providerMounted = vi.fn(), providerUnmounted = vi.fn();
     const numericPorts = new Map<string, NumericPort>();
     let providerState: Record<string, any> | undefined;
@@ -90,16 +186,11 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
     const catalogReady = deferred<void>();
     const loadProvider = vi.fn(async () => {
         await providerGate;
-        const component = (await server!.ssrLoadModule('/src/features/settings/ui/services/CustomOpenAIProviderDialog.vue')).default;
-        for (const relative of ['src/features/settings/ui/components/SegmentedControl.vue', 'src/features/settings/ui/services/CompositeTranslationFields.vue']) {
-            const child = (await server!.ssrLoadModule(`/${relative}`)).default;
-            compileClientTemplate(child, relative);
-        }
-        compileClientTemplate(component, 'src/features/settings/ui/services/CustomOpenAIProviderDialog.vue');
+        const component = (await vi.importActual<typeof import('@/src/features/settings/ui/services/CustomOpenAIProviderDialog.vue')>('@/src/features/settings/ui/services/CustomOpenAIProviderDialog.vue')).default;
         providerReady.resolve();return component;
     });
     let notifyConfig: (value: unknown) => void = () => {};
-    const data = {loadProvider, catalogMounted: () => catalogReady.resolve(), config: configSnapshot ?? {}, configReady: ready,
+    const data = {uiPorts: new Map<string, ChildEventPort>(), serviceCatalog:undefined as undefined | {props:Record<string,any>;emit:(event:string,...args:any[])=>void},serviceConfiguration:undefined as undefined | {props:Record<string,any>;emit:(event:string,...args:any[])=>void},loadProvider, catalogMounted: () => catalogReady.resolve(), config: configSnapshot ?? {}, configReady: ready,
         subscribeConfig: (listener: (value: unknown) => void) => {
             notifyConfig = listener;
             if (configSnapshot) listener(configSnapshot);
@@ -110,84 +201,32 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
         browser: {runtime: {sendMessage: vi.fn(() => Promise.resolve())}, tabs: {query, sendMessage: send,
             get: vi.fn(async () => ({id: 7, url: 'https://example.test/'})), update: vi.fn(async () => ({id: 7}))}}};
     (globalThis as Record<string, unknown>)[key] = data;
-    const mocks: Plugin = {name: 'settings-sections-lifecycle-mocks', enforce: 'pre', resolveId(id, importer) {
-        if (repairReturn && /\/(?:ServiceRepairReturn|SettingsPanel)\.vue$/u.test(id)) return null;
-        if (requestLimits && id.endsWith('/RequestLimitFields.vue')) return null;
-        if (requestLimits && id.endsWith('/SettingsNumberInput.vue')) return null;
-        if ((requestLimits || serviceSelectors) && (id.endsWith('/SettingsGroup.vue') || id.endsWith('/SettingsItem.vue'))) return '\0sections-slots';
-        if (template && id.endsWith('/CustomOpenAIProviderDialog.vue')) {
-            // 只替换父模板的动态模块加载端口；真正的子组件在首次请求后由 Vite 编译，测试不重写其 watch/草稿行为。
-            if (importer?.includes('SettingsSections.vue')) return '\0sections-provider-loader';
-            return null;
-        }
-        if (template && /\/(?:CompositeTranslationFields|SegmentedControl)\.vue$/u.test(id)) return null;
-        if (template && id.endsWith('/SettingsPanel.vue')) return '\0sections-panel';
-        if (template && id.endsWith('/ServiceCatalog.vue')) return '\0sections-service-catalog';
-        if (id.endsWith('.vue') && !id.endsWith('/SettingsSections.vue')) return '\0sections-child';
-        if (id.endsWith('/src/ui/i18n')) return '\0sections-i18n';
-        if (id.endsWith('/src/services/config/store')) return '\0sections-config';
-        if (id.endsWith('/src/ui/interfaceAppearance')) return '\0sections-appearance';
-        if (id === 'webextension-polyfill') return '\0sections-browser';
-        if (id === 'element-plus') return '\0sections-element';
-        if (id === '@element-plus/icons-vue') return '\0sections-icons';
-        if (/\/src\/platform\/chatgpt-plan\/buildMode(?:\.ts)?$/u.test(id)) return '\0sections-build-mode';
-        if (id.endsWith('/src/platform/browser/capabilities')) return '\0sections-capabilities';return null;
-    }, load(id) {
-        if (id === '\0sections-slots') return `import {h} from 'vue';export default {setup(_, {slots}) {return () => h('div', null, slots.default?.());}};`;
-        if (id === '\0sections-panel') return `import {h} from 'vue';export default {setup(_, {slots}) {return () => h('div', null, slots.default?.());}};`;
-        if (id === '\0sections-provider-loader') return `export default await globalThis.${key}.loadProvider();`;
-        if (id === '\0sections-service-catalog') return `import {h, onMounted} from 'vue';export default {props: ['active'], emits: ['add:service'], setup(props, {emit}) {onMounted(globalThis.${key}.catalogMounted);return () => props.active ? h('button', {'data-testid': 'fixture-add-service', onClick: () => emit('add:service')}, '添加服务') : null}};`;
-        if (id === '\0sections-child') return 'export default {render: () => null};';
-        if (id === '\0sections-i18n') return `import {ref} from 'vue';export const useUiI18n = () => ({language: ref('zh-CN'), bundleRevision: ref(0), t: k => k, translateLegacy: t => t}); export const localizeServiceOptions = options => options;`;
-        if (id === '\0sections-config') return `export const {config, configReady, subscribeConfig, requestConfigPatch, handoffPendingConfigPatches} = globalThis.${key};`;
-        if (id === '\0sections-appearance') return `export const applyInterfaceTheme = globalThis.${key}.theme;`;
-        if (id === '\0sections-browser') return `export default globalThis.${key}.browser;`;
-        if (id === '\0sections-element') return 'export const ElMessage = Object.assign(() => {}, {warning: () => {}});';
-        if (id === '\0sections-icons') return 'export const ArrowRight = {};export const InfoFilled = {};export const Edit = {};';
-        if (id === '\0sections-build-mode') return `export const chatGPTPlanDevelopmentEnabled = ${development};`;
-        if (id === '\0sections-capabilities') return `export const browserCapabilities = {browser: ${JSON.stringify(browserName)}};`;return null;
-    }};
-    server = await createServer({configFile: false, appType: 'custom', logLevel: 'silent', root: process.cwd(),
-        plugins: [mocks, vue()], resolve: {alias: {'@': resolve(process.cwd())}},
-        // 实际表单、键盘与异步归属测试不使用文件观察或热更新。
-        ssr: {noExternal: ['element-plus', '@element-plus/icons-vue', 'webextension-polyfill']},server: {hmr: false, middlewareMode: true, watch: null}});
-    if (requestLimits) {
-        const child = (await server.ssrLoadModule('/src/features/settings/ui/services/RequestLimitFields.vue')).default;
-        compileClientTemplate(child, 'src/features/settings/ui/services/RequestLimitFields.vue');
-        const numberInput = (await server.ssrLoadModule('/src/features/settings/ui/components/SettingsNumberInput.vue')).default;
-        compileClientTemplate(numberInput, 'src/features/settings/ui/components/SettingsNumberInput.vue');
-    }
-    if (repairReturn) {
-        for (const file of ['src/features/settings/ui/services/ServiceRepairReturn.vue', 'src/features/settings/ui/components/SettingsPanel.vue']) {
-            compileClientTemplate((await server.ssrLoadModule(`/${file}`)).default, file);
-        }
-    }
-    const component = (await server.ssrLoadModule('/src/features/settings/ui/SettingsSections.vue')).default;
-    component.ssrRender = undefined;component.render = () => null;
-    if (template) compileClientTemplate(component, 'src/features/settings/ui/SettingsSections.vue');
-    const renderer = dom ? createDomRenderer(dom.document as unknown as Document, focus) : runtime.createRenderer<Record<string, never>, Record<string, unknown>>({patchProp: () => {}, insert: () => {},
-        remove: () => {}, createElement: () => ({}), createText: () => ({}), createComment: () => ({}), setText: () => {},
-        setElementText: () => {}, parentNode: () => null, nextSibling: () => null, querySelector: () => null,
-        setScopeId: () => {}, cloneNode: () => ({}), insertStaticContent: () => [{}, {}]});
+    configureSectionPorts(data, {template, requestLimits, serviceSelectors, repairReturn, development, browserName, serviceEvents, uiEvents});
+    const imported = (await import('@/src/features/settings/ui/SettingsSections.vue')).default;
+    const component = imported;
+    const renderer = createDomRenderer(dom.document as unknown as Document, focus);
     const visible = runtime.ref(true);const props = runtime.reactive({activeSection, onNavigateSection: undefined as undefined | ((section: string, target?: string) => void)});
     let state!: Record<string, any>;
     app = renderer.createApp({setup: () => () => runtime.h(runtime.KeepAlive, null, {default: () => visible.value
-        ? runtime.h(component, {...props, ref: (vm: any) => {if (vm) state = vm.$.setupState;}})
+        ? runtime.h(component as runtime.Component, {...props, ref: (vm: any) => {if (vm) state = vm.$.setupState;}})
         : runtime.h({render: () => null}, {key: 'other'})})});
     let dialogPort: Record<string, any> | undefined;
     if (requestLimits) {
         // Only the numeric widget is a public port; parent/child templates, validation and action context stay real.
-        app.component('el-input-number', runtime.defineComponent({inheritAttrs: false,
+        app.component('el-input-number', runtime.defineComponent({inheritAttrs: false, emits:['update:modelValue'],
             props: {modelValue: Number, disabled: Boolean,
-                onChange: {type: Function as import('vue').PropType<NumericChange>, required: true}},
-            setup(numberProps, {attrs}) {
+                onChange: Function as import('vue').PropType<NumericChange>},
+            setup(numberProps, {attrs, emit}) {
                 return () => {
-                    const change = numberProps.onChange;
-                    numericPorts.set(String(attrs['aria-label']), {disabled: numberProps.disabled, change});
+                    const change = numberProps.onChange ?? (() => {}), update: NumericChange = value => emit('update:modelValue', value);
+                    numericPorts.set(String(attrs['aria-label']), {disabled: numberProps.disabled, change, update});
                     return runtime.h('input', {...attrs, type: 'number', value: numberProps.modelValue, disabled: numberProps.disabled,
                         onChange: (event: Event) => change(Number((event.target as HTMLInputElement).value))});
                 };
             }}));
+    }
+    if (uiEvents) {
+        for (const name of ['el-select', 'el-switch']) app.component(name, childEventPort(name, data.uiPorts));
     }
     if (template) {
         app.mixin({mounted() {
@@ -199,12 +238,12 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
         }}));
     }
     app.provide(runtime.ssrContextKey, {modules: new Set<string>()});app.config.warnHandler = () => {};
-    app.mount(dom ? dom.document.querySelector('#fixture')! : {});await settle();
+    app.mount(dom.document.querySelector('#fixture')!);await settle();
     // 等实际异步目录组件挂载；静态表单仅需 Vue 更新队列，不为每例固定等待 60 ms。
     if (template && activeSection === 'settings-services') {await catalogReady.promise;await settle();}
     return {state, props, visible, document: dom?.document, domWindow: dom?.window, setVisibility, pageEvent, numericPorts, loadProvider, focus, providerMounted, providerUnmounted,
         get providerState() {return providerState;}, get dialogPort() {return dialogPort;},
-        async finishProviderLoad() {await providerReady.promise;await new Promise(resolve => setTimeout(resolve, 0));await settle();}, query, send, patch, theme, unsubscribe, frames, findTarget, location, data,
+        async finishProviderLoad() {await providerReady.promise;await new Promise(resolve => setTimeout(resolve, 0));await settle();}, query, send, patch, theme, media, unsubscribe, frames, findTarget, location, data,
         notifyConfig: (value: unknown) => notifyConfig(value)};
 }
 
@@ -837,47 +876,15 @@ async function mountProviderFailureSections() {
         requested = true;started.resolve();
         try {
             await gate.promise;
-            const child = (await server!.ssrLoadModule('/src/features/settings/ui/services/CustomOpenAIProviderDialog.vue')).default;
-            compileClientTemplate(child, 'src/features/settings/ui/services/CustomOpenAIProviderDialog.vue');return child;
+            return (await vi.importActual<typeof import('@/src/features/settings/ui/services/CustomOpenAIProviderDialog.vue')>('@/src/features/settings/ui/services/CustomOpenAIProviderDialog.vue')).default;
         } finally {finished.resolve();}
     });
     const data = {loadProvider, config: {}, configReady: Promise.resolve(), subscribeConfig: (_listener: (value: unknown) => void) => unsubscribe,
         requestConfigPatch: patch, handoffPendingConfigPatches: vi.fn(() => Promise.resolve()), theme: vi.fn(),
         browser: {runtime: {sendMessage: vi.fn(() => Promise.resolve())}, tabs: {query: vi.fn(() => Promise.resolve([])), sendMessage: vi.fn(() => Promise.resolve())}}};
     (globalThis as Record<string, unknown>)[key] = data;
-    const mocks: Plugin = {name: 'settings-provider-failure-display-ports', enforce: 'pre', resolveId(id, importer) {
-        if (id.endsWith('/CustomOpenAIProviderDialog.vue')) {
-            if (importer?.includes('SettingsSections.vue')) return '\0provider-failure-loader';return null;
-        }
-        if (id.endsWith('/SettingsPanel.vue')) return '\0provider-failure-panel';
-        if (id.endsWith('/ServiceCatalog.vue')) return '\0provider-failure-catalog';
-        if (id.endsWith('.vue') && !id.endsWith('/SettingsSections.vue')) return '\0provider-failure-child';
-        if (id.endsWith('/src/ui/i18n')) return '\0provider-failure-i18n';
-        if (id.endsWith('/src/services/config/store')) return '\0provider-failure-config';
-        if (id.endsWith('/src/ui/interfaceAppearance')) return '\0provider-failure-appearance';
-        if (id === 'webextension-polyfill') return '\0provider-failure-browser';
-        if (id === 'element-plus') return '\0provider-failure-element';
-        if (id === '@element-plus/icons-vue') return '\0provider-failure-icons';
-        if (id.endsWith('/src/platform/browser/capabilities')) return '\0provider-failure-capabilities';return null;
-    }, load(id) {
-        if (id === '\0provider-failure-panel') return `import {h} from 'vue';export default {setup(_, {slots}) {return () => h('div', null, slots.default?.());}};`;
-        if (id === '\0provider-failure-loader') return `export default await globalThis.${key}.loadProvider();`;
-        if (id === '\0provider-failure-catalog') return `import {h} from 'vue';export default {props: ['active'], emits: ['add:service'], setup(props, {emit, slots}) {return () => props.active ? h('section', {'data-fixture-catalog-display': ''}, [h('div', {'data-fixture-add-service-row': ''}, [h('button', {'data-testid': 'fixture-add-service', onClick: () => emit('add:service')}, '添加服务'), slots['add-service-status']?.()])]) : null}};`;
-        if (id === '\0provider-failure-child') return 'export default {render: () => null};';
-        // 固定中文 display port；这里只验证父状态，不证明真实本地化资源加载。
-        if (id === '\0provider-failure-i18n') return `import {ref} from 'vue';const copy = {'common.loading': '加载中…', 'learning.panelLoadError': '此栏目暂时无法打开，请重新加载页面后再试。', 'learning.reloadPage': '重新加载页面', 'common.close': '关闭'};export const useUiI18n = () => ({language: ref('zh-CN'), t: k => copy[k] ?? k, translateLegacy: t => t});export const localizeServiceOptions = options => options;`;
-        if (id === '\0provider-failure-config') return `export const {config, configReady, subscribeConfig, requestConfigPatch, handoffPendingConfigPatches} = globalThis.${key};`;
-        if (id === '\0provider-failure-appearance') return `export const applyInterfaceTheme = globalThis.${key}.theme;`;
-        if (id === '\0provider-failure-browser') return `export default globalThis.${key}.browser;`;
-        if (id === '\0provider-failure-element') return 'export const ElMessage = Object.assign(() => {}, {warning: () => {}});';
-        if (id === '\0provider-failure-icons') return 'export const ArrowRight = {};export const InfoFilled = {};export const Edit = {};';
-        if (id === '\0provider-failure-capabilities') return "export const browserCapabilities = {browser: 'chrome'};";return null;
-    }};
-    server = await createServer({configFile: false, appType: 'custom', logLevel: 'silent', root: process.cwd(), plugins: [mocks, vue()],
-        resolve: {alias: {'@': resolve(process.cwd())}}, ssr: {noExternal: ['element-plus', '@element-plus/icons-vue', 'webextension-polyfill']},
-        server: {hmr: false, middlewareMode: true, watch: null}});
-    const component = (await server.ssrLoadModule('/src/features/settings/ui/SettingsSections.vue')).default;
-    compileClientTemplate(component, 'src/features/settings/ui/SettingsSections.vue');
+    configureSectionPorts(data, {template: true, failureDisplay: true});
+    const component = (await import('@/src/features/settings/ui/SettingsSections.vue')).default;
     // 每个动态创建节点的 focus 只记录，不影响旧 renderer 或全局 HTMLElement prototype。
     const displayDocument = {createElement(name: string) {const node = dom.document.createElement(name);node.focus = focus;return node;},
         createTextNode: dom.document.createTextNode.bind(dom.document), createComment: dom.document.createComment.bind(dom.document),
@@ -886,7 +893,7 @@ async function mountProviderFailureSections() {
     const props = runtime.reactive({activeSection: 'settings-services'}), visible = runtime.ref(true);
     let state!: Record<string, any>;
     app = renderer.createApp({setup: () => () => runtime.h(runtime.KeepAlive, null, {default: () => visible.value
-        ? runtime.h(component, {...props, ref: (vm: any) => {if (vm) state = vm.$.setupState;}})
+        ? runtime.h(component as runtime.Component, {...props, ref: (vm: any) => {if (vm) state = vm.$.setupState;}})
         : runtime.h({render: () => null}, {key: 'other'})})});
     app.mixin({mounted() {if (this.$options.__name === 'CustomOpenAIProviderDialog') providerMounted();},
         unmounted() {if (this.$options.__name === 'CustomOpenAIProviderDialog') providerUnmounted();}});
@@ -1050,5 +1057,292 @@ describe('服务窗口加载反馈公开关闭与已知失败归属', () => {
             expect(providerFeedbackDisplayed(fixture.document.querySelector('[data-testid="custom-service-load-status"]'))).toBe(false);
             expect(fixture.vueErrors).toEqual([]);expectProviderFailureHasNoSideEffects(fixture, before, exitSaves);
         } finally {await fixture.close();}
+    });
+});
+
+// 通过真实父模板收到子组件 emits；服务目录/配置面板是已单独测试的受控 UI 端口。
+async function serviceEditorFixture(configSnapshot: Record<string, unknown> = {}) {
+    const fixture = await mountSections({template:true,serviceEvents:true,activeSection:'settings-services',configSnapshot});
+    await vi.waitFor(()=>expect(fixture.data.serviceConfiguration).toBeDefined());
+    const catalog = async (event: string, ...values: unknown[]) => {fixture.data.serviceCatalog!.emit(event,...values);await settle();};
+    const configuration = async (event: string, ...values: unknown[]) => {fixture.data.serviceConfiguration!.emit(event,...values);await settle();};
+    return {...fixture,catalog,configuration};
+}
+const customConnection = (id='custom:1', model='model-a') => ({id,name:`连接 ${id}`,endpoint:`https://${id.replace(':','-')}.example/v1`,models:[model]});
+
+describe('设置主表单服务目录与模型事件提交',()=>{
+    it('切换编辑目标不改默认服务，只有当前目标的显式默认动作能提交',async()=>{
+        const f=await serviceEditorFixture({service:'google'});f.patch.mockClear();
+        await f.catalog('update:service','microsoft');expect(f.state.selectedConfigurationService).toBe('microsoft');expect(f.state.config.service).toBe('google');expect(f.patch).not.toHaveBeenCalled();
+        await f.catalog('update:default-service','openai');expect(f.patch).not.toHaveBeenCalled();
+        await f.catalog('update:default-service','microsoft');expect(f.state.config.service).toBe('microsoft');expect(f.patch).toHaveBeenCalledOnce();
+        f.props.activeSection='settings-general';await settle();f.patch.mockClear();await f.catalog('update:default-service','google');expect(f.state.config.service).toBe('microsoft');expect(f.patch).not.toHaveBeenCalled();
+    });
+    it('自定义连接添加/选择/删除模型各只提交完整快照，保留同级服务与文档选择',async()=>{
+        const f=await serviceEditorFixture({customOpenAIProviders:[customConnection(),customConnection('custom:2','second')],model:{'custom:1':'model-a'},documentModel:{'custom:1':'model-a'}});
+        await f.catalog('update:service','custom:1');f.patch.mockClear();
+        await f.catalog('add:model','model-b');expect(f.patch).toHaveBeenCalledOnce();expect(f.patch.mock.calls[0][0]).toMatchObject({model:{'custom:1':'model-b'},documentModel:{'custom:1':'model-a'},customOpenAIProviders:[expect.objectContaining({id:'custom:1',models:['model-a','model-b']}),expect.objectContaining({id:'custom:2',models:['second']})]});
+        await f.configuration('update:model-thinking',true);expect(f.data.serviceConfiguration!.props.selectedModelThinking).toBe(true);
+        f.patch.mockClear();await f.catalog('update:model','model-a');expect(f.state.config.model['custom:1']).toBe('model-a');expect(f.patch).toHaveBeenCalledOnce();
+        f.patch.mockClear();await f.catalog('remove:model','model-a');expect(f.patch).toHaveBeenCalledOnce();expect(f.state.config.customOpenAIProviders[0].models).toEqual(['model-b']);expect(f.state.config.model['custom:1']).toBe('model-b');expect(f.state.config.documentModel['custom:1']).toBe('model-b');expect(f.state.config.customOpenAIProviders[1].models).toEqual(['second']);
+    });
+    it('内置服务手动模型与目录模型切换保持自定义列表，删除时清除关联偏好',async()=>{
+        const f=await serviceEditorFixture({service:'openai'});await f.catalog('update:service','openai');f.patch.mockClear();
+        await f.catalog('add:model','private-model');expect(f.patch).toHaveBeenCalledOnce();expect(f.state.config.customModels.openai).toContain('private-model');expect(f.state.config.model.openai).toBe(customModelString);expect(f.state.config.customModel.openai).toBe('private-model');
+        await f.configuration('update:model-thinking',true);expect(f.data.serviceConfiguration!.props.selectedModelThinking).toBe(true);
+        const known=models.get('openai')!.find(model=>model!==customModelString)!;await f.catalog('update:model',known);expect(f.state.config.model.openai).toBe(known);expect(f.state.config.customModels.openai).toContain('private-model');
+        await f.catalog('update:model','private-model');expect(f.state.config.model.openai).toBe(customModelString);expect(f.state.config.customModel.openai).toBe('private-model');
+        f.patch.mockClear();await f.catalog('remove:model','private-model');expect(f.patch).toHaveBeenCalledOnce();expect(f.state.config.customModels.openai).toBeUndefined();expect(f.state.config.model.openai).not.toBe(customModelString);expect(f.state.config.modelThinking.openai?.['private-model']).toBeUndefined();
+    });
+    it('修改当前自定义名称和端点只写该连接，删除后清除各功能引用且保留同前缀连接',async()=>{
+        const providers=[customConnection('custom','legacy'),customConnection('custom:1','current')];
+        const f=await serviceEditorFixture({customOpenAIProviders:providers,service:'custom',documentService:'custom',videoService:'custom',translationCenterServices:['custom','custom:1'],token:{custom:'old-key','custom:1':'current-key'},model:{custom:'legacy','custom:1':'current'},customBody:{custom:'{"legacy":true}'},customHeaders:{custom:'{"X-Fixture":"old"}'}});
+        const retainedKey=getApiKeyRequirementKey('custom:1',f.state.config);f.state.config.requireApiKey[retainedKey]=false;await settle();await f.catalog('update:service','custom');f.patch.mockClear();
+        await f.configuration('update:custom-provider',{name:'更名',endpoint:'https://new.example/v1'});expect(f.patch).toHaveBeenCalledOnce();expect(f.state.config.customOpenAIProviders.find((item:{id:string})=>item.id==='custom')).toMatchObject({name:'更名',endpoint:'https://new.example/v1'});expect(f.state.config.customOpenAIProviders.find((item:{id:string})=>item.id==='custom:1')).toEqual(providers[1]);
+        f.patch.mockClear();await f.configuration('delete:custom-provider');expect(f.patch).toHaveBeenCalledOnce();expect(f.state.config.customOpenAIProviders).toEqual([providers[1]]);expect(f.state.config.service).toBe(defaultOption.service);expect(f.state.config.documentService).toBe('');expect(f.state.config.videoService).toBe('');expect(f.state.config.translationCenterServices).toEqual(['custom:1']);expect(f.state.config.token['custom:1']).toBe('current-key');expect(f.state.config.requireApiKey[retainedKey]).toBe(false);
+        for(const key of ['token','model','documentModel','customModel','customModels','modelThinking','documentCustomModel','proxy','system_role','user_role','customBody','customHeaders'])expect(f.state.config[key].custom,key).toBeUndefined();
+    });
+    it('删除组合服务仅允许当前有效连接，清理默认与快捷方案引用且保留成员',async()=>{
+        const group={id:'composite:1',name:'组合',services:['google','microsoft'],strategy:'sequential',timeoutMs:12000};
+        const f=await serviceEditorFixture({service:'composite:1',compositeTranslationProviders:[group],favoriteServices:['composite:1','google'],quickTranslationProfiles:[{id:'profile',enabled:true,action:'hover',hotkey:'Alt+J',service:'composite:1',model:'',targetLanguage:'',displayMode:'inherit',fullPageMode:'inherit'}]});
+        await f.catalog('update:service','composite:1');f.patch.mockClear();await f.configuration('remove:service','composite:missing');expect(f.patch).not.toHaveBeenCalled();
+        await f.configuration('remove:service','composite:1');expect(f.patch).toHaveBeenCalledOnce();expect(f.state.config.compositeTranslationProviders).toEqual([]);expect(f.state.config.service).toBe(defaultOption.service);expect(f.state.config.favoriteServices).toContain('google');expect(f.state.config.favoriteServices).not.toContain('composite:1');expect(f.state.config.quickTranslationProfiles[0].service).toBe('');
+    });
+});
+
+describe('设置主表单当前连接字段能力',()=>{
+    const ai=['showAI','showProxy','showModel','showCustomBody','showToken'];
+    const fields=['showAI','showProxy','showModel','showCustomBody','showToken','showYoudao','showTencent','showCloudVendor','showServiceSecret','showServiceRegion','showOllamaEndpoint','showCustomOpenAI','showDeepLX','showMiniMaxRegion','showMiMoRegion','showNewAPI','showAzureOpenaiEndpoint','showDeepseekApiType'];
+    it.each([
+        {service:'google',visible:[]},
+        {service:'openai',visible:ai},
+        {service:'youdao',visible:['showYoudao']},
+        {service:'tencent',visible:['showProxy','showTencent','showCloudVendor']},
+        {service:'aliyunTranslation',visible:['showToken','showCloudVendor','showServiceSecret','showServiceRegion']},
+        {service:'ollama',visible:['showAI','showProxy','showModel','showCustomBody','showOllamaEndpoint']},
+        {service:'deeplx',visible:['showProxy','showToken','showDeepLX']},
+        {service:'minimax',visible:[...ai,'showMiniMaxRegion']},
+        {service:'mimo',visible:[...ai,'showMiMoRegion']},
+        {service:'newapi',visible:['showAI','showModel','showCustomBody','showToken','showNewAPI']},
+        {service:'azureOpenai',visible:['showAI','showModel','showCustomBody','showToken','showAzureOpenaiEndpoint']},
+        {service:'deepseek',visible:[...ai,'showDeepseekApiType']},
+        {service:'localTranslation',visible:['showModel']},
+        {service:'custom:1',visible:[...ai,'showCustomOpenAI']},
+    ])('编辑$service时不混入其他厂商字段，也不改网页默认服务',async({service,visible})=>{
+        const f=await serviceEditorFixture({service:'microsoft',customOpenAIProviders:[customConnection()]});await f.catalog('update:service',service);
+        expect(f.data.serviceConfiguration!.props.service).toBe(service);const compute=f.data.serviceConfiguration!.props.compute;
+        expect(Object.fromEntries(fields.map(field=>[field,compute[field]]))).toEqual(Object.fromEntries(fields.map(field=>[field,visible.includes(field)])));
+        expect(compute.allowCustomModels).toBe(service!=='localTranslation');expect(f.state.config.service).toBe('microsoft');
+        if(service==='aliyunTranslation'){
+            expect(compute.cloudCredentialLabels).toEqual({token:'AccessKey ID',secret:'AccessKey Secret'});expect(compute.defaultCloudRegion).toBe('cn-hangzhou');expect(compute.cloudRegionOptions.map((item:{value:string})=>item.value)).toEqual(['cn-hangzhou','ap-southeast-1']);expect(compute.credentialWarning).not.toBe('');
+        }else if(service==='google'){
+            expect(compute.cloudCredentialLabels).toEqual({token:'API Key'});expect(compute.defaultCloudRegion).toBe('');expect(compute.cloudRegionOptions).toEqual([]);expect(compute.credentialWarning).toBeNull();
+        }
+    });
+    it('密钥要求按当前服务和实际模型保存，切换模型及服务不串写',async()=>{
+        const f=await serviceEditorFixture({service:'google',customOpenAIProviders:[{...customConnection(),models:['model-a','model-b']},customConnection('custom:2')]});await f.catalog('update:service','custom:1');
+        const first=getApiKeyRequirementKey('custom:1',f.state.config);f.patch.mockClear();expect(f.data.serviceConfiguration!.props.compute.requireApiKey).toBe(true);f.data.serviceConfiguration!.props.compute.requireApiKey=false;await settle();expect(f.patch).toHaveBeenCalledOnce();expect(f.state.config.requireApiKey[first]).toBe(false);
+        await f.catalog('update:model','model-b');expect(f.data.serviceConfiguration!.props.compute.requireApiKey).toBe(true);await f.catalog('update:model','model-a');expect(f.data.serviceConfiguration!.props.compute.requireApiKey).toBe(false);
+        await f.catalog('update:service','custom:2');expect(f.data.serviceConfiguration!.props.compute.requireApiKey).toBe(true);expect(f.state.config.requireApiKey[first]).toBe(false);expect(f.state.config.service).toBe('google');
+    });
+});
+
+describe('高级重试数值控件的配置与页面归属',()=>{
+    it.each([
+        {key:'translationMaxRetries',label:'失败后最多重试',initial:2,synced:7,stale:4,applied:4},
+        {key:'apiKeyRecoveryMs',label:'settings.requestLimits.apiKeyRecovery',initial:60000,synced:300000,stale:10,applied:600000},
+        {key:'translationBackoffBaseMs',label:'settings.requestLimits.initialRetryWait',initial:1000,synced:3000,stale:2000,applied:2000},
+        {key:'translationBackoffMaxMs',label:'settings.requestLimits.maximumRetryWait',initial:10000,synced:30000,stale:20000,applied:20000},
+    ])('$key外部同步后旧change不能覆盖新值，当前控件仍能修改',async row=>{
+        const f=await mountSections({template:true,requestLimits:true,activeSection:'settings-advanced',configSnapshot:{[row.key]:row.initial}});
+        const old=f.numericPorts.get(row.label)!.change;f.notifyConfig({...f.state.config,[row.key]:row.synced});await settle();f.patch.mockClear();
+        old(row.stale);await settle();expect(f.state.config[row.key]).toBe(row.synced);expect(f.patch).not.toHaveBeenCalled();
+        f.numericPorts.get(row.label)!.change(row.stale);await settle();expect(f.state.config[row.key]).toBe(row.applied);expect(f.patch).toHaveBeenCalledOnce();
+    });
+    it.each(['section','keepalive','unmount'] as const)('%s失活撤销旧重试数值事件，恢复不复活原回调',async reason=>{
+        const f=await mountSections({template:true,requestLimits:true,activeSection:'settings-advanced',configSnapshot:{translationMaxRetries:2}});
+        const old=f.numericPorts.get('失败后最多重试')!.change;
+        if(reason==='section')f.props.activeSection='settings-general';else if(reason==='keepalive')f.visible.value=false;else{app!.unmount();app=undefined}
+        await settle();f.patch.mockClear();old(4);await settle();expect(f.state.config.translationMaxRetries).toBe(2);expect(f.patch).not.toHaveBeenCalled();
+        if(reason==='unmount')return;
+        f.props.activeSection='settings-advanced';f.visible.value=true;await settle();old(4);await settle();expect(f.state.config.translationMaxRetries).toBe(2);expect(f.patch).not.toHaveBeenCalled();
+        f.numericPorts.get('失败后最多重试')!.change(4);await settle();expect(f.state.config.translationMaxRetries).toBe(4);expect(f.patch).toHaveBeenCalledOnce();
+    });
+});
+
+describe('高级重试数值实际控件的校验与单位',()=>{
+    it.each([
+        {label:'失败后最多重试',invalid:[undefined,NaN,Infinity,1.5,-1,11]},
+        {label:'settings.requestLimits.apiKeyRecovery',invalid:[undefined,NaN,Infinity]},
+        {label:'settings.requestLimits.initialRetryWait',invalid:[undefined,NaN,Infinity,1.5]},
+        {label:'settings.requestLimits.maximumRetryWait',invalid:[undefined,NaN,Infinity,1.5]},
+    ])('$label拒绝未完成或非法数字，不提交配置',async({label,invalid})=>{
+        const f=await mountSections({template:true,requestLimits:true,activeSection:'settings-advanced'});const before=JSON.stringify(f.state.config);f.patch.mockClear();
+        for(const value of invalid){f.numericPorts.get(label)!.change(value);await settle()}
+        expect(JSON.stringify(f.state.config)).toBe(before);expect(f.patch).not.toHaveBeenCalled();
+    });
+    it('Key恢复以分钟编辑并四舍五入，保存值按毫秒且遵守1到60分钟',async()=>{
+        const f=await mountSections({template:true,requestLimits:true,activeSection:'settings-advanced'});const label='settings.requestLimits.apiKeyRecovery';
+        for(const[value,expected]of [[1.6,120000],[0,60000],[90,3600000]]){f.patch.mockClear();f.numericPorts.get(label)!.change(value);await settle();expect(f.state.config.apiKeyRecoveryMs).toBe(expected);expect(f.patch).toHaveBeenCalledOnce();expect(f.patch.mock.calls[0][0]).toMatchObject({apiKeyRecoveryMs:expected})}
+    });
+    it('增大初始等待一次保存两个有序边界，最大等待不能小于初始值',async()=>{
+        const f=await mountSections({template:true,requestLimits:true,activeSection:'settings-advanced',configSnapshot:{translationBackoffBaseMs:1000,translationBackoffMaxMs:2000}});const base='settings.requestLimits.initialRetryWait',max='settings.requestLimits.maximumRetryWait';f.patch.mockClear();
+        f.numericPorts.get(base)!.change(5000);await settle();expect(f.patch).toHaveBeenCalledOnce();expect(f.patch.mock.calls[0][0]).toMatchObject({translationBackoffBaseMs:5000,translationBackoffMaxMs:5000});
+        f.patch.mockClear();f.numericPorts.get(max)!.change(1000);await settle();expect(f.state.config.translationBackoffMaxMs).toBe(5000);expect(f.patch).not.toHaveBeenCalled();
+        f.numericPorts.get(max)!.change(20000);await settle();expect(f.state.config.translationBackoffMaxMs).toBe(20000);expect(f.patch).toHaveBeenCalledOnce();
+        f.patch.mockClear();f.numericPorts.get(base)!.change(-1);await settle();expect(f.state.config.translationBackoffBaseMs).toBe(100);expect(f.state.config.translationBackoffMaxMs).toBe(20000);expect(f.patch).toHaveBeenCalledOnce();
+    });
+});
+
+async function settingsUiFixture(activeSection: string, configSnapshot: Record<string, unknown> = {}) {
+    const f = await mountSections({template: true, uiEvents: true, requestLimits: true, activeSection, configSnapshot});
+    const port = async (id: string) => {await vi.waitFor(() => expect(f.data.uiPorts.has(id), id).toBe(true));return f.data.uiPorts.get(id)!;};
+    const emit = async (id: string, event: string, ...values: unknown[]) => {(await port(id)).emit(event, ...values);await settle();};
+    const choose = async (label: string, text: string) => {
+        const button = [...f.document.querySelectorAll(`[role="radiogroup"][aria-label="${label}"] button`)].find(node => node.textContent?.trim() === text);
+        expect(button, `${label}: ${text}`).toBeDefined();button!.dispatchEvent(new f.domWindow.Event('click'));await settle();
+    };
+    return {...f, port, emit, choose};
+}
+
+describe('设置父模板实际功能事件', () => {
+    it('通用默认服务、目标语和显示模式分别持久化，主题自动追随系统且手动选择不跟随', async () => {
+        const f = await settingsUiFixture('settings-general', {service: 'google', to: 'zh-Hans', display: 1, theme: 'auto'});
+        f.patch.mockClear();await f.emit('el-select:默认网页翻译服务', 'update:modelValue', 'microsoft');
+        expect(f.patch).toHaveBeenCalledOnce();expect(f.patch.mock.calls[0][0]).toMatchObject({service: 'microsoft', to: 'zh-Hans', display: 1});
+        f.patch.mockClear();await f.emit('el-select:settings.general.defaultTargetLanguage', 'update:modelValue', 'ja');
+        expect(f.patch).toHaveBeenCalledOnce();expect(f.patch.mock.calls[0][0]).toMatchObject({service: 'microsoft', to: 'ja', display: 1});
+        f.patch.mockClear();await f.choose('翻译模式', '仅译文模式');expect(f.state.config.display).toBe(0);expect(f.patch).toHaveBeenCalledOnce();
+        f.media.matches = true;f.theme.mockClear();f.media.onchange!();expect(f.theme).toHaveBeenLastCalledWith(true, undefined);
+        await f.choose('界面主题', '亮色主题');expect(f.state.config.theme).toBe('light');expect(f.theme).toHaveBeenLastCalledWith(false, undefined);
+        f.theme.mockClear();f.media.onchange!();expect(f.theme).not.toHaveBeenCalled();expect(f.query).not.toHaveBeenCalled();
+        app!.unmount();app = undefined;expect(f.media.onchange).toBeNull();
+    });
+    it('全局暂停保留各功能偏好，悬浮球和进度开关仅广播自身状态', async () => {
+        const f = await settingsUiFixture('settings-general', {on: true, disableFloatingBall: false, selectionTranslatorMode: 'bilingual', translationProgressPanelEnabled: true, enableAIContext: false});
+        f.query.mockResolvedValue([{id: 8}]);
+        await f.emit('el-switch:popup.aiContext.settingsTitle', 'update:modelValue', true);expect(f.state.config.enableAIContext).toBe(true);expect(f.query).not.toHaveBeenCalled();
+        expect((await f.port('el-switch:全文翻译悬浮球')).attrs.modelValue).toBe(true);
+        await f.emit('el-switch:全文翻译悬浮球', 'update:modelValue', false);expect(f.state.config.disableFloatingBall).toBe(true);expect(f.send).toHaveBeenLastCalledWith(8, {type:'toggleFloatingBall',isEnabled:false});
+        f.send.mockClear();await f.emit('el-switch:显示翻译进度面板','update:modelValue',false);await f.emit('el-switch:显示翻译进度面板','change',false);
+        expect(f.state.config.translationProgressPanelEnabled).toBe(false);expect(f.send).toHaveBeenCalledOnce();expect(f.send).toHaveBeenCalledWith(8,{type:'toggleTranslationProgressPanel',isEnabled:false});
+        f.send.mockClear();await f.emit('feature:settings.general.masterTitle','update:modelValue',false);
+        expect(f.state.config.on).toBe(false);expect(f.state.config.selectionTranslatorMode).toBe('bilingual');expect(f.state.config.disableFloatingBall).toBe(true);expect(f.send.mock.calls.map(call=>call[1])).toEqual([{type:'toggleFloatingBall',isEnabled:false},{type:'updateSelectionTranslatorMode',mode:'disabled'},{type:'toggleSelectionAreaTranslator',isEnabled:false}]);
+    });
+    it('当前默认服务和功能分配入口定位编辑连接而不改默认配置', async () => {
+        const f = await settingsUiFixture('settings-general', {service:'microsoft'}), navigate = vi.fn();f.props.onNavigateSection=navigate;await settle();f.patch.mockClear();
+        f.document.querySelector('[data-testid="configure-default-translation-service"]')!.dispatchEvent(new f.domWindow.Event('click'));await settle();
+        expect(navigate).toHaveBeenLastCalledWith('settings-services','connections');expect(f.state.selectedConfigurationService).toBe('microsoft');
+        await f.emit('assignment:', 'configure-service', 'openai');expect(f.state.selectedConfigurationService).toBe('openai');expect(f.state.config.service).toBe('microsoft');expect(f.patch).not.toHaveBeenCalled();
+        for(const [id,section]of [['open-translation-style-settings','settings-interface'],['open-translation-settings','settings-translation']]){
+            f.document.querySelector(`[data-testid="${id}"]`)!.dispatchEvent(new f.domWindow.Event('click'));await settle();expect(navigate).toHaveBeenLastCalledWith(section,undefined);
+        }
+        f.document.querySelector('[data-testid="open-floating-ball-settings"]')!.dispatchEvent(new f.domWindow.Event('click'));await settle();expect(navigate).toHaveBeenLastCalledWith('settings-translation','floating-ball-settings');expect(f.patch).not.toHaveBeenCalled();
+    });
+    it.each(['openai',''])('写作入口根据独立服务 %s 或网页默认定位连接', async service => {
+        const f=await settingsUiFixture('settings-writing',{service:'microsoft',writing:{service}}),navigate=vi.fn();f.props.onNavigateSection=navigate;f.patch.mockClear();
+        await f.emit('writing:','configure-service');expect(f.state.selectedConfigurationService).toBe(service||'microsoft');expect(navigate).toHaveBeenCalledWith('settings-services','connections');expect(f.patch).not.toHaveBeenCalled();
+    });
+    it('阅读样式入口定位正确锚点，悬浮与全文方案事件保留同一配置列表',async()=>{
+        const f=await settingsUiFixture('settings-translation'),navigate=vi.fn();f.props.onNavigateSection=navigate;
+        await f.emit('reading:','configure-style');expect(navigate).toHaveBeenCalledWith('settings-interface','translation-sentence-highlight-style');
+        const hover={id:'hover-one',enabled:true,action:'hover',hotkey:'Alt+J',service:'google',model:'',targetLanguage:'',displayMode:'inherit',fullPageMode:'inherit'};
+        f.patch.mockClear();await f.emit('profiles:hover','update:profiles',[hover]);expect(f.patch).toHaveBeenCalledOnce();expect(f.state.config.quickTranslationProfiles).toEqual([hover]);
+        const full={...hover,id:'full-one',action:'full-page',hotkey:'Alt+K'};
+        f.patch.mockClear();await f.emit('profiles:full-page','update:profiles',[hover,full]);expect(f.patch).toHaveBeenCalledOnce();expect(f.state.config.quickTranslationProfiles).toEqual([hover,full]);
+        await f.emit('el-switch:AI 多段翻译','update:modelValue',false);expect(f.state.config.enableAIMultiSegment).toBe(false);
+        await f.choose('全文翻译范围','翻译到页底');expect(f.state.config.fullPageTranslationMode).toBe('all');
+        await f.emit('excluded:','update:modelValue',['en','ja']);expect(f.state.config.excludedLanguages).toEqual(['en','ja']);
+    });
+    it('网站适配显式保存仅交接适配补丁，并把保存失败留给实际子界面处理',async()=>{
+        const f=await settingsUiFixture('settings-sites',{service:'microsoft'}),port=await f.port('adaptation:');
+        const save=port.attrs['save-settings'] as (value:unknown)=>Promise<void>;const value={...f.state.config.siteAdaptation,enabled:false};f.patch.mockClear();
+        await save(value);expect(f.patch).toHaveBeenCalledOnce();expect(f.patch).toHaveBeenCalledWith({siteAdaptation:value},expect.any(Function));expect(f.state.config.service).toBe('microsoft');
+        const error=new Error('fixture save rejected');f.patch.mockRejectedValueOnce(error);await expect(save(value)).rejects.toBe(error);expect(f.state.config.siteAdaptation.enabled).not.toBe(false);
+    });
+});
+
+describe('交互延迟控件的配置与页面归属',()=>{
+    it.each([
+        {section:'settings-translation',key:'mouseHoverTranslationDelay',label:'悬浮翻译延迟'},
+        {section:'settings-selection',key:'selectionTranslatorDelay',label:'划词翻译显示延迟'},
+    ])('$label同步后不让旧输入覆盖新配置，当前输入按步长正常提交',async row=>{
+        const f=await settingsUiFixture(row.section,{[row.key]:300,selectionTranslatorMode:'bilingual'});
+        await vi.waitFor(()=>expect(f.numericPorts.has(row.label)).toBe(true));const old=f.numericPorts.get(row.label)!.change;
+        f.notifyConfig({...f.state.config,[row.key]:800});await settle();f.patch.mockClear();
+        old(500);await settle();expect(f.state.config[row.key]).toBe(800);expect(f.patch).not.toHaveBeenCalled();
+        f.numericPorts.get(row.label)!.change(500);await settle();expect(f.state.config[row.key]).toBe(500);expect(f.patch).toHaveBeenCalledOnce();
+    });
+    it.each(['section','keepalive','unmount'] as const)('%s失活拒绝旧延迟change，重新访问仍要求当前控件',async reason=>{
+        const f=await settingsUiFixture('settings-selection',{selectionTranslatorMode:'bilingual',selectionTranslatorDelay:300});
+        await vi.waitFor(()=>expect(f.numericPorts.has('划词翻译显示延迟')).toBe(true));const old=f.numericPorts.get('划词翻译显示延迟')!.change;
+        if(reason==='section')f.props.activeSection='settings-general';else if(reason==='keepalive')f.visible.value=false;else{app!.unmount();app=undefined}
+        await settle();f.patch.mockClear();old(500);await settle();expect(f.state.config.selectionTranslatorDelay).toBe(300);expect(f.patch).not.toHaveBeenCalled();
+        if(reason==='unmount')return;
+        f.props.activeSection='settings-selection';f.visible.value=true;await settle();old(500);await settle();expect(f.state.config.selectionTranslatorDelay).toBe(300);expect(f.patch).not.toHaveBeenCalled();
+        f.numericPorts.get('划词翻译显示延迟')!.change(500);await settle();expect(f.state.config.selectionTranslatorDelay).toBe(500);expect(f.patch).toHaveBeenCalledOnce();
+    });
+});
+
+describe('设置父模板分区字段与编辑确认',()=>{
+    it('划词展示与触发偏好独立保存，模式切换同步即时页面状态',async()=>{
+        const f=await settingsUiFixture('settings-selection',{selectionTranslatorMode:'bilingual',selectionTranslatorTrigger:'hover',to:'en'}),navigate=vi.fn();f.props.onNavigateSection=navigate;
+        await f.emit('selection:','navigate','settings-general');expect(navigate).toHaveBeenCalledWith('settings-general',undefined);
+        await f.choose('划词显示内容','仅译文');expect(f.state.config.selectionTranslatorMode).toBe('translation-only');expect(f.state.config.disableSelectionTranslator).toBe(false);
+        await f.emit('el-switch:继续阅读时自动收起','update:modelValue',false);expect(f.state.config.selectionTranslatorAutoDismiss).toBe(false);
+        await f.emit('el-switch:中英双向划词','update:modelValue',false);expect(f.state.config.selectionTranslatorBidirectional).toBe(false);
+        // 悬停打开卡片等待与选区稳定等待归属不同字段，互不覆盖。
+        const prior=f.state.config.selectionTranslatorDelay;f.numericPorts.get('悬停等待时间')!.update(900);await settle();
+        expect(f.state.config.harness.hoverDelay).toBe(900);expect(f.state.config.selectionTranslatorDelay).toBe(prior);
+    });
+    it('视频关闭保留独立服务、原语种、人工字幕和词库偏好，恢复时继续可编辑',async()=>{
+        const f=await settingsUiFixture('settings-video',{service:'google',videoTranslationEnabled:true,glossaryEnabled:true});
+        await f.emit('el-select:视频字幕翻译服务','update:modelValue','microsoft');expect(f.state.config.videoService).toBe('microsoft');expect(f.state.config.service).toBe('google');
+        await f.emit('el-select:视频原语言','update:modelValue','ja');expect(f.state.config.videoSourceLanguage).toBe('ja');
+        await f.emit('el-switch:会议平台自动开启双语字幕','update:modelValue',true);expect(f.state.config.videoMeetingAutoEnabled).toBe(true);
+        await f.emit('el-switch:优先使用人工字幕','update:modelValue',false);expect(f.state.config.videoPreferHumanSubtitles).toBe(false);
+        await f.emit('glossary:','update:modelValue',[]);expect(f.state.config.videoGlossaryIds).toEqual([]);
+        await f.emit('feature:视频字幕翻译','update:modelValue',false);expect(f.state.config.videoTranslationEnabled).toBe(false);expect((await f.port('el-select:视频原语言')).attrs.disabled).toBe(true);
+        expect(f.state.config).toMatchObject({videoService:'microsoft',videoSourceLanguage:'ja',videoMeetingAutoEnabled:true,videoPreferHumanSubtitles:false,videoGlossaryIds:[]});
+        await f.emit('feature:视频字幕翻译','update:modelValue',true);expect((await f.port('el-select:视频原语言')).attrs.disabled).toBe(false);expect(f.query).not.toHaveBeenCalled();
+    });
+    it('图片/圈选开关分别广播，OCR源语言回写不改变网页目标语言',async()=>{
+        const f=await settingsUiFixture('settings-image-translation',{on:true,disableImageTranslator:false,selectionAreaEnabled:false,to:'en'});f.query.mockResolvedValue([{id:8}]);
+        const manga=await f.port('manga:');expect(manga.attrs['image-enabled']).toBe(true);
+        await f.emit('manga:','update:imageEnabled',false);expect(f.state.config.disableImageTranslator).toBe(true);expect(f.send).toHaveBeenLastCalledWith(8,{type:'toggleImageTranslator',isEnabled:false});
+        await f.emit('area:','update:enabled',true);expect(f.state.config.selectionAreaEnabled).toBe(true);expect(f.send).toHaveBeenLastCalledWith(8,{type:'toggleSelectionAreaTranslator',isEnabled:true});
+        await f.emit('ocr:','update:sourceLanguage','ja');expect(f.state.config.from).toBe('ja');expect(f.state.config.to).toBe('en');
+    });
+    it('高级识别开关只保存范围、标题和侧栏策略，不立即重新翻译',async()=>{
+        const f=await settingsUiFixture('settings-advanced',{translationScope:'content',pageTitleTranslationEnabled:false,sidebarTranslationEnabled:false});
+        for(const [label,value,key]of [['settings.pageRecognition.allNodes','all','translationScope'],['settings.pageRecognition.pageTitle',true,'pageTitleTranslationEnabled'],['settings.pageRecognition.sidebar',true,'sidebarTranslationEnabled']] as const){
+            f.patch.mockClear();await f.emit(`el-switch:${label}`,'update:modelValue',value);expect(f.state.config[key]).toBe(value);expect(f.patch).toHaveBeenCalledOnce();
+        }
+        expect(f.query).not.toHaveBeenCalled();expect(f.send).not.toHaveBeenCalled();
+    });
+    it.each([
+        {label:'鼠标悬浮快捷键',section:'settings-translation',field:'hotkey'},
+        {label:'全文翻译快捷键',section:'settings-translation',field:'floatingBallHotkey'},
+        {label:'划词翻译触发方式',section:'settings-selection',field:'selectionTranslatorTrigger'},
+    ])('$label的自定义弹窗取消仅关闭编辑，不改此前快捷键',async row=>{
+        const f=await settingsUiFixture(row.section,{selectionTranslatorMode:'bilingual'}),before=f.state.config[row.field];
+        await f.emit(`el-select:${row.label}`,'change','custom');await f.port('hotkey:');f.patch.mockClear();
+        const dialog=await f.port('hotkey:');dialog.emit('cancel');dialog.emit('update:modelValue',false);await settle();expect(f.state.config[row.field]).toBe(before);
+        if(row.field==='selectionTranslatorTrigger')expect(f.patch).not.toHaveBeenCalled();else{expect(f.patch).toHaveBeenCalledOnce();expect(f.patch.mock.calls[0][0]).toMatchObject({[row.field]:before})}
+        expect(f.document.querySelector('[data-child-event-port="hotkey:"]')).toBeNull();
+    });
+    it('完整表单保存失败会提示且下一次编辑重试最新草稿，适配回调不吞失败',async()=>{
+        const warn=vi.spyOn(console,'warn').mockImplementation(()=>{}),f=await settingsUiFixture('settings-general');f.patch.mockRejectedValueOnce(Error('fixture persistence failure'));
+        await f.emit('el-select:settings.general.defaultTargetLanguage','update:modelValue','ja');expect(warn).toHaveBeenCalledWith('[FluentRead] 保存设置失败',expect.any(Error));
+        await f.emit('el-select:settings.general.defaultTargetLanguage','update:modelValue','en');expect(f.patch).toHaveBeenLastCalledWith(expect.objectContaining({to:'en'}),expect.any(Function));
+    });
+    it.each([
+        {section:'settings-translation',key:'mouseHoverTranslationDelay',label:'悬浮翻译延迟',stepInput:317,rounded:320,default:50},
+        {section:'settings-selection',key:'selectionTranslatorDelay',label:'划词翻译显示延迟',stepInput:317,rounded:300,default:300},
+    ])('$label确认时按步长、范围和空值规则保存',async row=>{
+        const f=await settingsUiFixture(row.section,{selectionTranslatorMode:'bilingual'});await vi.waitFor(()=>expect(f.numericPorts.has(row.label)).toBe(true));
+        for(const [value,expected]of [[row.stepInput,row.rounded],[-500,0],[3000,2000],[undefined,row.default]] as const){
+            f.numericPorts.get(row.label)!.change(value);await settle();expect(f.state.config[row.key]).toBe(expected);
+        }
     });
 });

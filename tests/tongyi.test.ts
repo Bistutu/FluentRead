@@ -53,7 +53,7 @@ describe('通义实际模型与 endpoint 路由', () => {
         mockConfig.model[services.tongyi] = customModelString;
         mockConfig.customModel[services.tongyi] = currentModelIds.tongyiTokenPlan;
 
-        await expect(tongyi(withProviderSnapshot({origin: 'hello', serviceOverride: services.tongyi}, mockConfig))).resolves.toBe('译文');
+        await expect(tongyi(withProviderSnapshot({origin: 'hello'}, mockConfig))).resolves.toBe('译文');
 
         expect(fetchMock).toHaveBeenCalledWith(
             tongyiTokenPlanUrl,

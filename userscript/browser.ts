@@ -1,11 +1,19 @@
 import {getStoredValue, listStoredKeys, setStoredValue, storage as userscriptStorage} from './storage';
+import {isUserscriptPrivateContext} from './api';
 
 type RuntimeListener = (
     message: any,
     sender: any,
     sendResponse: (response?: any) => void,
 ) => unknown;
-type PlatformMessageHandler = ((message: any) => Promise<any>) & {dispose?: () => void};
+export interface UserscriptRuntimePort {
+    name: string;
+    postMessage(message: any): void;
+    disconnect(): void;
+    onMessage: {addListener(listener: (message: any) => void): void; removeListener(listener: (message: any) => void): void};
+    onDisconnect: {addListener(listener: () => void): void; removeListener(listener: () => void): void};
+}
+type PlatformMessageHandler = ((message: any) => Promise<any>) & {dispose?: () => void; connect?: (port: UserscriptRuntimePort) => void};
 
 export const UNHANDLED_RUNTIME_MESSAGE = Symbol('unhandled-runtime-message');
 
@@ -13,6 +21,7 @@ const runtimeListeners = new Set<RuntimeListener>();
 const pendingResponses = new Map<RuntimeListener, Set<() => void>>();
 const defaultPlatformMessageHandler: PlatformMessageHandler = async () => UNHANDLED_RUNTIME_MESSAGE;
 let platformMessageHandler: PlatformMessageHandler = defaultPlatformMessageHandler;
+const runtimePorts = new Set<UserscriptRuntimePort>();
 type StorageChange = {oldValue?: unknown; newValue?: unknown};
 type StorageChangedListener = (changes: Record<string, StorageChange>, areaName: string) => void;
 const storageChangedListeners = new Set<StorageChangedListener>();
@@ -23,7 +32,10 @@ function watchStorageKey(key: string): void {
     storageKeyWatchers.add(key);
     userscriptStorage.watch(key, (nextValue, previousValue) => {
         const changes = {[key]: {oldValue: previousValue, newValue: nextValue}};
-        storageChangedListeners.forEach((listener) => listener(changes, 'local'));
+        storageChangedListeners.forEach((listener) => {
+            try {listener(changes, 'local');}
+            catch {console.warn('[FluentRead userscript] 存储变更监听器执行失败');}
+        });
     });
 }
 
@@ -38,6 +50,7 @@ export function setPlatformMessageHandler(handler: PlatformMessageHandler): void
     const previous = platformMessageHandler;
     // 先移交 owner：旧 cleanup 抛错或同步安装更新的 handler，都不能恢复旧闭包。
     platformMessageHandler = handler;
+    for (const port of [...runtimePorts]) port.disconnect();
     previous.dispose?.();
 }
 
@@ -91,7 +104,60 @@ function runtimeAssetUrl(path: string): string {
     return '';
 }
 
+/** 同一隔离 realm 内的成对端口；未注册接收器时暂存首条请求，不接触页面消息总线。 */
+function connectRuntimePort(name: string): UserscriptRuntimePort {
+    const owner = platformMessageHandler;
+    if (name !== 'fluentReadHarnessStream' || !owner.connect) throw new Error('阅读助手连接不可用');
+    let closed = false;
+    const messages = [new Set<(message: any) => void>(), new Set<(message: any) => void>()];
+    const disconnects = [new Set<() => void>(), new Set<() => void>()];
+    const pending: any[][] = [[], []];
+    const invoke = (listener: (...args: any[]) => void, ...args: any[]) => {
+        try {listener(...args);} catch {console.warn('[FluentRead userscript] 阅读连接监听器执行失败');}
+    };
+    const ports = [0, 1].map(side => ({
+        name,
+        postMessage(message: any) {
+            if (closed) throw new Error('阅读助手连接已关闭');
+            const target = 1 - side;
+            const snapshot = structuredClone(message);
+            if (messages[target].size) {
+                for (const listener of [...messages[target]]) invoke(listener, snapshot);
+            } else {
+                // 协议每个端口仅有一次 run；限制未接线时的缓冲，避免延迟初始化积压。
+                if (pending[target].length >= 1) throw new Error('阅读助手连接正在初始化');
+                pending[target].push(snapshot);
+            }
+        },
+        disconnect() {
+            if (closed) return;
+            closed = true;
+            runtimePorts.delete(ports[0]!);
+            pending.forEach(queue => {queue.length = 0;});
+            for (const listeners of disconnects) for (const listener of [...listeners]) invoke(listener);
+            messages.forEach(listeners => listeners.clear());
+            disconnects.forEach(listeners => listeners.clear());
+        },
+        onMessage: {
+            addListener(listener: (message: any) => void) {
+                if (closed) return;
+                messages[side].add(listener);
+                for (const message of pending[side].splice(0)) invoke(listener, message);
+            },
+            removeListener(listener: (message: any) => void) {messages[side].delete(listener);},
+        },
+        onDisconnect: {
+            addListener(listener: () => void) {if (closed) invoke(listener); else disconnects[side].add(listener);},
+            removeListener(listener: () => void) {disconnects[side].delete(listener);},
+        },
+    } satisfies UserscriptRuntimePort));
+    runtimePorts.add(ports[0]!);
+    try {owner.connect(ports[1]!);} catch {ports[0]!.disconnect();}
+    return ports[0]!;
+}
+
 const runtime = {
+    connect(info: {name?: string} = {}): UserscriptRuntimePort {return connectRuntimePort(info.name || '');},
     async sendMessage(message: any): Promise<any> {
         // 先交给 userscript 的“后台”适配器；未处理消息再回送内容侧监听器。
         const result = await platformMessageHandler(message);
@@ -118,6 +184,7 @@ const runtime = {
 
 const browser = {
     runtime,
+    extension: {get inIncognitoContext() {return isUserscriptPrivateContext();}},
     tabs: {
         async query(): Promise<Array<{id: number; windowId: number; active: boolean}>> {
             return [{id: 1, windowId: 1, active: true}];
@@ -144,8 +211,7 @@ const browser = {
                 if (keys && typeof keys === 'object') {
                     Object.keys(keys).forEach(watchStorageKey);
                     return Object.fromEntries(await Promise.all(Object.entries(keys).map(async ([key, fallback]) => {
-                        const value = await getStoredValue(key);
-                        return [key, value ?? fallback];
+                        return [key, await getStoredValue(key, {fallback})];
                     })));
                 }
                 const names = await listStoredKeys();

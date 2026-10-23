@@ -56,7 +56,8 @@ describe('shared OpenAI request and response boundary', () => {
     {prompt_tokens_details: {cached_tokens: 2.8, cache_write_tokens: 3.9}, completion_tokens_details: {reasoning_tokens: 4.7}},
     {prompt_tokens_details: {cached_tokens: -2, cache_write_tokens: '3'}, completion_tokens_details: {reasoning_tokens: -1}},
   ])('normalizes optional usage details while retaining the original usage observation: %j', async usage => {
-    setRuntimeFetch(async () => textResponse({usage, model: 'actual-model'}));
+    const original = textResponse({usage, model: 'actual-model'});
+    setRuntimeFetch(async () => original);
     const observe = vi.fn();
     const source = attachTranslationModelUsageObserver(request(), observe);
     let normalized: any;
@@ -65,6 +66,7 @@ describe('shared OpenAI request and response boundary', () => {
       normalized = await response.json(); return normalized.choices[0].message.content;
     }));
     expect(normalized.model).toBe('actual-model');
+    expect(original.bodyUsed).toBe(true);
     expect(observe).toHaveBeenCalledTimes(1);
     expect(observe.mock.calls[0][0]).toMatchObject({outcome: 'success', actualModel: 'actual-model'});
     if (typeof usage.prompt_tokens_details === 'object' && !Array.isArray(usage.prompt_tokens_details)

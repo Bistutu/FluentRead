@@ -276,6 +276,9 @@ describe('settings page categories', () => {
     expect(resolveSettingsPanel('settings-interface')).toBe('translation')
     expect(resolveSettingsPanel('settings-general')).toBe('')
     expect(resolveSettingsPanel('unknown', 'cache')).toBe('')
+    for (const section of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) {
+      expect(resolveSettingsPanel(section, 'cache')).toBe('')
+    }
   })
   it('keeps every category attached to a real settings page without ambiguous targets', () => {
     for (const [section, panels] of Object.entries(settingsPagePanels)) {

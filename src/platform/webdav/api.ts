@@ -7,6 +7,7 @@
  * 禁止跟随重定向、携带浏览器 Cookie 或返回服务器异常正文，防止连接凭据流向其他地址。
  * 模块边界：只消费后台会话与密文，不读取配置或保存密码；冲突合并由云备份服务处理。
  */
+import {cancelResponseReader, cancelUnreadResponseBody} from '@/src/platform/http/runtime';
 import {canMutateCloudFile, strongCloudEtag, type CloudSyncFile, type CloudSyncRemote} from '@/src/core/config/cloudSync';
 import {parseWebDavProperties} from './properties';
 import {GOOGLE_DRIVE_MAX_BYTES} from '@/src/platform/google-drive/constants';
@@ -32,16 +33,18 @@ export function createWebDavApi(fetcher: typeof fetch, options: {timeoutMs?: num
         if (!reader) throw new WebDavError('invalidDav');
         const chunks: Uint8Array[] = [];
         let size = 0;
+        let finished = false;
         try {
             while (true) {
                 const part = await reader.read();
-                if (part.done) break;
+                if (part.done) {finished = true; break;}
                 size += part.value.byteLength;
                 if (size > limit) throw new WebDavError('tooLarge');
                 chunks.push(part.value);
             }
         } finally {
-            try {await reader.cancel().catch(() => undefined);} finally {reader.releaseLock();}
+            if (finished) reader.releaseLock();
+            else cancelResponseReader(reader);
         }
         const bytes = new Uint8Array(size);
         let offset = 0;
@@ -63,7 +66,7 @@ export function createWebDavApi(fetcher: typeof fetch, options: {timeoutMs?: num
                         ? error
                         : new WebDavError(controller.signal.aborted ? 'timeout' : 'network');
                 } finally {
-                    if (response?.body && !response.body.locked) await response.body.cancel().catch(() => undefined);
+                    if (response) cancelUnreadResponseBody(response);
                 }
                 throw requestError;
             })().finally(() => clearTimeout(timer));

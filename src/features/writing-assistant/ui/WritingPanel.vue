@@ -1,7 +1,7 @@
 <!--
  * @file src/features/writing-assistant/ui/WritingPanel.vue
  * 文件职责：承载网页回复的写作流程，在固定卡片中起草、核对引用、调整风格并插回当前编辑器。
- * 主要内容：让多语言标题、语言选择与操作按可用空间换行；统一配置就绪提示、草稿和请求状态，保留失败任务的语义以便准确重试；正文优先布局、输入按需展开，支持分层返回、键盘提交、未完成版本提示与当前完整译文的双语插入。
+ * 主要内容：让多语言标题、语言选择与操作按可用空间换行；统一配置就绪提示、草稿和请求状态，保留失败任务的语义以便准确重试；偏好保存、复制及设置打开的迟到结果受当前会话/草稿约束，关闭或切换会话立即释放旧保存状态；正文优先布局、输入按需展开，支持分层返回、键盘提交、未完成版本提示与当前完整译文的双语插入。
  * 模块边界：不自行读取网页或发送回复，引用由宿主传入；后台负责模型请求，编辑器快照负责写回，Gmail 仅插入可读纯文本。
  -->
 <template>
@@ -179,6 +179,12 @@ watch(() => [props.active, props.sessionKey, result.value, resultLanguage.value,
 }, {immediate: true});
 onBeforeUnmount(() => referenceController.dispose());
 let generation = 0; let cancel: (() => void) | undefined;
+let disposed = false; let preferenceRevision = 0;
+function capturePanelAction() {
+  const owner = generation, ownerSession = props.sessionKey;
+  return () => !disposed && props.active && owner === generation && ownerSession === props.sessionKey;
+}
+function invalidatePreferenceSave() { preferenceRevision++; saving.value = false; }
 const lastAttempt = shallowRef<{request: WritingRequest; clearInstruction: boolean; previousResult: string}>();
 function stop() { generation++; cancel?.(); cancel = undefined; if (busy.value) { if (!result.value.trim() && pending.value.trim()) saveVersion(pending.value, requestedService.value, actualModel.value, true); notice.value = result.value.trim() ? '已停止，当前草稿已保留。' : t('writing.experience.stoppedEmpty'); } pending.value = ''; busy.value = false; }
 function handleKeydown(event: KeyboardEvent) {
@@ -188,6 +194,7 @@ function handleKeydown(event: KeyboardEvent) {
   if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && event.target === instructionInput.value && instruction.value.trim()) { event.preventDefault(); generate(); }
 }
 watch(() => [props.active, props.sessionKey], async () => {
+  invalidatePreferenceSave();
   insertOptionsOpen.value = false;
   if (session !== props.sessionKey) {
     stop(); session = props.sessionKey; attempted = false; draft.value = props.initialDraft ?? ''; context.value = props.initialContext ?? ''; intent.value = props.initialIntent ?? 'reply';
@@ -203,7 +210,7 @@ watch(() => JSON.stringify([config.value.writing.language, config.value.writing.
   language.value = config.value.writing.language; length.value = config.value.writing.length; style.value = config.value.writing.style; tone.value = config.value.writing.tone; role.value = config.value.writing.role;
 });
 watch(() => JSON.stringify([config.value.on, config.value.writing.enabled, service.value, configuredModel.value]), stop);
-onBeforeUnmount(stop);
+onBeforeUnmount(() => { disposed = true; invalidatePreferenceSave(); stop(); });
 function saveVersion(text: string, service: string, model: string, incomplete = false) {
   if (versions.value.length) versions.value[versionIndex.value].text = result.value;
   const last = versions.value.at(-1);
@@ -214,11 +221,16 @@ function switchVersion(delta: number) { versions.value[versionIndex.value].text 
 function showReference() { referenceDraft.value = context.value; view.value = 'reference'; }
 function restartFromReference() { context.value = referenceDraft.value; generate(false, true); }
 async function persistPreferences(value: Partial<WritingPreferences>) {
-  if (saving.value) return false;
+  if (saving.value || disposed || !props.active) return false;
+  const revision = ++preferenceRevision, current = capturePanelAction();
   saving.value = true; error.value = '';
-  try { await requestConfigPatch({writing: {...config.value.writing, ...value}}, message => browser.runtime.sendMessage(message)); return true; }
-  catch { error.value = '保存失败，请重试。'; return false; }
-  finally { saving.value = false; }
+  try {
+    await requestConfigPatch({writing: {...config.value.writing, ...value}}, message => browser.runtime.sendMessage(message));
+    return revision === preferenceRevision && current();
+  } catch {
+    if (revision === preferenceRevision && current()) error.value = '保存失败，请重试。';
+    return false;
+  } finally { if (revision === preferenceRevision) saving.value = false; }
 }
 async function applyStyle(value: StylePreferences) {
   if (Object.entries(value).every(([key, selected]) => stylePreferences.value[key as keyof StylePreferences] === selected)) { view.value = 'answer'; return; }
@@ -280,9 +292,18 @@ function replyText(bilingual = false): string {
   const text = bilingual ? `${result.value.trim()}\n\n${referenceState.value.text.trim()}` : result.value;
   return props.plainTextOutput ? writingPlainText(text) : text;
 }
-async function copy(bilingual = false) { const text = replyText(bilingual); if (!text) return; const ownerSession = props.sessionKey; try { await navigator.clipboard.writeText(text); if (props.active && ownerSession === props.sessionKey) notice.value = '正文已复制。'; } catch { if (props.active && ownerSession === props.sessionKey) error.value = '复制失败，请选中生成正文手动复制。'; } }
+async function copy(bilingual = false) {
+  const text = replyText(bilingual), current = capturePanelAction();
+  if (!text || !current()) return;
+  try { await navigator.clipboard.writeText(text); if (current() && replyText(bilingual) === text) notice.value = '正文已复制。'; }
+  catch { if (current() && replyText(bilingual) === text) error.value = '复制失败，请选中生成正文手动复制。'; }
+}
 function apply(bilingual = false) { const text = replyText(bilingual); if (!text) return; const failure = props.applyDraft?.(text); if (failure) error.value = failure; }
-function openSettings() { void browser.runtime.sendMessage({type: 'openOptionsPage', section: 'settings-writing'}).catch(() => { error.value = '请从扩展菜单打开完整设置。'; }); }
+async function openSettings() {
+  const current = capturePanelAction(); if (!current()) return;
+  try { await browser.runtime.sendMessage({type: 'openOptionsPage', section: 'settings-writing'}); }
+  catch { if (current()) error.value = '请从扩展菜单打开完整设置。'; }
+}
 </script>
 <style scoped>
 .writing-panel{--w-bg:#fff;--w-soft:#f7f8fb;--w-ink:#28323f;--w-muted:#7c8799;--w-line:#e9edf3;--w-brand:#ef4776;--w-brand-soft:#fff0f5;--el-border-color-lighter:var(--w-line);--el-fill-color-lighter:var(--w-soft);--el-fill-color-light:var(--w-soft);--el-text-color-regular:var(--w-ink);--el-color-primary:var(--w-brand);--el-color-primary-light-5:var(--w-brand);position:relative;width:100%;height:600px;box-sizing:border-box;max-height:calc(100dvh - 24px);display:flex;flex-direction:column;background:var(--w-bg);color:var(--w-ink);border:1px solid var(--w-line);border-radius:16px;box-shadow:0 12px 48px #152c4122;font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;text-align:left;color-scheme:light;overflow:hidden;outline:none}

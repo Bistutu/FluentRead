@@ -446,6 +446,14 @@ describe('repository verification ownership', () => {
         expect(auditVueOwners(input)).toEqual([expect.stringContaining('不是可追踪的实际组件消费者')]);
         input.tests[test] = `import Card from '@/${component}';it('actual component',()=>{const app=createApp(Card);expect(app).toBeDefined()});`;
         expect(auditVueOwners(input)).toEqual([]);
+        input.tests[test] = `import Card from '@/${component}';it('actual component alias',()=>{const view=true?Card:{...Card,render:()=>null};const mounted=view;createApp(mounted);expect(mounted).toBeDefined()});`;
+        expect(auditVueOwners(input)).toEqual([]);
+        for (const declaration of ['let view=Card', 'const view={component:Card}', 'const view=makeFake(Card)']) {
+            input.tests[test] = `import Card from '@/${component}';it('unproven alias',()=>{${declaration};createApp(view);expect(view).toBeDefined()});`;
+            expect(auditVueOwners(input)).toEqual([expect.stringContaining('不是可追踪的实际组件消费者')]);
+        }
+        input.tests[test] = `import Card from '@/${component}';const view=Card;it('shadowed alias',(view)=>{createApp(view);expect(view).toBeDefined()});`;
+        expect(auditVueOwners(input)).toEqual([expect.stringContaining('不是可追踪的实际组件消费者')]);
         input.tests[test] = `import Card from '@/${component}';it('mount removed',()=>expect(Card).toBeDefined());`;
         expect(auditVueOwners(input)).toEqual([expect.stringContaining('不是可追踪的实际组件消费者')]);
         input.tests[test] = `import Other from '@/src/ui/Other.vue';it('unrelated mount',()=>{createApp(Other);expect(Other).toBeDefined()});`;

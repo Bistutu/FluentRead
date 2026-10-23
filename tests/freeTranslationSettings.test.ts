@@ -1,11 +1,8 @@
 import {parseHTML} from 'linkedom';
 import {readFileSync} from 'node:fs';
-import {createRequire} from 'node:module';
+import * as runtime from 'vue';
 import {resolve} from 'node:path';
-import vue from '@vitejs/plugin-vue';
-import {createServer, type ViteDevServer} from 'vite';
-import {afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi} from 'vitest';
-import {compileVueFixture} from './helpers/compiledVueFixture';
+import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from 'vitest';
 import {Config} from '@/src/core/config/model';
 import {FREE_TRANSLATION_PROVIDERS} from '@/src/core/config/freeTranslation';
 import {calculateFreeTranslationWeightSnapshot} from '@/src/services/translation/freeWeights';
@@ -14,8 +11,6 @@ import {checkAllFreeTranslationProviders, type FreeTranslationChecks} from '@/sr
 const permissionEvents = new Set<(change: 'added' | 'removed') => void>();
 const permissionPorts = {browser: 'chrome', read: vi.fn(), request: vi.fn(), send: vi.fn(), events: permissionEvents,
   translate: (key: string) => {void permissionBundleRevision.value;return permissionCatalogs.get(permissionLanguage.value)?.[key] || key;}};
-(globalThis as any).__freePermissionPorts = permissionPorts;
-const runtime = createRequire(import.meta.url)('vue') as typeof import('vue');
 const permissionLanguage = runtime.ref('zh-CN'), permissionBundleRevision = runtime.ref(0);
 const permissionCatalogs = new Map<string, Record<string, string>>();
 let settingsProps: {config: Config; advanced: boolean; checks: FreeTranslationChecks; active: boolean};
@@ -23,7 +18,6 @@ function permissionEvent(change: 'added' | 'removed'): void {for (const callback
 async function drainPermission(): Promise<void> {for (let i=0;i<16;i++) {await Promise.resolve();await runtime.nextTick();}}
 const componentPath = 'src/features/settings/ui/services/FreeTranslationSettings.vue';
 type Node = {tag: string; props: Record<string, any>; text?: string};
-let server: ViteDevServer;
 let app: import('vue').App;
 let config: Config;
 let elements: Node[];
@@ -32,40 +26,25 @@ let renderer: import('vue').Renderer<Node>;
 let component: any;
 let checks: FreeTranslationChecks;
 
-beforeAll(async () => {
-  server = await createServer({appType: 'custom', configFile: false, logLevel: 'silent', root: process.cwd(),
-    resolve: {alias: {'@': resolve(process.cwd(), '.')}}, server: {hmr: false, middlewareMode: true},
-    ssr: {noExternal: ['webextension-polyfill']},
-    plugins: [{name: 'fallback-ui-runtime', enforce: 'pre', resolveId(id) {
-      if (/\/src\/platform\/browser\/freeProviderPermissions(?:\.ts)?$/u.test(id)) return '\0free-permissions';
-      if (/\/src\/platform\/browser\/capabilities(?:\.ts)?$/u.test(id)) return '\0free-capabilities';
-      if (id === 'webextension-polyfill') return '\0fallback-webextension-polyfill';
-      return /\/src\/ui\/i18n(?:\.ts)?$/u.test(id) ? '\0fallback-i18n' : null;
-    }, load(id) {
-      if (id === '\0free-permissions') return 'export const readFreePoolAccess=(...args)=>globalThis.__freePermissionPorts.read(...args),requestFreeProviderAccess=(...args)=>globalThis.__freePermissionPorts.request(...args);export const subscribeFreeProviderAccessChanges=fn=>{globalThis.__freePermissionPorts.events.add(fn);return()=>globalThis.__freePermissionPorts.events.delete(fn)}';
-      if (id === '\0free-capabilities') return 'export const browserCapabilities=globalThis.__freePermissionPorts';
-      if (id === '\0fallback-webextension-polyfill') return 'export default {runtime: {sendMessage: (...args)=>globalThis.__freePermissionPorts.send(...args)}};';
-      return id === '\0fallback-i18n' ? 'export const useUiI18n = () => ({t: (...args) => globalThis.__freePermissionPorts.translate(...args), translateLegacy: text => text});' : null;
-    }}, vue()],
-  });
+beforeAll(() => {
+  vi.doMock('@/src/platform/browser/freeProviderPermissions', () => ({
+    readFreePoolAccess: permissionPorts.read, requestFreeProviderAccess: permissionPorts.request,
+    subscribeFreeProviderAccessChanges: (callback: (change: 'added' | 'removed') => void) => {permissionEvents.add(callback);return () => permissionEvents.delete(callback);},
+  }));
+  vi.doMock('@/src/platform/browser/capabilities', () => ({browserCapabilities: permissionPorts}));
+  vi.doMock('webextension-polyfill', () => ({default: {runtime: {sendMessage: permissionPorts.send}}}));
+  vi.doMock('@/src/ui/i18n', () => ({useUiI18n: () => ({t: permissionPorts.translate, translateLegacy: (text: string) => text})}));
+  vi.doMock('@/src/features/settings/ui/components/FieldHelp.vue', () => ({default: {
+    props: ['content'], setup: (props: {content: string}) => () => runtime.h('span', {'data-help-content': props.content}),
+  }}));
 });
 
 async function mountComponent(advanced: boolean): Promise<void> {
-  const badgePath = 'src/features/settings/ui/services/ServiceNatureBadge.vue';
-  const badgeFilename = resolve(process.cwd(), badgePath);
-  const badgeTemplate = compileVueFixture(badgeFilename, {id: 'free-service-badge-test'});
-  const badge = (await server.ssrLoadModule(`/${badgePath}`)).default;
-  badge.ssrRender = undefined;
-  badge.render = new Function('Vue', badgeTemplate.renderCode)(runtime);
-  const filename = resolve(process.cwd(), componentPath);
-  const template = compileVueFixture(filename, {id: 'free-settings-test'});
-  component = (await server.ssrLoadModule(`/${componentPath}?advanced=${advanced}`)).default;
-  component.render = new Function('Vue', template.renderCode)(runtime);
+  component = (await import('@/src/features/settings/ui/services/FreeTranslationSettings.vue')).default;
   elements = [];
   renderer = runtime.createRenderer<Node, Node>({patchProp: (node, key, _previous, value) => {node.props[key] = value;}, insert: () => undefined, remove: () => undefined, createElement: tag => {const node = {tag, props: {}}; elements.push(node); return node;}, createText: () => ({tag: '#text', props: {}}), createComment: () => ({tag: '#comment', props: {}}), setText: () => undefined, setElementText: (node, value) => {node.text = value;}, parentNode: () => null, nextSibling: () => null, querySelector: () => null, setScopeId: () => undefined, cloneNode: node => ({...node}), insertStaticContent: () => [{tag: '#static', props: {}}, {tag: '#static', props: {}}]});
   settingsProps = runtime.reactive({config, advanced, checks, active: true});
   app = renderer.createApp({setup: () => () => runtime.h(component, {...settingsProps, ref: (vm: any) => {if (vm) state = vm.$.setupState;}})});
-  app.provide(runtime.ssrContextKey, {modules: new Set<string>()});
   app.config.warnHandler = () => undefined;
   app.mount({tag: '#root', props: {}});
   await runtime.nextTick();
@@ -84,10 +63,9 @@ beforeEach(async () => {
   await mountComponent(false);
 });
 afterEach(() => {app?.unmount(); vi.unstubAllGlobals();});
-afterAll(async () => server?.close());
 function control(ariaLabel: string): Node { const element = [...elements].reverse().find(node => node.props['aria-label'] === ariaLabel); expect(element, ariaLabel).toBeDefined(); return element!; }
 
-describe('free translation settings compiled component', () => {
+describe('free translation settings actual client component', () => {
   it('Safari首次权重等待授权读取，并接受仅一条授权线路的后台冷却快照',async()=>{
     app.unmount();permissionPorts.browser='safari';config.freeTranslationOrder=['microsoft','google'];let release!: (value:unknown)=>void;
     permissionPorts.read.mockReturnValue(new Promise(resolve=>{release=resolve}));permissionPorts.send.mockClear();
@@ -139,8 +117,8 @@ describe('free translation settings compiled component', () => {
     permissionPorts.read.mockResolvedValue({supported:true,grantedIds:[provider],preferredGrant:null});pending.resolve!(true);await job;await runtime.nextTick();
     expect(state.providerStateLabel(provider)).not.toBe('safari.freePool.permissionState');expect(config.freeTranslationOrder).toEqual(order);
   })
-  it.each(['denied','partial','error'] as const)('Safari %s授权无故障耗时、无自动下一家，仍可手动重试',async kind=>{
-    await mountSafari();permissionPorts.request.mockImplementation(()=>kind==='error'?Promise.reject(Error('fixture')):Promise.resolve(kind!=='denied'));
+  it.each(['denied','partial','error','throw'] as const)('Safari %s授权无故障耗时、无自动下一家，仍可手动重试',async kind=>{
+    await mountSafari();permissionPorts.request.mockImplementation(()=>{if(kind==='throw')throw Error('extension context expired');return kind==='error'?Promise.reject(Error('fixture')):Promise.resolve(kind!=='denied')});
     await control('safari.freePool.allowProvider').props.onClick();await runtime.nextTick();
     expect(permissionPorts.request).toHaveBeenCalledTimes(1);expect(state.permissionError).toMatch(/safari\.freePool\.(?:requestDenied|error)/);expect(state.providerDuration('google')).toBeUndefined();expect(state.grantingProvider).toBeNull();
     expect(control('safari.freePool.allowProvider').props.disabled).toBe(false);
@@ -197,10 +175,10 @@ describe('free translation settings compiled component', () => {
   });
   it('B站独立入口与免费聚合项复用免费徽标，DeepLX仍保持免费非官方标记', async () => {
     app.unmount();
-    const badge = (await server.ssrLoadModule('/src/features/settings/ui/services/ServiceNatureBadge.vue')).default;
+    const badge = (await import('@/src/features/settings/ui/services/ServiceNatureBadge.vue')).default;
     const badgeProps = runtime.reactive({service: 'bilibili'});
     elements = [];
-    app = renderer.createApp({setup: () => () => runtime.h(badge, badgeProps)});
+    app = renderer.createApp({setup: () => () => runtime.h(badge as runtime.Component, badgeProps)});
     app.provide(runtime.ssrContextKey, {modules: new Set<string>()});app.config.warnHandler = () => undefined;
     app.mount({tag: '#root', props: {}});await runtime.nextTick();
     expect(elements.filter(node => node.props['data-service-nature-badge'] === 'bilibili').map(node => node.text)).toEqual(['免费']);

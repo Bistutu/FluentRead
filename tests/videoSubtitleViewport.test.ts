@@ -27,7 +27,7 @@ import {
   getOrCreateVideoSubtitleLayer,
   clearRenderedVideoTranslation,
   deactivateNormalizedVideoCaption,
-  getXVideoSubtitleViewport,
+  getVideoSubtitleViewport,
   installVideoSubtitleStyle,
   markVideoUi,
   removeTranslationOverlay,
@@ -396,7 +396,7 @@ describe('mobile YouTube readable control avoidance', () => {
 describe('X video subtitle viewport', () => {
   it('finds the centered painted portrait area for contain', () => {
     const {player, layer} = fixture({intrinsic: [1080, 1920], objectFit: 'contain'});
-    expect(getXVideoSubtitleViewport(player, layer)).toMatchObject({
+    expect(getVideoSubtitleViewport(player, layer)).toMatchObject({
       left: 331.25,
       top: 0,
       width: 337.5,
@@ -408,12 +408,12 @@ describe('X video subtitle viewport', () => {
 
   it('honors non-centered video geometry and object-position percentages', () => {
     const {player, layer} = fixture({intrinsic: [1080, 1920], objectFit: 'contain', objectPosition: '0% 100%'});
-    expect(getXVideoSubtitleViewport(player, layer)).toMatchObject({left: 0, top: 0, width: 337.5, height: 600, right: 662.5, bottom: 0});
+    expect(getVideoSubtitleViewport(player, layer)).toMatchObject({left: 0, top: 0, width: 337.5, height: 600, right: 662.5, bottom: 0});
   });
 
   it('handles horizontal contain letterboxing and pixel object-position', () => {
     const {player, layer} = fixture({intrinsic: [1920, 1080], objectFit: 'contain', objectPosition: '50px 25px'});
-    expect(getXVideoSubtitleViewport(player, layer)).toMatchObject({left: 50, top: 25, width: 950, height: 562.5, right: 0, bottom: 12.5});
+    expect(getVideoSubtitleViewport(player, layer)).toMatchObject({left: 50, top: 25, width: 950, height: 562.5, right: 0, bottom: 12.5});
   });
 
   it.each([
@@ -423,8 +423,25 @@ describe('X video subtitle viewport', () => {
     ['scale-down', [331.25, 0, 337.5, 600]],
   ] as const)('supports object-fit %s', (objectFit, expected) => {
     const {player, layer} = fixture({intrinsic: [1080, 1920], objectFit});
-    const viewport = getXVideoSubtitleViewport(player, layer)!;
+    const viewport = getVideoSubtitleViewport(player, layer)!;
     expect([viewport.left, viewport.top, viewport.width, viewport.height]).toEqual(expected);
+  });
+
+  it.each([
+    ['calc(100% - 10px) calc(100% - 5px)', 890, 495, 10, 5],
+    ['calc(100% - 10px) 7px', 890, 7, 10, 493],
+    ['12px calc(100% - 5px)', 12, 495, 888, 5],
+    ['12px 7px', 12, 7, 888, 493],
+    ['calc(25% + 12px) calc(50% - 3px)', 237, 247, 663, 253],
+  ])('uses the browser computed edge offsets %s without splitting calc whitespace', (objectPosition, left, top, right, bottom) => {
+    // Edge 实测四值 object-position 的 computed style 为 calc(100% - Npx)，详见 release-dom-probes.json。
+    const {player, layer} = fixture({intrinsic: [100, 100], objectFit: 'none', objectPosition});
+    expect(getVideoSubtitleViewport(player, layer)).toMatchObject({left, top, width: 100, height: 100, right, bottom});
+  });
+
+  it('scales computed edge pixel offsets with the transformed video element', () => {
+    const {player, layer} = fixture({intrinsic: [100, 100], offset: [500, 300], objectFit: 'none', objectPosition: 'calc(100% - 10px) calc(100% - 5px)'});
+    expect(getVideoSubtitleViewport(player, layer)).toMatchObject({left: 780, top: 390, width: 200, height: 200, right: 20, bottom: 10});
   });
 
   it('converts viewport geometry into a scaled layer that is not the player', () => {
@@ -435,7 +452,7 @@ describe('X video subtitle viewport', () => {
       intrinsic: [1920, 1080],
       objectFit: 'contain',
     });
-    expect(getXVideoSubtitleViewport(player, layer)).toMatchObject({left: 0, top: 0, width: 500, height: 300, right: 0, bottom: 0});
+    expect(getVideoSubtitleViewport(player, layer)).toMatchObject({left: 0, top: 0, width: 500, height: 300, right: 0, bottom: 0});
   });
 
   it('uses the layer client coordinate scale instead of assuming its rect is unscaled', () => {
@@ -447,7 +464,7 @@ describe('X video subtitle viewport', () => {
       intrinsic: [1920, 1080],
       objectFit: 'contain',
     });
-    expect(getXVideoSubtitleViewport(player, layer)).toMatchObject({left: 0, top: 0, width: 400, height: 240, right: 0, bottom: 0});
+    expect(getVideoSubtitleViewport(player, layer)).toMatchObject({left: 0, top: 0, width: 400, height: 240, right: 0, bottom: 0});
   });
 
   it('keeps a layer larger than the player anchored to the absolute video intersection', () => {
@@ -458,21 +475,21 @@ describe('X video subtitle viewport', () => {
       intrinsic: [1920, 1080],
       objectFit: 'contain',
     });
-    expect(getXVideoSubtitleViewport(player, layer)).toMatchObject({left: 100, top: 137.5, width: 400, height: 225, right: 300, bottom: 237.5});
+    expect(getVideoSubtitleViewport(player, layer)).toMatchObject({left: 100, top: 137.5, width: 400, height: 225, right: 300, bottom: 237.5});
   });
 
   it('returns null for missing metadata, zero geometry, or no painted intersection', () => {
     const missing = fixture({intrinsic: [0, 0]});
-    expect(getXVideoSubtitleViewport(missing.player, missing.layer)).toMatchObject({left: 0, top: 0, width: 1000, height: 600});
+    expect(getVideoSubtitleViewport(missing.player, missing.layer)).toMatchObject({left: 0, top: 0, width: 1000, height: 600});
     const zero = fixture({video: rect(0, 0, 0, 0)});
-    expect(getXVideoSubtitleViewport(zero.player, zero.layer)).toBeNull();
+    expect(getVideoSubtitleViewport(zero.player, zero.layer)).toBeNull();
     const outside = fixture({layer: rect(2000, 2000, 100, 100)});
-    expect(getXVideoSubtitleViewport(outside.player, outside.layer)?.width).toBe(0);
+    expect(getVideoSubtitleViewport(outside.player, outside.layer)?.width).toBe(0);
   });
 
   it('keeps a very narrow viewport usable instead of imposing a 160px minimum', () => {
     const {player, layer} = fixture({player: rect(0, 0, 120, 600), layer: rect(0, 0, 120, 600), video: rect(0, 0, 120, 600), intrinsic: [1080, 1920]});
-    const viewport = getXVideoSubtitleViewport(player, layer)!;
+    const viewport = getVideoSubtitleViewport(player, layer)!;
     expect(viewport.width).toBe(120);
   });
 
@@ -501,7 +518,7 @@ describe('X video subtitle viewport', () => {
     controls.innerHTML = '<button aria-label="Settings"></button><button>Play</button>';
     Object.defineProperty(controls, 'getBoundingClientRect', {configurable: true, value: () => rect(900, 628, 180, 44)});
     player.appendChild(controls);
-    expect(getXVideoSubtitleViewport(player, layer)?.controlsInset).toBe(12);
+    expect(getVideoSubtitleViewport(player, layer)?.controlsInset).toBe(12);
   });
 
   it('uses the real painted viewport for controls inside player but outside a portrait video', () => {
@@ -510,7 +527,7 @@ describe('X video subtitle viewport', () => {
     controls.innerHTML = '<button aria-label="Settings"></button><button>Play</button>';
     Object.defineProperty(controls, 'getBoundingClientRect', {configurable: true, value: () => rect(900, 628, 180, 44)});
     player.appendChild(controls);
-    const viewport = getXVideoSubtitleViewport(player, layer)!;
+    const viewport = getVideoSubtitleViewport(player, layer)!;
     expect(viewport.controlsInset).toBe(12);
   });
 
@@ -636,11 +653,11 @@ describe('X video subtitle viewport', () => {
     const controls = document.createElement('div'); controls.className = 'player-controls-bottom'; scope.appendChild(controls);
     let controlRect = rect(0, 190, 40, 30);
     Object.defineProperty(controls, 'getBoundingClientRect', {value: () => controlRect});
-    expect(getXVideoSubtitleViewport(player, layer)?.controlsInset).toBe(12);
+    expect(getVideoSubtitleViewport(player, layer)?.controlsInset).toBe(12);
     controlRect = rect(70, 20, 200, 30);
-    expect(getXVideoSubtitleViewport(player, layer)?.controlsInset).toBe(12);
+    expect(getVideoSubtitleViewport(player, layer)?.controlsInset).toBe(12);
     controlRect = rect(70, 190, 200, 30);
-    expect(getXVideoSubtitleViewport(player, layer)?.controlsInset).toBe(44);
+    expect(getVideoSubtitleViewport(player, layer)?.controlsInset).toBe(44);
   });
 
   it('constrains fullscreen captions by both notch sides and the upper/lower system safe areas', () => {

@@ -207,7 +207,7 @@ function synchronizeTranslationLayoutMeasurements(measurements: TranslationLayou
     layoutMeasurementVersions.set(measurements, layoutStyleVersion);
 }
 const layoutObserversByRoot = new WeakMap<TranslationLayoutObserverRoot, TranslationLayoutRootObserver>();
-const pendingLayoutRefreshes = new WeakMap<HTMLElement, {removedNodes: Set<Node>}>();
+const pendingLayoutRefreshes = new WeakSet<HTMLElement>();
 let bilingualOwnerRemountHandler: ((mutations: readonly MutationRecord[]) => void) | undefined;
 let bilingualArtifactCapitulationHandler:
     ((owner: HTMLElement, state: TranslationState) => void) | undefined;
@@ -413,11 +413,8 @@ function forEachActiveNode(callback: (node: HTMLElement, state: TranslationState
             continue;
         }
         const state = states.get(node);
-        if (!state) {
-            activeNodeRefs.delete(ref);
-            continue;
-        }
-        callback(node, state);
+        // clearState 同步移除状态和活动引用；存活引用始终拥有当前状态。
+        callback(node, state!);
     }
 }
 
@@ -1163,7 +1160,8 @@ export function tryRepairBilingualTranslationArtifact(
     if (wrapper?.parentNode) wrapper.remove();
     const content = detachedTrustedWrapper ?? trustedTemplate.cloneNode(true) as HTMLElement;
     releaseReboundBilingualRendering(content, state);
-    node.appendChild(content);
+    if (state.bilingualBeforeSource) node.insertBefore(content, node.firstChild);
+    else node.appendChild(content);
     if (reconcileLayout && !reconcileLayout(node)) {
         content.remove();
         return 'rejected-after-write';
@@ -1320,17 +1318,10 @@ function mutationChangesDescendantEligibility(mutation: MutationRecord): boolean
     return true;
 }
 
-function scheduleTranslationLayoutRefresh(owner: HTMLElement, removedNodes: readonly Node[] = []): void {
-    let pending = pendingLayoutRefreshes.get(owner);
-    if (pending) {
-        removedNodes.forEach((node) => pending?.removedNodes.add(node));
-        return;
-    }
-
-    pending = {removedNodes: new Set(removedNodes)};
-    pendingLayoutRefreshes.set(owner, pending);
+function scheduleTranslationLayoutRefresh(owner: HTMLElement): void {
+    if (pendingLayoutRefreshes.has(owner)) return;
+    pendingLayoutRefreshes.add(owner);
     const flush = () => {
-        if (pendingLayoutRefreshes.get(owner) !== pending) return;
         pendingLayoutRefreshes.delete(owner);
         const state = states.get(owner);
         if (!state) return;
@@ -1383,8 +1374,7 @@ function scheduleTranslationLayoutRefresh(owner: HTMLElement, removedNodes: read
                     ? state.retryWrapper
                     : undefined;
         if (expectedArtifact && expectedArtifact.parentNode !== owner) {
-            const repair = tryRepairBilingualTranslationArtifact(owner, state);
-            if (repair === 'repaired' || repair === 'capitulated') return;
+            // 双语正文已在上方修复；加载、失败和控制元素不支持工件重挂。
             restoreTranslation(owner);
             return;
         }
@@ -1419,7 +1409,7 @@ function createTranslationLayoutRootObserver(root: TranslationLayoutObserverRoot
             if (mutation.type === "childList") {
                 mutation.removedNodes.forEach((removed) => {
                     getTranslationOwnersForRemovedNode(removed)
-                        .forEach((owner) => scheduleTranslationLayoutRefresh(owner, [removed]));
+                        .forEach((owner) => scheduleTranslationLayoutRefresh(owner));
                 });
                 return;
             }
@@ -2060,9 +2050,7 @@ export function getTranslationOwnersForRemovedNode(removed: Node): HTMLElement[]
     const stack: Node[] = [removed];
 
     while (stack.length > 0) {
-        const current = stack.pop();
-        if (!current) continue;
-
+        const current = stack.pop()!;
         getTranslationOwnersForIndexedNode(current).forEach((owner) => owners.add(owner));
 
         if (current.nodeType === 1) {

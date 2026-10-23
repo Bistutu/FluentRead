@@ -1,20 +1,19 @@
 /**
  * @file src/providers/translation/free-extra-web.ts
- * 文件职责：适配搜狗、Reverso、Lingva 和 Apertium 四个匿名网页翻译候选。
- * 主要内容：按码点预算且不切术语标记，读取搜狗网页参数并识别内层业务错误，构造 Reverso 请求，明确 Lingva 公共实例的访问限制，调用 Apertium 动态语言对；仅短期记忆有效语言列表确认的不支持方向，不共享在途请求或取消信号；保留文本槽/换行/边缘空白并响应取消，已发请求的未读正文结算后才结束候选。
+ * 文件职责：适配搜狗、Reverso 和 Apertium 三个匿名网页翻译候选。
+ * 主要内容：按码点预算且不切术语标记，读取搜狗网页参数并识别内层业务错误，构造 Reverso 请求，调用 Apertium 动态语言对；仅短期记忆有效语言列表确认的不支持方向，不共享在途请求或取消信号；保留文本槽/换行/边缘空白并响应取消，失败或迟到取消时直接取消未读正文，避免等待错误页 EOF。
  * 模块边界：不读取用户 Cookie、凭据或代理；免费链的超时、冷却和并发由上层编排负责。
  */
 import MD5 from 'crypto-js/md5';
 import {translateFreeTextChunks} from './freeTextChunks';
 import {serializeTranslationSlots} from '@/src/core/translation/serialization';
 import {getTranslationGlossarySourceText} from '@/src/services/translation/requestSnapshot';
-import {abortErrorFromSignal, runtimeFetch} from '@/src/platform/http/runtime';
+import {abortErrorFromSignal, cancelUnreadResponseBody, runtimeFetch} from '@/src/platform/http/runtime';
 import {createHttpStatusError, readJsonResponse} from '@/src/platform/http/errors';
 
 export type ExtraFreeWebProvider =
     | 'sogouFree'
     | 'reversoFree'
-    | 'lingvaFree'
     | 'apertiumFree';
 
 export type FreeFailure = 'rate-limit' | 'quota' | 'blocked' | 'unavailable' | 'request';
@@ -22,7 +21,6 @@ export type FreeFailure = 'rate-limit' | 'quota' | 'blocked' | 'unavailable' | '
 const SOGOU_HOME = 'https://translate.sogou.com/';
 const SOGOU_ENDPOINT = 'https://translate.sogou.com/api/transpc/text/result';
 const REVERSO_ENDPOINT = 'https://api.reverso.net/translate/v1/translation';
-const LINGVA_INSTANCE = 'https://lingva.ml';
 const APERTIUM_ENDPOINT = 'https://apertium.org/apy';
 const MAX_CHUNK_CODEPOINTS = 1000;
 const APERTIUM_UNSUPPORTED_DIRECTION_TTL_MS = 5 * 60_000;
@@ -38,13 +36,6 @@ function checkAbort(signal?: AbortSignal): void {
     if (signal?.aborted) throw abortErrorFromSignal(signal);
 }
 
-/** 错误或迟到取消仍等未读正文结束，清理失败不覆盖原始分类。 */
-async function settleUnreadResponse(response: Response): Promise<void> {
-    if (!response.bodyUsed) {
-        try {await response.clone().arrayBuffer();}
-        catch { /* 保留原始 HTTP、取消或协议错误。 */ }
-    }
-}
 
 function language(value: string, target: boolean): string {
     const code = value.trim().replaceAll('_', '-').toLowerCase();
@@ -69,7 +60,7 @@ async function getSogouSecret(signal?: AbortSignal): Promise<string> {
         const match = html.match(/"secretCode"\s*:\s*(\d+)/u);
         if (!match?.[1]) throw failure('搜狗翻译首页缺少匿名参数', 502, 'unavailable');
         return match[1];
-    } finally {await settleUnreadResponse(response);}
+    } finally {cancelUnreadResponseBody(response);}
 }
 
 type SogouResponse = {
@@ -105,7 +96,7 @@ async function translateSogouChunk(text: string, source: string, target: string,
             throw failure('搜狗翻译结果为空');
         }
         return translated.trim();
-    } finally {await settleUnreadResponse(response);}
+    } finally {cancelUnreadResponseBody(response);}
 }
 
 function genericLanguage(value: string, _target: boolean): string {
@@ -129,7 +120,7 @@ async function translateReversoChunk(text: string, source: string, target: strin
         const value = result?.translation;
         if (!Array.isArray(value) || value.some(item => typeof item !== 'string') || !value.length || !value.join('').trim()) throw failure('Reverso 翻译结果为空');
         return value.join('').trim();
-    } finally {await settleUnreadResponse(response);}
+    } finally {cancelUnreadResponseBody(response);}
 }
 
 const reversoCodes: Record<string, string> = {en: 'eng', 'zh-hans': 'chi', 'zh-chs': 'chi', zh: 'chi', fr: 'fra', de: 'deu', es: 'spa', it: 'ita', pt: 'por', ja: 'jpn', ko: 'kor', ru: 'rus', ar: 'ara', nl: 'nld', pl: 'pol', tr: 'tur'};
@@ -183,29 +174,6 @@ function isApertiumDirectionList(body: unknown): boolean {
     return keys.length > 0 && keys.every(key => pairPattern.test(key));
 }
 
-async function translateLingvaChunk(text: string, source: string, target: string, signal?: AbortSignal): Promise<string> {
-    const from = genericLanguage(source, false);
-    const to = genericLanguage(target, true);
-    const url = `${LINGVA_INSTANCE}/api/v1/${encodeURIComponent(from)}/${encodeURIComponent(to)}/${encodeURIComponent(text)}`;
-    const response = await runtimeFetch(url, {method: 'GET', credentials: 'omit', signal, headers: {Accept: 'application/json'}});
-    try {
-        checkAbort(signal);
-        if (!response.ok) {
-            const label = response.status === 403
-                ? 'Lingva 公共实例拒绝自动访问，请稍后重试或停用此服务'
-                : response.status === 429
-                    ? 'Lingva 公共实例限流，请稍后重试'
-                    : 'Lingva 公共实例暂时不可用，请稍后重试';
-            throw createHttpStatusError(response, label);
-        }
-        const result = await readJsonResponse<{translation?: unknown; error?: unknown} | null>(response, 'Lingva 返回的不是有效 JSON');
-        checkAbort(signal);
-        if (result?.error) throw failure('Lingva 翻译业务请求失败');
-        if (typeof result?.translation !== 'string' || !result.translation.trim()) throw failure('Lingva 翻译结果为空');
-        return result.translation.trim();
-    } finally {await settleUnreadResponse(response);}
-}
-
 async function translateApertiumChunk(text: string, source: string, target: string, signal?: AbortSignal, pairValidated = false): Promise<string> {
     const pair = apertiumDirection(source, target);
     if (!pairValidated && isKnownUnsupportedApertiumDirection(source, target)) throw failure('Apertium 不支持当前语言方向', 400, 'request');
@@ -236,7 +204,7 @@ async function translateApertiumChunk(text: string, source: string, target: stri
                 }
                 throw failure('Apertium 不支持当前语言方向', 400, 'request');
             }
-        } finally {await settleUnreadResponse(listResponse);}
+        } finally {cancelUnreadResponseBody(listResponse);}
     }
     checkAbort(signal);
     const query = new URLSearchParams({langpair: pair, q: text, format: 'txt'});
@@ -249,7 +217,7 @@ async function translateApertiumChunk(text: string, source: string, target: stri
         const translated = result?.responseData?.translatedText;
         if (result?.responseStatus !== 200 || typeof translated !== 'string' || !translated.trim()) throw failure('Apertium 翻译结果为空');
         return translated.trim();
-    } finally {await settleUnreadResponse(response);}
+    } finally {cancelUnreadResponseBody(response);}
 }
 
 type ChunkTranslator = (text: string, source: string, target: string, signal?: AbortSignal) => Promise<string>;
@@ -276,8 +244,7 @@ export async function translateExtraFreeWebText(
     const translator: ChunkTranslator = id === 'sogouFree'
         ? (chunk, from, to, signal) => translateSogouChunk(chunk, from, to, signal, sogouSecret ??= getSogouSecret(signal))
         : id === 'reversoFree' ? translateReversoChunk
-            : id === 'lingvaFree' ? translateLingvaChunk
-                : async (chunk, from, to, signal) => {
+            : async (chunk, from, to, signal) => {
                     const output = await translateApertiumChunk(chunk, from, to, signal, apertiumPairValidated);
                     apertiumPairValidated = true;
                     return output;

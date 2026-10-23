@@ -1,7 +1,7 @@
 <!--
  * @file src/features/glossary/ui/GlossarySettings.vue
  * 文件职责：提供可直接上手的个人术语库设置，集中管理词库、适用语言、网站范围和固定译名。
- * 主要内容：直接展示导入、新建与匹配预览，词库卡片内固定保留设置入口，多词库优先级独立管理；以单一 Vue 状态控制设置展开，管理独立草稿、范围解释、重复词条校验与串行保存。
+ * 主要内容：直接展示导入、新建与匹配预览，词库卡片内固定保留设置入口，多词库优先级独立管理；以单一 Vue 状态控制设置展开，管理独立草稿、范围解释、重复词条校验与串行保存；卸载后到达的删除确认不会再发起保存。
  * 模块边界：配置通过现有 requestConfigPatch 保存并在失败时回读权威状态；文件只在本地解析，界面不请求翻译服务、不改写宿主网页。
  -->
 <template>
@@ -229,6 +229,7 @@ onBeforeUnmount(() => {disposed = true; fileReadGeneration++; unsubscribe();});
 
 type GlossaryPatch = {glossaryLibraries?: GlossaryLibrary[]; glossaryEnabled?: boolean};
 function persist(patch: GlossaryPatch | (() => GlossaryPatch)): Promise<boolean> {
+  if (disposed) return Promise.resolve(false);
   if (!ready.value) {error.value = t('glossary.loadFailed'); return Promise.resolve(false);}
   pendingSaves++; busy.value = true; error.value = ''; saved.value = false;
   const operation = saveQueue.then(async () => {

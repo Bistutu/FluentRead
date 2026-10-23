@@ -3,7 +3,7 @@
  *
  * 文件职责：提供与 UI 框架无关的界面语言注册表、归一化和翻译函数。
  * 主要内容：内置简体中文默认目录；English、日本語、한국어、Français、Русский 与 Español 以资源包形式注册，
- * 支持稳定 key 参数插值、中文旧文案迁移适配、按语言惰性建立的旧文案反查表，以及资源包携带的旧文案模板的惰性编译。
+ * 仅匹配字典自身登记项，支持稳定 key 参数插值、中文旧文案迁移适配、按语言惰性建立的旧文案反查表，以及资源包携带的旧文案模板的惰性编译。
  * 旧文案适配仅用于扩展自己的 UI，不会翻译网页内容或用户输入。
  * 模块边界：本文件不读写 browser.storage、不发起资源请求，也不依赖 Vue；非中文资源包由 bundles.ts 静态汇总
  * （构建期生成、userscript 与测试使用）或由 platform/i18n 在扩展运行时按需加载后注册。
@@ -39,11 +39,16 @@ export function hasUiLanguageBundle(language: UiLanguage): boolean {
     return language === 'zh-CN' || registeredBundles.has(language);
 }
 
+/** 资源字典只匹配自身条目，避免 constructor 等普通文本命中 Object 原型。 */
+function ownMessage(catalog: MessageCatalog | undefined, key: string): string | undefined {
+    return catalog && Object.hasOwn(catalog, key) ? catalog[key] : undefined;
+}
+
 function getMessageLegacyCatalog(language: UiLanguage, bundle: UiLanguageBundle): MessageCatalog {
     let catalog = messageLegacyCatalogs.get(language);
     if (!catalog) {
         catalog = Object.fromEntries(
-            Object.entries(defaultMessages).map(([key, source]) => [source, bundle.messages[key] ?? source]),
+            Object.entries(defaultMessages).map(([key, source]) => [source, ownMessage(bundle.messages, key) ?? source]),
         );
         messageLegacyCatalogs.set(language, catalog);
     }
@@ -60,16 +65,15 @@ function formatMessage(template: string, params?: TranslationParams): string {
 
 /** 翻译稳定资源 key；当前语言缺失或资源包尚未加载时回退到中文，再缺失时返回 key 便于发现漏翻。 */
 export function translate(key: string, language: UiLanguage, params?: TranslationParams): string {
-    const template = registeredBundles.get(language)?.messages[key] ?? defaultMessages[key] ?? key;
+    const template = ownMessage(registeredBundles.get(language)?.messages, key) ?? ownMessage(defaultMessages, key) ?? key;
     return formatMessage(template, params);
 }
 
 function preserveWhitespace(value: string, translated: string): string {
-    const leading = value.match(/^\s*/u)?.[0] || '';
-    const trailing = value.match(/\s*$/u)?.[0] || '';
-    const start = leading.length;
-    const end = trailing.length > 0 ? value.length - trailing.length : value.length;
-    return `${leading}${translated}${end > start ? trailing : ''}`;
+    const leading = value.match(/^\s*/u)![0];
+    const trailing = value.match(/\s*$/u)![0];
+    // Only nonblank source text reaches this helper; both zero-or-more patterns always match.
+    return `${leading}${translated}${trailing}`;
 }
 
 interface CompiledLegacyPattern {
@@ -122,7 +126,7 @@ function getCompiledLegacyPatterns(language: UiLanguage, bundle: UiLanguageBundl
 
 function getExactLegacyText(value: string, language: UiLanguage): string | undefined {
     const bundle = registeredBundles.get(language);
-    return bundle && (bundle.legacyText[value] ?? getMessageLegacyCatalog(language, bundle)[value]);
+    return bundle && (ownMessage(bundle.legacyText, value) ?? ownMessage(getMessageLegacyCatalog(language, bundle), value));
 }
 
 function* applyLegacyPatterns(patterns: readonly CompiledLegacyPattern[], value: string, language: UiLanguage): Generator<string, string | undefined, string> {
@@ -191,5 +195,6 @@ export function translateLegacyText(value: string, language: UiLanguage): string
         if (step.done) {result = step.value; pending.pop();}
         else pending.push(evaluate(step.value));
     }
-    return result ?? value;
+    // The root generator always completes with a string before the work stack becomes empty.
+    return result!;
 }

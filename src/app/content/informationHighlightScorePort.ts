@@ -1,7 +1,7 @@
 /**
  * @file src/app/content/informationHighlightScorePort.ts
  * 文件职责：把扩展的模型评分消息适配成可取消的纯文本评分函数，供网页内容脚本和文档阅读页共用。
- * 主要内容：为每次请求固定模型和身份，取消时通知后台并立即拒绝，校验返回结构；不持有页面状态。
+ * 主要内容：为每次请求固定模型和身份，取消时立即拒绝并尽力通知后台，扩展运行时同步失效不阻断本地清理，校验返回结构；不持有页面状态。
  * 模块边界：只依赖注入的 send 与纯数据 protocol，不导入页面控制器、翻译模块或浏览器扩展 API，文档页引用它不会带入内容脚本的依赖。
  */
 import type {InformationHighlightResult} from '@/src/features/information-highlight/protocol';
@@ -21,8 +21,9 @@ export function createInformationHighlightScorePort(send: (message: {type: strin
         let rejectAbort: (reason: Error) => void;
         const cancelled = new Promise<never>((_resolve, reject) => {rejectAbort = reject;});
         const abort = () => {
-            void send({type: 'CANCEL_INFORMATION_HIGHLIGHT', requestId}).catch(() => undefined);
             rejectAbort(new Error('INFORMATION_HIGHLIGHT_CANCELLED'));
+            try { void send({type: 'CANCEL_INFORMATION_HIGHLIGHT', requestId}).catch(() => undefined); }
+            catch { /* 扩展运行时失效不阻断本地取消。 */ }
         };
         signal.addEventListener('abort', abort, {once: true});
         try {

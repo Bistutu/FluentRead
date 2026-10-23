@@ -13,7 +13,7 @@ import { mergeCustomBody } from "@/src/core/config/customBody";
 import {resolveConfiguredModel, services} from "@/src/core/config/catalog";
 import {getTranslationProviderLanguages} from '@/src/services/translation/requestSnapshot';
 import {createHttpStatusError, createProviderCodeError, readJsonResponse} from '@/src/platform/http/errors';
-import {runtimeFetch} from '@/src/platform/http/runtime';
+import {cancelUnreadResponseBody, runtimeFetch} from '@/src/platform/http/runtime';
 import {requireTranslationProviderConfig, reportTranslationModelUsage, reportTranslationModelUsageFailure} from '@/src/services/translation/requestSnapshot';
 import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import {normalizeHunyuanUsage} from './usage';
@@ -180,6 +180,7 @@ async function hunyuanTranslation(message: TranslationProviderRequest<string>) {
         if (!response.ok) {
             reportTranslationModelUsageFailure(message, undefined, startedAt, requestModel, response.status);
             attemptReported = true;
+            cancelUnreadResponseBody(response);
             throw createHttpStatusError(response, '腾讯混元翻译请求失败');
         }
 

@@ -3,7 +3,8 @@ import {Script} from 'node:vm';
 import ts from 'typescript';
 import {parseHTML} from 'linkedom';
 import {describe, expect, it} from 'vitest';
-import {createTranslationCore, createTranslationSourceSnapshot, extractTranslationText} from '@/src/core/translation/public';
+import {createTranslationSourceSnapshot, extractTranslationText} from '@/src/core/translation/public';
+import {createTranslationCore} from './helpers/translationCore';
 
 const url = new URL('https://github.com/kohya-ss/musubi-tuner/issues/1029');
 function fixture() {

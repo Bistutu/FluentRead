@@ -5,6 +5,8 @@
  * 模块边界：本文件只解释已取得的 Response，不读写 OAuth 或配对凭据，不构造翻译/阅读提示词，也不发起供应商网络请求。
  */
 
+import {cancelUnreadResponseBody} from '@/src/platform/http/runtime';
+
 type EventRecord = Record<string, unknown>;
 type ResponseErrorKind = 'response' | 'provider' | 'rate-limit' | 'authentication' | 'bad-request';
 
@@ -82,17 +84,22 @@ function parseFrame(frame: string): EventRecord | undefined {
  * 迭代器停止、取消或终止异常都会取消 reader，释放本机助手的上游流。
  */
 export async function* streamChatGPTPlanEvents(response: Response, signal?: AbortSignal): AsyncGenerator<EventRecord> {
-    abortIfNeeded(signal);
-    if (!response.ok) {
-        let body: EventRecord = {};
-        try { body = record(await response.json()) || {}; } catch { /* HTTP 状态足以生成无敏感信息的错误。 */ }
+    try {
         abortIfNeeded(signal);
-        throw responseError(body, response.status);
+        if (!response.ok) {
+            let body: EventRecord = {};
+            try { body = record(await response.json()) || {}; } catch { /* HTTP 状态足以生成无敏感信息的错误。 */ }
+            abortIfNeeded(signal);
+            throw responseError(body, response.status);
+        }
+        if (!response.body || !/^text\/event-stream(?:;|$)/iu.test(response.headers.get('content-type') || '')) {
+            throw new ChatGPTPlanResponseError('ChatGPT 没有返回 Responses 事件流，请检查本机助手状态。');
+        }
+    } catch (error) {
+        cancelUnreadResponseBody(response);
+        throw error;
     }
-    if (!response.body || !/^text\/event-stream(?:;|$)/iu.test(response.headers.get('content-type') || '')) {
-        throw new ChatGPTPlanResponseError('ChatGPT 没有返回 Responses 事件流，请检查本机助手状态。');
-    }
-    const reader = response.body.getReader();
+    const reader = response.body!.getReader();
     const decoder = new TextDecoder('utf-8', {fatal: true});
     const onAbort = () => { void reader.cancel().catch(() => undefined); };
     signal?.addEventListener('abort', onAbort, {once: true});

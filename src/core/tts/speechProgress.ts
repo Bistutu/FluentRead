@@ -80,11 +80,3 @@ export function boundarySpeechProgress(text: string, start: number, _length: num
     const word = speechTextTokens(text).find(token => token.word && token.end > start);
     return word ? {start:word.start,end:word.end,fraction:1,estimated:false} : null;
 }
-
-export function speechTextSlices(text: string, offset: number, progress: SpeechProgress | null) {
-    if (!progress) return {before:'',active:'',after:text,fraction:0};
-    const start=Math.max(0,Math.min(text.length,progress.start-offset)),end=Math.max(0,Math.min(text.length,progress.end-offset));
-    if (end <= start) return {before:'',active:'',after:text,fraction:0};
-    const reached=progress.start+(progress.end-progress.start)*progress.fraction;
-    return {before:text.slice(0,start),active:text.slice(start,end),after:text.slice(end),fraction:Math.max(0,Math.min(1,(reached-offset-start)/(end-start)))};
-}

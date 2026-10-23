@@ -74,6 +74,22 @@ describe('full page modal priority', () => {
         plain.removeAttribute('aria-modal'); expect(findActiveTranslationModal([window.document])).toBe(plain);
     });
 
+    it('respects the live Bambu consent dialog until its explicit rejection action closes it', () => {
+        const window = dom('<html><body><main><p>When switching between different filaments for printing.</p></main><div id="truste-consent-track" role="dialog" aria-modal="true" data-trustarc-focus-trapped="true"><a href="https://bambulab.com/policies/cookie-policy">Cookie Notice</a><button id="truste-consent-required">Reject All</button></div></body></html>');
+        const dialog = window.document.querySelector('#truste-consent-track') as HTMLElement;
+        const paragraph = window.document.querySelector('p')!;
+        rect(dialog, 24, 614.65625, 420, 177.34375);
+        rect(paragraph, 528, 264, 732, 136);
+        const active = findActiveTranslationModal([window.document]);
+        expect(active).toBe(dialog);
+        expect(isWithinTranslationModal(active!, paragraph)).toBe(false);
+        const reject = dialog.querySelector('button')!;
+        reject.addEventListener('click', () => { dialog.style.display = 'none'; });
+        reject.click();
+        expect(findActiveTranslationModal([window.document])).toBeNull();
+        expect(paragraph.textContent).toBe('When switching between different filaments for printing.');
+    });
+
     it('supports common component modal classes only with mask and center obstruction', () => {
         const window = dom('<html><body><div id="modal" class="el-dialog">x</div><div id="other" class="modal">y</div></body></html>');
         const modal = window.document.querySelector('#modal') as HTMLElement;

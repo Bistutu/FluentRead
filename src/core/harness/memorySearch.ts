@@ -6,7 +6,7 @@
  * 来源：https://github.com/Culeot/dsh-agent-memory/tree/af709743fb267b536d11343bab43e9a54f96367c
  * 上游：v0.8.4 src/search.ts 与 src/spec.ts；Copyright (c) 2026 dsh-agent-memory contributors，MIT。
  * 源文件 SHA-256：search.ts 6cd4dd693cd3fe1c07eb1a3e2bae217ada5af328669a786f933d346348c7328e；spec.ts fa87808943e5438b5d90194cd259893661365e82d0171f39a2058c51fb936287。
- * 适配：仅保留查询检索路径，移除旧单字 tokenizer、scoreRecord 包装、hotness/hotRecords；删除不使用的 lastActive 参数及已由命中阈值保证的冗余分支。
+ * 适配：仅保留查询检索路径，移除旧单字 tokenizer、scoreRecord/bm25Signal/explainRecord 包装、hotness/hotRecords；删除不使用的 lastActive 参数及已由命中阈值保证的冗余分支。
  * 完整许可：public/third-party-notices/dsh-agent-memory-MIT.txt。
  */
 export interface MemoryRecord {
@@ -137,13 +137,7 @@ export function hasMeaningfulQuery(query: string): boolean {
  * not penalized for wordiness. Scaled and capped so it can only add up to
  * +2.0 to the base score.
  */
-export function bm25Signal(query: string, content: string, avgLen = 40): number {
-  const qTokens = new Set(tokenizeBigram(query));
-  if (qTokens.size === 0) return 0;
-  return bm25Tokens(qTokens, tokenizeBigram(content), avgLen);
-}
-
-function bm25Tokens(qTokens: ReadonlySet<string>, cTokens: readonly string[], avgLen = 40): number {
+function bm25Tokens(qTokens: ReadonlySet<string>, cTokens: readonly string[]): number {
   const contentLen = Math.max(1, cTokens.length);
   const freq = new Map<string, number>();
   for (const t of cTokens) freq.set(t, (freq.get(t) ?? 0) + 1);
@@ -153,7 +147,7 @@ function bm25Tokens(qTokens: ReadonlySet<string>, cTokens: readonly string[], av
   for (const t of qTokens) {
     const tf = freq.get(t) ?? 0;
     if (tf === 0) continue;
-    const norm = contentLen / avgLen;
+    const norm = contentLen / 40;
     sum += (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * norm));
   }
   return Math.min(2.0, sum * 0.4);
@@ -163,19 +157,6 @@ export interface ExplainResult {
   score: number;
   /** Human-readable reasons, best-contributing first. */
   reasons: string[];
-}
-
-/**
- * Score one record against a query and explain why it scored. 0 when the
- * query is empty or the match is too weak to be meaningful.
- * score = base * importanceBoost * recencyBoost * accessBoost
- * where base = 3*substring + 1.5*tag + 1.2*qwordHits + 2*bigramJaccard +
- * 0.8*unigramJaccard + bm25, and base < MATCH_BASE_MIN is no match.
- * Reasons mirror the exact contributions, so both the user and the agent can
- * audit "why did this memory surface".
- */
-export function explainRecord(record: MemoryRecord, query: string, options: RankOptions = {}): ExplainResult {
-  return explainPreparedRecord(record, prepareQuery(query), options);
 }
 
 function prepareQuery(query: string) {
@@ -188,7 +169,7 @@ function prepareQuery(query: string) {
 }
 
 /** 同一轮排名只解析查询一次；每条正文的分词同时供 Jaccard 与 BM25 使用。 */
-function explainPreparedRecord(record: MemoryRecord, query: ReturnType<typeof prepareQuery>, options: RankOptions): ExplainResult {
+function explainPreparedRecord(record: MemoryRecord, query: ReturnType<typeof prepareQuery>, options: RankOptions & {now: number}): ExplainResult {
   const q = query.text;
   if (q === '') return { score: 0, reasons: [] };
 
@@ -251,7 +232,7 @@ function explainPreparedRecord(record: MemoryRecord, query: ReturnType<typeof pr
 
   const importanceBoost = 1 + (record.importance - 1) * 0.75; // 1.0 / 1.75 / 2.5
   const halfLifeDays = options.recencyHalfLifeDays ?? 90;
-  const now = options.now ?? Date.now();
+  const now = options.now;
   const ageMs = now - lastActive(record);
   const recencyBoost = Math.pow(0.5, ageMs / (halfLifeDays * 24 * 3600 * 1000));
   const accessBoost = Math.min(ACCESS_BOOST_CAP, 1 + Math.log(1 + record.accessCount) * 0.15);

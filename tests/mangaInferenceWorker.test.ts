@@ -60,8 +60,8 @@ beforeEach(async () => {
     vi.stubGlobal('self', scope);
     vi.stubGlobal('navigator', {hardwareConcurrency: 8, gpu: {requestAdapter: vi.fn()}});
     vi.stubGlobal('crossOriginIsolated', true);
-    const worker = await import('@/src/features/image-translation/services/mangaInference.worker');
-    worker.startMangaInferenceWorker();
+    const worker = await import('@/src/app/offscreen/mangaInferenceWorker');
+    worker.startMangaInferenceWorkerApp();
 });
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 

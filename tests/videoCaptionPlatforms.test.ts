@@ -1,6 +1,8 @@
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {parseHTML} from 'linkedom';
 import {getCaptionPlatform, isMeetingCaptionPlatform, findCaptionEnableButton, findTeamsCaptionMenuStep, captionLanguageMatch, chooseTargetHumanCaptionTrack} from '@/src/features/video-subtitle/content/platforms';
+import {readVideoCaptionText} from '@/src/features/video-subtitle/content/subtitleTransport';
+import {parseYoutubeTimedTextResponse} from '@/src/features/video-subtitle/content/youtubeSubtitleData';
 import {YoutubeHumanCaptions} from '@/src/features/video-subtitle/content/youtubeHumanCaptions';
 import {Config, normalizeConfig} from '@/src/core/config/model';
 import {getVideoTranslationConfigFingerprint} from '@/src/features/video-subtitle/content/subtitleLogic';
@@ -110,6 +112,21 @@ const body = JSON.stringify({events: [{tStartMs: 0, dDurationMs: 1500, segs: [{u
 const response = () => new Response(body);
 
 describe('YouTube 目标语言人工字幕时间轴', () => {
+    it('资源读取完成与人工字幕提交之间关闭，不能发布迟到时间轴', async () => {
+        let requestSignal!: AbortSignal;
+        const ready = vi.fn();
+        const source = new YoutubeHumanCaptions(vi.fn(async (_url, options) => {
+            requestSignal = options!.signal!;
+            return response();
+        }), ready);
+        source.sync(page(), location, 'zh-Hans', true);
+        const pending = source.ready();
+        // 真实响应读取和 Promise 微任务先完成 transport 清理，再恢复消费方；在两者之间发生页面关闭。
+        for (let turn = 0; turn < 30 && !requestSignal.aborted; turn++) await Promise.resolve();
+        expect(requestSignal.aborted).toBe(true); expect(ready).not.toHaveBeenCalled();
+        source.clear(); await pending;
+        expect(source.at(10)).toBe(''); expect(ready).not.toHaveBeenCalled();
+    });
     it('只请求一次并保留空档和截止时间，不把人工轨当作原文轨', async () => {
         const fetch = vi.fn().mockResolvedValue(response()), ready = vi.fn();
         const source = new YoutubeHumanCaptions(fetch, ready);
@@ -190,5 +207,84 @@ describe('YouTube 目标语言人工字幕时间轴', () => {
         const aborted = new YoutubeHumanCaptions(fail, ready);
         aborted.sync(page(), location, 'zh-Hans', true); const old = aborted.ready(); aborted.clear(); await old;
         expect(aborted.at(10)).toBe('');
+    });
+});
+
+
+describe('字幕响应完整读取预算', () => {
+    it('长时间轴按实际 UTF-8 字节预算读取，跨 chunk 多字节字符保持完整', async () => {
+        const events = Array.from({length: 12_000}, (_, index) => ({tStartMs: index * 1000, dDurationMs: 1000,
+            segs: [{utf8: `第${index}句：${'长讲座字幕'.repeat(38)}`}]}));
+        const transcript = JSON.stringify({events});
+        const bytes = new TextEncoder().encode(transcript);
+        expect(bytes.length).toBeGreaterThan(6_000_000);
+        expect(bytes.length).toBeLessThan(8_000_000);
+        const request = vi.fn(async () => new Response(new ReadableStream({start(controller) {
+            for (let offset = 0; offset < bytes.length; offset += 65537) controller.enqueue(bytes.slice(offset, offset + 65537));
+            controller.close();
+        }})));
+        const text = await readVideoCaptionText('https://youtube.com/api/timedtext', request, {credentials: 'include'});
+        expect(text).toBe(transcript);
+        const cues = parseYoutubeTimedTextResponse(text);
+        expect(cues).toHaveLength(events.length);
+        expect(cues.at(-1)?.text).toBe(events.at(-1)?.segs[0].utf8);
+        const overLimit = `${transcript}${' '.repeat(8_000_001 - bytes.length)}`;
+        const cancel = vi.fn();
+        await expect(readVideoCaptionText('https://youtube.com/api/timedtext', async () => new Response(new ReadableStream({start(controller) {
+            controller.enqueue(new TextEncoder().encode(overLimit));
+        }, cancel})), {credentials: 'include'})).rejects.toThrow('超过读取上限');
+        expect(cancel).toHaveBeenCalledOnce();
+    });
+
+    it('十五秒总预算包括响应头和全部正文，清理未结束也立即给出超时', async () => {
+        vi.useFakeTimers();
+        let deliver!: (response: Response) => void;
+        let rejectCancel!: (reason: unknown) => void;
+        const cancel = vi.fn(() => new Promise<void>((_resolve, reject) => {rejectCancel = reject;}));
+        const body = new ReadableStream<Uint8Array>({start(controller) {controller.enqueue(new TextEncoder().encode('{'));}, cancel});
+        const outcome = readVideoCaptionText('https://youtube.com/api/timedtext', () => new Promise(resolve => {deliver = resolve;}), {credentials: 'include'}).catch(error => error);
+        await vi.advanceTimersByTimeAsync(14_000);
+        deliver(new Response(body));
+        await vi.advanceTimersByTimeAsync(999);
+        expect(cancel).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(1);
+        expect(await outcome).toMatchObject({name: 'TimeoutError'});
+        expect(cancel).toHaveBeenCalledOnce();
+        expect(body.locked).toBe(false);
+        expect(vi.getTimerCount()).toBe(0);
+        rejectCancel(new Error('late cleanup failure'));
+        await vi.advanceTimersByTimeAsync(0);
+    });
+
+    it.each(['headers', 'body'])('取消 %s 阶段保留调用方原因，并移除父级监听', async stage => {
+        vi.useFakeTimers();
+        const parent = new AbortController(), reason = new Error('当前媒体已切换');
+        const removed = vi.spyOn(parent.signal, 'removeEventListener');
+        let deliver!: (response: Response) => void;
+        const cancel = vi.fn(() => Promise.reject(new Error('cleanup failed')));
+        const response = new Response(new ReadableStream({cancel}));
+        const outcome = readVideoCaptionText('https://youtube.com/api/timedtext', () => new Promise(resolve => {deliver = resolve;}),
+            {signal: parent.signal, credentials: 'include'}).catch(error => error);
+        if (stage === 'body') {deliver(response); await vi.advanceTimersByTimeAsync(0);}
+        parent.abort(reason);
+        expect(await outcome).toBe(reason);
+        if (stage === 'headers') deliver(response);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(cancel).toHaveBeenCalledOnce();
+        expect(response.body?.locked).toBe(false);
+        expect(removed).toHaveBeenCalledWith('abort', expect.any(Function));
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('预先取消不发请求，同步传输失败也清理预算', async () => {
+        vi.useFakeTimers();
+        const parent = new AbortController(), reason = new Error('已经关闭');
+        parent.abort(reason);
+        const request = vi.fn(() => {throw reason;});
+        await expect(readVideoCaptionText('https://youtube.com/api/timedtext', request, {signal: parent.signal, credentials: 'include'})).rejects.toBe(reason);
+        expect(request).not.toHaveBeenCalled();
+        await expect(readVideoCaptionText('https://youtube.com/api/timedtext', request, {credentials: 'include'})).rejects.toBe(reason);
+        expect(request).toHaveBeenCalledOnce();
+        expect(vi.getTimerCount()).toBe(0);
     });
 });

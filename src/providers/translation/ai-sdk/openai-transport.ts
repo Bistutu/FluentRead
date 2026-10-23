@@ -18,7 +18,7 @@ import {
 } from './endpoints';
 import {LlmTransportError} from './transport-errors';
 import {createImageInputHttpError} from '@/src/platform/http/errors';
-import {runtimeFetch} from '@/src/platform/http/runtime';
+import {cancelUnreadResponseBody, runtimeFetch} from '@/src/platform/http/runtime';
 import {
     requireTranslationProviderConfig,
     getTranslationRequestScheduler,
@@ -173,6 +173,8 @@ async function normalizeSuccessfulTextResponse(
     headers.delete('content-length');
     headers.delete('content-encoding');
     headers.set('content-type', 'application/json');
+    // 克隆已读完且下游改读重建响应，原始 tee 分支不会再被消费；立即丢弃其缓存。
+    cancelUnreadResponseBody(response);
     return {
       response: new Response(JSON.stringify(normalizedBody), {
         status: response.status,
@@ -246,7 +248,10 @@ function compatibilityFetch(
     });
     if (!response.ok && getTranslationImageInput(request)) {
       const error = await createImageInputHttpError(response);
-      if ((error as {imageInputUnsupported?: boolean}).imageInputUnsupported) throw error;
+      if ((error as {imageInputUnsupported?: boolean}).imageInputUnsupported) {
+        cancelUnreadResponseBody(response);
+        throw error;
+      }
     }
     return normalized.response;
   };

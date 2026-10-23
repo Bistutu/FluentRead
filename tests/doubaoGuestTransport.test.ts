@@ -135,7 +135,7 @@ describe('豆包临时匿名网络请求', () => {
     it('清理规则失败时关闭未消费响应，调用方取消仍保留原始原因', async () => {
         const api = port();
         api.updateSessionRules.mockResolvedValueOnce(undefined).mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('cleanup'));
-        const cancel = vi.fn();
+        const cancel = vi.fn(() => new Promise<void>(() => {}));
         const response = new Response(new ReadableStream({cancel}));
         await expect(createDoubaoGuestFetch(api, 'own', async () => response)(url, init)).rejects.toThrow('无法发送豆包匿名');
         expect(cancel).toHaveBeenCalledOnce();

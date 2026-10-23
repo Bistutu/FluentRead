@@ -9,7 +9,7 @@ import {parseHTML} from 'linkedom';
 import ts from 'typescript';
 import {Config} from '@/src/core/config/model';
 import {customModelString} from '@/src/core/config/catalog';
-import {registerAllUiLanguageBundles, UI_LANGUAGE_BUNDLES} from '@/src/core/i18n/bundles';
+import {registerAllUiLanguageBundles, UI_LANGUAGE_BUNDLES} from './helpers/uiLanguageBundles';
 import {zhCNMessages} from '@/src/core/i18n/messages/zh-CN';
 import {translate} from '@/src/core/i18n';
 

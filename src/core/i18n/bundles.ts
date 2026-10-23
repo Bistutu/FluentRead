@@ -2,13 +2,13 @@
  * @file src/core/i18n/bundles.ts
  *
  * 文件职责：静态汇总中文以外六种界面语言的完整资源包，作为构建期 JSON 生成、userscript 单文件产物与测试的唯一来源。
- * 主要内容：导出包含稳定资源、旧文案词典和按语言展开的旧文案模板的 UI_LANGUAGE_BUNDLES、把全部资源包注册进 i18n 注册表的 registerAllUiLanguageBundles，
+ * 主要内容：导出包含稳定资源、旧文案词典和按语言展开的旧文案模板的 UI_LANGUAGE_BUNDLES，
  * 以及按 language.ts 路径规则生成扩展运行时按需加载文件的 createUiLanguageBundleFiles、复用七语品牌生成浏览器安装名称的 createExtensionNameLocaleFiles。
  * 模块边界：扩展的 content、background 和扩展页面不得直接 import 本文件，否则会把六种语言重新打进每个 bundle；
  * 它们通过 src/platform/i18n 按当前界面语言加载构建产物。本文件不访问浏览器 API，也不读写配置。
  */
 
-import {getUiLanguageBundlePath, registerUiLanguageBundle, translate} from './index';
+import {getUiLanguageBundlePath, translate} from './index';
 import {createLegacyPatternSet} from './messages/legacy-patterns';
 import {enUSLegacyText, enUSMessages} from './messages/en-US';
 import {esESLegacyText, esESMessages} from './messages/es-ES';
@@ -26,13 +26,6 @@ export const UI_LANGUAGE_BUNDLES: Readonly<Record<RegisteredUiLanguage, UiLangua
     'ru-RU': {messages: ruRUMessages, legacyText: ruRULegacyText, legacyPatterns: createLegacyPatternSet('ru-RU')},
     'es-ES': {messages: esESMessages, legacyText: esESLegacyText, legacyPatterns: createLegacyPatternSet('es-ES')},
 };
-
-/** 为单文件运行环境一次注册全部语言；扩展运行时应改用按需加载。 */
-export function registerAllUiLanguageBundles(): void {
-    for (const [language, bundle] of Object.entries(UI_LANGUAGE_BUNDLES)) {
-        registerUiLanguageBundle(language as RegisteredUiLanguage, bundle);
-    }
-}
 
 /** 生成扩展产物中的语言资源文件；紧凑 JSON 解析远快于等价的 JavaScript 对象字面量。 */
 export function createUiLanguageBundleFiles(): Array<{relativeDest: string; contents: string}> {

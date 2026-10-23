@@ -4,36 +4,25 @@
  * 主要内容：保留播放器操作、翻译与草稿回归；材料通过真实公开 begin/complete/client 验证来源、时间、代次冻结与成功引用，失败和旧播放器卸载不会误关联。
  * 模块边界：仅替换媒体、模型及浏览器消息传输，不替换材料采集逻辑；DOM 布局与真实平台由独立生产验收覆盖。
  */
-import {readFileSync} from 'node:fs';
-import {createRequire} from 'node:module';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
-import {compileScript, parse} from 'vue/compiler-sfc';
 import {parseHTML} from 'linkedom';
-import ts from 'typescript';
 import * as vue from 'vue';
 import {Config} from '@/src/core/config/model';
-import * as learningAppearance from '@/src/core/config/videoSentenceLearningAppearance';
-import * as timeline from '@/src/features/video-subtitle/content/sentenceTimeline';
-import * as playback from '@/src/features/video-subtitle/content/sentencePlayback';
-import * as youtubeControlsScope from '@/src/features/video-subtitle/content/youtubeControlsScope';
-import * as readingSessionModule from '@/src/features/video-subtitle/content/readingAnnotationSession';
-import {getVideoTranslationConfigFingerprint} from '@/src/features/video-subtitle/content/subtitleLogic';
-import * as vocabulary from '@/src/features/vocabulary/public';
-import {beginMaterialCapture, completeMaterialCapture} from '@/src/features/vocabulary/material/public';
 
 const materialTransport = vi.hoisted(() => ({sendMessage: vi.fn(), extension: {inIncognitoContext: false}}));
 vi.mock('webextension-polyfill', () => ({default: {runtime: {sendMessage: materialTransport.sendMessage}, extension: materialTransport.extension}}));
 
-// 执行实际 SFC setup；媒体、服务和存储是边界替身，DOM 操作另由生产浏览器专项验证。
-const filename = 'src/features/video-subtitle/ui/VideoSentenceLearning.vue';
-const {descriptor} = parse(readFileSync(filename, 'utf8'), {filename});
-const compiled = ts.transpileModule(compileScript(descriptor, {id: 'video-sentence-learning-test'}).content, {
-  compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true},
-}).outputText;
-const renderedCompiled = ts.transpileModule(compileScript(descriptor, {id: 'video-sentence-learning-mounted', inlineTemplate: true}).content, {
-  compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true},
-}).outputText;
-const require = createRequire(import.meta.url);
+import VideoSentenceLearning from '@/src/features/video-subtitle/ui/VideoSentenceLearning.vue';
+vi.mock('@/src/ui/i18n', () => ({useUiI18n: () => ({t: (key: string) => key})}));
+vi.mock('@/src/services/config/store', () => ({
+  get config() {return config;}, configReady: Promise.resolve(),
+  subscribeConfig: (fn: () => void) => {subscription = fn; fn(); return unsubscribe;},
+}));
+vi.mock('@/src/platform/browser/runtimeMessages', () => ({sendRuntimeMessage: (...args: unknown[]) => sendRuntimeMessage(...args)}));
+vi.mock('@/src/platform/browser/capabilities', () => ({browserCapabilities: {extensionDom: true}}));
+vi.mock('@/src/features/reading-assistant/ui/answer/public', () => ({ReadingAnswer: {render: () => null}}));
+vi.mock('@/src/features/reading-assistant/public', () => ({streamReading: (...args: unknown[]) => streamReading(...args)}));
+vi.mock('@/src/features/video-subtitle/content/readingAnnotationClient', () => ({annotateVideoReading: (...args: unknown[]) => annotateVideoReading(...args)}));
 const first = 'First sentence.';
 const second = 'Second sentence.';
 const third = 'Third sentence.';
@@ -43,8 +32,8 @@ const deferred = <T>() => {
   const promise = new Promise<T>((done, fail) => {resolve = done; reject = fail;});
   return {promise, resolve, reject};
 };
-let state: Record<string, any>, scope: vue.EffectScope | undefined, config: Config;
-let video: HTMLVideoElement, props: Record<string, any>, unmounted: Array<() => void>;
+let state: Record<string, any>, config: Config;
+let video: HTMLVideoElement, props: Record<string, any>;
 let subscription: () => void;
 let translate: ReturnType<typeof vi.fn>, sendRuntimeMessage: ReturnType<typeof vi.fn>, streamReading: ReturnType<typeof vi.fn>;
 let cancelReading: ReturnType<typeof vi.fn>, unsubscribe: ReturnType<typeof vi.fn>, emit: ReturnType<typeof vi.fn>;
@@ -55,46 +44,15 @@ let renderedUnmount: (() => void) | undefined;
 async function flush(): Promise<void> {
   await Promise.resolve(); await vue.nextTick(); await Promise.resolve(); await vue.nextTick();
 }
-function close(): void {
-  renderedUnmount?.(); renderedUnmount = undefined;
-  unmounted.splice(0).forEach(fn => fn()); scope?.stop(); scope = undefined;
-}
-function readComponent(source = compiled, vuePort: typeof vue = {...vue, onBeforeUnmount: (fn: () => void) => unmounted.push(fn)} as typeof vue): vue.Component {
-  const exports: Record<string, any> = {};
-  new Function('require', 'exports', source)((id: string) => {
-    if (id === 'vue') return vuePort;
-    if (id === '@/src/ui/i18n') return {useUiI18n: () => ({t: (key: string) => key})};
-    if (id === '@/src/services/config/store') return {config, subscribeConfig: (fn: () => void) => {subscription = fn; fn(); return unsubscribe;}};
-    if (id === '@/src/core/config/videoSentenceLearningAppearance') return learningAppearance;
-    if (id === '@/src/platform/browser/runtimeMessages') return {sendRuntimeMessage};
-    if (id === '@/src/platform/browser/capabilities') return {browserCapabilities: {extensionDom: true}};
-    if (id === '@/src/features/reading-assistant/ui/answer/public') return {ReadingAnswer: {}};
-    if (id === '@/src/features/reading-assistant/public') return {streamReading};
-    if (id === '@/src/features/vocabulary/public') return vocabulary;
-    if (id === 'webextension-polyfill') return {extension: materialTransport.extension};
-    if (id === '@/src/features/vocabulary/material/public') return {beginMaterialCapture, completeMaterialCapture};
-    if (id === '../content/sentenceTimeline') return timeline;
-    if (id === '../content/sentencePlayback') return playback;
-    if (id === '../content/youtubeControlsScope') return youtubeControlsScope;
-    if (id === '../content/readingAnnotationSession') return readingSessionModule;
-    if (id === '../content/readingAnnotationClient') return {annotateVideoReading};
-    if (id === '../content/subtitleLogic') return {getVideoTranslationConfigFingerprint};
-    return require(id);
-  }, exports);
-  return exports.default;
-}
-async function mount(): Promise<void> {
-  const component = readComponent() as {setup: (props: Record<string, any>, context: unknown) => Record<string, any>};
-  scope = vue.effectScope();
-  state = scope.run(() => vue.proxyRefs(component.setup(props, {expose: () => {}, emit})))!;
-  await flush();
-}
+function close(): void {renderedUnmount?.(); renderedUnmount = undefined;}
+async function mount(parent?: HTMLElement): Promise<void> {await mountRendered(parent);}
 /** 使用真实模板与 DOM renderer 验证错误提示及点击重试，避免仅检查 setup 状态而遗漏控件绑定。 */
-async function mountRendered(): Promise<HTMLElement> {
+async function mountRendered(parent?: HTMLElement): Promise<HTMLElement> {
+  const document = parent?.ownerDocument ?? globalThis.document;
   const renderer = vue.createRenderer<Node, Element>({
     insert: (node, parent, anchor) => parent.insertBefore(node, anchor || null),
     remove: node => node.parentNode?.removeChild(node),
-    createElement: (tag, namespace) => namespace === 'svg' ? document.createElementNS('http://www.w3.org/2000/svg', tag) : document.createElement(tag),
+    createElement: (tag, namespace) => vue.markRaw(namespace === 'svg' ? document.createElementNS('http://www.w3.org/2000/svg', tag) : document.createElement(tag)),
     createText: value => document.createTextNode(value), createComment: value => document.createComment(value),
     setText: (node, value) => {node.nodeValue = value;}, setElementText: (node, value) => {node.textContent = value;},
     parentNode: node => node.parentElement, nextSibling: node => node.nextSibling,
@@ -104,14 +62,21 @@ async function mountRendered(): Promise<HTMLElement> {
         if (previous) node.removeEventListener(event, previous);
         if (next) node.addEventListener(event, next);
       } else if (key === 'style') Object.assign((node as HTMLElement).style, next || {});
-      else if (next == null || next === false) node.removeAttribute(key);
-      else node.setAttribute(key, next === true ? '' : String(next));
+      else if (next == null || next === false && !/^(aria-|data-)/.test(key)) node.removeAttribute(key);
+      else node.setAttribute(key, next === true && !/^(aria-|data-)/.test(key) ? '' : String(next));
     },
   });
-  const host = document.createElement('div'); document.body.appendChild(host);
-  const app = renderer.createApp(readComponent(renderedCompiled, vue), props);
-  app.mount(host); renderedUnmount = () => {app.unmount(); host.remove();};
+  const host = document.createElement('div'); (parent ?? document.body).appendChild(host);
+  const app = renderer.createApp({setup: () => () => vue.h(VideoSentenceLearning, {...props as InstanceType<typeof VideoSentenceLearning>['$props'], onClose: () => emit('close')})});
+  app.mount(host); state = (app as any)._instance.subTree.component.setupState;
+  renderedUnmount = () => {app.unmount(); host.remove();};
   await flush(); return host;
+}
+function placePanel(fixture: {panel: HTMLElement}): void {
+  const placeholder = fixture.panel;
+  fixture.panel = state.panel;
+  fixture.panel.append(...Array.from(placeholder.childNodes));
+  placeholder.replaceWith(fixture.panel);
 }
 async function advance(ms: number): Promise<void> {await vi.advanceTimersByTimeAsync(ms); await flush();}
 async function step(direction: number): Promise<void> {state.step(direction); await flush();}
@@ -153,7 +118,7 @@ beforeEach(() => {
   config.glossaryEnabled = true;
   config.glossaryLibraries = [{id: 'fixture', name: 'Fixture glossary', enabled: true, sourceLanguage: 'en', targetLanguage: 'zh-CN',
     domains: [], entries: [{id: 'term', source: 'sentence', target: '句子', caseSensitive: false}]}];
-  unmounted = []; unsubscribe = vi.fn(); emit = vi.fn(); cancelReading = vi.fn();
+  unsubscribe = vi.fn(); emit = vi.fn(); cancelReading = vi.fn();
   translate = vi.fn(async (text: string) => `Translated: ${text}`);
   annotateVideoReading = vi.fn(async (text: string, language: string) => ({text: `Reading: ${text}`, language, scheme: 'fixture'}));
   sendRuntimeMessage = vi.fn().mockResolvedValue({success: true});
@@ -168,6 +133,133 @@ beforeEach(() => {
 afterEach(() => {close(); vi.unstubAllGlobals(); vi.useRealTimers();});
 
 describe('完整句学习组件的调度与异步归属回归', () => {
+  it.each([new Error('service unavailable'), 'unexpected rejection', '   '])('翻译失败 %s 显示实际重试控件，重试恢复且保留原句', async result => {
+    if (typeof result === 'string' && !result.trim()) translate.mockResolvedValueOnce(result);
+    else translate.mockRejectedValueOnce(result);
+    const host = await mountRendered();
+    const error = host.querySelector('.fr-video-learning-inline-error')!;
+    expect(error.textContent).toContain(result instanceof Error ? result.message : 'video.learning.translationFailed');
+    expect(host.querySelector('[data-learning-action="save"]')?.hasAttribute('disabled')).toBe(true);
+    error.querySelector('button')!.dispatchEvent(new document.defaultView!.Event('click', {bubbles: true})); await flush();
+    expect(host.querySelector('.fr-video-learning-inline-error')).toBeNull();
+    expect(state.translation).toBe(`Translated: ${first}`); expect(state.sentence.text).toBe(first);
+    const pending = deferred<string>(); translate.mockReturnValueOnce(pending.promise);
+    error.querySelector('button')!.dispatchEvent(new document.defaultView!.Event('click')); await flush();
+    expect(host.querySelector('[data-learning-action="save"]')?.hasAttribute('disabled')).toBe(true);
+    pending.resolve('Refreshed translation'); await flush();
+    expect(host.querySelector('[data-learning-action="save"]')?.hasAttribute('disabled')).toBe(false);
+  });
+
+  it.each(['ja', ''])('读音无来源语言时回退配置 %s，空结果不显示错误，换句后的归顶任务可安全卸载', async source => {
+    props.sourceLanguage = ''; config.from = source; config.videoSubtitleAppearance.readingAnnotation = true;
+    annotateVideoReading.mockResolvedValue(null); await mount(); await advance(0);
+    expect(annotateVideoReading).toHaveBeenCalledWith(first, source || 'auto', expect.any(AbortSignal));
+    expect(state.readingText).toBe(''); expect(state.readingError).toBe(false);
+    props.cues = []; await vue.nextTick(); close(); await flush();
+    expect(state.body).toBeNull();
+  });
+
+  it.each(['disabled', 'action absent'] as const)('未开启讲解能力 %s 时引导设置，不发送模型或材料请求', async reason => {
+    if (reason === 'disabled') config.harness.enabled = false; else config.harness.actions = [];
+    const host = await mountRendered();
+    host.querySelector('[data-learning-action="explain"]')!.dispatchEvent(new document.defaultView!.Event('click')); await flush();
+    expect(host.textContent).toContain('video.learning.enableExplain');
+    expect(sendRuntimeMessage).toHaveBeenCalledWith({type: 'openOptionsPage', section: 'settings-selection'});
+    expect(streamReading).not.toHaveBeenCalled(); expect(materialTransport.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it.each([new Error('startup failed'), 'startup rejected'])('讲解启动同步失败 %s 可重试，关闭上下文和缺失来源不伪造引用', async cause => {
+    config.harness.contextMode = 'selection'; props.sourceUrl = undefined;
+    streamReading.mockImplementationOnce(() => {throw cause;}); await mount();
+    state.explain(); await flush(); expect(state.explaining).toBe(false);
+    expect(state.error).toBe(cause instanceof Error ? cause.message : 'video.learning.explainFailed');
+    state.explain(); expect(streamReading.mock.calls.at(-1)![0].selection.context).toBe('');
+    state.explain(); expect(streamReading).toHaveBeenCalledTimes(2);
+    readingCallbacks.result({success: true, text: 'Recovered', sessionId: 'unlinked'}); await flush();
+    expect(state.explanation).toBe('Recovered'); expect(materialTransport.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it('字幕列表增量更新保留所选句，清空列表安全停播且不消费失效按钮', async () => {
+    const host = await mountRendered(); await step(1); await advance(120);
+    const selected = state.sentence.id;
+    props.cues = [...props.cues, {text: 'Fourth sentence.', startMs: 8000, durationMs: 1000}]; await flush();
+    expect(state.sentence.id).toBe(selected); expect(state.index).toBe(1);
+    const play = host.querySelector('[data-learning-action="play"]')!, explain = host.querySelector('[data-learning-action="explain"]')!, save = host.querySelector('[data-learning-action="save"]')!;
+    props.cues = []; await flush();
+    const calls = [translate.mock.calls.length, streamReading.mock.calls.length, sendRuntimeMessage.mock.calls.length];
+    expect(host.textContent).toContain('video.learning.empty'); expect(state.timeLabel).toBe('');
+    for (const button of [play, explain, save]) button.dispatchEvent(new document.defaultView!.Event('click'));
+    state.toggleMode('loop'); state.step(1); await state.loadTranslation();
+    video.dispatchEvent(new Event('seeking')); await flush();
+    expect(state.mode).toBe('off'); expect(state.pinned).toBe(false);
+    expect([translate.mock.calls.length, streamReading.mock.calls.length, sendRuntimeMessage.mock.calls.length]).toEqual(calls);
+    props.cues = [{text: 'Unfinished fragment', startMs: 0, durationMs: 1000}]; await flush();
+    expect(host.querySelector('.fr-video-learning-badge')?.textContent).toBe('video.learning.fragment');
+    state.step(-1); expect(state.index).toBe(0);
+  });
+
+  it('播放器拒绝重播给出反馈，换句后的迟到拒绝不污染新句', async () => {
+    const late = deferred<void>(); await mount();
+    (video.play as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('autoplay denied'));
+    await state.replay(); expect(state.error).toBe('video.learning.playFailed');
+    (video.play as ReturnType<typeof vi.fn>).mockReturnValueOnce(late.promise);
+    const pending = state.replay(); await step(1); late.reject(new Error('old playback')); await pending;
+    expect(state.error).toBe('');
+    state.returnToCurrent(); Object.assign(video, {seeking: true, currentTime: 4}); video.dispatchEvent(new Event('timeupdate')); await flush();
+    expect(state.index).toBe(1);
+  });
+
+  it('收藏拒绝空译文和过长讲解，未知语言使用auto且非Error失败可恢复', async () => {
+    props.sourceLanguage = ''; await mount(); state.translation = ''; state.onTranslationInput();
+    await state.save(); expect(state.error).toBe('video.learning.editPlaceholder'); expect(sendRuntimeMessage).not.toHaveBeenCalled();
+    state.translation = 'Reviewed'; state.explanation = 'x'.repeat(2001); await state.save();
+    expect(state.error).toBe('video.learning.tooLong'); expect(sendRuntimeMessage).not.toHaveBeenCalled();
+    state.explanation = 'Short note'; sendRuntimeMessage.mockRejectedValueOnce('unexpected transport failure'); await state.save();
+    expect(state.error).toBe('video.learning.saveFailed'); expect(state.saving).toBe(false);
+    expect(sendRuntimeMessage.mock.calls.at(-1)![0].input.sourceLanguage).toBe('auto');
+    await state.save(); expect(state.saved).toBe(true);
+  });
+
+  it('百条草稿容量淘汰最早记录，后续人工草稿与正在生成的讲解互不覆盖', async () => {
+    props.cues = Array.from({length: 103}, (_, index) => ({text: `Sentence ${index}.`, startMs: index * 2000, durationMs: 1000}));
+    await mount(); state.translation = 'Oldest edit'; state.onTranslationInput(); state.explain(); readingCallbacks.progress({kind: 'text', text: 'Unfinished'});
+    for (let index = 1; index <= 102; index++) {await step(1); state.translation = `Edit ${index}`; state.onTranslationInput();}
+    await step(-1); expect(state.translation).toBe('Edit 101');
+    state.step(-101); await advance(120);
+    expect(state.translation).toBe('Translated: Sentence 0.'); expect(state.explanation).toBe('');
+    expect(cancelReading).toHaveBeenCalled();
+  });
+
+  it('真实模板串联导航、重播、编辑、讲解、收藏、外观与收起恢复', async () => {
+    const host = await mountRendered();
+    const click = async (action: string) => {const button = host.querySelector(`[data-learning-action="${action}"]`) as HTMLButtonElement; expect(button).toBeTruthy(); expect(button.hasAttribute('disabled')).toBe(false); button.dispatchEvent(new document.defaultView!.Event('click', {bubbles: true})); await flush();};
+    await click('help'); expect(host.querySelector('[data-learning-help]')).toBeTruthy();
+    await click('appearance'); expect(sendRuntimeMessage).toHaveBeenLastCalledWith({type: 'openOptionsPage', section: 'settings-interface', target: 'video-sentence-learning-appearance'});
+    await click('collapse'); expect(host.querySelector('[data-learning-peek]')?.textContent).toBe(first);
+    host.querySelector('[data-learning-peek]')!.dispatchEvent(new document.defaultView!.Event('click', {bubbles: true})); await flush(); expect(state.expanded).toBe(true);
+    await click('next'); await advance(120); expect(state.sentence.text).toBe(second);
+    await click('previous'); await advance(120); expect(state.sentence.text).toBe(first);
+    await click('play'); expect(video.play).toHaveBeenCalled(); expect(video.currentTime).toBe(0);
+    await click('loop'); expect(state.mode).toBe('loop'); await click('pause-at-end'); expect(state.mode).toBe('pause'); await click('normal'); expect(state.mode).toBe('off');
+    await click('follow'); expect(state.pinned).toBe(false);
+    const context = host.querySelector('details') as HTMLDetailsElement; context.open = true; context.dispatchEvent(new document.defaultView!.Event('toggle')); await flush(); expect(state.pinned).toBe(true);
+    context.open = false; context.dispatchEvent(new document.defaultView!.Event('toggle'));
+    await click('edit-translation');
+    const translationEditor = host.querySelector('[data-learning-translation]') as HTMLTextAreaElement;
+    translationEditor.dispatchEvent(new document.defaultView!.Event('focus')); translationEditor.value = 'Reviewed translation'; translationEditor.dispatchEvent(new document.defaultView!.Event('input')); await flush();
+    expect(state.translation).toBe('Reviewed translation'); expect(state.translationEdited).toBe(true);
+    await click('done-translation'); expect(host.querySelector('[data-learning-translation-display]')?.textContent).toBe('Reviewed translation');
+    await click('explain'); readingCallbacks.progress({kind: 'text', text: 'Initial explanation'}); await flush();
+    await click('stop-explanation'); expect(host.querySelector('.fr-video-learning-explanation')?.textContent).toContain('video.learning.stoppedShort');
+    await click('edit-explanation');
+    const explanationEditor = host.querySelector('[data-learning-explanation]') as HTMLTextAreaElement;
+    explanationEditor.dispatchEvent(new document.defaultView!.Event('focus')); explanationEditor.value = 'Reviewed explanation'; explanationEditor.dispatchEvent(new document.defaultView!.Event('input')); await flush();
+    await click('done-explanation'); expect(state.explanation).toBe('Reviewed explanation');
+    await click('save'); await flush(); expect(host.querySelector('[data-learning-saved="true"]')).toBeTruthy();
+    await click('library'); expect(sendRuntimeMessage).toHaveBeenLastCalledWith({type: 'openOptionsPage', section: 'settings-vocabulary'});
+    await click('close'); expect(emit).toHaveBeenCalledWith('close');
+  });
+
   it('读音默认关闭，单独开关不打断人工草稿、固定句和循环，面板原句不跟播放器模式隐藏', async () => {
     props.sourceLanguage = 'ja'; await mount();
     expect(annotateVideoReading).not.toHaveBeenCalled();
@@ -269,8 +361,8 @@ describe('完整句学习组件的调度与异步归属回归', () => {
   it.each([false, true])('换句只归顶当前owned滚动区，短高整卡=%s，页面与外层portal滚动不变', async short => {
     const f = portalKeyboardFixture(), host = f.panel.parentElement!;
     host.id = 'fluent-read-video-learning-panel'; host.dataset.shortHeight = String(short);
-    await mount(); state.panel = vue.markRaw(f.panel);
-    const body = f.document.createElement('div'); f.panel.appendChild(body); state.body = vue.markRaw(body);
+    await mount(f.panel.parentElement!); placePanel(f);
+    const body = state.body as HTMLElement;
     body.scrollTop = 42; f.panel.scrollTop = 180; host.scrollTop = 200; f.document.documentElement.scrollTop = 2720;
     f.key('ArrowRight', video); await flush();
     expect(state.index).toBe(1); expect(body.scrollTop).toBe(0); expect(f.panel.scrollTop).toBe(short ? 0 : 180);
@@ -278,7 +370,7 @@ describe('完整句学习组件的调度与异步归属回归', () => {
   });
 
   it('portal面板以显式媒体player消费真实窗口学习键，并让位同视频兄弟菜单', async () => {
-    const f = portalKeyboardFixture(); await mount(); state.panel = vue.markRaw(f.panel);
+    const f = portalKeyboardFixture(); await mount(f.panel.parentElement!); placePanel(f);
     expect(f.panel.parentElement!.parentElement).not.toBe(f.player);
     const next = f.key('ArrowRight', video); await flush();
     expect(next.defaultPrevented).toBe(true); expect(state.index).toBe(1); expect(video.currentTime).toBe(2);
@@ -305,14 +397,14 @@ describe('完整句学习组件的调度与异步归属回归', () => {
   it.each(['missing', 'mismatched'] as const)('没有可靠logical player（%s）时不猜portal父链，但保留面板内部学习键', async condition => {
     const f = portalKeyboardFixture();
     props.player = condition === 'missing' ? undefined : f.document.getElementById('other-player');
-    await mount(); state.panel = vue.markRaw(f.panel);
+    await mount(f.panel.parentElement!); placePanel(f);
     expect(f.key('ArrowRight', video).defaultPrevented).toBe(false); expect(state.index).toBe(0);
     expect(f.key('r', f.document.getElementById('panel-button')!).defaultPrevented).toBe(true); expect(state.mode).toBe('loop');
     expect(f.key('Escape', f.document.getElementById('panel-button')!).defaultPrevented).toBe(true); expect(emit).toHaveBeenCalledWith('close');
   });
 
   it('同媒体重挂后拒绝旧player并立即消费更新后的显式player，不依赖portal位置', async () => {
-    const f = portalKeyboardFixture(); await mount(); state.panel = vue.markRaw(f.panel);
+    const f = portalKeyboardFixture(); await mount(f.panel.parentElement!); placePanel(f);
     const next = f.document.getElementById('other-player')!; next.appendChild(video);
     expect(f.key('ArrowRight', video).defaultPrevented).toBe(false); expect(state.index).toBe(0);
     props.player = next; await flush();
@@ -330,7 +422,7 @@ describe('完整句学习组件的调度与异步归属回归', () => {
       play: vi.fn().mockResolvedValue(undefined), pause: vi.fn(), playbackRate: 1.25});
     props.video = video; props.player = document.getElementById('player')!;
     const add = vi.spyOn(keyboardWindow, 'addEventListener'); const remove = vi.spyOn(keyboardWindow, 'removeEventListener');
-    await mount(); state.panel = vue.markRaw(document.querySelector('section')!);
+    await mount(document.querySelector('section')!.parentElement!); placePanel({panel: document.querySelector('section')!});
     expect(add).toHaveBeenCalledWith('keydown', state.onPlayerKeydown, true);
     const keyboard = (key: string, target = document.getElementById('native')!, options: Record<string, unknown> = {}) => ({key, target,
       repeat: false, defaultPrevented: false, isComposing: false, altKey: false, ctrlKey: false, metaKey: false, shiftKey: false,
@@ -428,7 +520,7 @@ describe('完整句学习组件的调度与异步归属回归', () => {
 
   it('立即换原句和归顶，只在最后一次显式换句停留120毫秒后翻译', async () => {
     await mount(); expect(translate.mock.calls.map(call => call[0])).toEqual([first]);
-    const body = {scrollTop: 42}; state.body = body;
+    const body = state.body as HTMLElement; body.scrollTop = 42;
     state.step(1); expect(state.sentence.text).toBe(second);
     await flush(); expect(body.scrollTop).toBe(0); expect(state.translation).toBe('');
     await advance(60); expect(translate).toHaveBeenCalledOnce();
@@ -442,7 +534,7 @@ describe('完整句学习组件的调度与异步归属回归', () => {
   it('初次打开与自然播放跟句立即请求，并保留输入边界的浅身份', async () => {
     await mount(); expect(translate).toHaveBeenCalledOnce();
     expect(state.props.video).toBe(video); expect(state.props.cues).toBe(props.cues);
-    const body = {scrollTop: 50}; state.body = body;
+    const body = state.body as HTMLElement; body.scrollTop = 50;
     video.currentTime = 2.2; video.dispatchEvent(new Event('timeupdate'));
     await flush(); expect(state.sentence.text).toBe(second); expect(body.scrollTop).toBe(0);
     expect(translate.mock.calls.map(call => call[0])).toEqual([first, second]);

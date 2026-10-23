@@ -324,7 +324,7 @@
         <div v-else class="document-reader" data-document-reader="generic" :data-segment-count="parsedDocument.segments.length" :class="`reader-${parsedDocument.format}`" :style="readerZoomStyle" data-native-zoom-content aria-label="文档双语阅读预览">
           <article v-for="row in previewRows" :key="row.index" class="reader-block">
             <span v-if="row.contextLabel" class="reader-context">{{ row.contextLabel }}</span>
-            <div v-if="effectivePreviewMode !== 'translated' || (row.translation && !hasDistinctTranslation(row.source, row.translation))" class="reader-source document-source" data-i18n-ignore :class="readerSourceClass(row.source)">
+            <div v-if="effectivePreviewMode !== 'translated' || (row.translation && !hasDistinctTranslation(row.source, row.translation))" class="reader-source document-source" data-i18n-ignore>
               {{ readerText(row.source) }}
             </div>
             <p v-if="effectivePreviewMode !== 'source' && (!row.translation || hasDistinctTranslation(row.source, row.translation))" class="reader-translation document-translation" data-i18n-ignore>{{ row.translation ? readerText(row.translation) : translateLegacy('等待翻译…') }}</p>
@@ -493,7 +493,6 @@ import {
   getDocumentEmptyReaderHint,
   getDocumentExportPreview,
   getDocumentMimeType,
-  getDocumentReaderSourceClass,
   getDocxPartLabel as docxPartLabel,
   getCustomOpenAIProvider,
   getMissingCredentialMessage,
@@ -838,7 +837,7 @@ function scheduleHistorySave(): void {
 // 刷新后回到正在阅读的文档：当前标签页记住它在本地历史里的标识，新开的标签页仍从首页开始。
 const SESSION_KEY = 'fluentread.document.open';
 /** 版面分析或分段规则变化时递增：旧快照作废，改为按原始文件重新解析。 */
-const PARSED_VERSION = 19;
+const PARSED_VERSION = 20;
 function rememberOpenDocument(id: string | undefined | null): void {
   try {
     if (id) globalThis.sessionStorage?.setItem(SESSION_KEY, id);
@@ -1221,8 +1220,8 @@ function buildRichPreview(): string {
     chapter ? translations.slice(chapter.segmentOffset, chapter.segmentOffset + chapter.segmentCount) : translations,
     effectivePreviewMode.value,
   );
-  // 只为当前隔离阅读页补充固定主题规则，不改变原文件或导出内容。
-  return isDark.value ? html.replace('</head>', `<style>
+  // 只为当前隔离阅读页补充固定主题规则；HTML 标签不区分大小写，并允许结束标签尾部空白，不改变原文件或导出内容。
+  return isDark.value ? html.replace(/<\/head\s*>/iu, `<style>
     :root { color-scheme: dark; color: #e8edf7; background: #202632; }
     h1,h2,h3,h4,h5,h6,.reader-source,.reader-translation,.fluentread-translation,[data-fluent-read-document-translation="true"] { color: #e8edf7; }
     blockquote { color: #aab2c3; } a,.reader-link { color: #ff8bad; }
@@ -1506,10 +1505,6 @@ function saveDownloadBlob(blob: Blob, fileName: string): void {
 
 function readerText(value: string): string {
   return formatDocumentReaderText(parsedDocument.value?.format, value);
-}
-
-function readerSourceClass(value: string): string {
-  return getDocumentReaderSourceClass(parsedDocument.value?.format, value);
 }
 
 function applyTheme(): void {

@@ -45,6 +45,8 @@ declare global {
 
     var GM: UserscriptModernApi | undefined;
     interface UserscriptManagerInfo {
+        isIncognito?: boolean;
+        isPrivate?: boolean;
         scriptHandler?: string;
         version?: string;
         platform?: {browserName?: string; os?: string};

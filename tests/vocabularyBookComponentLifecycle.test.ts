@@ -1,9 +1,8 @@
+import * as runtime from 'vue';
+import VocabularyBook from '@/src/features/vocabulary/ui/VocabularyBook.vue';
 import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
-import vue from '@vitejs/plugin-vue';
 import { parseHTML } from 'linkedom';
-import { createServer, type Plugin } from 'vite';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type {VocabularyEntry, VocabularyBookExport} from '@/src/features/vocabulary/learningModel';
 
@@ -12,15 +11,15 @@ interface ComponentTestState {
     runtime: {
       sendMessage: (message: Record<string, unknown>) => Promise<unknown>;
       onMessage: {
-        addListener: () => void;
-        removeListener: () => void;
+        addListener: (listener: (message: unknown) => unknown) => void;
+        removeListener: (listener: (message: unknown) => unknown) => void;
       };
     };
   };
   config: Record<string, unknown>;
   configReady: Promise<void>;
-  requestConfigPatch: () => Promise<void>;
-  subscribeConfig: () => () => void;
+  requestConfigPatch: (patch: unknown) => Promise<void>;
+  subscribeConfig: (callback: (config:any)=>void) => () => void;
   confirm?: (...args: unknown[]) => Promise<unknown>;
 }
 
@@ -32,44 +31,17 @@ function setComponentTestState(state: ComponentTestState | undefined): void {
   else delete target[TEST_STATE_KEY];
 }
 
-function componentMocks(): Plugin {
-  return {
-    name: 'vocabulary-lifecycle-test-mocks',
-    enforce: 'pre',
-    resolveId(id) {
-      if (id === 'element-plus') return '\0vocabulary-element-mock';
-      if (id.includes('element-plus/') && id.includes('/style')) return '\0vocabulary-style-mock';
-      if (id.endsWith('/UiSelect.vue')) return '\0vocabulary-select-mock';
-      if (id === 'webextension-polyfill') return '\0vocabulary-browser-mock';
-      if (
-        id === '@/src/services/config/store'
-        || id.endsWith('/src/services/config/store')
-        || id.endsWith('/src/services/config/store.ts')
-      ) {
-        return '\0vocabulary-config-mock';
-      }
-      return null;
-    },
-    load(id) {
-      if (id === '\0vocabulary-element-mock') return `export const ElMessageBox = {confirm:(...args)=>globalThis.${TEST_STATE_KEY}.confirm?.(...args) ?? Promise.resolve()}; export const ElOption = {render(){return null}};`;
-      if (id === '\0vocabulary-style-mock') return 'export {};';
-      if (id === '\0vocabulary-select-mock') return 'export default {render() {return null}};';
-      if (id === '\0vocabulary-browser-mock') {
-        return `export default globalThis.${TEST_STATE_KEY}.browser;`;
-      }
-      if (id === '\0vocabulary-config-mock') {
-        return [
-          `const state = globalThis.${TEST_STATE_KEY};`,
-          'export const config = state.config;',
-          'export const configReady = state.configReady;',
-          'export const requestConfigPatch = state.requestConfigPatch;',
-          'export const subscribeConfig = state.subscribeConfig;',
-        ].join('\n');
-      }
-      return null;
-    },
-  };
-}
+// SFC imports are instrumented by the shared Vitest/Vite pipeline. Only external ports vary by fixture.
+vi.mock('element-plus', () => ({ElMessageBox: {confirm: (...args: unknown[]) => (globalThis as any).__fluentReadVocabularyLifecycleTest.confirm?.(...args) ?? Promise.resolve()}, ElOption: {props:['value','label'],setup:(props:any)=>()=>runtime.h('option',{value:props.value},props.label)}}));
+vi.mock('@/src/ui/components/UiSelect.vue', () => ({default: {props:['modelValue'],emits:['update:modelValue'],setup:(props:any,{attrs,slots,emit}:any)=>()=>runtime.h('select',{...attrs,'data-model-value':props.modelValue,onChange:(event:Event)=>emit('update:modelValue',(event.target as HTMLSelectElement).value)},slots.default?.())}}));
+vi.mock('@/src/features/vocabulary/ui/VocabularyStudy.vue', () => ({default: {props:['entry','playing'],emits:['close','speak','navigate','updated'],setup:(props:any,{emit}:any)=>()=>runtime.h('section',{'data-study-port':props.entry.id},[runtime.h('button',{'data-study-close':'',onClick:()=>emit('close')},'Back'),runtime.h('button',{'data-study-speak':'',onClick:()=>emit('speak')},props.playing?'Stop':'Speak'),runtime.h('button',{'data-study-settings':'',onClick:()=>emit('navigate','settings-selection')},'Settings'),runtime.h('button',{'data-study-save':'',onClick:()=>emit('updated',{...props.entry,note:'Updated study note'})},'Save')])}}));
+vi.mock('webextension-polyfill', () => ({default: {get runtime() {return (globalThis as any).__fluentReadVocabularyLifecycleTest.browser.runtime;}}}));
+vi.mock('@/src/services/config/store', () => ({
+  get config() {return (globalThis as any).__fluentReadVocabularyLifecycleTest?.config ?? {uiLanguage: 'zh-CN'};},
+  get configReady() {return (globalThis as any).__fluentReadVocabularyLifecycleTest.configReady;},
+  requestConfigPatch: (...args: unknown[]) => (globalThis as any).__fluentReadVocabularyLifecycleTest.requestConfigPatch(...args),
+  subscribeConfig: (...args: unknown[]) => (globalThis as any).__fluentReadVocabularyLifecycleTest.subscribeConfig(...args),
+}));
 
 const mountedBooks: Array<() => void | Promise<void>> = [];
 afterEach(async () => {
@@ -87,28 +59,28 @@ function deferred<T>() {
 
 async function mountBook(confirm: (...args: unknown[]) => Promise<unknown> = async () => undefined,
   response?: (message: Record<string, unknown>) => Promise<unknown>,
-  configPatch: () => Promise<void> = async () => undefined,
-  options: {keepAlive?: boolean; ready?: Promise<void>} = {}) {
-  const runtime = createRequire(import.meta.url)('vue') as typeof import('vue');
+  configPatch: (patch: unknown) => Promise<void> = async () => undefined,
+  options: {keepAlive?: boolean; ready?: Promise<void>; entries?: (entry: VocabularyEntry) => VocabularyEntry[]; list?: () => Promise<unknown>} = {}) {
   const entry = {id:'saved-a', term:'art', normalizedTerm:'art', identityKey:'en:art', sourceLanguage:'en', kind:'expression',
     translations:{'zh-cn':{text:'艺术',updatedAt:1}}, contexts:[{text:'We study art.',sourceUrl:'https://example.test/private-reading',capturedAt:1}], note:'A saved explanation.', phonetic:'',partOfSpeech:'',
     createdAt:1,updatedAt:1,lastSeenAt:1,encounterCount:1,masteryLevel:0,status:'new',nextReviewAt:1,lastReviewedAt:null,
     reviewCount:0,lapseCount:0,schemaVersion:1} as VocabularyEntry;
-  let stored = [structuredClone(entry)]; const messages: Record<string, unknown>[] = [];
+  let stored = options.entries?.(entry) ?? [structuredClone(entry)]; const messages: Record<string, unknown>[] = [];
+  const listeners = new Set<(message:unknown)=>unknown>();const configListeners = new Set<(config:any)=>void>();const navigate=vi.fn();let listReply=options.list;
   const exported = (): VocabularyBookExport => ({format:'fluentread-vocabulary-book',version:1,exportedAt:1,
     includesPrivateContext:false,entries:structuredClone(stored),reviewLogs:[]});
   const sendMessage = vi.fn(async (message: Record<string, unknown>) => {
     messages.push(message);
-    if (message.action === 'list') return {success:true,data:structuredClone(stored)};
+    if (message.action === 'list') return listReply ? listReply() : {success:true,data:structuredClone(stored)};
     if (response) return response(message);
     if (message.action === 'clear') {stored = []; return {success:true,data:true};}
     if (message.action === 'exportData') return {success:true,data:exported()};
     if (message.action === 'removeWithSnapshot') return {success:true,data:{entry,reviewLogs:[]}};
     return {success:true,data:{entry:{...entry,status:'mastered'},log:{}}};
   });
-  setComponentTestState({browser:{runtime:{sendMessage,onMessage:{addListener:()=>undefined,removeListener:()=>undefined}}},
+  setComponentTestState({browser:{runtime:{sendMessage,onMessage:{addListener:listener=>{listeners.add(listener)},removeListener:listener=>{listeners.delete(listener)}}}},
     config:{on:true,theme:'light',uiLanguage:'zh-CN',vocabularyBookEnabled:true,selectionTranslatorMode:'disabled',to:'zh-CN'},
-    configReady:options.ready ?? Promise.resolve(),requestConfigPatch:configPatch,subscribeConfig:()=>()=>undefined,confirm});
+    configReady:options.ready ?? Promise.resolve(),requestConfigPatch:configPatch,subscribeConfig:(callback:any)=>{configListeners.add(callback);return()=>configListeners.delete(callback)},confirm});
   const {window} = parseHTML('<html><head></head><body></body></html>');
   Object.defineProperty(window.document,'visibilityState',{configurable:true,value:'visible'});
   window.matchMedia = (() => ({matches:false,addEventListener:()=>undefined,removeEventListener:()=>undefined})) as never;
@@ -122,28 +94,35 @@ async function mountBook(confirm: (...args: unknown[]) => Promise<unknown> = asy
   const windowRemove = options.keepAlive ? vi.fn(window.removeEventListener) : undefined;
   if (windowAdd) window.addEventListener = windowAdd;
   if (windowRemove) window.removeEventListener = windowRemove;
-  const server = await createServer({appType:'custom',configFile:false,logLevel:'silent',plugins:[componentMocks(),vue()],
-    resolve:{alias:{'@':resolve(process.cwd())}},root:process.cwd(),server:{hmr:false,middlewareMode:true},ssr:{noExternal:['webextension-polyfill','element-plus']}});
-  mountedBooks.push(()=>server.close());
-  const loaded = await server.ssrLoadModule('/src/features/vocabulary/ui/VocabularyBook.vue');
-  const component = loaded.default; component.ssrRender = undefined; component.render = () => null;
-  const renderer = runtime.createRenderer<Record<string, never>, Record<string, unknown>>({
-    patchProp:()=>undefined,insert:()=>undefined,remove:()=>undefined,createElement:()=>({}),createText:()=>({}),createComment:()=>({}),
-    setText:()=>undefined,setElementText:()=>undefined,parentNode:()=>null,nextSibling:()=>null,querySelector:()=>null,setScopeId:()=>undefined,cloneNode:()=>({}),insertStaticContent:()=>[{},{}],
+  const component = VocabularyBook, doc = window.document;
+  const renderer = runtime.createRenderer<any, any>({
+    createElement:(tag,ns)=>runtime.markRaw(ns==='svg'?doc.createElementNS('http://www.w3.org/2000/svg',tag):doc.createElement(tag)),
+    createText:text=>doc.createTextNode(text),createComment:text=>doc.createComment(text),
+    insert:(node,parent,anchor)=>parent.insertBefore(node,anchor||null),remove:node=>node.remove(),
+    setText:(node,text)=>{node.nodeValue=text;},setElementText:(node,text)=>{node.textContent=text;},
+    parentNode:node=>node.parentNode,nextSibling:node=>node.nextSibling,setScopeId:(node,id)=>node.setAttribute(id,''),
+    patchProp(node,key,old,value){
+      if(/^on[A-Z]/u.test(key)){const event=key.slice(2).toLowerCase();if(old)node.removeEventListener(event,old);if(value)node.addEventListener(event,value);}
+      else if(key==='value'){node._value=value;if(node.tagName!=='SELECT')node.value=value??'';}
+      else if(key==='style')Object.assign(node.style,value||{});
+      else if(value==null||key==='disabled'&&value===false)node.removeAttribute(key);
+      else node.setAttribute(key,String(value));
+    },
+    insertStaticContent(html,parent,anchor){const box=doc.createElement('div');box.innerHTML=html;const first=box.firstChild!,last=box.lastChild!;while(box.firstChild)parent.insertBefore(box.firstChild,anchor||null);return[first,last];},
   });
   const shown = runtime.ref(true);
   const otherPage = {render: () => null};
   let panel: any;
-  const bookNode = () => runtime.h(component,{ref:(instance:any)=>{if(instance)panel=instance.$.setupState;}});
+  const bookNode = () => runtime.h(component,{onNavigate:navigate,ref:(instance:any)=>{if(instance)panel=instance.$.setupState;}});
   const app = renderer.createApp({setup:()=>()=>options.keepAlive
     ? runtime.h(runtime.KeepAlive, null, {default: () => shown.value ? bookNode() : runtime.h(otherPage, {key: 'other-page'})})
     : bookNode()});
-  app.provide(runtime.ssrContextKey,{modules:new Set<string>()});app.config.warnHandler=()=>undefined;
-  app.mount({}); let mounted = true; const unmount = () => {if(mounted){mounted=false;app.unmount();}};
+  app.config.warnHandler=()=>undefined;
+  const host=doc.createElement('main');doc.body.append(host);app.mount(host); let mounted = true; const unmount = () => {if(mounted){mounted=false;app.unmount();}};
   mountedBooks.push(unmount);
   const flush = async () => {for(let i=0;i<12;i++){await Promise.resolve();await runtime.nextTick();}};
-  await flush(); if (!options.ready) expect(panel.entries).toHaveLength(1);
-  return {panel,entry,messages,exported,download,clicks,unmount,flush,shown,window,windowAdd,windowRemove,stored:()=>stored};
+  await flush(); if (!options.ready && !options.list) expect(panel.entries).toHaveLength(stored.length);
+  return {panel,entry,messages,exported,download,clicks,unmount,flush,shown,window,host,windowAdd,windowRemove,stored:()=>stored,navigate,listeners,setStored:(entries:VocabularyEntry[])=>{stored=entries},setListReply:(reply?:()=>Promise<unknown>)=>{listReply=reply},emitMessage:(message:unknown)=>{for(const listener of listeners)listener(message)},updateConfig:(patch:Record<string,unknown>)=>{const config=(globalThis as any)[TEST_STATE_KEY].config;Object.assign(config,patch);for(const listener of configListeners)listener(config)}};
 }
 
 describe('VocabularyBook asynchronous action ownership', () => {
@@ -222,7 +201,8 @@ describe('VocabularyBook asynchronous action ownership', () => {
   });
   it.each(['clearVocabulary','exportAnki'])('does not focus a detached menu or send %s after unmounting at menu close', async action => {
     const book = await mountBook(); const focus = vi.fn();
-    book.panel.moreMenu = {get open(){return true;},set open(_value:boolean){book.unmount();},querySelector:()=>({focus})};
+    vi.spyOn(book.panel.moreMenu, 'querySelector').mockReturnValue({focus} as any);
+    Object.defineProperty(book.panel.moreMenu, 'open', {configurable:true,get(){return true;},set(_value:boolean){book.unmount();}});
     await book.panel[action]();
     expect(focus).not.toHaveBeenCalled(); expect(book.messages.filter(message=>message.action && message.action!=='list')).toEqual([]);
   });
@@ -392,24 +372,8 @@ describe('VocabularyBook mounted lifecycle', () => {
     vi.stubGlobal('Event', window.Event);
     vi.stubGlobal('navigator', window.navigator);
 
-    const require = createRequire(import.meta.url);
-    const vueRuntime = require('vue') as typeof import('vue');
-    const server = await createServer({
-      appType: 'custom',
-      configFile: false,
-      logLevel: 'silent',
-      plugins: [componentMocks(), vue()],
-      resolve: { alias: { '@': resolve(process.cwd(), '.') } },
-      root: process.cwd(),
-      server: { hmr: false, middlewareMode: true },
-      ssr: { noExternal: ['webextension-polyfill', 'element-plus'] },
-    });
-
-    try {
-      const loaded = await server.ssrLoadModule('/src/features/vocabulary/ui/VocabularyBook.vue');
-      const component = loaded.default as { render?: () => null; ssrRender?: unknown };
-      component.ssrRender = undefined;
-      component.render = () => null;
+    const vueRuntime = runtime;
+    const component = {...VocabularyBook, render: () => null};
       const renderer = vueRuntime.createRenderer<Record<string, never>, Record<string, unknown>>({
         patchProp: () => undefined,
         insert: () => undefined,
@@ -427,7 +391,6 @@ describe('VocabularyBook mounted lifecycle', () => {
         insertStaticContent: () => [{}, {}],
       });
       const app = renderer.createApp(component as import('vue').Component);
-      app.provide(vueRuntime.ssrContextKey, { modules: new Set<string>() });
       app.config.warnHandler = () => undefined;
       app.mount({});
       await vueRuntime.nextTick();
@@ -444,9 +407,6 @@ describe('VocabularyBook mounted lifecycle', () => {
       expect(documentAdd.mock.calls.filter(([type]) => type === 'visibilitychange')).toHaveLength(0);
       expect(mediaAdd).toHaveBeenCalledTimes(1);
       expect(mediaRemove).toHaveBeenCalledTimes(1);
-    } finally {
-      await server.close();
-    }
   });
 });
 
@@ -531,4 +491,164 @@ describe('VocabularyBook cached review keyboard ownership', () => {
       expect(listenerCalls(book.windowAdd!)).toHaveLength(1);
     } finally {result.resolve({success: true, data: {entry: saved, log: {}}});await book.flush();book.unmount();}
   });
+});
+
+async function clickBook(book: Awaited<ReturnType<typeof mountBook>>, target: Element) {
+  expect(target.hasAttribute('disabled')).toBe(false);
+  target.dispatchEvent(new book.window.Event('click',{bubbles:true,cancelable:true}));await book.flush();
+}
+function bookButton(book: Awaited<ReturnType<typeof mountBook>>, text: string) {
+  const target=[...book.host.querySelectorAll('button')].find(button=>button.textContent?.trim()===text);expect(target,`button ${text}`).toBeTruthy();return target!;
+}
+it('copies through the rendered collection row, filters and resets it, then removes and restores the same saved entry',async()=>{
+  const confirm=vi.fn(async()=>undefined);const book=await mountBook(confirm);const copy=vi.fn(async()=>{});vi.stubGlobal('navigator',{clipboard:{writeText:copy}});
+  await clickBook(book,bookButton(book,'复制双语'));await clickBook(book,bookButton(book,'复制原文'));expect(copy.mock.calls).toEqual([['art\n艺术'],['art']]);
+  copy.mockRejectedValueOnce(new Error('blocked'));await clickBook(book,bookButton(book,'复制原文'));expect(book.host.textContent).toContain('复制失败');
+  const search=book.host.querySelector<HTMLInputElement>('input[type="search"]')!;search.value='unmatched';search.dispatchEvent(new book.window.Event('input',{bubbles:true}));await book.flush();expect(book.host.querySelector('.word-row')).toBeNull();
+  await clickBook(book,book.host.querySelector('.collection-results button')!);expect(book.host.querySelector('.entry-open')?.textContent).toBe('art');
+  await clickBook(book,bookButton(book,'删除收藏'));expect(confirm).toHaveBeenCalledOnce();expect(book.host.querySelector('.word-row')).toBeNull();expect(book.messages).toContainEqual({type:'fluentReadVocabularyBook',action:'removeWithSnapshot',entryId:'saved-a'});
+  await clickBook(book,bookButton(book,'撤销'));expect(book.host.querySelector('.entry-open')?.textContent).toBe('art');expect(book.messages).toContainEqual(expect.objectContaining({action:'importData',data:expect.objectContaining({includesPrivateContext:true,entries:[book.entry]})}));
+});
+it('completes a review through the rendered recall form and rating control without changing the collection identity',async()=>{
+  const book=await mountBook();await clickBook(book,book.host.querySelector('.start-review')!);
+  const recall=book.host.querySelector<HTMLTextAreaElement>('.recall-draft')!;recall.value='An expression for creativity.';recall.dispatchEvent(new book.window.Event('input',{bubbles:true}));await book.flush();
+  await clickBook(book,book.host.querySelector('.reveal-button')!);expect(book.host.textContent).toContain('An expression for creativity.');expect(book.host.textContent).toContain('艺术');
+  await clickBook(book,book.host.querySelector('.review-actions .good')!);expect(book.messages).toContainEqual({type:'fluentReadVocabularyBook',action:'review',entryId:'saved-a',rating:'good'});expect(book.host.textContent).toContain('本轮复习完成');
+  await clickBook(book,book.host.querySelector('.review-complete button')!);expect(book.host.querySelector('.entry-open')?.textContent).toBe('art');
+});
+it('opens the collection picker and imports its selected file through the real change handler',async()=>{
+  const book=await mountBook(undefined,async message=>message.action==='importData'?{success:true,data:{inserted:1,updated:0,skipped:0}}:{success:false});
+  const input=book.host.querySelector<HTMLInputElement>('input[type="file"]')!;const picker=vi.spyOn(input,'click').mockImplementation(()=>{});
+  await clickBook(book,bookButton(book,'导入收藏'));expect(picker).toHaveBeenCalledOnce();
+  const payload=book.exported();Object.defineProperty(input,'files',{configurable:true,value:[{size:200,text:async()=>JSON.stringify(payload)}]});input.dispatchEvent(new book.window.Event('change',{bubbles:true}));await book.flush();
+  expect(book.messages).toContainEqual({type:'fluentReadVocabularyBook',action:'importData',data:payload});expect(book.host.textContent).toContain('新增 1 条，更新 0 条，跳过 0 条');expect(book.host.querySelector('.entry-open')?.textContent).toBe('art');
+});
+
+it('keeps an offscreen reading active across matching progress messages and only clears it on terminal playback state',async()=>{
+  const book=await mountBook(undefined,async message=>message.type==='selectionTts'?{success:true,transport:'offscreen'}:{success:true});
+  await clickBook(book,book.host.querySelector('.entry-icon')!);
+  const request=book.messages.find(message=>message.type==='selectionTts')!;
+  expect(book.host.querySelector('.entry-icon')?.getAttribute('aria-label')).toBe('停止朗读');
+  book.emitMessage({type:'selectionTtsState',clientRequestId:request.clientRequestId,state:'progress',progress:{charIndex:1}});await book.flush();
+  expect(book.host.querySelector('.entry-icon')?.getAttribute('aria-label')).toBe('停止朗读');
+  book.emitMessage({type:'selectionTtsState',clientRequestId:'unrelated',state:'ended'});await book.flush();
+  expect(book.host.querySelector('.entry-icon')?.getAttribute('aria-label')).toBe('停止朗读');
+  book.emitMessage({type:'selectionTtsState',clientRequestId:request.clientRequestId,state:'ended'});await book.flush();
+  expect(book.host.querySelector('.entry-icon')?.getAttribute('aria-label')).toBe('朗读原文');
+  expect(book.messages.filter(message=>message.type==='selectionTtsStop')).toEqual([]);
+});
+
+function speechBookPorts(book: Awaited<ReturnType<typeof mountBook>>) {
+  const spoken:any[]=[],audios:any[]=[],cancel=vi.fn();
+  vi.stubGlobal('SpeechSynthesisUtterance',class {lang='';voice:unknown=null;onend:Function|null=null;onerror:Function|null=null;constructor(public text:string){}});
+  Object.defineProperty(book.window,'speechSynthesis',{configurable:true,value:{getVoices:()=>[{lang:'en-US',name:'English'}],speak:(value:unknown)=>spoken.push(value),cancel}});
+  vi.stubGlobal('Audio',class {onended:Function|null=null;onerror:Function|null=null;pause=vi.fn();removeAttribute=vi.fn();play=vi.fn(async()=>{});constructor(public src:string){audios.push(this)}});
+  return {spoken,audios,cancel};
+}
+it('releases page audio on completion and falls back once on error, ignoring callbacks from old audio and utterances',async()=>{
+  const book=await mountBook(undefined,async message=>message.type==='selectionTts'?{success:true,transport:'page',audioBase64:'AA=='}:{success:true});const media=speechBookPorts(book);
+  const click=()=>clickBook(book,book.host.querySelector('.entry-icon')!);
+  await click();const first=media.audios[0],oldEnded=first.onended;first.onended();await book.flush();expect(first.pause).toHaveBeenCalledOnce();expect(first.removeAttribute).toHaveBeenCalledWith('src');expect(book.panel.playingEntryId).toBe('');
+  await click();const second=media.audios[1];oldEnded();await book.flush();expect(book.host.querySelector('.entry-icon')?.getAttribute('aria-label')).toBe('停止朗读');
+  second.onerror();await book.flush();expect(media.spoken).toHaveLength(1);expect(second.pause).toHaveBeenCalledOnce();expect(media.spoken[0].text).toBe('art');
+  second.onerror();await book.flush();expect(media.spoken).toHaveLength(1);media.spoken[0].onend();await book.flush();expect(book.panel.playingEntryId).toBe('');
+  await click();media.audios[2].onerror();await book.flush();expect(media.spoken).toHaveLength(2);media.spoken[0].onerror();await book.flush();expect(book.panel.playingEntryId).toBe('saved-a');
+  media.spoken[1].onerror();await book.flush();expect(book.host.textContent).toContain('朗读未完成');expect(book.panel.playingEntryId).toBe('');expect(URL.revokeObjectURL).toHaveBeenCalledTimes(3);
+});
+it('handles remote playback failure and visibility changes through mounted listeners, and refreshes only for the correct book message',async()=>{
+  const book=await mountBook(undefined,async message=>message.type==='selectionTts'?{success:true,transport:'offscreen'}:{success:true});const media=speechBookPorts(book);
+  await clickBook(book,book.host.querySelector('.entry-icon')!);const request=book.messages.find(message=>message.type==='selectionTts')!;
+  book.emitMessage({type:'selectionTtsState',clientRequestId:request.clientRequestId,state:'error'});await book.flush();expect(media.spoken).toHaveLength(1);
+  Object.defineProperty(book.window.document,'visibilityState',{configurable:true,value:'hidden'});book.window.document.dispatchEvent(new book.window.Event('visibilitychange'));await book.flush();expect(book.panel.playingEntryId).toBe('');expect(media.cancel).toHaveBeenCalled();
+  const before=book.messages.filter(message=>message.action==='list').length;book.emitMessage({type:'unrelated'});await book.flush();expect(book.messages.filter(message=>message.action==='list')).toHaveLength(before);
+  book.setStored([{...book.entry,term:'updated source',updatedAt:3}]);book.emitMessage({type:'fluentReadVocabularyBookChanged'});await book.flush();expect(book.host.querySelector('.entry-open')?.textContent).toBe('updated source');
+  Object.defineProperty(book.window.document,'visibilityState',{configurable:true,value:'visible'});book.window.document.dispatchEvent(new book.window.Event('visibilitychange'));await book.flush();expect(book.messages.filter(message=>message.action==='list')).toHaveLength(before+2);
+  const old=[...book.listeners];book.unmount();expect(book.listeners.size).toBe(0);for(const listener of old)listener({type:'fluentReadVocabularyBookChanged'});expect(book.messages.filter(message=>message.action==='list')).toHaveLength(before+2);
+});
+it('retries a failed list from its rendered error control and coalesces notifications without committing an obsolete list',async()=>{
+  const book=await mountBook(undefined,undefined,undefined,{list:async()=>({success:false,error:{message:'Temporary listing failure'}})});
+  expect(book.host.querySelector('.error-state')?.textContent).toContain('Temporary listing failure');book.setListReply();await clickBook(book,book.host.querySelector('.error-state button')!);expect(book.host.querySelector('.entry-open')?.textContent).toBe('art');
+  const old=deferred<unknown>();book.setListReply(()=>old.promise);book.emitMessage({type:'fluentReadVocabularyBookChanged'});await book.flush();book.emitMessage({type:'fluentReadVocabularyBookChanged'});book.setListReply();book.setStored([{...book.entry,term:'current source'}]);old.resolve({success:true,data:[{...book.entry,term:'obsolete source'}]});await book.flush();
+  expect(book.host.querySelector('.entry-open')?.textContent).toBe('current source');expect(book.host.textContent).not.toContain('obsolete source');
+});
+
+async function chooseBook(book:Awaited<ReturnType<typeof mountBook>>,label:string,value:string){
+  const select=book.host.querySelector<HTMLSelectElement>(`select[aria-label="${label}"]`)!;expect(select).toBeTruthy();
+  Object.defineProperty(select,'value',{configurable:true,value});select.dispatchEvent(new book.window.Event('change',{bubbles:true}));await book.flush();
+}
+it('paginates a full collection, combines type/status/order filters, and clamps the page after authoritative removal',async()=>{
+  const book=await mountBook(undefined,undefined,undefined,{entries:entry=>Array.from({length:60},(_,i)=>({...entry,id:`entry-${i}`,term:`word${String(i).padStart(3,'0')}`,normalizedTerm:`word${String(i).padStart(3,'0')}`,kind:i%3===0?'sentence':'expression',status:i%4===0?'mastered':'learning',nextReviewAt:i%4===0?null:1,lastSeenAt:i,createdAt:i}))});
+  expect(book.host.querySelectorAll('.word-row')).toHaveLength(50);expect(book.host.querySelector('.entry-open')?.textContent).toBe('word059');
+  await clickBook(book,bookButton(book,'下一页'));expect(book.host.querySelectorAll('.word-row')).toHaveLength(10);await clickBook(book,bookButton(book,'上一页'));
+  await chooseBook(book,'排序方式','term');expect(book.host.querySelector('.entry-open')?.textContent).toBe('word000');
+  const type=book.host.querySelector('select.collection-type')!;await chooseBook(book,type.getAttribute('aria-label')!,'sentence');expect(book.host.querySelectorAll('.word-row')).toHaveLength(20);
+  await chooseBook(book,'掌握状态','mastered');expect(book.host.querySelectorAll('.word-row')).toHaveLength(5);await chooseBook(book,'排序方式','due');expect(book.host.querySelector('.entry-open')?.textContent).toBe('word000');
+  const filter=book.host.querySelector<HTMLDetailsElement>('.book-filter')!;filter.open=true;const escape=new book.window.Event('keydown',{bubbles:true,cancelable:true});Object.assign(escape,{key:'Escape'});filter.dispatchEvent(escape);await book.flush();expect(filter.open).toBe(false);
+  await clickBook(book,book.host.querySelector('.collection-results button')!);expect(book.host.querySelectorAll('.word-row')).toHaveLength(50);
+  await clickBook(book,bookButton(book,'下一页'));book.setStored(book.stored().slice(0,3));book.emitMessage({type:'fluentReadVocabularyBookChanged'});await book.flush();expect(book.host.querySelectorAll('.word-row')).toHaveLength(3);expect(book.host.querySelector('.pagination')).toBeNull();
+});
+it('exports precisely the visible filtered collection and releases download ownership after failures',async()=>{
+  let failing=true;const book=await mountBook(undefined,async message=>{
+    if(message.action==='exportData'&&failing)return {success:false,error:{message:'Export unavailable'}};
+    return {success:true,data:{...book.exported(),reviewLogs:[{entryId:'saved-a'},{entryId:'other'}]}};
+  },undefined,{entries:entry=>[entry,{...entry,id:'other',term:'different',normalizedTerm:'different',contexts:[],note:'',translations:{}}]});
+  const search=book.host.querySelector<HTMLInputElement>('input[type="search"]')!;search.value='art';search.dispatchEvent(new book.window.Event('input',{bubbles:true}));await book.flush();
+  await clickBook(book,bookButton(book,'导出当前列表'));expect(book.host.textContent).toContain('Export unavailable');expect(book.download).not.toHaveBeenCalled();
+  failing=false;await clickBook(book,bookButton(book,'导出当前列表'));expect(book.download).toHaveBeenCalledOnce();
+  const data=JSON.parse(await (book.download.mock.calls[0][0] as Blob).text());expect(data.entries.map((entry:any)=>entry.id)).toEqual(['saved-a']);expect(data.reviewLogs).toEqual([{entryId:'saved-a'}]);
+  expect(book.messages.at(-1)).toMatchObject({action:'exportData',options:{includePrivateContext:false}});
+});
+it('opens a saved entry from its visible row, receives study edits, speaks and navigates, then marks mastery and relearns after failure retry',async()=>{
+  let fail=false;const book=await mountBook(undefined,async message=>{
+    if(message.type==='selectionTts')return {success:true,transport:'offscreen'};
+    if(fail)return {success:false,error:{message:'Temporary update failure'}};
+    return {success:true,data:{entry:{...book.entry,status:message.action==='relearn'?'learning':'mastered'},log:{}}};
+  });
+  await clickBook(book,book.host.querySelector('.entry-open')!);expect(book.host.querySelector('[data-study-port]')?.getAttribute('data-study-port')).toBe('saved-a');
+  await clickBook(book,book.host.querySelector('[data-study-save]')!);await clickBook(book,book.host.querySelector('[data-study-speak]')!);expect(book.messages.at(-1)).toMatchObject({type:'selectionTts'});
+  await clickBook(book,book.host.querySelector('[data-study-settings]')!);expect(book.navigate).toHaveBeenCalledWith('settings-selection');
+  await clickBook(book,book.host.querySelector('[data-study-close]')!);expect(book.host.querySelector('.entry-note')?.textContent).toBe('Updated study note');
+  fail=true;await clickBook(book,bookButton(book,'标记掌握'));expect(book.host.textContent).toContain('Temporary update failure');expect(bookButton(book,'标记掌握').disabled).toBe(false);
+  fail=false;await clickBook(book,bookButton(book,'标记掌握'));expect(book.messages.at(-1)).toMatchObject({action:'setMastery'});expect(bookButton(book,'重新学习')).toBeTruthy();
+  fail=true;await clickBook(book,bookButton(book,'重新学习'));expect(book.host.textContent).toContain('Temporary update failure');fail=false;await clickBook(book,bookButton(book,'重新学习'));expect(book.messages.at(-1)).toMatchObject({action:'relearn'});expect(bookButton(book,'标记掌握')).toBeTruthy();
+});
+it('rates a forgotten entry through the answer form, keeps failure retryable, and enters study from the answer without losing the saved row',async()=>{
+  let failure=true;const book=await mountBook(undefined,async()=>failure?{success:false,error:{message:'Review unavailable'}}:{success:true,data:{entry:{...book.entry,status:'learning'},log:{}}});
+  await clickBook(book,book.host.querySelector('.start-review')!);await clickBook(book,book.host.querySelector('.reveal-button')!);
+  await clickBook(book,book.host.querySelector('.review-answer .vocabulary-speak')!);expect(book.messages.at(-1)).toMatchObject({type:'selectionTts',text:'art'});
+  await clickBook(book,book.host.querySelector('.review-actions .again')!);expect(book.host.textContent).toContain('Review unavailable');expect(book.host.querySelector('.review-actions .again')?.hasAttribute('disabled')).toBe(false);
+  await clickBook(book,book.host.querySelector('.review-answer .study-entry-button')!);expect(book.host.querySelector('[data-study-port]')).not.toBeNull();await clickBook(book,book.host.querySelector('[data-study-close]')!);
+  failure=false;await clickBook(book,book.host.querySelector('.start-review')!);await clickBook(book,book.host.querySelector('.reveal-button')!);await clickBook(book,book.host.querySelector('.review-actions .again')!);
+  expect(book.messages).toContainEqual({type:'fluentReadVocabularyBook',action:'review',entryId:'saved-a',rating:'again'});expect(book.host.textContent).toContain('忘了 1 个');
+  await clickBook(book,book.host.querySelector('.review-complete button')!);await clickBook(book,book.host.querySelector('.start-review')!);await clickBook(book,bookButton(book,'退出本轮'));expect(book.host.querySelector('.word-row')).not.toBeNull();
+});
+
+it('uses real feature switches and empty-state navigation while rolling failed preferences back to authoritative config',async()=>{
+  const patch=vi.fn(async(_value:unknown)=>{});const book=await mountBook(undefined,undefined,patch,{entries:()=>[]});
+  await clickBook(book,book.host.querySelector('.selection-reminder button')!);expect(book.navigate).toHaveBeenLastCalledWith('settings-selection');
+  await clickBook(book,book.host.querySelector('.empty-secondary')!);expect(book.navigate).toHaveBeenLastCalledWith('settings-data');
+  const saving=()=>book.host.querySelector<HTMLButtonElement>('.vocabulary-saving-control:not(.vocabulary-reencounter-control) button')!;
+  await clickBook(book,saving());expect(patch.mock.calls.at(-1)?.[0]).toEqual({vocabularyBookEnabled:false});expect(book.host.textContent).toContain('收藏入口已关闭');
+  const enable=[...book.host.querySelectorAll<HTMLButtonElement>('.empty-state button')].find(button=>!button.classList.contains('empty-secondary'))!;await clickBook(book,enable);expect(patch.mock.calls.at(-1)?.[0]).toEqual({vocabularyBookEnabled:true});
+  patch.mockRejectedValueOnce(new Error('Setting unavailable'));await clickBook(book,saving());expect(saving().getAttribute('aria-checked')).toBe('true');expect(book.host.textContent).toContain('Setting unavailable');
+  const reencounter=()=>book.host.querySelector<HTMLButtonElement>('.vocabulary-reencounter-control button')!;await clickBook(book,reencounter());expect(patch.mock.calls.at(-1)?.[0]).toEqual({vocabularyReencounterEnabled:true});
+  book.updateConfig({vocabularyReencounterEnabled:true,selectionTranslatorMode:'bilingual',to:'en',theme:'dark'});await book.flush();expect(book.host.querySelector('.selection-reminder')).toBeNull();
+  patch.mockRejectedValueOnce(new Error('Reencounter unavailable'));await clickBook(book,reencounter());expect(reencounter().getAttribute('aria-checked')).toBe('true');expect(book.host.textContent).toContain('Reencounter unavailable');
+});
+it('refreshes and clears through the management menu and keeps protected removal and export failures retryable',async()=>{
+  let removeMissing=true,exportFails=true;const book=await mountBook(undefined,async message=>{
+    if(message.action==='removeWithSnapshot')return {success:true,data:removeMissing?null:{entry:book.entry,reviewLogs:[]}};
+    if(message.action==='exportData')return exportFails?{success:false,error:{message:'Anki unavailable'}}:{success:true,data:book.exported()};
+    return {success:true,data:true};
+  });
+  const reads=book.messages.filter(message=>message.action==='list').length;await clickBook(book,bookButton(book,'刷新列表'));expect(book.messages.filter(message=>message.action==='list')).toHaveLength(reads+1);
+  await clickBook(book,bookButton(book,'删除收藏'));expect(book.host.textContent).toContain('词条已不存在');expect(book.host.querySelector('.word-row')).not.toBeNull();
+  await clickBook(book,bookButton(book,'导出到 Anki'));expect(book.host.textContent).toContain('Anki unavailable');expect(book.download).not.toHaveBeenCalled();
+  exportFails=false;await clickBook(book,bookButton(book,'导出到 Anki'));expect(book.download).toHaveBeenCalledOnce();
+  const clear=book.host.querySelector('.book-more-menu button.danger')!;await clickBook(book,clear);expect(book.messages.at(-1)).toMatchObject({action:'clear'});expect(book.host.querySelector('.word-row')).toBeNull();
+});
+
+it('renders future review intervals without adding future or unscheduled entries to the current review queue',async()=>{
+  const now=Date.now();const book=await mountBook(undefined,undefined,undefined,{entries:entry=>[null,now+5*60_000,now+3*3600_000,now+2*86400_000].map((nextReviewAt,index)=>({...entry,id:`future-${index}`,term:`scheduled ${index}`,status:'learning',nextReviewAt}))});
+  const text=book.host.querySelector('.word-list')?.textContent;expect(text).toContain('未安排复习');expect(text).toContain('5 分钟后');expect(text).toContain('3 小时后');expect(text).toContain('2 天后');expect(book.host.querySelector('.start-review')?.hasAttribute('disabled')).toBe(true);
 });

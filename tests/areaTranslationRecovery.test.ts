@@ -1,62 +1,18 @@
-import {hasDistinctTranslation} from '@/src/core/translation/result';
-import {readFileSync} from 'node:fs';
-import {createRequire} from 'node:module';
-import {resolve} from 'node:path';
-import {parse, compileScript} from 'vue/compiler-sfc';
-import ts from 'typescript';
-import {parseHTML} from 'linkedom';
+import * as Vue from 'vue';
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import * as areaCore from '@/src/features/area-translation/core';
-import * as areaHotkey from '@/src/core/config/areaTranslation';
-
-const Vue = createRequire(import.meta.url)('vue') as typeof import('vue');
-let app: import('vue').App | undefined;
-afterEach(() => {app?.unmount(); vi.unstubAllGlobals();});
+import {mountAreaTranslator} from './helpers/areaTranslatorHarness';
+let close: (() => void) | undefined;
+afterEach(() => {close?.(); vi.unstubAllGlobals(); vi.useRealTimers();});
 function deferred() {let resolve!: () => void; const promise = new Promise<void>(yes => {resolve = yes;}); return {promise, resolve};}
-
 function mountRecovery() {
-  const {window, document} = parseHTML('<html><body></body></html>');
-  Object.defineProperty(document, 'visibilityState', {value: 'visible'});
-  Object.assign(window, {innerWidth: 1000, innerHeight: 800, matchMedia: () => ({matches: false, addEventListener() {}, removeEventListener() {}})});
-  vi.stubGlobal('window', window); vi.stubGlobal('document', document); vi.stubGlobal('Node', window.Node); vi.stubGlobal('HTMLElement', window.HTMLElement);
-  vi.stubGlobal('requestAnimationFrame', (callback: () => void) => setTimeout(callback, 0));
-  vi.stubGlobal('cancelAnimationFrame', clearTimeout);
-  const config = {on: true, selectionAreaEnabled: true, animations: true, from: 'auto', theme: 'light'};
+  const fixture = mountAreaTranslator(); close = fixture.unmount;
   const captured = 'data:image/png,original-selection';
   const result = {image: 'data:image/png,crop', sourceText: 'Source', translatedText: '译文', service: 'microsoft', serviceName: '微软翻译', model: '', mode: 'standard', lines: [], warnings: []};
-  const capture = vi.fn().mockResolvedValue(captured);
-  const translate = vi.fn().mockRejectedValueOnce(new Error('图片文字识别需要先下载中文、English语言包，请前往设置下载')).mockResolvedValue(result);
-  const prepare = vi.fn().mockResolvedValue(undefined);
-  const modules: Record<string, any> = {
-    '@/src/core/translation/result': {hasDistinctTranslation},
-    vue: Vue, 'webextension-polyfill': {default: {runtime: {sendMessage: vi.fn()}}},
-    '@/src/services/config/store': {config, subscribeConfig: () => () => undefined},
-    '@/src/core/config/customOpenAI': {isCustomOpenAIProviderId: () => false},
-    '@/src/ui/i18n': {useUiI18n: () => ({translateLegacy: (text: string) => text})},
-    '@/src/features/area-translation/services/client': {captureVisibleAreaInExtension: capture, translateCapturedAreaInExtension: translate},
-    '@/src/features/area-translation/core': areaCore,
-    '@/src/core/config/areaTranslation': areaHotkey,
-    '@/src/features/image-translation/public': {prepareImageOcrLanguages: prepare},
-    '@/src/ui/components/DownloadProgress.vue': {default: {}},
-    '@/src/features/area-translation/content/contextMenuBridge': {setAreaContextMenuHandler: () => () => undefined},
-  };
-  const filename = resolve('src/features/area-translation/ui/AreaTranslator.vue');
-  const {descriptor} = parse(readFileSync(filename, 'utf8'), {filename});
-  const script = compileScript(descriptor, {id: 'area-recovery'}).content;
-  const js = ts.transpileModule(script, {compilerOptions: {target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext}}).outputText
-    .replace(/import\s+([\s\S]*?)\s+from\s+['"]([^'"]+)['"];?/g, (_all, binding, id) => binding.startsWith('{')
-      ? `const ${binding.replace(/\s+as\s+/g, ': ')} = modules[${JSON.stringify(id)}];`
-      : `const ${binding} = modules[${JSON.stringify(id)}].default;`)
-    .replace('export default', 'return');
-  const component = new Function('modules', js)(modules);
-  component.render = () => null;
-  const renderer = Vue.createRenderer<any, any>({patchProp() {}, insert() {}, remove() {}, createElement: () => ({}), createText: () => ({}), createComment: () => ({}), setText() {}, setElementText() {}, parentNode: () => null, nextSibling: () => null});
-  app = renderer.createApp(component); app.config.warnHandler = () => undefined;
-  const vm = app.mount({});
-  const state = (vm.$ as any).setupState;
+  fixture.capture.mockResolvedValue(captured);
+  fixture.translate.mockRejectedValueOnce(new Error('图片文字识别需要先下载中文、English语言包，请前往设置下载')).mockResolvedValue(result);
   const rect = {left: 10, top: 20, width: 120, height: 90};
-  state.activeRect = rect; state.phase = 'loading';
-  return {state, rect, config, captured, capture, translate, prepare, result};
+  fixture.state.activeRect = rect; fixture.state.phase = 'loading';
+  return {...fixture, captured, result, rect};
 }
 
 describe('圈选缺少语言包的一键恢复', () => {
@@ -135,4 +91,135 @@ describe('圈选结果拖动', () => {
     f.state.handlePointermove({...e, clientX: 100});
     expect(f.state.panelPosition).toBeNull(); expect(f.state.phase).toBe('loading');
   });
+});
+
+describe('圈选真实控件与异步所有权', () => {
+  function mountControls() {const fixture = mountAreaTranslator(); close = fixture.unmount; return fixture;}
+  const pointer = {isTrusted: true, button: 0, pointerId: 11, clientX: 20, clientY: 30};
+  async function select(f: ReturnType<typeof mountControls>) {
+    expect(f.beginSelection()).toBe(true); await Vue.nextTick();
+    expect(f.host.querySelector('.fr-area-hint')?.textContent).toContain('拖拽选择区域');
+    f.dispatch(document, 'pointerdown', pointer);
+    f.dispatch(document, 'pointermove', {...pointer, clientX: 140, clientY: 130}); await Vue.nextTick();
+    expect(f.host.querySelector('.fr-area-selection')?.getAttribute('style')).toContain('width:120px');
+    f.dispatch(document, 'pointerup', {...pointer, clientX: 140, clientY: 130});
+  }
+  it('按真实指针选区、展示译文与原图、复制、复用裁剪图重译，并重新圈选与关闭', async () => {
+    const f = mountControls(); await select(f);
+    await vi.waitFor(() => expect(f.host.querySelector('.fr-area-translation')?.textContent).toBe('译文'));
+    const pagePointer = vi.fn(); document.addEventListener('pointerdown', pagePointer);
+    f.dispatch(f.host.querySelector('.fr-area-translator-root')!, 'pointerdown', {...pointer, isTrusted: false});
+    expect(pagePointer).not.toHaveBeenCalled(); document.removeEventListener('pointerdown', pagePointer);
+    expect(f.capture).toHaveBeenCalledOnce();
+    expect(f.translate.mock.calls[0]).toEqual(['data:image/png,capture', {left: 20, top: 30, width: 120, height: 100, viewportWidth: 1000, viewportHeight: 800}, 'auto', 'Area fixture', expect.objectContaining({timeoutMs: 180000})]);
+    expect(f.host.querySelector('img')?.getAttribute('src')).toBe('data:image/png,crop');
+    await f.click('复制译文'); expect(f.copy).toHaveBeenLastCalledWith('译文'); expect(f.host.textContent).toContain('已复制');
+    await f.click('复制原文'); expect(f.copy).toHaveBeenLastCalledWith('Source');
+    await f.click('重新翻译'); await vi.waitFor(() => expect(f.state.phase).toBe('translated'));
+    expect(f.capture).toHaveBeenCalledOnce();
+    expect(f.translate.mock.calls[1][0]).toBe('data:image/png,crop');
+    expect(f.translate.mock.calls[1][1]).toEqual({left: 0, top: 0, width: 120, height: 100, viewportWidth: 120, viewportHeight: 100});
+    await f.click('圈选设置'); expect(f.sendMessage).toHaveBeenCalledWith({type: 'openOptionsPage', section: 'settings-area-translation'});
+    await f.click('重新圈选'); expect(f.state.phase).toBe('selecting'); expect(f.host.querySelector('[role="dialog"]')).toBeNull();
+    f.dispatch(document, 'keydown', {isTrusted: true, key: 'Escape'}); await Vue.nextTick(); expect(f.state.phase).toBe('idle');
+    await select(f); await vi.waitFor(() => expect(f.state.phase).toBe('translated')); await f.click('×');
+    expect(f.host.querySelector('[role="dialog"]')).toBeNull(); expect(f.state.result).toBeNull();
+  });
+  it('下载按钮显示真实进度、使用原语言和截图恢复，错误按钮支持重新圈选', async () => {
+    const f = mountControls(); f.translate.mockRejectedValueOnce(new Error('请先下载语言包'));
+    await select(f); await vi.waitFor(() => expect(f.host.querySelector('[role="alert"]')).toBeTruthy());
+    const download = deferred(); f.prepare.mockReturnValueOnce(download.promise);
+    await f.click('下载语言包并重试'); expect(f.host.textContent).toContain('下载中');
+    expect(f.host.querySelector('.fr-area-download')).toBeTruthy(); f.prepare.mock.calls[0][2](65); await Vue.nextTick(); expect(f.host.textContent).toContain('65%');
+    f.config.from = 'ja'; download.resolve(); await vi.waitFor(() => expect(f.state.phase).toBe('translated'));
+    expect(f.prepare).toHaveBeenCalledWith('auto', expect.any(AbortSignal), expect.any(Function));
+    expect(f.translate.mock.calls[1][2]).toBe('auto'); expect(f.capture).toHaveBeenCalledOnce();
+    f.translate.mockRejectedValueOnce('OCR unavailable'); await f.click('重新翻译'); await vi.waitFor(() => expect(f.state.phase).toBe('error'));
+    expect(f.host.textContent).toContain('OCR unavailable'); await f.click('重新圈选'); expect(f.state.phase).toBe('selecting');
+  });
+  it('截图隐藏遮罩后，识别与翻译进度可见，取消会终止请求并忽略迟到进度和结果', async () => {
+    const f = mountControls(); let finish!: (value: any) => void;
+    f.translate.mockImplementationOnce(() => new Promise(resolve => {finish = resolve;}));
+    await select(f); await vi.waitFor(() => expect(f.translate).toHaveBeenCalledOnce());
+    expect(f.host.querySelector('.fr-area-selection')).toBeNull(); expect(f.host.textContent).toContain('正在识别选区文字');
+    const options = f.translate.mock.calls[0][4]; options.onProgress('translating'); await Vue.nextTick(); expect(f.host.textContent).toContain('正在翻译选区文字');
+    await f.click('取消'); expect(options.signal.aborted).toBe(true);
+    options.onProgress('recognizing'); finish({image: 'late', sourceText: 'late', translatedText: '迟到'}); await Vue.nextTick(); await Vue.nextTick();
+    expect(f.state.phase).toBe('idle'); expect(f.state.result).toBeNull(); expect(f.host.textContent).not.toContain('迟到');
+  });
+  it.each(['unknown', 'unsupported', undefined] as const)('显示视觉识别与校对信息、模型身份和回退说明 %s', async fallback => {
+    const f = mountControls(); f.translate.mockResolvedValueOnce({image: 'image', sourceText: 'S0urce', correctedText: 'Source', translatedText: 'Source', service: 'custom:fixture', serviceName: 'My custom service', model: 'vision-model', mode: 'ai', recognitionMethod: 'vision', recognitionFallback: fallback});
+    await select(f); await vi.waitFor(() => expect(f.state.phase).toBe('translated')); await Vue.nextTick();
+    expect(f.host.querySelector('.fr-area-translation')).toBeNull(); expect(f.host.querySelector('details')?.hasAttribute('open')).toBe(true);
+    expect(f.host.textContent).toContain('AI 校对文'); expect(f.host.textContent).toContain('My custom service'); expect(f.host.textContent).toContain('vision-model');
+    expect(f.host.querySelectorAll('[role="note"]')).toHaveLength(fallback ? 2 : 1);
+    await f.click('复制原文'); expect(f.copy).toHaveBeenCalledWith('S0urce');
+  });
+  it('AI 文字增强保留 OCR 限制说明、相同校对文本不重复展示', async () => {
+    const f = mountControls(); f.translate.mockResolvedValueOnce({image: 'image', sourceText: 'Source', correctedText: 'Source', translatedText: '译文', service: 'microsoft', serviceName: '微软翻译', model: '', mode: 'ai'});
+    await select(f); await vi.waitFor(() => expect(f.state.phase).toBe('translated')); await Vue.nextTick();
+    expect(f.host.textContent).toContain('AI 仅处理识别文字'); expect(f.host.textContent).not.toContain('AI 校对文');
+  });
+  it('复制与设置失败反馈可恢复且会自动清理，关闭后迟到反馈不能恢复卡片', async () => {
+    const f = mountControls(); await select(f); await vi.waitFor(() => expect(f.state.phase).toBe('translated'));
+    f.copy.mockRejectedValueOnce(new Error('denied')); await f.click('复制译文'); expect(f.host.textContent).toContain('复制失败');
+    f.sendMessage.mockResolvedValueOnce({success: false}); await f.click('圈选设置'); expect(f.host.textContent).toContain('无法打开设置');
+    vi.useFakeTimers(); await f.click('复制原文'); expect(f.host.textContent).toContain('已复制'); await vi.advanceTimersByTimeAsync(2500); expect(f.host.querySelector('.fr-area-feedback')).toBeNull(); vi.useRealTimers();
+    const copying = deferred(), settings = deferred(); f.copy.mockReturnValueOnce(copying.promise); f.sendMessage.mockReturnValueOnce(settings.promise.then(() => {throw new Error('late');}));
+    await f.click('复制译文'); await f.click('圈选设置'); await f.click('×'); copying.resolve(); settings.resolve(); await Vue.nextTick(); await Vue.nextTick();
+    expect(f.state.feedback).toBe(''); expect(f.state.phase).toBe('idle');
+  });
+  it('切到后台取消未完成截图，页面恢复后允许重选，配置关闭会清理结果和监听', async () => {
+    const f = mountControls(); let finish!: (value: string) => void;
+    f.capture.mockImplementationOnce(() => new Promise(resolve => {finish = resolve;}));
+    await select(f); await vi.waitFor(() => expect(f.capture).toHaveBeenCalledOnce());
+    Object.defineProperty(document, 'visibilityState', {value: 'hidden', configurable: true}); f.dispatch(document, 'visibilitychange');
+    finish('data:image/png,late'); await Vue.nextTick(); await Vue.nextTick(); expect(f.translate).not.toHaveBeenCalled(); expect(f.state.phase).toBe('idle');
+    Object.defineProperty(document, 'visibilityState', {value: 'visible', configurable: true}); f.dispatch(document, 'visibilitychange');
+    await select(f); await vi.waitFor(() => expect(f.state.phase).toBe('translated'));
+    f.config.theme = 'auto'; f.media.matches = true; f.config.animations = false; f.subscription(); await Vue.nextTick(); expect(f.host.querySelector('.fr-area-dark')).toBeTruthy();
+    f.config.selectionAreaEnabled = false; f.subscription(); expect(f.state.phase).toBe('idle'); expect(f.beginSelection()).toBe(false);
+    close?.(); close = undefined; expect(f.stopConfig).toHaveBeenCalledOnce(); expect(f.media.removeEventListener).toHaveBeenCalledWith('change', expect.any(Function));
+    f.dispatch(document, 'pointerdown', pointer); expect(f.state.phase).toBe('idle');
+  });
+  it('合成事件、次要指针和小于阈值的选区不发请求，取消与失焦释放选区', async () => {
+    const f = mountControls(); f.beginSelection();
+    for (const type of ['keydown', 'pointerdown', 'pointermove', 'pointerup', 'pointercancel']) f.dispatch(document, type, {...pointer, isTrusted: false, key: 'Escape'});
+    expect(f.state.phase).toBe('selecting'); expect(f.state.selectionRect).toBeNull();
+    f.dispatch(document, 'pointerup', pointer); f.dispatch(document, 'pointerdown', {...pointer, button: 2}); expect(f.state.selectionRect).toBeNull();
+    f.dispatch(document, 'pointerdown', pointer); f.dispatch(document, 'pointerdown', {...pointer, pointerId: 12});
+    f.dispatch(document, 'pointerup', {...pointer, pointerId: 12}); f.dispatch(document, 'pointercancel', {...pointer, pointerId: 12}); expect(f.state.phase).toBe('selecting');
+    f.dispatch(document, 'pointerup', {...pointer, clientX: 21, clientY: 31}); expect(f.state.phase).toBe('idle'); expect(f.capture).not.toHaveBeenCalled();
+    f.beginSelection(); f.config.on = false; f.dispatch(document, 'pointerdown', pointer); expect(f.state.selectionRect).toBeNull(); f.config.on = true;
+    f.dispatch(document, 'pointerdown', pointer); f.dispatch(document, 'pointercancel', pointer); expect(f.state.phase).toBe('idle');
+    f.beginSelection(); f.dispatch(window, 'blur'); expect(f.state.phase).toBe('idle');
+    f.state.retryTranslation(); f.state.downloadLanguagesAndRetry(); expect(f.capture).not.toHaveBeenCalled();
+  });
+  it('选区刚提交便关闭时取消绘制等待，快速重试取消上一代，迟到错误不取代新结果', async () => {
+    const f = mountControls(); f.beginSelection(); f.dispatch(document, 'pointerdown', pointer);
+    f.dispatch(document, 'pointerup', {...pointer, clientX: 140, clientY: 130}); f.state.clearResult();
+    await Vue.nextTick(); await Vue.nextTick(); expect(f.capture).not.toHaveBeenCalled();
+    await select(f); await vi.waitFor(() => expect(f.state.phase).toBe('translated')); await Vue.nextTick();
+    let reject!: (reason: Error) => void; f.translate.mockImplementationOnce(() => new Promise((_, fail) => {reject = fail;}));
+    const retry = [...f.host.querySelectorAll('button')].find(button => button.textContent === '重新翻译')!;
+    f.dispatch(retry, 'click'); const firstSignal = f.translate.mock.calls[1][4].signal;
+    f.dispatch(retry, 'click'); expect(firstSignal.aborted).toBe(true); reject(new Error('obsolete failure'));
+    await vi.waitFor(() => expect(f.state.phase).toBe('translated')); expect(f.state.errorMessage).toBe('');
+    f.sendMessage.mockResolvedValueOnce(undefined); await f.click('圈选设置'); expect(f.state.feedback).toBe('');
+    const pending = deferred(); f.copy.mockReturnValueOnce(pending.promise.then(() => {throw new Error('late copy');}));
+    await f.click('复制原文'); await f.click('×'); pending.resolve(); await Vue.nextTick(); await Vue.nextTick(); expect(f.state.feedback).toBe('');
+  });
+  it('拖动标题真实绑定持有指针，面板脱离后保持边界，内部滚动不重置坐标', async () => {
+    const f = mountControls(); await select(f); await vi.waitFor(() => expect(f.state.phase).toBe('translated')); await Vue.nextTick();
+    const header = f.host.querySelector('header')!; const release = vi.fn();
+    Object.assign(header, {setPointerCapture: vi.fn(), hasPointerCapture: () => true, releasePointerCapture: release});
+    Object.assign(f.host.querySelector('section')!, {getBoundingClientRect: () => ({left: 40, top: 60, width: 460})});
+    f.dispatch(header, 'pointerdown', pointer); f.state.panelElement = null;
+    f.dispatch(document, 'pointermove', {...pointer, clientX: 80, clientY: 90}); expect(f.state.panelPosition).toEqual({x: 100, y: 120});
+    f.state.handleViewportChange({target: header}); expect(f.state.panelPosition).toEqual({x: 100, y: 120});
+    f.dispatch(header, 'lostpointercapture'); expect(release).toHaveBeenCalledWith(11);
+    f.config.animations = false; f.subscription(); let finish!: (value: any) => void; f.translate.mockImplementationOnce(() => new Promise(resolve => {finish = resolve;}));
+    await f.click('重新翻译'); expect(f.host.querySelector('.fr-area-static')).toBeTruthy(); await f.click('取消'); finish({image: 'late'});
+  });
+
 });

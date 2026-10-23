@@ -538,6 +538,7 @@ export class TranslationCandidateCore {
             candidate.element, this.shouldStayOriginal, true,
             (child) => child.localName === 'br' || isTranslationControlElement(child),
             textProtectionCache, evaluationContext?.textProtectionOptions, this.scope,
+            false, this.structuralRegionOptions(),
         );
         return runs.map((nodes) => ({...candidate, nodes, sourceLine: true}));
     }
@@ -578,6 +579,7 @@ export class TranslationCandidateCore {
             protectionOptions,
             this.scope,
             explicitContainer,
+            this.structuralRegionOptions(),
         )) {
             const partitions = partitionInlineRunAtBarriers(
                 run,

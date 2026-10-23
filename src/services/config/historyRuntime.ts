@@ -1,7 +1,7 @@
 /**
  * @file src/services/config/historyRuntime.ts
  * 文件职责：以独立实例协调配置历史的延迟水合、观察、串行写入、去抖追加与恢复动作。
- * 主要内容：保留实际持久化确认、旧读取隔离、失败重试和完整快照游标；通过明确端口读取当前配置并提交恢复，不持有全局配置或凭据。
+ * 主要内容：保留实际持久化确认、旧读取隔离、失败重试和完整快照游标；隔离订阅者异常，不将 UI 故障伪装成历史落盘失败；通过明确端口读取当前配置并提交恢复，不持有全局配置或凭据。
  * 模块边界：只消费注入的存储、就绪和权威提交端口；导入与创建实例均不启动 I/O，历史消费者首次等待或订阅时才水合。
  */
 import type {Config} from '@/src/core/config/model';
@@ -38,10 +38,14 @@ export function createConfigHistoryRuntime(ports: ConfigHistoryRuntimePorts) {
     let historyReadyPromise: Promise<void> | undefined;
     const configHistoryReady: PromiseLike<void> = {then: (fulfilled, rejected) => ensureConfigHistoryReady().then(fulfilled, rejected)};
     function ensureConfigHistoryReady(): Promise<void> {return historyReadyPromise ??= initializeConfigHistory();}
+    function notifyHistoryListener(listener: ConfigHistoryListener, snapshot: ConfigHistoryState): void {
+        try {listener(snapshot);}
+        catch {console.warn('[FluentRead] 配置历史订阅通知失败');}
+    }
     function notifyHistoryListeners(): void {
-        // 唯一调用方 setHistoryState 已先安装完整状态。
+        // 唯一调用方 setHistoryState 已先安装完整状态，订阅失败不改变已提交游标。
         const snapshot = cloneConfigHistory(historyState);
-        historyListeners.forEach((listener) => listener(snapshot));
+        historyListeners.forEach((listener) => notifyHistoryListener(listener, snapshot));
     }
 
     function setHistoryState(nextHistory: ConfigHistoryState, notify = true): void {
@@ -193,7 +197,7 @@ export function createConfigHistoryRuntime(ports: ConfigHistoryRuntimePorts) {
     function subscribeConfigHistory(listener: ConfigHistoryListener): () => void {
         void ensureConfigHistoryReady();
         historyListeners.add(listener);
-        if (historyInitialized && historyState) listener(cloneConfigHistory(historyState));
+        if (historyInitialized && historyState) notifyHistoryListener(listener, cloneConfigHistory(historyState));
         return () => historyListeners.delete(listener);
     }
 

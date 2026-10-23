@@ -1,7 +1,7 @@
 <!--
  @file src/features/translation-stats/ui/TranslationStatsDashboard.vue
  文件职责：在 Options 设置页展示翻译请求统计，帮助用户了解请求规模、耗时分布和各翻译服务的表现。
- 主要内容：提供服务、模型与时间范围筛选，呈现请求量、文本量、耗时和缓存复用概览，可切换指标的趋势柱图，可排序且能取消筛选的服务表现与按选中服务显示的免费线路表，耗时与规模分布、失败原因，以及可按来源、状态与耗时排序的支持指定页跳转的请求记录和清除统计确认；请求记录日期格式器在每轮同步模板渲染内复用，下轮重新读取界面语言与系统默认时区。
+ 主要内容：缓存面板失活时关闭清除确认并释放背景，按会话丢弃旧查询、清除回复及旧弹窗确认/取消/键盘事件；提供服务、模型与时间范围筛选，呈现请求量、文本量、耗时和缓存复用概览，可切换指标的趋势柱图，可排序且能取消筛选的服务表现与按选中服务显示的免费线路表，耗时与规模分布、失败原因，以及可按来源、状态与耗时排序的支持指定页跳转的请求记录和清除统计确认；请求记录日期格式器在每轮同步模板渲染内复用，下轮重新读取界面语言与系统默认时区。
  模块边界：组件只通过后台 translationStats 消息读取数值快照与记录，不直接访问 IndexedDB、不发起翻译，也不修改翻译设置；聚合、持久化与采集分别由 services、platform/storage 和翻译 broker 负责。
 -->
 <template>
@@ -447,7 +447,7 @@
     </template>
 
     <Teleport to="body">
-      <div v-if="resetDialogOpen" class="stats-dialog-backdrop" @click.self="closeResetDialog">
+      <div v-if="resetDialogOpen" class="stats-dialog-backdrop" :onClick="resetDialogActions.backdrop">
         <section
           ref="resetDialog"
           class="stats-dialog"
@@ -456,14 +456,14 @@
           aria-labelledby="stats-reset-title"
           aria-describedby="stats-reset-description"
           tabindex="-1"
-          @keydown="handleDialogKeydown"
+          :onKeydown="resetDialogActions.keydown"
         >
           <h2 id="stats-reset-title">{{ t('translationStats.reset.title') }}</h2>
           <p id="stats-reset-description">{{ t('translationStats.reset.description') }}</p>
           <p v-if="resetError" class="stats-inline-error" role="alert">{{ resetError }}</p>
           <div class="stats-dialog-actions">
-            <button ref="resetCancelButton" type="button" class="stats-button" :disabled="resetting" @click="closeResetDialog">{{ t('translationStats.reset.cancel') }}</button>
-            <button type="button" class="stats-button stats-button-danger" :disabled="resetting" @click="resetStats">
+            <button ref="resetCancelButton" type="button" class="stats-button" :disabled="resetting" :onClick="resetDialogActions.close">{{ t('translationStats.reset.cancel') }}</button>
+            <button type="button" class="stats-button stats-button-danger" :disabled="resetting" :onClick="resetDialogActions.confirm">
               {{ resetting ? t('translationStats.reset.clearing') : t('translationStats.reset.confirm') }}
             </button>
           </div>
@@ -575,6 +575,7 @@ const resetButton = ref<HTMLButtonElement | null>(null)
 const resetCancelButton = ref<HTMLButtonElement | null>(null)
 let snapshotRevision = 0
 let logRevision = 0
+const resetRevision = ref(0)
 let mounted = false
 let inertSettingsApp: HTMLElement | null = null
 
@@ -859,21 +860,35 @@ function setSettingsBackgroundInert(value: boolean): void {
   }
 }
 
+// 每个已渲染入口以 :onX 绑定捕获同一确认会话，避免模板缓存包装在调用时重新读取新动作。
+const resetDialogActions = computed(() => {
+  const revision = resetRevision.value
+  const current = () => mounted && props.active && resetDialogOpen.value && revision === resetRevision.value
+  return {
+    close: () => {if (current()) closeResetDialog()},
+    backdrop: (event: MouseEvent) => {if (current() && event.target === event.currentTarget) closeResetDialog()},
+    confirm: () => {if (current()) return resetStats()},
+    keydown: (event: KeyboardEvent) => {if (current()) handleDialogKeydown(event)},
+  }
+})
+
 async function openResetDialog(): Promise<void> {
-  if (!mounted) return
+  if (!mounted || !props.active || resetting.value || resetDialogOpen.value) return
+  const revision = ++resetRevision.value
   resetError.value = ''
   resetMessage.value = ''
   setSettingsBackgroundInert(true)
   resetDialogOpen.value = true
   await nextTick()
-  if (mounted && resetDialogOpen.value) resetCancelButton.value?.focus()
+  if (mounted && props.active && revision === resetRevision.value && resetDialogOpen.value) resetCancelButton.value?.focus()
 }
 
 function closeResetDialog(): void {
   if (resetting.value) return
+  const revision = ++resetRevision.value
   resetDialogOpen.value = false
   setSettingsBackgroundInert(false)
-  void nextTick(() => { if (mounted && !resetDialogOpen.value) resetButton.value?.focus() })
+  void nextTick(() => { if (mounted && props.active && revision === resetRevision.value && !resetDialogOpen.value) resetButton.value?.focus() })
 }
 
 function handleDialogKeydown(event: KeyboardEvent): void {
@@ -900,22 +915,23 @@ function handleDialogKeydown(event: KeyboardEvent): void {
 }
 
 async function resetStats(): Promise<void> {
-  if (!mounted || resetting.value) return
+  if (!mounted || !props.active || !resetDialogOpen.value || resetting.value) return
+  const revision = ++resetRevision.value
   resetting.value = true
   resetError.value = ''
   try {
     await sendStatsMessage<{cleared: true}>({action: 'reset'}, t('translationStats.reset.failed'))
-    if (!mounted) return
+    if (!mounted || revision !== resetRevision.value) return
     resetDialogOpen.value = false
     setSettingsBackgroundInert(false)
     resetMessage.value = t('translationStats.reset.done')
     await loadSnapshot()
     await nextTick()
-    if (mounted && !resetDialogOpen.value) resetButton.value?.focus()
+    if (mounted && props.active && revision === resetRevision.value && !resetDialogOpen.value) resetButton.value?.focus()
   } catch (error) {
-    if (mounted) resetError.value = error instanceof Error ? error.message : t('translationStats.reset.failed')
+    if (mounted && revision === resetRevision.value) resetError.value = error instanceof Error ? error.message : t('translationStats.reset.failed')
   } finally {
-    if (mounted) resetting.value = false
+    if (mounted && revision === resetRevision.value) resetting.value = false
   }
 }
 
@@ -936,8 +952,20 @@ watch([logSource, logOutcome, logSort, logPageSize], () => {
 }, {flush: 'post'})
 
 watch(() => props.active, (active, previous) => {
-  if (mounted && active && !previous) void loadSnapshot()
-})
+  if (!mounted || active === previous) return
+  if (active) {void loadSnapshot(); return}
+  // 缓存页离开时撤销视图与确认会话，迟到回复不能触碰下一次打开的面板。
+  snapshotRevision += 1
+  logRevision += 1
+  resetRevision.value += 1
+  loading.value = false
+  logLoading.value = false
+  resetting.value = false
+  resetDialogOpen.value = false
+  resetError.value = ''
+  resetMessage.value = ''
+  setSettingsBackgroundInert(false)
+}, {flush: 'sync'})
 
 function handleVisibilityChange(): void {
   if (document.visibilityState === 'visible' && props.active) void loadSnapshot()
@@ -951,6 +979,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   mounted = false
+  resetRevision.value += 1
   snapshotRevision += 1
   logRevision += 1
   document.removeEventListener('visibilitychange', handleVisibilityChange)

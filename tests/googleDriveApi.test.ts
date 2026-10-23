@@ -9,6 +9,33 @@ const session = {account: {id: 'fixture-account', email: 'tester@fixture.invalid
 function json(value: unknown, etag?: string) {return new Response(JSON.stringify(value), {headers: etag ? {etag} : {}});}
 afterEach(() => vi.useRealTimers());
 describe('Google Drive appDataFolder HTTP 边界', () => {
+    it('HTTP 错误直接取消未读正文，不因底层取消未决而卡住备份或计时器', async () => {
+        vi.useFakeTimers();
+        const cancel = vi.fn(() => new Promise<void>(() => {}));
+        const fetcher = vi.fn<typeof fetch>(async () => new Response(new ReadableStream({cancel}), {status: 403}));
+        await expect(createDriveApi(fetcher).read(session)).rejects.toMatchObject({status: 403});
+        expect(cancel).toHaveBeenCalledOnce();
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('超限流立即释放读取锁，取消握手未决不阻断大小错误', async () => {
+        vi.useFakeTimers();
+        const cancel = vi.fn(() => new Promise<void>(() => {}));
+        const body = new ReadableStream<Uint8Array>({
+            start(controller) {controller.enqueue(new Uint8Array(GOOGLE_DRIVE_MAX_BYTES + 1));}, cancel,
+        });
+        const fetcher = vi.fn().mockResolvedValueOnce(json({files: [metadata]}))
+            .mockResolvedValueOnce(json(metadata)).mockResolvedValueOnce(new Response(body));
+        let settled = false;
+        const result = createDriveApi(fetcher).read(session).catch(error => {settled = true; return error;});
+        await vi.advanceTimersByTimeAsync(0);
+        expect(cancel).toHaveBeenCalledOnce();
+        expect(body.locked).toBe(false);
+        expect(settled).toBe(true);
+        expect(await result).toMatchObject({message: expect.stringContaining('同步文件过大')});
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
     it('删除使用同版本 API 的 If-Match，缺失文件幂等成功，冲突和鉴权失败保留错误', async () => {
         for (const conditionalApi of [undefined, 'v2'] as const) {
             for (const status of [204, 404]) {

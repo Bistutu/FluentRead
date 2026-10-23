@@ -22,8 +22,9 @@ vi.mock('@/src/services/config/store', async () => {
 });
 import {createImageTranslationFailure} from '@/src/features/image-translation/failure';
 import {config as settings} from '@/src/services/config/store';
-import {mountImageTranslator, unmountImageTranslator, toggleContextMenuImage, toggleMangaTranslation, subscribeMangaTranslation} from '@/src/features/image-translation/content/runtime';
-import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
+import {mountImageTranslator, unmountImageTranslator, toggleContextMenuImage, toggleMangaTranslation, subscribeMangaTranslation} from '@/src/features/image-translation/content';
+import type {MangaTranslationStatus} from '@/src/features/image-translation/content/mangaSession';
+import {registerAllUiLanguageBundles} from './helpers/uiLanguageBundles';
 import * as controlsModule from '@/src/features/image-translation/content/controls';
 
 // 本文件断言非中文界面文案；扩展运行时按需加载，测试中一次注册全部语言资源包。
@@ -102,7 +103,7 @@ function setup(bitmapSize = {width:400,height:200}) {
         if (tag === 'img') decorateStyle(element as HTMLElement);
         if (tag === 'canvas') {
             const canvas = element as HTMLCanvasElement;
-            canvas.getContext = vi.fn(() => ({drawImage: draw, getImageData: vi.fn()})) as never;
+            canvas.getContext = vi.fn(() => ({drawImage: draw, getImageData: vi.fn(() => ({data: new Uint8ClampedArray(8 * 8 * 4).fill(255)}))})) as never;
             canvas.toDataURL = () => 'data:image/png;base64,source';
             canvas.toBlob = vi.fn((callback: BlobCallback) => {
                 if (autoEncode) callback(new Blob(['source'])); else pendingPng.push(callback);
@@ -679,6 +680,22 @@ describe('图片翻译前台交互与生命周期', () => {
         env.click(); await flush(); settings.to = 'de'; pending.resolve(result); await flush();
         expect(env.bitmap()).toBeNull();
         expect(env.roots[0].querySelector('[role="status"]')!.textContent).toContain('翻译设置已更改');
+    });
+
+    it('图片服务变更立即取消旧识别，旧端口不响应时仍可按新配置重试', async () => {
+        const pending = deferred<typeof result>(); client.translate.mockReturnValueOnce(pending.promise);
+        const env = setup(); env.hover(); env.click(); await flush();
+        const signal = client.translate.mock.calls[0][3].signal as AbortSignal;
+        settings.to = 'de';
+        expect(signal.aborted).toBe(true);
+        expect(env.button().dataset.phase).toBe('error');
+        expect(env.roots[0].querySelector('[role="status"]')!.textContent).toContain('翻译设置已更改');
+        env.click(); await flush();
+        expect(client.translate).toHaveBeenCalledTimes(2);
+        expect(env.button().dataset.phase).toBe('translated');
+        pending.resolve({...result, image: 'data:image/png;base64,old'}); await flush();
+        expect(env.button().dataset.phase).toBe('translated');
+        expect(env.bitmap()?.getAttribute('src')).not.toBe('data:image/png;base64,old');
     });
 
     it('自定义服务也能立即复用译图，只有模型、端点或请求体改变才清空缓存', async () => {
@@ -1487,6 +1504,68 @@ describe('视频预览不自动显示图片翻译', () => {
             await arrive(index,near);vi.advanceTimersByTime(180);env.runFrames();await flush();
         }, near:(index:number)=>{nearby=index;scroll();}};
     }
+    function canvasChapter() {
+        const env = readerPage();
+        Object.assign(env.windowObject, {location: {href: 'https://manga.bilibili.com/mc123/456', origin: 'https://manga.bilibili.com'}});
+        env.parent.innerHTML = '<div class="images-container"><div class="view-container"><div class="image-container"><div class="bullet-screen"><div class="bullet-container"></div></div></div></div></div>';
+        const page = document.createElement('canvas'); page.width = 400; page.height = 200; page.getBoundingClientRect = env.image.getBoundingClientRect;
+        env.parent.querySelector('.image-container')!.prepend(page);
+        const interaction = env.parent.querySelector('.bullet-container')!;
+        Object.assign(document, {elementFromPoint: () => interaction});
+        vi.stubGlobal('createImageBitmap', vi.fn(async () => ({width: 10, height: 20, close: vi.fn()})));
+        return {...env, page, interaction};
+    }
+    it('完整入口把画布准备、阶段进度、交互遮罩和缓存复用接到同一漫画会话', async () => {
+        const env = canvasChapter(), statuses: MangaTranslationStatus[] = [];
+        const stop = subscribeMangaTranslation(status => statuses.push(status));
+        settings.from = 'ko'; settings.imageTranslationMangaDownloadConfirmed = true;
+        const packet = {...result, image: '', mangaPatches: {width: 400, height: 200, patches: [{x: 0, y: 0, width: 10, height: 20, image: 'data:image/png;base64,AQID'}]}};
+        client.prepare.mockImplementation(async (_source, _signal, progress) => {progress(20);});
+        client.translate.mockImplementation(async (_image, _source, _title, options) => {options.onProgress('recognizing', 50); return packet;});
+        expect(toggleMangaTranslation()).toBe(true); await flush(); env.runFrames(); await flush();
+        expect(client.prepare).toHaveBeenCalledWith('ko', expect.any(AbortSignal), expect.any(Function));
+        expect(client.translate).toHaveBeenCalledWith(expect.any(String), 'ko', 'Image fixture', expect.objectContaining({manga: true, timeoutMs: 300_000}));
+        expect(statuses).toContainEqual(expect.objectContaining({stage: 'preparing', progress: 20}));
+        expect(statuses).toContainEqual(expect.objectContaining({stage: 'recognizing', progress: 50}));
+        const surface = env.roots.at(-1)!.querySelector('canvas')!;
+        expect(surface.style.display).toBe('block'); expect(env.page.width).toBe(400);
+        toggleMangaTranslation(); await flush(); expect(surface.style.display).toBe('none');
+        toggleMangaTranslation(); await flush(); expect(surface.style.display).toBe('block'); expect(client.translate).toHaveBeenCalledOnce();
+        Object.assign(document, {elementFromPoint: () => document.createElement('aside')});
+        for (const [name, listener] of env.windowObject.addEventListener.mock.calls) if (name === 'scroll') (listener as EventListener)(new Event('scroll'));
+        env.runFrames(); await flush();
+        expect(surface.style.display).toBe('none');
+        stop(); unmountImageTranslator(); expect(surface).toMatchObject({width: 0, height: 0});
+    });
+    it('漫画画布在语言包准备期间暂停后拒绝迟到进度和翻译启动', async () => {
+        const env = canvasChapter(), prepared = deferred<void>(), statuses: MangaTranslationStatus[] = [];
+        const stop = subscribeMangaTranslation(status => statuses.push(status));
+        settings.from = 'ru'; settings.imageTranslationMangaDownloadConfirmed = true;
+        client.prepare.mockReturnValue(prepared.promise);
+        toggleMangaTranslation(); await flush(); expect(client.prepare).toHaveBeenCalledOnce();
+        const signal = client.prepare.mock.calls[0][1] as AbortSignal, progress = client.prepare.mock.calls[0][2];
+        toggleMangaTranslation(); await flush(); const count = statuses.length;
+        expect(signal.aborted).toBe(true); progress(99); prepared.resolve(); await flush();
+        expect(statuses.slice(count).every(status => !status.active && status.progress !== 99)).toBe(true);
+        expect(client.translate).not.toHaveBeenCalled();
+        expect(env.page).toMatchObject({width: 400, height: 200}); stop();
+    });
+    it('完整入口探测同源背景漫画并在快照识别后复用页面缓存', async () => {
+        const env = readerPage();
+        Object.assign(env.windowObject, {location: {href: 'https://comic.pixiv.net/viewer/stories/123', origin: 'https://comic.pixiv.net'}});
+        vi.stubGlobal('DOMRect', class {constructor(public x: number, public y: number, public width: number, public height: number) {} get left() {return this.x;} get top() {return this.y;} get right() {return this.x + this.width;} get bottom() {return this.y + this.height;}});
+        env.image.remove(); const page = document.createElement('div'); page.id = 'page-1'; page.style.backgroundImage = 'url("blob:https://comic.pixiv.net/fixture")'; page.getBoundingClientRect = env.image.getBoundingClientRect; env.parent.append(page);
+        env.extraStyles.set(page, {display: 'block', visibility: 'visible', opacity: '1', backgroundImage: page.style.backgroundImage, backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundOrigin: 'padding-box', backgroundPosition: '50% 50%'});
+        Object.assign(document, {elementFromPoint: () => page});
+        client.translate.mockResolvedValue({...result, lines: []});
+        // The first discovery starts the image probe; its ready callback schedules the actual reader entry.
+        toggleMangaTranslation(); await flush(); env.runFrames(); await flush();
+        expect(toggleMangaTranslation()).toBe(true); await flush(); env.runFrames(); await flush();
+        expect(client.translate).toHaveBeenCalledWith(expect.any(String), 'auto', 'Image fixture', expect.objectContaining({manga: true}));
+        toggleMangaTranslation(); await flush(); toggleMangaTranslation(); await flush(); expect(client.translate).toHaveBeenCalledOnce();
+        expect(page.style.backgroundImage).toContain('blob:https://comic.pixiv.net/fixture');
+        unmountImageTranslator(); expect(env.canvases.every(canvas => canvas.width === 0 && canvas.height === 0)).toBe(true);
+    });
     it.each([
         ['https://mangalib.me/ru/1--title/read/v22/c129?p=2','ru','<div data-reader-mode="vertical"><main data-reader-info-visible="true"><div><div data-page="2" data-target></div></div></main></div>'],
         ['https://mangahub.ru/read/123?page=2','ru','<reader-viewer><reader-scan class="reader-viewer-scan" data-target></reader-scan></reader-viewer>'],

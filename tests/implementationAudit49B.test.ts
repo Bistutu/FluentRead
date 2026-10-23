@@ -17,7 +17,7 @@ const dom = await vi.hoisted(async () => {
 });
 const external = vi.hoisted(() => ({
     ports: [] as any[], config: {} as any, subscribers: new Set<(value: any) => void>(),
-    connect: vi.fn(), sendMessage: vi.fn(), onConnect: new Set<(port: any) => void>(),
+    connect: vi.fn(), sendMessage: vi.fn(), savePreferences: vi.fn(), onConnect: new Set<(port: any) => void>(),
     removed: new Set<Function>(), updated: new Set<Function>(), alarms: new Set<Function>(),
     requests: [] as Array<{url: string; headers: Headers; body: any; signal: AbortSignal; settle: () => void; complete: () => void}>,
 }));
@@ -29,7 +29,7 @@ alarms: {create: async () => undefined, onAlarm: {addListener: (fn: Function) =>
 vi.mock('@/src/services/config/store', () => ({
     config: external.config, configReady: Promise.resolve(),
     subscribeConfig: (listener: (value: any) => void) => {external.subscribers.add(listener); return () => external.subscribers.delete(listener);},
-    requestConfigPatch: async (patch: any) => {Object.assign(external.config, patch); external.subscribers.forEach(listener => listener({...external.config}));},
+    requestConfigPatch: (patch: unknown) => external.savePreferences(patch),
 }));
 vi.mock('@/src/ui/i18n', async () => {
     const {ref} = await import('vue');
@@ -42,13 +42,14 @@ vi.mock('@/src/platform/storage/harnessSessionRepository', () => ({harnessSessio
     upsertTurn: async () => true, get: async () => null, list: async () => ({sessions: [], hasMore: false}), delete: async () => undefined, clear: async () => undefined,
 }}));
 vi.mock('@/src/platform/storage/learningMemoryRepository', () => ({learningMemoryRepository: {list: async () => []}}));
-vi.mock('@/src/platform/storage/modelUsageRepository', () => ({modelUsageRepository: {captureGeneration: () => 0, recordMany: async () => undefined}}));
+vi.mock('@/src/platform/storage/modelUsageRepository', () => ({getModelUsageRepository: () => ({captureGeneration: () => 0, recordMany: async () => undefined})}));
 
-import {createApp, h, nextTick, reactive, type App, type Component} from 'vue';
+import {createApp, h, markRaw, nextTick, reactive, type App, type Component} from 'vue';
 import {Config} from '@/src/core/config/model';
+import {WRITING_LANGUAGES} from '@/src/core/config/writing';
 import {DEFAULT_HARNESS_PREFERENCES} from '@/src/core/config/harness';
 import {runHarnessLoop, type HarnessGenerateInput} from '@/src/core/harness/loop';
-import {rankRecords, explainRecord, type MemoryRecord} from '@/src/core/harness/memorySearch';
+import {rankRecords, type MemoryRecord} from '@/src/core/harness/memorySearch';
 import {readMemory} from '@/src/services/harness/memoryRecall';
 import {createHarnessConversationRuntime} from '@/src/services/harness/conversation';
 import {streamReading} from '@/src/features/reading-assistant/client';
@@ -92,11 +93,15 @@ const result = {success: true as const, text: 'Finished', service: 'deepseek', m
 const generated = {assistant: {role: 'assistant' as const, content: [{type: 'text', text: 'Finished'}]}, text: 'Finished', toolCalls: []};
 
 beforeEach(() => {
+    // LinkeDOM HTML 节点标记为普通 Object；防止 Vue ref 把节点代理化，保持真实浏览器的事件 target 恒等性。
+    const createElement = dom.document.createElement.bind(dom.document);
+    vi.spyOn(dom.document, 'createElement').mockImplementation((name, ...options) => markRaw(createElement(name, ...options)));
     Object.assign(external.config, new Config(), {on: true});
     external.config.service = 'deepseek'; external.config.writing = {...external.config.writing, enabled: true, referenceLanguage: 'off'};
     external.ports = []; external.sendMessage.mockReset().mockResolvedValue({success: true});
     external.connect.mockReset().mockImplementation(({name}) => {const port = makePort(name); external.ports.push(port); return port;});
     external.requests = [];
+    external.savePreferences.mockReset().mockImplementation(async (patch: any) => {Object.assign(external.config, patch);external.subscribers.forEach(listener => listener({...external.config}));});
     setRuntimeFetch((input, init) => new Promise((resolve, reject) => {
         const signal = init!.signal as AbortSignal;
         const abort = () => {signal.removeEventListener('abort', abort); reject(new DOMException('fixture request cancelled', 'AbortError'));};
@@ -408,11 +413,15 @@ describe('audit49B actual client SFC interactions', () => {
 });
 
 describe('audit49B real lexical ranking contracts', () => {
-    it('keeps standalone explanation identical to ranked scores and reasons, including expiry and stable ties', () => {
+    it('returns retrieval evidence for ranked hits, excluding expiry and keeping equal scores stable', () => {
         const now = Date.parse('2026-10-06T00:00:00Z');
         const records: MemoryRecord[] = ['a', 'b', 'expired', 'other'].map(id => ({id, content: id === 'other' ? 'unrelated shopping' : 'Grammar 苹果 helps grammar practice', kind: 'lesson', tags: ['grammar'], scope: 'user', project: null, importance: 2, createdAt: new Date(now).toISOString(), updatedAt: new Date(now).toISOString(), accessedAt: null, accessCount: 2, expiresAt: id === 'expired' ? new Date(now).toISOString() : null}));
         const ranked = rankRecords(records, 'Grammar 苹果', 3, {now}); expect(ranked.map(hit => hit.record.id)).toEqual(['a', 'b']);
-        expect(ranked.map(hit => ({score: hit.score, reasons: hit.reasons}))).toEqual(records.slice(0, 2).map(record => explainRecord(record, 'Grammar 苹果', {now})));
+        expect(ranked[0].score).toBeGreaterThan(0);
+        expect(ranked[0].score).toBe(ranked[1].score);
+        expect(ranked[0].reasons).toEqual(ranked[1].reasons);
+        expect(ranked[0].reasons).toContain('substring:整串命中(+3.0)');
+        expect(ranked[0].reasons).toContainEqual(expect.stringMatching(/^bm25:/));
         expect(rankRecords(records, '   ', 3, {now})).toEqual([]); expect(rankRecords(records, 'Grammar 苹果', 0, {now})).toEqual([]);
     });
 });
@@ -503,4 +512,173 @@ describe('audit49B real installed background generation ownership', () => {
     it('writing keeps active work through unrelated UI and inactive or overridden profiles', () => proveInactiveProfiles('writing'));
     it('reading keeps active work for equivalent headers and disabled secondary credentials', () => proveEquivalentInputs('reading'));
     it('writing keeps active work for equivalent headers and disabled secondary credentials', () => proveEquivalentInputs('writing'));
+});
+
+function writingDeferred<T=void>() {let resolve!:(value:T)=>void,reject!:(error:unknown)=>void;const promise=new Promise<T>((yes,no)=>{resolve=yes;reject=no});return {promise,resolve,reject};}
+async function writingInput(host:Element,label:string,value:string) {const input=host.querySelector<HTMLTextAreaElement>(`[aria-label="${label}"]`)!;expect(input,label).not.toBeNull();input.value=value;input.dispatchEvent(new Event('input',{bubbles:true}));await flush();}
+async function writingComplete(text='Finished', index=external.ports.length-1) {const port=external.ports[index],request=port.postMessage.mock.calls[0][0];port.onMessage.fire({type:'result',requestId:request.requestId,response:{...result,text}});await flush();return request;}
+async function writingLanguage(host:Element,value:string) {button(host,'输出语言').click();await flush();button(host,WRITING_LANGUAGES.find(item=>item.value===value)!.label).click();await flush();}
+
+describe('audit49B WritingPanel pending UI ownership',()=>{
+    it('does not leak a failed preference save into a new writing session',async()=>{
+        const pending=writingDeferred();external.savePreferences.mockReturnValueOnce(pending.promise);
+        const {host,props}=mount(WritingPanel,{active:true,sessionKey:1,initialIntent:'draft'});await flush();await writingLanguage(host,'ja');
+        expect(external.savePreferences).toHaveBeenCalledOnce();props.sessionKey=2;await flush();pending.reject(Error('obsolete preference failure'));await flush();
+        expect(host.textContent).not.toContain('保存失败，请重试。');expect(button(host,'输出语言').disabled).toBe(false);expect(external.ports).toHaveLength(0);
+    });
+    it('releases a hidden preference editor immediately and does not let an old finally unlock the new save',async()=>{
+        const first=writingDeferred(),second=writingDeferred();external.savePreferences.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+        const {host,props}=mount(WritingPanel,{active:true,sessionKey:1,initialIntent:'draft'});await flush();await writingLanguage(host,'ja');
+        props.active=false;await flush();props.active=true;await flush();
+        try {
+            const english=button(host,WRITING_LANGUAGES.find(item=>item.value==='en')!.label);expect(english.disabled).toBe(false);english.click();await flush();expect(external.savePreferences).toHaveBeenCalledTimes(2);
+            first.resolve();await flush();expect([...host.querySelectorAll('.writing-language-options button')].every(node=>node.hasAttribute('disabled'))).toBe(true);
+            second.resolve();await flush();expect(button(host,'输出语言').disabled).toBe(false);
+        } finally {first.resolve();second.resolve();await flush();}
+    });
+    it('does not report an edited draft as copied when an older clipboard promise finishes',async()=>{
+        const pending=writingDeferred();vi.spyOn(navigator.clipboard,'writeText').mockReturnValueOnce(pending.promise);
+        const {host}=mount(WritingPanel,{active:true,sessionKey:1,initialDraft:'Source',initialIntent:'polish'});await flush();await writingComplete('Original generated draft');
+        button(host,'复制正文').click();await flush();button(host,'编辑正文').click();await flush();await writingInput(host,'生成正文','New edited draft');pending.resolve();await flush();
+        expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Original generated draft');expect(host.textContent).not.toContain('正文已复制。');
+    });
+    it('ignores an old open-settings rejection after switching the writing session',async()=>{
+        const pending=writingDeferred();external.sendMessage.mockReturnValueOnce(pending.promise);
+        const {host,props}=mount(WritingPanel,{active:true,sessionKey:1,initialIntent:'draft'});await flush();button(host,'写作设置').click();await flush();
+        props.sessionKey=2;await flush();pending.reject(Error('obsolete settings failure'));await flush();expect(host.textContent).not.toContain('请从扩展菜单打开完整设置。');
+    });
+});
+
+async function writingClick(host:Element,label:string) {const target=button(host,label);expect(target.disabled,label).toBe(false);target.click();await flush();}
+async function writingKey(target:Element,key:string,fields:Record<string,unknown>={}) {const event=new Event('keydown',{bubbles:true,cancelable:true});Object.defineProperties(event,Object.fromEntries(Object.entries({key,...fields}).map(([name,value])=>[name,{value}])));target.dispatchEvent(event);await flush();return event;}
+function writingRequestAt(index=external.ports.length-1) {const port=external.ports[index];return {port,request:port.postMessage.mock.calls[0][0] as WritingRequest};}
+async function writingFailure(error:string,cancelled=false) {const {port,request}=writingRequestAt();port.onMessage.fire({type:'result',requestId:request.requestId,response:{success:false,error,cancelled}});await flush();}
+
+describe('audit49B WritingPanel actual drafting workflows',()=>{
+    it('uses a suggestion and keyboard submit, renders streaming model identity, and inserts plain text',async()=>{
+        const applyDraft=vi.fn();const {host}=mount(WritingPanel,{active:true,sessionKey:1,initialIntent:'draft',plainTextOutput:true,applyDraft});await flush();
+        await writingClick(host,'writing.experience.suggestionThanks');const instruction=host.querySelector('[aria-label="写作要求"]')!;
+        expect((instruction as HTMLTextAreaElement).value).toBe('writing.experience.suggestionThanks');const keyEvent=await writingKey(instruction,'Enter',{metaKey:true});expect(keyEvent.defaultPrevented).toBe(true);
+        const {port,request}=writingRequestAt();expect(request).toMatchObject({intent:'draft',draft:'',instruction:'writing.experience.suggestionThanks',history:[]});
+        port.onMessage.fire({type:'progress',requestId:request.requestId,progress:{kind:'model',service:'openai',model:'actual-writer'}});port.onMessage.fire({type:'progress',requestId:request.requestId,progress:{kind:'text',text:'**Partial** reply'}});await flush();
+        expect(host.querySelector('.writing-provider')?.getAttribute('title')).toBe('actual-writer');expect(host.querySelector('[aria-label="生成正文预览"]')?.textContent).toContain('Partial');expect(button(host,'输出语言').disabled).toBe(true);
+        await writingComplete('**Ready** reply');expect((instruction as HTMLTextAreaElement).value).toBe('');await writingClick(host,'插入回复');expect(applyDraft).toHaveBeenCalledWith('Ready reply');
+    });
+    it('keeps a stopped partial draft as incomplete and retry repeats the original task and instruction',async()=>{
+        const {host}=mount(WritingPanel,{active:true,sessionKey:1,initialIntent:'draft'});await flush();await writingInput(host,'写作要求','Explain the schedule');
+        host.querySelector('form')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));await flush();const {port,request}=writingRequestAt();
+        port.onMessage.fire({type:'progress',requestId:request.requestId,progress:{kind:'text',text:'First partial'}});await flush();await writingClick(host,'停止');
+        expect(host.textContent).toContain('First partial');expect(host.textContent).toContain('writing.experience.incomplete');expect(port.disconnect).toHaveBeenCalledOnce();
+        port.onMessage.fire({type:'result',requestId:request.requestId,response:{...result,text:'Obsolete completion'}});await flush();expect(host.textContent).not.toContain('Obsolete completion');
+        await writingClick(host,'重新生成');expect(writingRequestAt().request).toMatchObject({intent:'polish',draft:'First partial',instruction:'Explain the schedule'});await writingFailure('temporary model failure');
+        await writingClick(host,'重试');expect(writingRequestAt().request).toMatchObject({intent:'polish',draft:'First partial',instruction:'Explain the schedule'});await writingComplete('Complete answer');expect(host.textContent).not.toContain('writing.experience.incomplete');
+    });
+    it('retries a failed rewrite using a user-edited draft while retaining the failed task and language',async()=>{
+        const {host}=mount(WritingPanel,{active:true,sessionKey:1,initialDraft:'Source',initialIntent:'polish'});await flush();await writingComplete('First version');
+        await writingInput(host,'写作要求','Make it shorter');host.querySelector('form')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));await flush();const failed=writingRequestAt().request;await writingFailure('temporary failure');
+        expect(host.textContent).toContain('First version');await writingClick(host,'编辑正文');await writingInput(host,'生成正文','Edited retry source');await writingClick(host,'完成编辑');await writingClick(host,'重试');
+        expect(writingRequestAt().request).toMatchObject({intent:failed.intent,language:failed.language,instruction:'Make it shorter',draft:'Edited retry source'});await writingComplete('Recovered');expect(host.textContent).toContain('Recovered');
+    });
+    it('retains only five versions and remembers edits when browsing their real navigation buttons',async()=>{
+        const {host}=mount(WritingPanel,{active:true,sessionKey:1,initialDraft:'Source'});await flush();await writingComplete('Version 1');
+        for(let index=2;index<=6;index++){await writingClick(host,'重新生成');await writingComplete(`Version ${index}`);}
+        expect(host.querySelector('.writing-versions')?.textContent).toBe('5/5');await writingClick(host,'编辑正文');await writingInput(host,'生成正文','Edited sixth');await writingClick(host,'完成编辑');
+        await writingClick(host,'上一版');expect(host.textContent).toContain('Version 5');await writingClick(host,'下一版');expect(host.textContent).toContain('Edited sixth');
+        for(let index=0;index<4;index++)await writingClick(host,'上一版');expect(host.textContent).toContain('Version 2');expect(button(host,'上一版').disabled).toBe(true);expect(host.querySelector('.writing-versions')?.textContent).toBe('1/5');
+    });
+    it('saves a confirmed style once and rewrites the result without reusing the pending instruction',async()=>{
+        const {host}=mount(WritingPanel,{active:true,sessionKey:1,initialDraft:'Source'});await flush();await writingComplete('Reply');await writingInput(host,'写作要求','Unsubmitted instruction');
+        await writingClick(host,'回答风格');await writingClick(host,'详细');await writingClick(host,'专业');await writingClick(host,'应用并改写');
+        expect(external.savePreferences).toHaveBeenCalledOnce();expect(external.savePreferences).toHaveBeenCalledWith({writing:expect.objectContaining({length:'detailed',tone:'professional'})});
+        expect(writingRequestAt().request).toMatchObject({intent:'polish',draft:'Reply',instruction:'',length:'detailed',tone:'professional'});await writingComplete('Detailed reply');expect((host.querySelector('[aria-label="写作要求"]') as HTMLTextAreaElement).value).toBe('Unsubmitted instruction');
+        await writingClick(host,'回答风格');await writingClick(host,'应用');expect(external.savePreferences).toHaveBeenCalledOnce();expect(external.ports).toHaveLength(2);
+        await writingClick(host,'回答风格');await writingClick(host,'简短');await writingClick(host,'取消');expect(external.savePreferences).toHaveBeenCalledOnce();expect(host.querySelector('.writing-style-trigger')?.textContent).toContain('详细');
+    });
+    it('translates the current draft when output language changes and does not request again for the same language',async()=>{
+        external.config.writing.language='en';const {host}=mount(WritingPanel,{active:true,sessionKey:1,initialDraft:'Source'});await flush();await writingComplete('English reply');
+        await writingLanguage(host,'ja');expect(writingRequestAt().request).toMatchObject({intent:'translate',draft:'English reply',instruction:'',language:'ja'});await writingComplete('日本語の返信');
+        expect(host.querySelector('.writing-language-trigger')?.textContent).toContain('日本語');const count=external.ports.length;await writingLanguage(host,'ja');expect(external.ports).toHaveLength(count);expect(host.textContent).toContain('日本語の返信');
+        await writingClick(host,'上一版');expect(host.querySelector('.writing-language-trigger')?.textContent).toContain('English');expect(host.textContent).toContain('English reply');
+        const saves=external.savePreferences.mock.calls.length;await writingClick(host,'输出语言');await writingClick(host,'返回草稿');expect(host.querySelector('.writing-language-picker')).toBeNull();expect(external.savePreferences).toHaveBeenCalledTimes(saves);expect(host.textContent).toContain('English reply');
+    });
+    it('restarts from edited reference using the original source instead of the latest generated reply',async()=>{
+        const {host}=mount(WritingPanel,{active:true,sessionKey:1,initialDraft:'Original source',initialContext:'Old discussion',initialIntent:'reply'});await flush();await writingComplete('Generated reply');
+        await writingClick(host,'参考内容');expect((host.querySelector('[aria-label="写作草稿"]') as HTMLTextAreaElement).value).toBe('Original source');await writingClick(host,'返回草稿');expect(host.querySelector('[aria-label="生成正文预览"]')?.textContent).toContain('Generated reply');await writingClick(host,'参考内容');await writingInput(host,'写作参考内容','Updated discussion');await writingClick(host,'重新起草');
+        expect(writingRequestAt().request).toMatchObject({intent:'reply',draft:'Original source',context:'Updated discussion'});await writingComplete('Rebased reply');expect(host.textContent).toContain('Rebased reply');
+    });
+    it('inserts bilingual text only after the current reference translation succeeds, and retries it independently',async()=>{
+        external.config.writing.language='en';external.config.writing.referenceLanguage='zh-Hans';const applyDraft=vi.fn();const {host}=mount(WritingPanel,{active:true,sessionKey:1,initialDraft:'Source',applyDraft});await flush();await writingComplete('English reply');
+        expect(writingRequestAt().request).toMatchObject({intent:'translate',draft:'English reply',language:'zh-Hans'});expect(external.ports).toHaveLength(2);await writingFailure('reference failed');
+        expect(host.querySelector('[data-writing-reference]')?.textContent).toContain('writing.referenceError');await writingClick(host,'writing.referenceRetry');expect(external.ports).toHaveLength(3);expect(writingRequestAt().request.draft).toBe('English reply');await writingComplete('中文对照');
+        await writingClick(host,'writing.entry.insertOptions');await writingClick(host,'writing.entry.insertBilingual');expect(applyDraft).toHaveBeenCalledWith('English reply\n\n中文对照');expect(host.querySelector('[role="menu"]')).toBeNull();
+        await writingClick(host,'writing.referenceLanguage');await writingClick(host,'writing.referenceDisabled');expect(external.savePreferences).toHaveBeenLastCalledWith({writing:expect.objectContaining({referenceLanguage:'off'})});expect(host.querySelector('[data-writing-reference]')).toBeNull();expect(host.querySelector('[aria-label="生成正文预览"]')?.textContent).toContain('English reply');
+    });
+    it('handles empty successes and credential errors distinctly and retries the unchanged failed request',async()=>{
+        const {host}=mount(WritingPanel,{active:true,sessionKey:1,initialDraft:'Source'});await flush();await writingComplete('  ');expect(host.textContent).toContain('模型没有返回正文，请重试');await writingClick(host,'重试');expect(writingRequestAt().request.draft).toBe('Source');
+        await writingFailure('请先在翻译服务中配置这个服务的 API Key');expect(host.querySelector('.writing-setup')).not.toBeNull();await writingClick(host,'设置写作服务');expect(external.sendMessage).toHaveBeenCalledWith({type:'openOptionsPage',section:'settings-writing'});
+        await writingClick(host,'重试');await writingComplete('Configured reply');expect(host.querySelector('.writing-setup')).toBeNull();expect(host.textContent).toContain('Configured reply');
+    });
+    it('recovers a synchronous connection failure and uses layered Escape without submitting composing input',async()=>{
+        external.connect.mockImplementationOnce(()=>{throw Error('unavailable runtime')});const close=vi.fn();const {host}=mount(WritingPanel,{active:true,sessionKey:1,initialDraft:'Source',onClose:close});await flush();expect(host.textContent).toContain('写作助手暂时不可用');
+        await writingClick(host,'重试');await writingComplete();await writingClick(host,'回答风格');await writingKey(host.querySelector('.writing-panel')!,'Escape');expect(host.querySelector('.writing-style-editor')).toBeNull();expect(close).not.toHaveBeenCalled();
+        await writingInput(host,'写作要求','Later instruction');const count=external.ports.length;await writingKey(host.querySelector('[aria-label="写作要求"]')!,'Enter',{ctrlKey:true,isComposing:true});expect(external.ports).toHaveLength(count);
+        await writingKey(host.querySelector('.writing-panel')!,'Escape');expect(close).toHaveBeenCalledOnce();await writingClick(host,'关闭写作助手');expect(close).toHaveBeenCalledTimes(2);
+    });
+});
+
+
+describe('audit49B WritingPanel insertion and feedback', () => {
+    it('opens the insert menu by keyboard, skips unavailable bilingual output and closes only when focus leaves', async () => {
+        let focused: Element | null = null;
+        vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(function(this: HTMLElement) {focused = this;});
+        Object.defineProperty(dom.document, 'activeElement', {configurable: true, get: () => focused});
+        const applyDraft = vi.fn();const {host} = mount(WritingPanel, {active:true, sessionKey:1, initialDraft:'Source', applyDraft});await flush();await writingComplete('Reply');
+        const toggle = button(host, 'writing.entry.insertOptions');await writingKey(toggle, 'ArrowDown');
+        const menu = host.querySelector('[role="menu"]')!;const items = [...menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')];
+        expect(focused).toBe(items[0]);expect(items[1].disabled).toBe(true);expect(menu.textContent).toContain('writing.entry.chooseReference');
+        await writingKey(menu, 'ArrowDown');expect(focused).toBe(items[0]);await writingKey(menu, 'ArrowUp');expect(focused).toBe(items[0]);
+        await writingKey(menu, 'Home');expect(focused).toBe(items[0]);
+        const within = new Event('focusout', {bubbles:true});Object.defineProperty(within, 'relatedTarget', {value:toggle});items[0].dispatchEvent(within);await flush();expect(host.querySelector('[role="menu"]')).not.toBeNull();
+        await writingKey(menu, 'Escape');expect(host.querySelector('[role="menu"]')).toBeNull();expect(focused).toBe(toggle);
+        await writingClick(host, 'writing.entry.insertOptions');const outside = new Event('focusout', {bubbles:true});Object.defineProperty(outside, 'relatedTarget', {value:dom.document.body});toggle.dispatchEvent(outside);await flush();expect(host.querySelector('[role="menu"]')).toBeNull();
+        await writingClick(host, 'writing.entry.insertOptions');await writingClick(host, 'writing.entry.insertOptions');expect(host.querySelector('[role="menu"]')).toBeNull();expect(applyDraft).not.toHaveBeenCalled();
+        delete (dom.document as unknown as {activeElement?:Element}).activeElement;
+    });
+    it('copies plain text when no editor insertion is available and reports current clipboard failure', async () => {
+        const write = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined);
+        const {host} = mount(WritingPanel, {active:true, sessionKey:1, initialDraft:'Source', plainTextOutput:true});await flush();await writingComplete('**Reply**');
+        expect(host.textContent).toContain('原草稿含格式');await writingClick(host,'复制回复');expect(write).toHaveBeenLastCalledWith('Reply');expect(host.textContent).toContain('正文已复制。');
+        write.mockRejectedValueOnce(Error('permission denied'));await writingClick(host,'复制正文');expect(host.textContent).toContain('复制失败，请选中生成正文手动复制。');
+        await writingClick(host,'writing.entry.insertOptions');host.querySelector<HTMLButtonElement>('[role="menuitem"]')!.click();await flush();expect(host.querySelector('[role="menu"]')).toBeNull();expect(write).toHaveBeenCalledTimes(3);
+    });
+    it('copies the current bilingual pair and wraps between both enabled menu items', async () => {
+        external.config.writing.language='en';external.config.writing.referenceLanguage='zh-Hans';const write=vi.spyOn(navigator.clipboard,'writeText').mockResolvedValue(undefined);
+        let focused:Element|null=null;vi.spyOn(HTMLElement.prototype,'focus').mockImplementation(function(this:HTMLElement){focused=this;});Object.defineProperty(dom.document,'activeElement',{configurable:true,get:()=>focused});
+        const {host}=mount(WritingPanel,{active:true,sessionKey:1,initialDraft:'Source'});await flush();await writingComplete('English reply');await writingComplete('中文对照');
+        await writingClick(host,'writing.entry.insertOptions');const menu=host.querySelector('[role="menu"]')!,items=[...menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')];expect(focused).toBe(items[0]);
+        await writingKey(menu,'ArrowUp');expect(focused).toBe(items[1]);await writingKey(menu,'ArrowDown');expect(focused).toBe(items[0]);
+        await writingClick(host,'writing.entry.copyBilingual');expect(write).toHaveBeenCalledWith('English reply\n\n中文对照');expect(host.textContent).toContain('正文已复制。');expect(host.querySelector('[role="menu"]')).toBeNull();
+        delete (dom.document as unknown as {activeElement?:Element}).activeElement;
+    });
+    it('keeps the draft on editor insertion failure and shows settings-open errors in the current session', async () => {
+        const applyDraft=vi.fn(()=> '当前编辑器已更新，请重新打开写作助手。');const {host}=mount(WritingPanel,{active:true,sessionKey:1,initialDraft:'Source',applyDraft});await flush();await writingComplete('Reply');await writingClick(host,'插入回复');
+        expect(applyDraft).toHaveBeenCalledWith('Reply');expect(host.textContent).toContain('当前编辑器已更新');expect(host.querySelector('[aria-label="生成正文预览"]')?.textContent).toContain('Reply');
+        external.sendMessage.mockRejectedValueOnce(Error('runtime unavailable'));await writingClick(host,'写作设置');expect(host.textContent).toContain('请从扩展菜单打开完整设置。');
+    });
+});
+
+
+describe('audit49B WritingPanel deferred drafting and interrupted output', () => {
+    it('waits for explicit generation when a draft task starts with discussion context only', async () => {
+        const {host}=mount(WritingPanel,{active:true,sessionKey:1,initialIntent:'draft',initialContext:'Meeting context'});await flush();expect(external.ports).toHaveLength(0);
+        await writingClick(host,'生成回复');expect(writingRequestAt().request).toMatchObject({intent:'draft',draft:'',context:'Meeting context',instruction:''});await writingComplete('Context-based draft');expect(host.textContent).toContain('Context-based draft');
+    });
+    it.each([false,true])('keeps streamed partial text when the provider terminates with cancelled=%s', async cancelled => {
+        const {host}=mount(WritingPanel,{active:true,sessionKey:1,initialDraft:'Source'});await flush();const {port,request}=writingRequestAt();
+        port.onMessage.fire({type:'progress',requestId:request.requestId,progress:{kind:'text',text:'Partial response'}});await flush();
+        port.onMessage.fire({type:'result',requestId:request.requestId,response:{success:false,error:cancelled?'Provider cancelled':'Provider interrupted',cancelled}});await flush();
+        expect(host.querySelector('[aria-label="生成正文预览"]')?.textContent).toContain('Partial response');expect(host.textContent).toContain('writing.experience.incomplete');
+        expect(host.querySelector(cancelled?'.writing-status':'.writing-error')?.textContent).toContain(cancelled?'Provider cancelled':'Provider interrupted');expect(button(host,'重新生成').disabled).toBe(false);
+        await writingClick(host,'重新生成');expect(writingRequestAt().request.draft).toBe('Partial response');await writingComplete('Complete response');expect(host.textContent).not.toContain('writing.experience.incomplete');
+    });
 });

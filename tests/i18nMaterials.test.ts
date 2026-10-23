@@ -7,7 +7,7 @@ import {compileTemplate, parse} from 'vue/compiler-sfc';
 import {renderToString} from 'vue/server-renderer';
 import {parseHTML} from 'linkedom';
 import {translateLegacyText} from '@/src/core/i18n';
-import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
+import {registerAllUiLanguageBundles} from './helpers/uiLanguageBundles';
 import {learningMaterialLegacyText} from '@/src/core/i18n/messages/learningMaterials';
 import {createUiI18nPlugin} from '@/src/ui/i18n';
 

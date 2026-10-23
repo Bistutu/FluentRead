@@ -23,7 +23,6 @@
       <template #copy>
         <InterfaceSkinPreview
           :skin="selectedSkinOption"
-          :skin-label="translateLegacy(selectedSkinOption.label)"
           :preview-label="`${translateLegacy('弹窗风格')}: ${translateLegacy(selectedSkinOption.label)}`"
         />
       </template>

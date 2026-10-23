@@ -1,6 +1,12 @@
-import {describe, expect, it, vi} from 'vitest';
+import {afterEach, describe, expect, it, vi} from 'vitest';
 import {translateMicrosoftTextsWithTransport} from '@/src/providers/translation/microsoftTransport';
+import microsoft from '@/src/providers/translation/microsoft';
+import {setRuntimeFetch} from '@/src/platform/http/runtime';
+import {attachTranslationRequestScheduler} from '@/src/services/translation/requestSnapshot';
 import {createTranslationRequestScheduler} from '@/src/services/translation/requestScheduler';
+import {withProviderSnapshot} from './helpers/providerSnapshot';
+
+afterEach(() => setRuntimeFetch());
 
 function response(value: unknown, status = 200): Response {
     return new Response(JSON.stringify(value), {status});
@@ -18,6 +24,20 @@ async function flushMicrotasks() {
 }
 
 describe('shared Microsoft translation transport', () => {
+    it.each([true, false])('actual adapter preserves blank array slots and frozen/explicit preferences with batching=%s', async batch => {
+        const scheduler = createTranslationRequestScheduler(() => ({maxConcurrentTranslations: 1}));
+        const sent: string[][] = [];
+        setRuntimeFetch(async (_url, init) => {
+            const sources = JSON.parse(String(init?.body)) as string[];sent.push(sources);
+            return response(sources.map(source => ({translations: [{text: `${source} translated`}]})));
+        });
+        const result = scheduler.schedule(lease => microsoft(withProviderSnapshot(attachTranslationRequestScheduler({
+            origin: ['First', ' \n', 'Second'], sourceLanguage: 'en', targetLanguage: 'zh-Hans',
+            ...(batch ? {} : {enableNativeBatch: false}),
+        }, scheduler, {service: 'microsoft'}, lease), {service: 'microsoft', nativeBatchTranslationEnabled: {microsoft: true}})));
+        await expect(result).resolves.toEqual(['First translated', ' \n', 'Second translated']);
+        expect(sent).toEqual(batch ? [['First', 'Second']] : [['First'], ['Second']]);
+    });
     it.each([200, 500])('cancelled late HTTP %s headers cancel the unread body and release the lease without waiting for cancellation acknowledgement', async status => {
         const scheduler = createTranslationRequestScheduler(() => ({
             maxConcurrentTranslations: 1, translationRequestsPerSecond: 0, translationRequestsPerMinute: 0,
@@ -27,17 +47,19 @@ describe('shared Microsoft translation transport', () => {
         const late = new Response(new ReadableStream<Uint8Array>({cancel}), {status});
         const transport = vi.fn().mockImplementationOnce(() => headers.promise)
             .mockResolvedValue(response([{translations: [{text: '后续译文'}]}]));
+        setRuntimeFetch(transport);
         const owner = new AbortController();
-        const first = scheduler.schedule(lease => translateMicrosoftTextsWithTransport(
-            transport, ['First readable paragraph'], 'en', 'zh-Hans', owner.signal, true, lease,
-        ), {signal: owner.signal}).catch(error => error);
+        const first = scheduler.schedule(lease => microsoft(withProviderSnapshot(attachTranslationRequestScheduler({
+            origin: ['First readable paragraph'], sourceLanguage: 'en', targetLanguage: 'zh-Hans', abortSignal: owner.signal,
+        }, scheduler, {service: 'microsoft'}, lease), {service: 'microsoft'})), {signal: owner.signal}).catch(error => error);
         expect(transport).toHaveBeenCalledOnce();
         owner.abort(); await expect(first).resolves.toMatchObject({name: 'AbortError'});
-        const next = scheduler.schedule(lease => translateMicrosoftTextsWithTransport(
-            transport, ['Next readable paragraph'], 'en', 'zh-Hans', undefined, true, lease,
-        ));
+        const next = scheduler.schedule(lease => microsoft(withProviderSnapshot(attachTranslationRequestScheduler({
+            origin: 'Next readable paragraph', sourceLanguage: 'en', targetLanguage: 'zh-Hans',
+        }, scheduler, {service: 'microsoft'}, lease), {service: 'microsoft'})));
+        await flushMicrotasks();expect(transport).toHaveBeenCalledOnce();
         headers.resolve(late);
-        await expect(next).resolves.toEqual(['后续译文']);
+        await expect(next).resolves.toEqual('后续译文');
         expect(cancel).toHaveBeenCalledOnce();
         expect(transport).toHaveBeenCalledTimes(2);
     });

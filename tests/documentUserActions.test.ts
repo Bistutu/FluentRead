@@ -224,6 +224,12 @@ afterEach(async () => {
 });
 
 describe('document user actions: configuration consumers', () => {
+    it('shows configuration readiness failure without enabling translation or losing the imported document', async () => {
+        apps.pop()!.unmount(); const ready = deferred<unknown>(undefined); ports.ready = ready.promise; mount();
+        await importFiles(file('readiness-failure.txt')); ready.reject(new Error('configuration unavailable')); await flush();
+        expect(textOf(root)).toContain('document.config.loadFailed'); expect(translateButton().props.disabled).toBe(true);
+        expect(ports.single).not.toHaveBeenCalled(); expect(ports.batch).not.toHaveBeenCalled();
+    });
     it('defaults to batching for each document and retains a local opt-out without saving global settings', async () => {
         const globalBatching = ports.config.enableAIMultiSegment;
         await importFiles(file('batch-first.txt', 'First passage.\n\nSecond passage.'), file('batch-second.txt', 'Third passage.\n\nFourth passage.'));

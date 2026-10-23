@@ -1,6 +1,7 @@
 import {gzipSync, gunzipSync} from 'node:zlib';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {inflateGzipBase64} from '@/userscript/compression';
+import {encodeUserscriptData} from '@/userscript/buildDataEncoding';
 import {inflateWithPako as inflateWithBundledPako} from '@/userscript/pakoBundled';
 import {inflateBytesWithPako as inflateBytesWithBundledPako, decodeUtf8WithPako as decodeUtf8WithBundledPako} from '@/userscript/pakoBundled';
 
@@ -22,6 +23,14 @@ describe('userscript compressed assets', () => {
 
         await expect(inflateGzipBase64(encoded)).resolves.toBe(source);
         expect(ungzip).toHaveBeenCalledOnce();
+    });
+
+    it.each([false, true])('restores standalone ASCII85 static gzip data with legacy fallback=%s', async fallback => {
+        const source = 'FluentRead 静态 CSS / JSON / JPEG URL e\u0301 🦦 العربية'.repeat(2000);
+        const encoded = encodeUserscriptData(gzipSync(source));
+        expect(encoded.startsWith('~85:')).toBe(true);
+        if (fallback) {vi.stubGlobal('DecompressionStream', undefined); vi.stubGlobal('pako', {ungzip: (bytes: Uint8Array) => gunzipSync(bytes).toString('utf8')});}
+        await expect(inflateGzipBase64(encoded)).resolves.toBe(source);
     });
 
     it('inflates real gzip data with the packaged fallback without a manager global', () => {

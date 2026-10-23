@@ -2,7 +2,7 @@ vi.mock('@/src/shared/onnx/resources', async original => ({...await original<any
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 const mocks=vi.hoisted(()=>({gpu:vi.fn(),load:vi.fn(),background:vi.fn(),create:vi.fn(),run:vi.fn(),release:vi.fn(),tensor:vi.fn(),tensorDispose:vi.fn(),outputDispose:vi.fn(),workerPrepare:vi.fn(),workerRequest:vi.fn(),workerRelease:vi.fn(),pace:vi.fn((operation:()=>Promise<unknown>)=>operation()),wasm:{numThreads:0,wasmPaths:undefined as unknown,proxy:true}}));
 vi.mock('@/src/features/image-translation/services/mangaOcrAssets',async original=>({...await original<any>(),loadMangaInpaintAsset:mocks.load}));
-vi.mock('@/src/features/image-translation/services/mangaGpu',()=>({probeMangaGpu:mocks.gpu}));
+vi.mock('@/src/shared/onnx/webgpu',()=>({probeWebGpu:mocks.gpu}));
 vi.mock('@/src/features/image-translation/services/mangaRendering',()=>({mangaRegionBackground:mocks.background}));
 vi.mock('onnxruntime-web/webgpu',()=>({env:{wasm:mocks.wasm},InferenceSession:{create:mocks.create},Tensor:class{constructor(...args:unknown[]){mocks.tensor(...args)}dispose=mocks.tensorDispose;}}));
 vi.mock('@/src/features/image-translation/services/mangaInferenceClient',async original=>({...await original<any>(),mangaInferenceClient:{prepare:mocks.workerPrepare,request:mocks.workerRequest,release:mocks.workerRelease}}));

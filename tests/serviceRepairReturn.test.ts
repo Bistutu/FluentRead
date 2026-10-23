@@ -8,7 +8,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import * as vue from 'vue'
 import type {UiLanguage} from '@/src/core/i18n'
 import {registerUiLanguageBundle} from '@/src/core/i18n'
-import {registerAllUiLanguageBundles, UI_LANGUAGE_BUNDLES} from '@/src/core/i18n/bundles'
+import {registerAllUiLanguageBundles, UI_LANGUAGE_BUNDLES} from './helpers/uiLanguageBundles'
 registerAllUiLanguageBundles()
 import * as diagnostics from '@/src/services/diagnostics'
 import * as actionContext from '@/src/features/settings/model/useSettingsActionContext'

@@ -1,7 +1,7 @@
 <!--
  * @file src/features/vocabulary/ui/VocabularyBook.vue
  * 文件职责：组织内容优先的学习收藏列表与主动复习，协调句子听读、解释保存、筛选与文件操作。
- * 主要内容：相同译文保留原文且不重复展示；把复习作为列表主操作，收藏开关与文件动作收进管理菜单；搜索与类型筛选合为一行，每条收藏直接提供学习入口，配置、数据和朗读沿用已有消息协议；确认开始即占用操作状态，等待、菜单让步及响应后校验生命周期，拒绝迟到请求、文件下载和已卸载界面更新。
+ * 主要内容：相同译文保留原文且不重复展示；把复习作为列表主操作，收藏开关与文件动作收进管理菜单；搜索与类型筛选合为一行，每条收藏直接提供学习入口，配置、数据和朗读沿用已有消息协议，后台进度保持播放状态、结束或停止才释放；确认开始即占用操作状态，等待、菜单让步及响应后校验生命周期，拒绝迟到请求、文件下载和已卸载界面更新。
  * 模块边界：UI 不直接访问 Dexie 或上传学习数据；完整备份进入备份与恢复页，收藏文件只包含本领域数据，数据库操作集中在后台 repository/handler，上下文和来源只有用户明确选择时才导出。
  -->
 <template>
@@ -332,6 +332,9 @@ function stopEntrySpeech(notifyRemote = true): void {
 
 function speakEntryWithBrowser(entry: VocabularyEntry): void {
   if (entryUtterance) return;
+  if (runtimeConfig.selectionTtsMode === 'local-only') {
+    stopEntrySpeech(false); showToast('本地语音生成失败，请重试'); return;
+  }
   // 远端失败后的结束消息或 page.play 的迟到拒绝不能再停止或重复当前浏览器回退。
   speechController.stop(false);
   releaseEntryAudio();
@@ -381,7 +384,7 @@ function handleEntrySpeechState(message: unknown): undefined {
     const entry = entries.value.find(item => item.id === playingEntryId.value);
     if (entry) speakEntryWithBrowser(entry);
     else stopEntrySpeech(false);
-  } else if (state) stopEntrySpeech(false);
+  } else if (state === 'ended' || state === 'stopped') stopEntrySpeech(false);
   return undefined;
 }
 

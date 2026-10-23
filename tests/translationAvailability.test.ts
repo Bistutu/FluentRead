@@ -101,6 +101,27 @@ describe('全局翻译开关的共享请求边界', () => {
         slow.reject(new Error('late provider failure'));
     });
 
+    it.each(['before', 'during'])('配置水合长期等待时%s取消立即退出，迟到水合不派发请求', async mode => {
+        const hydration = deferred<void>();
+        const f = fixture(true, hydration.promise);
+        const owner = new AbortController();
+        if (mode === 'before') owner.abort();
+        let failure: unknown;
+        const result = f.api.translateWithCache(attachTranslationRequestControl(message(), {
+            signal: owner.signal, ownershipKey: 'hydrating',
+        })).catch(error => {failure = error;});
+        if (mode === 'during') owner.abort();
+        try {
+            for (let index = 0; index < 10; index++) await Promise.resolve();
+            expect(failure).toMatchObject({name: 'AbortError'});
+            expect(f.translate).not.toHaveBeenCalled();
+        } finally {
+            hydration.resolve();
+            await result;
+        }
+        expect(f.translate).not.toHaveBeenCalled();
+    });
+
     it('已取消的调用者不会触发 provider', async () => {
         const f = fixture(); const owner = new AbortController(); owner.abort();
         await expect(f.api.translateWithCache(attachTranslationRequestControl(message(), {signal: owner.signal, ownershipKey: 'cancelled'}))).rejects.toMatchObject({name: 'AbortError'});

@@ -1,7 +1,7 @@
 <!--
  @file src/ui/components/CustomHotkeyInput.vue
  文件职责：提供可复用的自定义快捷键对话框，支持键盘录制、预设选择、冲突校验、清除与无障碍确认流程。
- 主要内容：通过 Teleport 渲染模态层，接收显示、当前值与业务校验 props，单计时器完成键盘录制；录制未完成时拒绝确认旧值，关闭、重开、配置变化与卸载清理旧录制，清除和确认均校验业务冲突，异步焦点只归当前弹窗所有，发出 update、confirm、cancel。
+ 主要内容：通过 Teleport 渲染模态层，接收显示、当前值与业务校验 props，单计时器完成键盘录制；录制未完成时拒绝确认旧值，关闭、重开、配置变化与卸载清理旧录制，当前业务冲突随配置变化同步校验，清除和确认均校验业务冲突，异步焦点只归当前弹窗所有，发出 update、confirm、cancel。
  模块边界：组件只产生规范化快捷键值，不持久化配置、不绑定具体悬浮或划词动作，也不注册页面级永久监听；调用方决定上下文和保存策略，解析规则归 core/hotkey。
 -->
 <template>
@@ -131,7 +131,7 @@
 
 <script setup lang="ts" name="CustomHotkeyInput">
 import UiIcon from './UiIcon.vue'
-import { ref, computed, nextTick, watch, onBeforeUnmount } from 'vue';
+import { ref, computed, nextTick, watch, watchEffect, onBeforeUnmount } from 'vue';
 import { ElIcon } from 'element-plus';
 import { Loading, WarningFilled, Warning, CircleCheckFilled } from '@element-plus/icons-vue';
 import {
@@ -274,9 +274,9 @@ function trapFocus(event: KeyboardEvent) {
   }
 }
 
-// 监听快捷键变化，进行验证
-watch(currentHotkey, (newValue) => {
-  validateCurrentHotkey(newValue);
+// 业务校验会读取当前功能的响应式快捷键配置；冲突变化时无需重录同一个值。
+watchEffect(() => {
+  if (!isRecording.value) validateCurrentHotkey(currentHotkey.value);
 });
 
 // 验证当前快捷键

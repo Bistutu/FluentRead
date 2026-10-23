@@ -567,7 +567,7 @@ export class VocabularyBookRepository {
   }
 
   private async pruneReviewLogs(entryId: string): Promise<string[]> {
-    const logs = await this.db.reviewLogs.where('entryId').equals(entryId).sortBy('reviewedAt');
+    const logs = await this.db.reviewLogs.where('entryId').equals(entryId).toArray();
     if (logs.length <= VOCABULARY_REVIEW_LOG_MAX_PER_ENTRY) return [];
     logs.sort((left, right) => left.reviewedAt - right.reviewedAt || left.id.localeCompare(right.id));
     const deletedIds = logs
@@ -628,7 +628,7 @@ export class VocabularyBookRepository {
 
   async getReviewLogs(entryId: string): Promise<VocabularyReviewLog[]> {
     return this.db.transaction('r', this.db.reviewLogs, async () => {
-      const logs = await this.db.reviewLogs.where('entryId').equals(entryId).sortBy('reviewedAt');
+      const logs = await this.db.reviewLogs.where('entryId').equals(entryId).toArray();
       return logs
         .sort((left, right) => left.reviewedAt - right.reviewedAt || left.id.localeCompare(right.id))
         .map((log) => ({ ...log }));
@@ -643,7 +643,7 @@ export class VocabularyBookRepository {
     return this.db.transaction('rw', this.db.entries, this.db.reviewLogs, async () => {
       const entry = await this.db.entries.get(entryId);
       if (!entry) return null;
-      const reviewLogs = await this.db.reviewLogs.where('entryId').equals(entryId).sortBy('reviewedAt');
+      const reviewLogs = await this.db.reviewLogs.where('entryId').equals(entryId).toArray();
       await this.db.entries.delete(entryId);
       await this.db.reviewLogs.where('entryId').equals(entryId).delete();
       return {

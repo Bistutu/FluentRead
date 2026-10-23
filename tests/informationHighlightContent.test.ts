@@ -91,13 +91,24 @@ describe('local keyword and Unicode coordinates', () => {
         const mixed = '预测意外度 predicts 阅读';
         expect(score(mixed, '阅读')).toBeGreaterThan(Math.log2(6)); expect(scoreInformationKeywords('我们已经可以通过这个').spans).toEqual([]);
     });
+    it.each([true, false])('keeps emoji modifiers, flag pairs and CRLF intact and always advances (native segmentation: %s)', native => {
+        if (!native) vi.stubGlobal('Intl', {...Intl, Segmenter: undefined});
+        for (const cluster of ['😀', '👍🏽', '🇨🇳', '👩‍💻', 'a\u0301', '\r\n']) {
+            const boundaries = informationGraphemeBoundaries(cluster + 'z');
+            for (let offset = 1; offset < cluster.length; offset++) {
+                expect(boundaries.has(offset), `${cluster} offset ${offset}`).toBe(false);
+                expect(informationSliceEnd(cluster + 'z', 0, offset)).toBe(cluster.length);
+                expect(informationSliceEnd('x' + cluster + 'z', 0, offset + 1)).toBe(1);
+            }
+        }
+    });
     it('fallback preserves composed accents and CJK units without Intl.Segmenter', () => {
         vi.stubGlobal('Intl', {...Intl, Segmenter: undefined});
         const text = 'cafe\u0301 中文阅读 学习测试 ab-cd';
         expect(scoreInformationKeywords(text).spans.map(span => text.slice(span.start, span.end))).toEqual(['cafe\u0301', '中文', '阅读', '学习', '测试', 'ab-cd']);
         expect([...informationGraphemeBoundaries('a\u0301👩‍💻x')]).toEqual(expect.arrayContaining([0, 2, 7, 8]));
         expect(informationSliceEnd('a\u0301👩‍💻x', 0, 1)).toBe(2);
-        expect(informationSliceEnd('a👩‍💻x', 0, 3)).toBe(6);
+        expect(informationSliceEnd('a👩‍💻x', 0, 3)).toBe(1);
         expect(informationSliceEnd('a😀b', 0, 2)).toBe(1);
         const join = 'ab‍cd'; expect(selectInformationSpans(join, [{start: 0, end: 5, score: 1}], 'high')).toEqual([]);
     });
@@ -831,6 +842,24 @@ describe('content composition and runtime score messages', () => {
         send.mockImplementation(async () => undefined); runtime.retry(); await f.settle(); expect(runtime.getState().errorCode).toBe('INFORMATION_HIGHLIGHT_SCORE_FAILED');
         send.mockImplementation(async () => {throw new Error('NETWORK');}); runtime.retry(); await f.settle(); expect(runtime.getState().errorCode).toBe('NETWORK');
         activation.abort(); expect(runtime.getState().phase).toBe('idle');
+    });
+    it('rejects cancellation locally even when the extension transport throws synchronously', async () => {
+        const listeners = new Set<() => void>();
+        const signal = {aborted: false, addEventListener: (_type: string, callback: () => void) => listeners.add(callback),
+            removeEventListener: (_type: string, callback: () => void) => listeners.delete(callback)};
+        const pending = deferred<unknown>();
+        const send = vi.fn((message: {type: string}) => {
+            if (message.type === 'CANCEL_INFORMATION_HIGHLIGHT') throw new Error('Extension context invalidated');
+            return pending.promise;
+        });
+        const score = createInformationHighlightScorePort(send);
+        const task = score('text', signal as unknown as AbortSignal);
+        const outcome = task.then(() => 'resolved', error => error.message);
+        signal.aborted = true;
+        expect(() => [...listeners].forEach(listener => listener())).not.toThrow();
+        await expect(outcome).resolves.toBe('INFORMATION_HIGHLIGHT_CANCELLED');
+        expect(listeners.size).toBe(0);
+        pending.resolve({success: true, result: {spans: [], engine: 'late'}});
     });
     it('generates secure UUID identities on HTTP pages, refuses an already aborted request and cancels a same-turn response', async () => {
         const realCrypto = crypto; vi.stubGlobal('crypto', {getRandomValues: realCrypto.getRandomValues.bind(realCrypto)});

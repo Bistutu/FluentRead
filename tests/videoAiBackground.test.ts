@@ -56,6 +56,35 @@ function waitingForPreviousCancellation(type: typeof ownedEntryTypes[number]) {
 }
 
 describe('video subtitle background ownership', () => {
+    it('composes browser storage, local model preparation and sender-bound readings through the production runtime', async () => {
+        const fixture = setup(); installModelKeys(['tiny']);
+        const values: Record<string, unknown> = {fluentReadVideoLocalTranscriptionModels: []};
+        const get = vi.fn(async (key: string) => ({[key]: values[key]}));
+        const set = vi.fn(async (patch: Record<string, unknown>) => {Object.assign(values, patch);});
+        vi.stubGlobal('browser', {runtime: {id: 'fixture-extension'}, storage: {local: {get, set}}});
+        fixture.offscreen.send.mockImplementation(async <T>(message?: unknown) => (
+            (message as {type: string}).type === 'READING_ANNOTATION'
+                ? {success: true, result: {text: 'nihon', language: 'ja', scheme: 'hepburn-ipadic-v1'}}
+                : {success: true, model: 'tiny', backend: 'wasm'}
+        ) as T);
+        vi.doMock('@/src/platform/offscreen/extensionClient', () => ({extensionDomClient: fixture.offscreen}));
+        try {
+            const {createVideoSubtitleBackgroundRuntime} = await import('@/src/features/video-subtitle/background/runtime');
+            const handlers = createVideoSubtitleBackgroundRuntime();
+            const prepare = find(handlers, 'fluentReadPrepareLocalVideoModel');
+            await expect(prepare.handle({type: prepare.type, model: 'tiny', keepWarm: false}, context(14))).resolves.toMatchObject({success: true, model: 'tiny'});
+            expect(get).toHaveBeenCalledWith('fluentReadVideoLocalTranscriptionModels');
+            expect(set).toHaveBeenCalledWith({fluentReadVideoLocalTranscriptionModels: ['tiny']});
+            const reading = find(handlers, 'fluentReadAnnotateVideoReading');
+            const request = {type: reading.type, requestId: 'assembly-reading', text: '日本', language: 'ja'};
+            await expect(reading.handle(request, {sender: {id: 'fixture-extension', tab: {id: 14}, frameId: 2}})).resolves.toMatchObject({success: true, result: {text: 'nihon'}});
+            expect(fixture.offscreen.send).toHaveBeenCalledWith(expect.objectContaining({type: 'READING_ANNOTATION', text: '日本', language: 'ja'}), expect.any(Object));
+            await expect(reading.handle(request, {sender: {id: 'other-extension', tab: {id: 14}}})).rejects.toThrow('发送方无效');
+            const cache = handlers.find(handler => handler.type === 'fluentReadGetVideoAiSubtitleCache')!;
+            const cacheRequest = {type: cache.type, source: {}, model: 'tiny'};
+            await expect(cache.handle(cacheRequest, {})).resolves.toMatchObject({success: true, hit: false, cues: []});
+        } finally {vi.doUnmock('@/src/platform/offscreen/extensionClient');}
+    });
     it.each(ownedEntryTypes)('%s does not dispatch after its cancellation was acknowledged while the previous cancellation is pending', async type => {
         const f = waitingForPreviousCancellation(type);
         const first = f.start(1);

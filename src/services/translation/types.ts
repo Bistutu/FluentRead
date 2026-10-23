@@ -19,6 +19,8 @@ export const TRANSLATION_PROVIDER_CONFIG = Symbol('fluentread.translation-provid
 
 export const TRANSLATION_REMAINING_BUDGET = Symbol('fluentread.translation-remaining-budget');
 
+export const TRANSLATION_REQUEST_STARTED_AT = Symbol('fluentread.translation-request-started-at');
+
 export const TRANSLATION_MODEL_USAGE_OBSERVER = Symbol('fluentread.translation-model-usage-observer');
 
 export const TRANSLATION_ROUTE_OBSERVER = Symbol('fluentread.translation-route-observer');

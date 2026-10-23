@@ -71,7 +71,7 @@ async function providerComposition() {
     const scheduler = createTranslationRequestScheduler(() => ({maxConcurrentTranslations: 1}));
     port('@/src/app/translation/runtime', () => ({translationRequestScheduler: scheduler}));
     port('@/src/app/translation/visionProbeRuntime', () => ({modelVisionProbe: {resolve: resolveProbe}}));
-    port('@/src/platform/storage/modelUsageRepository', () => ({modelUsageRepository: {recordMany, captureGeneration}}));
+    port('@/src/platform/storage/modelUsageRepository', () => ({getModelUsageRepository: () => ({recordMany, captureGeneration})}));
     const {createProviderTestRuntimeHandlers} = await import('@/src/app/background/providerRuntime');
     const {createBackgroundMessageRouter} = await import('@/src/services/messaging/backgroundRouter');
     // 通过实际 router 分派，不调用组合根内部闭包或替换两个真实 handler factory。

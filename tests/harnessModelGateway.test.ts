@@ -27,6 +27,26 @@ describe('harness model gateway', () => {
     planBuild.enabled = false;
   });
 
+  it.each([services.claude, services.gemini])('tracks a native %s proxy change without exposing its credentials', service => {
+    const config = new Config();delete config.proxy[service];
+    const direct = getHarnessModelInputKey(config, service, 'reader');
+    config.proxy[service] = 'https://fixture.test/native?token=private-value';
+    const proxied = getHarnessModelInputKey(config, service, 'reader');
+    expect(proxied).not.toBe(direct);expect(proxied).toMatch(/^[a-f0-9]{64}$/u);expect(proxied).not.toContain('private-value');
+    config.proxy[service] += ' ';expect(getHarnessModelInputKey(config, service, 'reader')).toBe(proxied);
+  });
+
+  it('keeps invalid gateway inputs comparable for cancellation and distinguishes repaired endpoint/header inputs', () => {
+    const config = new Config();config.deepseekApiType = 'responses';
+    const invalid = getHarnessModelInputKey(config, services.deepseek, 'reader');
+    expect(invalid).toMatch(/^[a-f0-9]{64}$/u);config.deepseekApiType = 'chat';
+    expect(getHarnessModelInputKey(config, services.deepseek, 'reader')).not.toBe(invalid);
+    const service = 'custom:key-identity';config.customOpenAIProviders = [{id: service, name: 'Local', endpoint: 'http://localhost:11434/v1', models: ['reader']}];
+    config.customHeaders[service] = '{invalid';const badHeader = getHarnessModelInputKey(config, service, 'reader');
+    config.customHeaders[service] = '{"x-a":"private-value"}';
+    const repaired = getHarnessModelInputKey(config, service, 'reader');expect(repaired).not.toBe(badHeader);expect(repaired).not.toContain('private-value');
+  });
+
   it.each([
     ['mimo', 'https://api.xiaomimimo.com/v1/chat/completions', 'mimo-v2.5', 'mimo-v2.6-flash'],
     ['mimo', 'https://token-plan-sgp.xiaomimimo.com/v1/chat/completions', 'mimo-v2.5-pro', 'mimo-v2.6-pro'],

@@ -37,13 +37,14 @@ import {
     getEagerTranslationBudget,
 } from '@/src/features/full-page-translation/content/eagerTranslation';
 import {
-    createTranslationCore,
     extractTranslationText,
+    extractTranslationTextFromNodes,
     getCurrentTranslationCore,
     isMeaningfulTranslationText,
     setCurrentTranslationSidebarRegions,
     setMinimumTranslationTextLength,
 } from '@/src/core/translation/public';
+import {createTranslationCore} from './helpers/translationCore';
 import type {TranslationCandidate} from '@/src/core/translation/public';
 import {appendBilingualTranslation} from '@/src/features/full-page-translation/content/renderer';
 
@@ -109,6 +110,23 @@ describe('翻译段落所需的最少字符数', () => {
 });
 
 describe('侧边栏翻译', () => {
+    it.each(['nav', 'aside'])('开启侧边栏后 %s 的直属正文与独立子段落都可发现及悬浮翻译', tag => {
+        const {document, url} = page(`<header><${tag} id="mixed">Direct sidebar description.<p>Independent sidebar paragraph.</p></${tag}></header>`);
+        const container = document.querySelector('#mixed')!;
+        const direct = container.firstChild!;
+        const closed = createTranslationCore({scope: 'content', url});
+        expect(closed.discover(document)).toEqual([]);
+        expect(closed.resolve(direct)).toBeNull();
+        const opened = createTranslationCore({scope: 'content', includeSidebarRegions: true, url});
+        const candidates = opened.discover(document);
+        expect(candidates.map(candidate => candidate.nodes
+            ? extractTranslationTextFromNodes(candidate.nodes)
+            : extractTranslationText(candidate.element))).toEqual([
+            'Independent sidebar paragraph.', 'Direct sidebar description.',
+        ]);
+        expect(opened.resolve(direct)?.nodes).toEqual([direct]);
+    });
+
     const html = `
         <header id="site-header"><div><nav id="header-menu"><ul><li id="header-menu-item">Header navigation remains translatable.</li></ul></nav><p id="header-meta">Header metadata remains a page-shell detail.</p></div></header>
         <main><article><p id="prose">The main article body stays translatable.</p></article></main>

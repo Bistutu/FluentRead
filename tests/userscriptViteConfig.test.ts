@@ -1,3 +1,4 @@
+import ts from 'typescript';
 import {mimoRetirementSource} from '@/src/core/i18n/messages/mimoRetirement';
 import {createUserscriptSettingsDataPlugin} from '@/userscript/settingsDataPlugin';
 import * as originalAppearance from '@/src/core/config/interfaceAppearance';
@@ -12,6 +13,7 @@ import {runInNewContext} from 'node:vm';
 import {describe, expect, it, vi} from 'vitest';
 import {ungzip} from 'pako';
 import {gzipUserscriptBuildData} from '@/userscript/buildGzip';
+import {decodeUserscriptData} from '@/userscript/dataEncoding';
 import {zhCNMessages, UI_LANGUAGE_BUNDLES, userscriptMessages} from '@/userscript/languageBundles';
 import {zhCNMessages as extensionChinese} from '@/src/core/i18n/messages/zh-CN';
 import {UI_LANGUAGE_BUNDLES as extensionBundles} from '@/src/core/i18n/bundles';
@@ -350,10 +352,10 @@ describe('authoritative site catalogs with an external pinned data asset', () =>
         const vm = await vi.importActual<typeof import('node:vm')>('node:vm');
         const authoritative = JSON.parse(readFileSync(resolve(process.cwd(), 'src/core/site-adaptation/catalog/established.json'), 'utf8'));
         const data = vm.runInNewContext(readFileSync(resolve(process.cwd(), 'userscript/resources/fluentread-data.v1.js'), 'utf8'), {}, {timeout: 5000});
-        if (variant === 'unchanged' || variant === 'reordered' || variant === 'removed-rule') {
-            data.siteCatalogs.established = structuredClone(authoritative);
-        }
-        if (variant === 'reordered') data.siteCatalogs.established.reverse();
+        data.siteCatalogs.established = structuredClone(authoritative);
+        // 固定资源刷新后仍明确构造旧版本和重排资源，避免依赖当前磁盘恰好陈旧。
+        if (variant === 'old-asset') data.siteCatalogs.established.shift();
+        if (variant === 'reordered' || variant === 'missing-runtime-rule') data.siteCatalogs.established.reverse();
         if (variant === 'removed-rule') data.siteCatalogs.established.push({id: 'removed-pinned-rule', match: {hosts: ['removed.invalid']}});
         vi.doMock('node:vm', () => ({...vm, runInNewContext: () => data}));
         vi.stubEnv('FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE', '1');
@@ -420,7 +422,9 @@ describe('userscript browser shim injection', () => {
             for (const phase of ['early', 'late'] as const) {
                 expect(bundle.legacyPatterns[phase]).toEqual(original.legacyPatterns[phase].filter(([source]) => !materialPatterns.includes(source)));
             }
-            for (const [source, value] of Object.entries(bundle.legacyText)) expect(value).toBe(original.legacyText[source]);
+            for (const [source, value] of Object.entries(original.legacyText)) {
+                if (Object.hasOwn(bundle.legacyText, source)) expect(bundle.legacyText[source]).toBe(value);
+            }
             for (const source of materialSources) expect(original.legacyText[source]).toBeTruthy();
             if (language !== 'en-US') {
                 // 固定资源是发布契约；必须保持整包字节，不能只证明本地生成文件自洽。
@@ -435,7 +439,8 @@ describe('userscript browser shim injection', () => {
                 && !key.startsWith('safari.freePool.')
                 && !key.startsWith('document.translationProgress.') && (language === 'en-US' || !registeredSupplementKeys.includes(key))));
             if (language !== 'en-US') for (const key of publishedOverrideKeys) kept[key] = publishedMessages[language]![key]!;
-            expect(bundle.messages).toEqual(kept);
+            if (language === 'en-US') expect(bundle.messages).toEqual(kept);
+            else expect(bundle.messages).toEqual(publishedMessages[language]);
             expect(original.messages['learning.reloadPage']).toBeTruthy();
         }
     });
@@ -454,11 +459,14 @@ describe('userscript browser shim injection', () => {
             expect(projected.messages[key]).toBe(publishedMessages[language]![key]);
         }
         const nonDocument = Object.fromEntries(Object.entries(projected.messages).filter(([key]) => !key.startsWith('document.')));
-        for (const [key, value] of Object.entries(nonDocument)) expect(value).toBe(publishedOverrideKeys.includes(key)
-            ? publishedMessages[language]![key] : original.messages[key]);
+        for (const [key, value] of Object.entries(nonDocument)) expect(value).toBe(publishedMessages[language]![key]);
         // 原文案继续使用root已发布投影，材料扩展界面文本不重新进入脚本固定资源。
         const materialSources = new Set(Object.keys(learningMaterialLegacyText[language as keyof typeof learningMaterialLegacyText]));
-        expect(projected.legacyText).toEqual(Object.fromEntries(Object.entries(original.legacyText).filter(([source]) => !materialSources.has(source) && source !== mimoRetirementSource && source !== '移动端 / X 自动贴底')));
+        for (const [source, value] of Object.entries(original.legacyText)) {
+            if (!materialSources.has(source) && source !== mimoRetirementSource && source !== '移动端 / X 自动贴底') expect(projected.legacyText[source]).toBe(value);
+        }
+        const pinned = JSON.parse(readFileSync(resolve(process.cwd(), 'userscript/languages', pinnedLanguageFiles[language as keyof typeof pinnedLanguageFiles]), 'utf8'));
+        expect(projected.legacyText).toEqual(pinned.legacyText);
         const materialPatterns = learningMaterialPatterns.map(({pattern}) => pattern);
         for (const phase of ['early', 'late'] as const) expect(projected.legacyPatterns[phase]).toEqual(original.legacyPatterns[phase].filter(([source]) => !materialPatterns.includes(source)));
         expect(JSON.stringify(original)).toBe(originalBefore);
@@ -543,7 +551,8 @@ describe('userscript browser shim injection', () => {
             && !safariPermissionKeys.includes(key) && !pageFontKeys.includes(key)
             && key !== 'popup.compact.translate' && key !== 'popup.compact.restore' && !key.startsWith('popup.displayMode.')
             && (_language === 'zh-CN' || _language === 'en-US' || !registeredSupplementKeys.includes(key)));
-        expect(Object.keys(projected)).toHaveLength(retainedKeys.length);
+        if (_language === 'zh-CN' || _language === 'en-US') expect(Object.keys(projected)).toHaveLength(retainedKeys.length);
+        else expect(projected).toEqual(publishedMessages[_language]);
         for (const key of retainedKeys) expect(projected[key]).toBe(publishedMessages[_language] && publishedOverrideKeys.includes(key)
             ? publishedMessages[_language]![key] : extension[key]);
         expect(projected['contextMenu.translateSelection']).toBeTruthy();
@@ -593,7 +602,7 @@ describe('userscript browser shim injection', () => {
             expect(committed).toBe(readFileSync(resolve(process.cwd(), path), 'utf8'));
         }
     });
-    it('embeds the Chinese fallback catalog, minus the reader-only keys of the extension document page, as lossless static data', () => {
+    it('embeds the Chinese fallback catalog, minus the extension document and full-options statistics keys, as lossless static data', () => {
         const plugin = createUserscriptCatalogCompressionPlugin() as unknown as {
             resolveId: (source: string, importer: string) => string | null;
             load: (id: string) => string | null;
@@ -604,10 +613,10 @@ describe('userscript browser shim injection', () => {
         const base64 = moduleSource?.match(/atob\("([A-Za-z0-9+/=]+)"\)/u)?.[1];
         expect(base64).toBeTruthy();
         const restored = JSON.parse(gunzipSync(Buffer.from(base64!, 'base64')).toString('utf8'));
-        // 文档翻译页面（含 PDF 阅读器）只存在于扩展里，油猴脚本不含该页面：内嵌目录恰好是全部中文文案去掉 document. 这一组键，其余一条不少、内容无损。
-        const readerOnly = Object.keys(zhCNMessages).filter(key => key.startsWith('document.'));
+        // 标准脚本不挂载文档页与完整设置里的请求统计；其余文案逐项验证。
+        const readerOnly = Object.keys(zhCNMessages).filter(key => (key.startsWith('document.') || key.startsWith('translationStats.')));
         expect(readerOnly.length).toBeGreaterThan(0);
-        const embedded = Object.fromEntries(Object.entries(zhCNMessages).filter(([key]) => !key.startsWith('document.')));
+        const embedded = Object.fromEntries(Object.entries(zhCNMessages).filter(([key]) => !(key.startsWith('document.') || key.startsWith('translationStats.'))));
         expect(Object.keys(embedded)).toHaveLength(Object.keys(zhCNMessages).length - readerOnly.length);
         expect(restored).toEqual(embedded);
         vi.stubGlobal('pako', {ungzip});
@@ -634,6 +643,8 @@ describe('userscript browser shim injection', () => {
             const source = await Reflect.apply(load, {}, [id]);
             const compiled = await transformWithEsbuild(source, 'pinned-chinese.js', {format: 'cjs', target: 'es2018'});
             const data = runInNewContext(readFileSync(resolve(process.cwd(), 'userscript/resources/fluentread-data.v1.js'), 'utf8'), {}, {timeout: 5000});
+            data.zhCNMessages['settings.services.deeplx.defaultRoute'] = '旧版默认线路';
+            data.zhCNMessages['settings.services.deeplx.endpointHelp'] = '旧版地址说明';
             const before = JSON.stringify(data);
             const realm = {module: {exports: {} as {zhCNMessages: Record<string, string>}}, __FLUENTREAD_USERSCRIPT_DATA__: data};
             runInNewContext(compiled.code, realm, {timeout: 5000});
@@ -646,12 +657,12 @@ describe('userscript browser shim injection', () => {
         } finally {vi.unstubAllEnvs();vi.resetModules();}
     });
 
-    it('embeds the English bundle without the reader-only keys and preserves every other field', () => {
+    it('embeds the English bundle without the extension document and full-options statistics keys and preserves every other field', () => {
         const defines = (userscriptConfig as {define: Record<string, string>}).define;
         const compressed = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__) as Record<string, string>;
         expect(Object.keys(compressed)).toEqual(['en-US']);
         const original = UI_LANGUAGE_BUNDLES['en-US'];
-        const readerOnly = Object.keys(original.messages).filter(key => key.startsWith('document.'));
+        const readerOnly = Object.keys(original.messages).filter(key => (key.startsWith('document.') || key.startsWith('translationStats.')));
         expect(readerOnly.length).toBeGreaterThan(0);
         const messages = Object.fromEntries(Object.entries(original.messages).filter(([key]) => !readerOnly.includes(key)));
         const expected = {...original, messages};
@@ -668,15 +679,36 @@ describe('userscript browser shim injection', () => {
             vi.unstubAllGlobals();
         }
     });
-    it('applies the same document-page boundary to the embedded English catalog and preserves learning-center source copy', () => {
+    it('applies the same page capability boundary to the embedded English catalog and preserves learning-center source copy', () => {
         const defines = (userscriptConfig as {define: Record<string, string>}).define;
         const compressed = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__)['en-US'];
         const restored = JSON.parse(gunzipSync(Buffer.from(compressed, 'base64')).toString('utf8'));
         const english = UI_LANGUAGE_BUNDLES['en-US'];
-        const messages = Object.fromEntries(Object.entries(english.messages).filter(([key]) => !key.startsWith('document.')));
+        const messages = Object.fromEntries(Object.entries(english.messages).filter(([key]) => !(key.startsWith('document.') || key.startsWith('translationStats.'))));
         expect(Object.keys(messages).length).toBeLessThan(Object.keys(english.messages).length);
         expect(restored).toEqual({...english, messages});
         expect(restored.legacyText['回到视频片段']).toBe(extensionBundles['en-US'].legacyText['回到视频片段']);
+    });
+
+    it('applies the same absent-page boundary to standalone and preserves every remaining message', async () => {
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_STANDALONE', '1');
+        try {
+            vi.resetModules();
+            const {default: standalone, createUserscriptCatalogCompressionPlugin: createPlugin} = await import('@/userscript/vite.config');
+            const defines = (standalone as {define: Record<string, string>}).define;
+            const english = JSON.parse(gunzipSync(decodeUserscriptData(JSON.parse(defines.__FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__)['en-US'])).toString('utf8'));
+            const plugin = createPlugin() as unknown as {resolveId: (source: string, importer: string) => string; load: (id: string) => string};
+            const source = plugin.load(plugin.resolveId('./messages/zh-CN', resolve(process.cwd(), 'src/core/i18n/index.ts')));
+            const chinese = JSON.parse(gunzipSync(decodeUserscriptData(JSON.parse(source.match(/decodeUserscriptData\(("(?:[^"\\]|\\.)*")\)/u)![1]))).toString('utf8'));
+            for (const [original, restored] of [[UI_LANGUAGE_BUNDLES['en-US'].messages, english.messages], [zhCNMessages, chinese]]) {
+                const keys = Object.keys(original).filter(key => key.startsWith('translationStats.'));
+                expect(keys.length).toBeGreaterThan(100);
+                for (const key of keys) expect(restored).not.toHaveProperty(key);
+                expect(restored).toEqual(Object.fromEntries(Object.entries(original).filter(([key]) => !key.startsWith('document.') && !key.startsWith('translationStats.'))));
+                expect(Object.keys(restored).some(key => key.startsWith('document.'))).toBe(false);
+            }
+            expect(defines.__FLUENTREAD_USERSCRIPT_REMOTE_LANGUAGES__).toBe((userscriptConfig as {define: Record<string, string>}).define.__FLUENTREAD_USERSCRIPT_REMOTE_LANGUAGES__);
+        } finally {vi.unstubAllEnvs();vi.resetModules();}
     });
 
     it('keeps all site rule JSON data intact when embedding compressed offline catalogs', () => {
@@ -1427,13 +1459,13 @@ describe('standalone About images at explicit use boundaries', () => {
         const {transformWithEsbuild} = await import('vite');
         const compiled = await transformWithEsbuild(source, 'about-images-owner.js', {format: 'cjs', target: 'es2018'});
         const module = {exports: {} as {getSupportImageUrl(normal: string): string; getContactImageUrl(): string}};
-        const decode = vi.fn(atob);
+        const decode = vi.fn(decodeUserscriptData);
         const hostImage = {controlledHostImage: true};
-        const realm = {module, exports: module.exports, Uint8Array, atob: decode,
+        const realm = {module, exports: module.exports, Uint8Array, atob,
             __FLUENTREAD_APPROVE_DATA__: hostImage,
             require: (id: string) => {
-                expect(id).toBe('@/userscript/pakoRuntime');
-                return {inflateWithPako: decoder};
+                if (id === '@/userscript/dataEncoding') return {decodeUserscriptData: decode};
+                expect(id).toBe('@/userscript/pakoRuntime'); return {inflateWithPako: decoder};
             }};
         runInNewContext(compiled.code, realm, {timeout: 5_000});
         expect(decoder).not.toHaveBeenCalled();
@@ -1537,7 +1569,7 @@ describe('standalone About images at explicit use boundaries', () => {
             const support = api.getSupportImageUrl(normalUrl);
             assertImage(api.getContactImageUrl(), 'contact');
             if (enabled) {
-                assertImage(support, 'support');expect(decode).toHaveBeenCalledTimes(2);
+                assertImage(support, 'support');expect(decode).not.toHaveBeenCalled();
                 expect(chunk.code).not.toContain(expectedUrl('support'));
                 expect(chunk.code).not.toContain(expectedUrl('contact'));
                 expect(chunk.moduleIds).not.toContain(resolve(root, 'src/app/options/assets/wechat-contact.jpg'));
@@ -1546,7 +1578,7 @@ describe('standalone About images at explicit use boundaries', () => {
                 expect(chunk.moduleIds).toContain(resolve(root, 'src/app/options/assets/wechat-contact.jpg'));
             }
             api.getSupportImageUrl('other-normal-url');api.getContactImageUrl();
-            expect(decode).toHaveBeenCalledTimes(enabled ? 2 : 0);
+            expect(decode).not.toHaveBeenCalled();
             const bootstrapPlugin = (config.plugins as import('vite').Plugin[]).find(item => item.name === 'bundle-userscript-css') as unknown as {
                 generateBundle: {handler: Function};
             };
@@ -1831,7 +1863,7 @@ describe('standalone OpenAI transport build boundary', () => {
     }, 30_000);
 
     it.each([
-        ['ordinary', '0', '0', false], ['standalone', '1', '0', true],
+        ['ordinary', '0', '0', true], ['standalone', '1', '0', true],
         ['greasy-fork', '0', '1', false], ['standalone-and-greasy', '1', '1', false],
     ] as const)('executes real %s owner builds and preserves the expected SDK module reachability', async (_label, standalone, greasy, lightweight) => {
         vi.stubEnv('FLUENTREAD_USERSCRIPT_STANDALONE', standalone);
@@ -2008,5 +2040,52 @@ describe('userscript appearance registry data owner', () => {
             runInNewContext(chunk.code,realm,{timeout:5000});expect(realm.appearanceOwner).toBeDefined();complete(realm.appearanceOwner!);expect(decode).toHaveBeenCalledTimes(enabled?2:0);
             expect(readFileSync(resolve(root,'public/third-party-notices/lobe-icons-MIT.txt'),'utf8')).toContain('Copyright (c) 2023 LobeHub');
         }finally{rmSync(directory,{recursive:true,force:true});vi.unstubAllEnvs();vi.resetModules();}
+    });
+});
+
+describe('standalone immutable glossary and UI catalogs', () => {
+    const targets = [
+        ['src/core/glossary/builtins.ts', ['BUILTIN_GLOSSARIES']],
+        ['src/core/config/videoSubtitleAppearance.ts', ['VIDEO_SUBTITLE_SKINS']],
+        ['src/features/settings/model/chromeTranslationPreparation.ts', ['TEST_SAMPLES']],
+        ['src/core/i18n/messages/aiRequestTimeout.ts', ['aiRequestTimeoutMessages']],
+        ['src/core/config/driveSync.ts', ['VISIBLE_FIELDS']],
+        ['src/features/settings/model/navigation.ts', ['settingsPagePanels', 'settingsSearchTargets']],
+        ['src/core/config/translationLoadingStyle.ts', ['translationLoadingStyleOptions']],
+        ['userscript/uiLanguageBundles.ts', ['recoveryMessages', 'sectionSweepMessages', 'deeplxMessages']],
+        ['src/core/config/freeTranslation.ts', ['FREE_TRANSLATION_PROVIDERS']],
+        ['src/core/language/catalog.ts', ['translationLanguageOptions']],
+        ['src/core/language/partOfSpeech.ts', ['PARTS']],
+        ['src/core/config/sentenceHighlight.ts', ['SENTENCE_HIGHLIGHT_STYLES']],
+        ['src/core/config/selectionTts.ts', ['SELECTION_TTS_VOICE_OPTIONS']],
+    ] as const;
+    it.each(targets)('restores every ordered value from %s without changing the consumer functions', async (path, names) => {
+        const root = process.cwd(), id = resolve(root, path), original = readFileSync(id, 'utf8');
+        const transform = (enabled: boolean, full: boolean) => {
+            const plugin = createUserscriptSettingsDataPlugin(root, enabled, full);
+            return Reflect.apply(plugin.transform as Function, {}, [original, id]) as {code: string} | null;
+        };
+        expect(transform(false, true)).toBeNull();expect(transform(true, false)).toBeNull();
+        const transformed = transform(true, true)!.code;
+        const {transformWithEsbuild} = await import('vite');
+        async function readCatalog(source: string) {
+            const ast = ts.createSourceFile(id, source, ts.ScriptTarget.Latest, true);
+            const dataStatements = ast.statements.filter(statement => ts.isVariableStatement(statement) && statement.declarationList.declarations.some(declaration => (names as readonly string[]).includes(declaration.name.getText(ast)))).map(statement => statement.getText(ast)).join('\n');
+            const decoderImport = source.includes('__fluentreadInflateSettingsData') ? "import {inflateWithPako as __fluentreadInflateSettingsData} from '@/userscript/pakoRuntime';\n" : '';
+            const compiled = await transformWithEsbuild(`${decoderImport}${dataStatements}\nexport const auditCatalogs = {${names.join(',')}};`, 'actual-catalog.ts', {format: 'cjs', target: 'es2018'});
+            const module = {exports: {} as {auditCatalogs: unknown}}, decode = vi.fn(inflateBundledFrancData);
+            runInNewContext(compiled.code, {module, exports: module.exports, Uint8Array, atob,
+                require: (name: string) => name === '@/userscript/pakoRuntime' ? {inflateWithPako: decode} : {}}, {timeout: 5000});
+            return {json: JSON.stringify(module.exports.auditCatalogs), decode};
+        }
+        const baseline = await readCatalog(original), candidate = await readCatalog(transformed);
+        expect(candidate.json).toBe(baseline.json);expect(candidate.decode).toHaveBeenCalledTimes(names.length);
+        expect(baseline.decode).not.toHaveBeenCalled();
+        // 所有非目标 AST 语句逐字保留，包括实际查找、注册、恢复与错误处理函数。
+        const originalAst = ts.createSourceFile(id, original, ts.ScriptTarget.Latest, true);
+        for (const statement of originalAst.statements) {
+            const target = ts.isVariableStatement(statement) && statement.declarationList.declarations.some(declaration => (names as readonly string[]).includes(declaration.name.getText(originalAst)));
+            if (!target) expect(transformed).toContain(statement.getText(originalAst));
+        }
     });
 });

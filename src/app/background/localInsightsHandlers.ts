@@ -4,8 +4,8 @@
  * 主要内容：把模型用量仓库与翻译统计仓库分别注入对应 handler，并以数组形式交给后台静态消息 registry。
  * 模块边界：本文件属于后台 composition root，只负责依赖接线；参数校验位于 handlers，聚合与持久化位于 services 和 platform/storage。
  */
-import {modelUsageRepository} from '@/src/platform/storage/modelUsageRepository';
-import {translationStatsRepository} from '@/src/platform/storage/translationStatsRepository';
+import {getModelUsageRepository} from '@/src/platform/storage/modelUsageRepository';
+import {getTranslationStatsRepository} from '@/src/platform/storage/translationStatsRepository';
 import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 import type {ConfigPersistenceContext} from './handlers/configPersistence';
 import {createModelUsageHandler} from './handlers/modelUsage';
@@ -16,7 +16,7 @@ export function createLocalInsightsHandlers<TContext extends ConfigPersistenceCo
     isOptionsUrl: (url: string) => boolean,
 ): Array<BackgroundMessageHandler<TContext>> {
     return [
-        createModelUsageHandler(modelUsageRepository, isOptionsUrl),
-        createTranslationStatsHandler(translationStatsRepository, isOptionsUrl),
+        createModelUsageHandler(getModelUsageRepository(), isOptionsUrl),
+        createTranslationStatsHandler(getTranslationStatsRepository(), isOptionsUrl),
     ] as Array<BackgroundMessageHandler<TContext>>;
 }
