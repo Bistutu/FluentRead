@@ -65,6 +65,39 @@ function application(storage: ConfigStoragePort) {
 }
 
 describe('explicit configuration application ownership', () => {
+    it('keeps hydration and durable saves working when a configuration subscriber throws', async () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const {port, records} = memoryStorage('en');
+        const app = application(port);
+        const broken = vi.fn(() => {throw new Error('UI observer failed');});
+        const healthy = vi.fn();
+        const stop = app.subscribeConfig(broken);
+        app.subscribeConfig(healthy);
+        await app.start();
+        expect(app.getConfigHydrationStatus()).toBe('ready');
+        expect(healthy).toHaveBeenLastCalledWith(expect.objectContaining({to: 'en'}));
+        await expect(app.saveConfig({...app.config, to: 'ja'})).resolves.toBeUndefined();
+        expect(records.get('local:config')).toMatchObject({to: 'ja'});
+        expect(healthy).toHaveBeenLastCalledWith(expect.objectContaining({to: 'ja'}));
+        stop();
+        expect(() => app.subscribeConfig(() => {throw new Error('initial notification failed');})()).not.toThrow();
+    });
+
+    it('does not misreport a successful history commit as failed when a history subscriber throws', async () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const {port, records} = memoryStorage('en');
+        const app = application(port);
+        await app.start();
+        const healthy = vi.fn();
+        app.subscribeConfigHistory(() => {throw new Error('history view failed');});
+        app.subscribeConfigHistory(healthy);
+        await app.configHistoryReady;
+        await expect(app.saveConfig({...app.config, to: 'ja'}, {recordHistory: true, immediateHistory: true})).resolves.toBeUndefined();
+        expect((records.get('local:configHistory') as {entries: Array<{config: {to: string}}>}).entries.at(-1)?.config.to).toBe('ja');
+        expect(healthy).toHaveBeenCalled();
+        expect(() => app.subscribeConfigHistory(() => {throw new Error('initial history view failed');})()).not.toThrow();
+    });
+
     it('reports a storage observer startup failure through the same ready promise', async () => {
         const {port, reads} = memoryStorage('en');
         vi.mocked(port.watch).mockImplementation(() => {throw new Error('observer unavailable');});

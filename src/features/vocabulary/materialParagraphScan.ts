@@ -1,7 +1,7 @@
 /**
  * @file src/features/vocabulary/materialParagraphScan.ts
  * 文件职责：按有界同步 slice 扫描整份材料页面，恢复原文位置或采集当前可见原文。
- * 主要内容：候选游标持续到文档末尾，同 slice 共享样式和祖先缓存；预算耗尽让出执行而不截断候选，DOM/视口变更与取消使整轮结果失效。
+ * 主要内容：候选游标持续到文档和开放 Shadow DOM 末尾，各根共用变更观察器，同 slice 共享样式和祖先缓存；预算耗尽让出执行而不截断候选，DOM/视口变更与取消使整轮结果失效。
  * 模块边界：只读 DOM，不滚动、不写 locator、不管理材料仓库；调用方只有在明确 matched 且所有权仍有效时才能提交。
  */
 import {createMaterialOriginalTextReadSession, MATERIAL_ORIGINAL_TEXT_LIMITS} from './materialOriginalText';
@@ -33,13 +33,17 @@ const normalize = (value: string) => value.replace(/\s+/gu, ' ').trim();
 const RESERVE = MATERIAL_ORIGINAL_TEXT_LIMITS.nodes + MATERIAL_ORIGINAL_TEXT_LIMITS.ancestors + 3;
 
 /** 避免 querySelectorAll 的全页数组分配；每次继续均沿原游标前进，DOM 变化会废弃整轮。 */
-function* elements(root: Element): Generator<HTMLElement> {
-    let node: Element | null = root;
-    while (node) {
+function* elements(root: Element, observeShadow: (shadow: ShadowRoot) => void): Generator<HTMLElement> {
+    const stack: Array<{next: Element | null}> = [{next: root}];
+    while (stack.length) {
+        const frame = stack[stack.length - 1];
+        const node = frame.next;
+        if (!node) {stack.pop(); continue;}
+        frame.next = stack.length === 1 ? null : node.nextElementSibling;
         yield node as HTMLElement;
-        if (node.firstElementChild) {node = node.firstElementChild; continue;}
-        while (node && node !== root && !node.nextElementSibling) node = node.parentElement;
-        node = !node || node === root ? null : node.nextElementSibling;
+        const shadow = node.shadowRoot;
+        if (shadow) {observeShadow(shadow); stack.push({next: shadow.firstElementChild});}
+        if (node.firstElementChild) stack.push({next: node.firstElementChild});
     }
 }
 function occurrences(text: string, quote: string, locator: MaterialLocator): number {
@@ -68,7 +72,7 @@ export function scanMaterialParagraphs(doc: Document, request: ScanRequest, opti
         let pending: IteratorResult<HTMLElement> | undefined;
         let idCount = 0, idMatch: HTMLElement | undefined, ambiguousWithinCandidate = false;
         const matches: HTMLElement[] = [];
-        const iterator = elements(root);
+        const iterator = elements(root, shadow => observer.observe(shadow, {childList: true, characterData: true, attributes: true, subtree: true}));
         const observer = new view.MutationObserver(() => finish('invalidated'));
         const current = () => !settled && !options.signal?.aborted && root === doc.documentElement && root.isConnected && (options.isCurrent?.() ?? true);
         const invalidate = () => finish('invalidated');

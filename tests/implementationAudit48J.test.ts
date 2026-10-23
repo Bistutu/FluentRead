@@ -7,7 +7,7 @@
 import {parseHTML} from 'linkedom';
 import {computed, createRenderer, markRaw, nextTick, reactive, ref, type App} from 'vue';
 import {normalizeUiLanguage, translate} from '@/src/core/i18n';
-import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
+import {registerAllUiLanguageBundles} from './helpers/uiLanguageBundles';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {normalizeShareCardPreferences, SHARE_CARD_THEMES} from '@/src/core/config/shareCard';
 import {cardGraphemes, cardSourceDomain, cleanCardText, validateCardExcerpt, wrapCardText} from '@/src/features/share-card/core';

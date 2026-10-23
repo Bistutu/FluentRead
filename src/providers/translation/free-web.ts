@@ -1,14 +1,14 @@
 /**
  * @file src/providers/translation/free-web.ts
  * 文件职责：为免费翻译内部提供腾讯交互翻译、Yandex 与火山网页接口适配。
- * 主要内容：按码点预算且不切术语标记，固定匿名端点与语言代码，校验 HTTP/业务状态、取消和有效译文，取消或 HTTP 失败后也等待未读正文结算；保留全文文本槽、换行和边缘空白，按码点限制请求长度。
+ * 主要内容：按码点预算且不切术语标记，固定匿名端点与语言代码，校验 HTTP/业务状态、取消和有效译文，取消或 HTTP 失败后直接取消未读正文，不等待错误页 EOF；保留全文文本槽、换行和边缘空白，按码点限制请求长度。
  * 模块边界：只接受文本、语言与取消信号，不读取用户凭据、代理或存储，不注册独立服务；超时、冷却与并发由免费翻译编排负责。
  */
 import {normalizeChineseLanguageCode} from '@/src/core/language/chinese';
 import {translateFreeTextChunks} from './freeTextChunks';
 import {serializeTranslationSlots} from '@/src/core/translation/serialization';
 import {getTranslationGlossarySourceText} from '@/src/services/translation/requestSnapshot';
-import {abortErrorFromSignal, runtimeFetch} from '@/src/platform/http/runtime';
+import {abortErrorFromSignal, cancelUnreadResponseBody, runtimeFetch} from '@/src/platform/http/runtime';
 import {createHttpStatusError, readJsonResponse} from '@/src/platform/http/errors';
 
 export type FreeWebProvider = 'transmart' | 'yandexFree' | 'volcengineFree';
@@ -96,10 +96,7 @@ async function translateChunk(provider: FreeWebProvider, text: string, from: str
         if (typeof value !== 'string' || !value.trim()) throw failure();
         return value.trim();
     } finally {
-        // 取消或 HTTP 错误也须等未消费的正文结算，免费池才能归还真实在途容量。
-        if (response.bodyUsed === false) {
-            try { await response.clone().arrayBuffer(); } catch { /* 正文排空失败保留原来的 HTTP、取消或解析分类。 */ }
-        }
+        cancelUnreadResponseBody(response);
     }
 }
 

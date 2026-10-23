@@ -272,3 +272,18 @@ describe('修饰键释放后的计时窗口与组合释放顺序', () => {
         expect(emitted).toHaveBeenCalledOnce(); expect(emitted).toHaveBeenCalledWith('confirm', 'Alt+F9');
     });
 });
+
+it('业务冲突配置变化时即时更新确认按钮，不要求用户重录相同快捷键', async () => {
+    await mount('F10');
+    const validation = reactive({conflict: 'This shortcut is now occupied'});
+    props.validate = () => validation.conflict;
+    await settle();
+    expect(doc.querySelector('.primary-button')!.hasAttribute('disabled')).toBe(true);
+    expect(doc.querySelector('[role="alert"]')?.textContent).toBe(validation.conflict);
+    validation.conflict = '';await settle();
+    expect(doc.querySelector('.primary-button')!.hasAttribute('disabled')).toBe(false);
+    expect(doc.querySelector('[role="alert"]')).toBeNull();
+    click('.primary-button');expect(emitted).toHaveBeenCalledWith('confirm', 'F10');
+    props.validate = () => 'Replacement validation';await settle();
+    expect(doc.querySelector('.primary-button')!.hasAttribute('disabled')).toBe(true);
+});

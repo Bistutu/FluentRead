@@ -6,7 +6,6 @@ import {
     createContentPageAvailabilityRuntime,
     createContentRouteChangeHandler,
     getAutoTranslationPageIdentity,
-    shouldAutomaticallyTranslatePage,
 } from '@/src/app/content/pageAvailability';
 
 function deferred<T>() {
@@ -364,20 +363,7 @@ describe('content 页面总开关与 SPA 路由生命周期', () => {
         expect(autoTranslate).toHaveBeenCalledTimes(2);
     });
 
-    it('自动翻译规则复用站点域名语义，并在全文已运行或激活途中失效时不重复启动', async () => {
-        expect(shouldAutomaticallyTranslatePage('https://example.com/article', {
-            on: true,
-            autoTranslate: true,
-            alwaysTranslateDomains: [],
-            disabledExtensionDomains: [],
-        })).toBe(true);
-        expect(shouldAutomaticallyTranslatePage('https://example.com/article', {
-            on: false,
-            autoTranslate: true,
-            alwaysTranslateDomains: [],
-            disabledExtensionDomains: [],
-        })).toBe(false);
-
+    it('自动翻译在全文已运行或激活途中失效时不重复启动', async () => {
         let enabled = true;
         let fullPageActive = true;
         const autoTranslate = vi.fn();
@@ -553,9 +539,10 @@ describe('content 路由协调边界', () => {
     it('激活状态未同步时先重建生命周期，下一条路由才继续同步功能和自动翻译', () => {
         let href = 'https://example.com/first';
         let needsReconcile = true;
+        let siteDisabled = false;
         const dependencies = {
             getHref: () => href, routeChanged: vi.fn(), resetTranslationRoute: vi.fn(),
-            siteDisabled: () => false, currentSiteDisabled: () => false,
+            siteDisabled: () => siteDisabled, currentSiteDisabled: () => false,
             applySiteDisabledState: vi.fn(async () => undefined), reconcileFeatures: vi.fn(),
             pageAvailability: {
                 needsLifecycleReconcile: () => needsReconcile,
@@ -572,6 +559,12 @@ describe('content 路由协调边界', () => {
         needsReconcile = false;
         href = 'https://example.com/second#section'; changed();
         expect(dependencies.resetTranslationRoute).toHaveBeenCalledOnce();
+        expect(dependencies.reconcileFeatures).toHaveBeenCalledOnce();
+        expect(dependencies.pageAvailability.refreshAutoTranslation).toHaveBeenCalledOnce();
+        siteDisabled = true;
+        href = 'https://example.com/private'; changed();
+        expect(dependencies.applySiteDisabledState).toHaveBeenCalledOnce();
+        expect(dependencies.applySiteDisabledState).toHaveBeenCalledWith(true);
         expect(dependencies.reconcileFeatures).toHaveBeenCalledOnce();
         expect(dependencies.pageAvailability.refreshAutoTranslation).toHaveBeenCalledOnce();
     });

@@ -148,8 +148,8 @@ function focusSelectedLanguage(): void {
   });
 }
 
+// 唯一入口 onboardingActions.confirm 已同步验证当前交互归属，中间没有异步或外部调用。
 async function confirm(): Promise<void> {
-  if (!interactionContext.active.value) return;
   const current = context.capture(), submittedLanguage = selectedLanguage.value;
   confirming.value = true;
   errorMessage.value = '';

@@ -8,6 +8,13 @@ await vi.hoisted(async () => {
     }
     // Complete linkedom's missing browser select setter; Vue still executes its real DOM patch.
     Object.defineProperty(window.HTMLSelectElement.prototype, 'value', {configurable: true, get() {return [...this.querySelectorAll('option')].find(o => o.selected)?.value || '';}, set(value) {for (const option of this.querySelectorAll('option')) option.selected = option.value === String(value);}});
+    // linkedom creates details as HTMLElement without the native boolean open property.
+    const createElement = document.createElement.bind(document);
+    document.createElement = ((name: string, options?: unknown) => {
+        const element = createElement(name, options as never);
+        if (name === 'details') Object.defineProperty(element, 'open', {configurable: true, get() {return element.hasAttribute('open');}, set(value: boolean) {element.toggleAttribute('open', Boolean(value));}});
+        return element;
+    }) as typeof document.createElement;
     Object.defineProperty(document, 'visibilityState', {configurable: true, writable: true, value: 'visible'});
     return {window, document};
 });
@@ -33,7 +40,7 @@ import {tmpdir} from 'node:os';
 import {resolve} from 'node:path';
 import {createRequire} from 'node:module';
 const {buildSync} = createRequire(createRequire(resolve(process.cwd(), 'package.json')).resolve('vite'))('esbuild');
-import {createDocumentSegmentTranslator, createDocumentFileLoadGuard, type DocumentTranslationGateway} from '@/src/features/document-translation/services/translation';
+import {createDocumentSegmentTranslator, type DocumentTranslationGateway} from '@/src/features/document-translation/services/translation';
 import type {DocumentSegment} from '@/src/features/document-translation/core/document';
 import {splitLocalTranslationText, assertLocalTranslationOutput, hunyuanTranslationPrompt} from '@/src/core/translation/localInference';
 import {isLikelyPageContextLeak, isDefinitePageContextLeak} from '@/src/core/translation/prompts';
@@ -44,8 +51,8 @@ import {LOCAL_TRANSLATION_MODEL_IDS as ids} from '@/src/core/config/localTransla
 import {createImageOcrLanguageRepository} from '@/src/features/image-translation/background/ocrLanguageRepository';
 import {IMAGE_OCR_LANGUAGE_STATE_KEY} from '@/src/features/image-translation/ocrLanguages';
 import ImageOcrSettings from '@/src/features/image-translation/ui/ImageOcrSettings.vue';
-import MangaModelSettings from '@/src/features/image-translation/ui/MangaModelSettings.vue';
 import MangaSettings from '@/src/features/image-translation/ui/MangaSettings.vue';
+import MangaModelSettings from '@/src/features/image-translation/ui/MangaModelSettings.vue';
 import {Config} from '@/src/core/config/model';
 
 const explicitEvidence = process.env.AUDIT_E_EVIDENCE;
@@ -80,12 +87,14 @@ async function settle() {for (let i = 0; i < 20; i++) {await Promise.resolve(); 
 async function mount(component: Component, props: Record<string, unknown> = {}) {
     const container = document.createElement('div'); document.body.append(container);
     const input = reactive(props); const app = createApp({render: () => h(component, input)});
-    app.component('el-option', {props: ['value', 'label', 'disabled'], setup(p: {value?: unknown; label?: string; disabled?: boolean}) {
+    app.component('el-option', {props: {value: null, label: String, disabled: Boolean}, setup(p: {value?: unknown; label?: string; disabled?: boolean}) {
         const select = inject<{value: () => unknown; disabled: () => boolean; select: (value: unknown) => void}>('audit-select-port')!;
         return () => h('button', {type: 'button', 'data-option-value': String(p.value), 'aria-pressed': select.value() === p.value,
             disabled: p.disabled || select.disabled(), onClick: () => select.select(p.value)}, String(p.label));
     }});
-    app.component('el-switch', {props: ['modelValue', 'disabled'], render() {return h('button', {'aria-disabled': (this as any).disabled});}});
+    app.component('el-switch', {props: ['modelValue', 'disabled'], emits: ['update:modelValue'], setup(p: {modelValue?: boolean; disabled?: boolean}, {emit}: {emit: (name: 'update:modelValue', value: boolean) => void}) {
+        return () => h('button', {role: 'switch', disabled: p.disabled, 'aria-checked': p.modelValue, onClick: () => emit('update:modelValue', !p.modelValue)});
+    }});
     apps.add(app); app.mount(container); await settle(); return {container, app, props: input};
 }
 function segments(): DocumentSegment[] {return [{id: 0, source: 'one', role: 'paragraph'}, {id: 1, source: 'two', role: 'paragraph'}, {id: 2, source: 'three', role: 'paragraph'}] as DocumentSegment[];}
@@ -123,14 +132,12 @@ describe('audit 49 E actual translation and cache entries', () => {
         await expect(createDocumentSegmentTranslator(gateway())(segments(), {fileName: 'fixture', signal: controller.signal, onSegment: commit})).rejects.toMatchObject({name: 'AbortError'});
         expect(commit).toHaveBeenCalledOnce(); expect(commit).toHaveBeenCalledWith({id: 0, translation: 'translated one'});
     });
-    it('preserves resume, glossary exclusion, frozen language pair and file request ownership', async () => {
+    it('preserves resume, glossary exclusion and the frozen language pair', async () => {
         const port = gateway(false), request = vi.fn(port.translateText); port.translateText = request;
         port.getGlossaryOptions = () => ({glossaryIds: ['default']});
         const result = await createDocumentSegmentTranslator(port)(segments(), {fileName: 'fixture', initialTranslations: ['edited'], glossaryIds: [], sourceLanguage: 'en', targetLanguage: 'zh'});
         expect(result).toEqual(['edited', 'translated two', 'translated three']);
         expect(request.mock.calls.map(c => c[2])).toEqual([expect.objectContaining({glossaryIds: [], sourceLanguage: 'en', targetLanguage: 'zh'}), expect.objectContaining({glossaryIds: [], sourceLanguage: 'en', targetLanguage: 'zh'})]);
-        const guard = createDocumentFileLoadGuard(), first = guard.begin(), second = guard.begin();
-        expect(first.isCurrent()).toBe(false); expect(second.isCurrent()).toBe(true); guard.invalidate(); expect(second.isCurrent()).toBe(false);
     });
     it('accepts only extension-owned offscreen progress through the real background runtime composition', async () => {
         const values: Record<string, unknown> = {}, writes = vi.fn(async (value: Record<string, unknown>) => {Object.assign(values, value);});
@@ -218,10 +225,6 @@ describe('audit 49 E actual translation and cache entries', () => {
         writeFileSync(evidence + '/inference-probe-' + variant + '.json', JSON.stringify({...result, directNonFiniteBudgetError: invalidBudgetError instanceof Error ? invalidBudgetError.name : null}, null, 2));
         expect(result.loaded, 'module load must succeed before runtime classification').toBe(true);
         expect(result.timeout, result.output).toBe(false); expect(result.exit, result.output).toBe(0); expect(invalidBudgetError).toBeInstanceOf(RangeError);
-    });
-    it('allows source-owned CJK fragments even when the result expands by repeating them', () => {
-        const source = '甲乙丙丁戊己庚辛';
-        expect(isLikelyPageContextLeak(source, source.repeat(4), source)).toBe(false);
     });
     it('bounds repeated CJK whole-string searches for normal paragraphs', () => {
         // 长源文继续验证词法检测的线性预算；短标题的极端扩写现会触发一次跨语言复验。
@@ -321,6 +324,125 @@ describe('audit 49 E real Vue client model settings', () => {
         vi.useFakeTimers(); const pending = deferred<unknown>(); ports.message.mockReturnValueOnce(pending.promise);
         const {app} = await mount(ImageOcrSettings); app.unmount(); apps.delete(app);
         pending.resolve({success: true, languages: ['eng'], states: {}}); await settle(); expect(vi.getTimerCount()).toBe(0); expect(ports.stopWatch).toHaveBeenCalledOnce(); expect(progressEvents.removeListener).toHaveBeenCalledOnce(); expect(progressListeners.size).toBe(0);
+    });
+    it('pauses OCR polling while hidden, coalesces visible refreshes and retries a failed status through the UI', async () => {
+        vi.useFakeTimers(); ports.message.mockResolvedValueOnce({success: false});
+        const {container} = await mount(ImageOcrSettings, {sourceLanguage: 'en', embedded: true, active: false});
+        expect(container.querySelector('.image-ocr-engine-details')!.hasAttribute('open')).toBe(true);
+        expect(container.querySelector('.image-ocr-language-details')!.hasAttribute('open')).toBe(true);
+        expect(container.querySelector('[role="alert"]')!.textContent).toContain('ocr.packs.statusError');
+        const pending = deferred<unknown>(); ports.message.mockReturnValueOnce(pending.promise);
+        container.querySelector<HTMLButtonElement>('.image-ocr-notice button')!.click(); await settle();
+        document.dispatchEvent(new Event('visibilitychange')); ports.watch.mock.calls[0][1](); await settle();
+        expect(ports.message).toHaveBeenCalledTimes(2);
+        pending.resolve({success: true, languages: ['eng']}); await settle();
+        expect(container.querySelector('[role="alert"]')).toBeNull();
+        expect(container.querySelector('.image-ocr-ready')!.textContent).toContain('ocr.packs.readyAction');
+        (document as any).visibilityState = 'hidden'; document.dispatchEvent(new Event('visibilitychange'));
+        await vi.advanceTimersByTimeAsync(6000); expect(ports.message).toHaveBeenCalledTimes(2);
+        (document as any).visibilityState = 'visible'; document.dispatchEvent(new Event('visibilitychange')); await settle();
+        expect(ports.message).toHaveBeenCalledTimes(3);
+        await vi.advanceTimersByTimeAsync(1500); expect(ports.message).toHaveBeenCalledTimes(4);
+    });
+    it('changes OCR source, manages optional packs and preserves explicit resource disclosure state', async () => {
+        vi.useFakeTimers(); const sourceChanged = vi.fn();
+        const {container, props} = await mount(ImageOcrSettings, {sourceLanguage: 'legacy-language', 'onUpdate:sourceLanguage': sourceChanged});
+        expect(container.querySelector<HTMLButtonElement>('[data-option-value="legacy-language"]')!.disabled).toBe(true);
+        container.querySelector<HTMLButtonElement>('[data-option-value="ja"]')!.click(); await settle(); expect(sourceChanged).toHaveBeenCalledWith('ja');
+        props.sourceLanguage = 'ja'; await settle(); expect(container.querySelector('[data-language="jpn"]')).not.toBeNull();
+        const count = container.querySelectorAll('[data-language]').length;
+        container.querySelector<HTMLButtonElement>('.image-ocr-more')!.click(); await settle();
+        expect(container.querySelectorAll('[data-language]').length).toBeGreaterThan(count);
+        container.querySelector<HTMLButtonElement>('[data-language="eng"] .image-ocr-download-button')!.click(); await settle();
+        expect(ports.message).toHaveBeenCalledWith({type: 'fluentReadImageOcrDownload', languages: ['eng']});
+        container.querySelector<HTMLButtonElement>('.image-ocr-more')!.click(); await settle(); expect(container.querySelector('.image-ocr-more')!.getAttribute('aria-expanded')).toBe('false');
+        props.embedded = true; props.active = false; await settle();
+        const engine = container.querySelector<HTMLDetailsElement>('.image-ocr-engine-details')!, languages = container.querySelector<HTMLDetailsElement>('.image-ocr-language-details')!;
+        expect(engine.hasAttribute('open')).toBe(false); expect(container.textContent).toContain('备用识别');
+        for (const detail of [engine, languages]) {detail.open = true; detail.dispatchEvent(new Event('toggle'));} await settle();
+        expect(engine.open).toBe(true); expect(languages.open).toBe(true);
+        props.active = true; await settle(); expect(container.textContent).toContain('当前使用');
+    });
+    it('reports partial OCR download success without labeling installed packs as failures, then retries the failed pack', async () => {
+        vi.useFakeTimers(); const languages: string[] = [], states: Record<string, {phase: string; error?: string}> = {};
+        let attempt = 0;
+        ports.message.mockImplementation(async message => {
+            if (message.type === 'fluentReadImageOcrDownload') {
+                if (attempt++ === 0) {languages.push('eng'); states.chi_sim = {phase: 'error', error: 'fixture missing Chinese pack'}; return {success: false, error: 'partial download'};}
+                languages.push('chi_sim'); delete states.chi_sim;
+            }
+            return {success: true, languages: [...languages], states: {...states}};
+        });
+        const {container} = await mount(ImageOcrSettings, {sourceLanguage: 'zh-CN'});
+        container.querySelector<HTMLButtonElement>('.image-ocr-primary-action')!.click(); await settle();
+        expect(container.querySelector('[data-language="eng"] [role="alert"]')).toBeNull();
+        expect(container.querySelector('[data-language="chi_sim"] [role="alert"]')!.textContent).toBe('fixture missing Chinese pack');
+        container.querySelector<HTMLButtonElement>('[data-language="chi_sim"] .image-ocr-download-button')!.click(); await settle();
+        expect(ports.message).toHaveBeenLastCalledWith({type: 'fluentReadImageOcrStatus'});
+        expect(container.querySelector('[data-language="chi_sim"]')!.getAttribute('data-state')).toBe('ready');
+        expect(container.querySelector('[role="alert"]')).toBeNull();
+    });
+    it('shows live OCR byte progress, removal failures and ignores late action failures after closing', async () => {
+        vi.useFakeTimers(); let languages = ['eng']; const remove = deferred<unknown>();
+        ports.message.mockImplementation(async message => message.type === 'fluentReadImageOcrRemove' ? remove.promise : {success: true, languages, states: {}});
+        const {container, app} = await mount(ImageOcrSettings, {sourceLanguage: 'en'});
+        const progressKey = 'fluentReadDownloadProgress:ocr-language:eng';
+        for (const listener of progressListeners) listener({[progressKey]: {newValue: {loaded: 40, total: 100}}}, 'local'); await settle();
+        expect(container.querySelector('progress')!.getAttribute('value')).toBe('40');
+        expect(container.querySelector('.download-progress-detail')!.textContent).toBe('40%');
+        container.querySelector<HTMLButtonElement>('.image-ocr-remove')!.click(); await settle();
+        expect(container.querySelector('[data-language="eng"]')!.getAttribute('data-state')).toBe('removing');
+        remove.resolve({success: false, error: 'fixture protected cache'}); await settle();
+        expect(container.querySelector('[role="alert"]')!.textContent).toBe('fixture protected cache');
+        for (const listener of progressListeners) listener({[progressKey]: {}}, 'local'); await settle();
+        expect(container.querySelector('progress')).toBeNull();
+        languages = []; ports.watch.mock.calls[0][1](); await settle();
+        const pending = deferred<unknown>(); ports.message.mockImplementation(async message => message.type === 'fluentReadImageOcrDownload' ? pending.promise : {success: true, languages, states: {}});
+        container.querySelector<HTMLButtonElement>('.image-ocr-primary-action')!.click(); await settle();
+        app.unmount(); apps.delete(app); const count = ports.message.mock.calls.length;
+        pending.reject(new Error('download failed after page close')); await settle();
+        expect(ports.message).toHaveBeenCalledTimes(count); expect(vi.getTimerCount()).toBe(0);
+    });
+    it('updates actual image and manga controls in the parent configuration and filters the site catalog', async () => {
+        vi.useFakeTimers(); const settings = new Config(); settings.imageTranslationMangaEnabled = false; settings.useCache = true;
+        const initialHover = settings.imageTranslationHoverEnabled, initialContextMenu = settings.imageTranslationContextMenuEnabled;
+        const imageChanged = vi.fn();
+        const {container, props} = await mount(MangaSettings, {settings, imageEnabled: false, available: true, serviceOptions: [{value: 'fixture', label: 'Fixture service'}], 'onUpdate:imageEnabled': imageChanged});
+        for (const preview of container.querySelectorAll<HTMLElement>('.image-example')) {
+            const buttons = preview.querySelectorAll<HTMLButtonElement>('.image-example-tabs button');
+            buttons[0].click(); await settle(); expect(buttons[0].getAttribute('aria-pressed')).toBe('true');
+            expect(preview.textContent).toContain(preview.querySelector('.image-example-comic') ? 'Let’s explore a bigger world!' : 'Read. Discover a new perspective.');
+            buttons[1].click(); await settle(); expect(buttons[1].getAttribute('aria-pressed')).toBe('true');
+            expect(preview.textContent).toContain(preview.querySelector('.image-example-comic') ? '一起去看看更大的世界吧！' : '阅读，发现新的视角');
+        }
+        const select = async (label: string, value: string) => {container.querySelector<HTMLButtonElement>(`[aria-label="${label}"] [data-option-value="${value}"]`)!.click(); await settle();};
+        await select('area.settings.sourceLanguage', 'en'); await select('漫画目标语言', 'ja'); await select('漫画翻译服务', 'fixture'); await select('图片识别方式', 'tesseract');
+        expect(props.settings).toMatchObject({from: 'en', to: 'ja', imageTranslationService: 'fixture', imageTranslationOcrEngine: 'tesseract'});
+        container.querySelector<HTMLButtonElement>('[role="switch"][aria-label="网页图片翻译"]')!.click(); await settle(); expect(imageChanged).toHaveBeenCalledWith(true);
+        props.imageEnabled = true; await settle();
+        for (const label of ['image.hover', 'image.context', '漫画连续翻译', '独立漫画按钮']) {container.querySelector<HTMLButtonElement>(`[role="switch"][aria-label="${label}"]`)!.click(); await settle();}
+        await select('提前翻译后续页面', '5'); await select('快速缓存图片数量', '24');
+        expect(props.settings).toMatchObject({imageTranslationHoverEnabled: !initialHover, imageTranslationContextMenuEnabled: !initialContextMenu, imageTranslationMangaEnabled: true, imageTranslationMangaPrefetchPages: 5, imageTranslationMangaCachePages: 24});
+        const search = container.querySelector<HTMLInputElement>('input[type="search"]')!;
+        search.value = '  PiXiV  '; search.dispatchEvent(new Event('input', {bubbles: true})); await settle();
+        expect(container.querySelectorAll('.manga-site')).toHaveLength(3);
+        expect([...container.querySelectorAll('.manga-site')].every(site => site.textContent!.toLowerCase().includes('pixiv'))).toBe(true);
+        search.value = 'no such fixture catalog site'; search.dispatchEvent(new Event('input', {bubbles: true})); await settle(); expect(container.textContent).toContain('没有匹配的网站');
+        props.available = false; (props.settings as Config).useCache = false; await settle(); expect(container.querySelector('[data-settings-anchor="resources"]')).toBeNull();
+    });
+    it('rejects invalid manga URLs, selectors and a full rule list through the actual form', async () => {
+        vi.useFakeTimers(); const settings = new Config(); settings.imageTranslationMangaSites = [];
+        const {container, props} = await mount(MangaSettings, {settings, imageEnabled: false, available: true, serviceOptions: []});
+        const submit = async (url: string, css: string) => {
+            const address = container.querySelector<HTMLInputElement>('form input[type="url"]')!, selector = container.querySelector<HTMLInputElement>('form input[aria-label="漫画图片选择器"]')!;
+            address.value = url; address.dispatchEvent(new Event('input', {bubbles: true})); selector.value = css; selector.dispatchEvent(new Event('input', {bubbles: true}));
+            container.querySelector('form')!.dispatchEvent(new Event('submit', {bubbles: true, cancelable: true})); await settle();
+        };
+        await submit('https://fixture.example/', ''); expect(container.querySelector('[role="alert"]')!.textContent).toContain('有效的阅读页地址');
+        await submit('https://fixture.example/chapter/', 'img['); expect(container.querySelector('[role="alert"]')!.textContent).toContain('图片选择器无效');
+        (props.settings as Config).imageTranslationMangaSites = Array.from({length: 20}, (_, i) => ({hostname: `fixture${i}.example`, pathPrefix: '/chapter/', selector: 'img'}));
+        await submit('https://fixture.example/chapter/', 'main img'); expect(container.querySelector('[role="alert"]')!.textContent).toContain('最多添加 20');
+        expect((props.settings as Config).imageTranslationMangaSites).toHaveLength(20);
     });
     it('adds and deletes validated manga rules via the actual rendered form and parent configuration', async () => {
         const settings = new Config(); settings.imageTranslationMangaSites = [];

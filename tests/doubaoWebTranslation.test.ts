@@ -46,7 +46,7 @@ describe('豆包网页匿名免费翻译', () => {
     it.each([
         {stage: 'home', fails: false}, {stage: 'home', fails: true},
         {stage: 'translation', fails: false}, {stage: 'translation', fails: true},
-    ])('$stage HTTP error waits for body cancellation, cleanup failure=$fails preserves the original status', async ({stage, fails}) => {
+    ])('$stage HTTP error does not await body cancellation, cleanup failure=$fails preserves the original status', async ({stage, fails}) => {
         if (stage === 'translation') fetchMock.mockResolvedValueOnce(home());
         const body = delayedCancelResponse(429);
         fetchMock.mockResolvedValueOnce(body.response);
@@ -55,7 +55,7 @@ describe('豆包网页匿名免费翻译', () => {
         await new Promise<void>(resolve => setTimeout(resolve, 0));
         try {
             expect(body.cancel).toHaveBeenCalledOnce();
-            expect(settled).toBe(false);
+            expect(settled).toBe(true);
         } finally {body.finish(fails);}
         await expect(pending).resolves.toMatchObject({statusCode: 429, retryAfterMs: 12000,
             message: stage === 'home' ? '豆包网页翻译访客初始化失败: 429' : '豆包网页翻译请求失败: 429'});
@@ -71,7 +71,7 @@ describe('豆包网页匿名免费翻译', () => {
     it.each([
         {stage: 'home', fails: false}, {stage: 'home', fails: true},
         {stage: 'translation', fails: false}, {stage: 'translation', fails: true},
-    ])('$stage late response waits for body cancellation, cleanup failure=$fails preserves the owner reason', async ({stage, fails}) => {
+    ])('$stage late response does not await body cancellation, cleanup failure=$fails preserves the owner reason', async ({stage, fails}) => {
         if (stage === 'translation') fetchMock.mockResolvedValueOnce(home());
         const body = delayedCancelResponse();
         const controller = new AbortController();
@@ -83,7 +83,7 @@ describe('豆包网页匿名免费翻译', () => {
         await new Promise<void>(resolve => setTimeout(resolve, 0));
         try {
             expect(body.cancel).toHaveBeenCalledOnce();
-            expect(settled).toBe(false);
+            expect(settled).toBe(true);
         } finally {body.finish(fails);}
         await expect(pending).resolves.toBe(reason);
         expect(fetchMock).toHaveBeenCalledTimes(stage === 'home' ? 1 : 2);

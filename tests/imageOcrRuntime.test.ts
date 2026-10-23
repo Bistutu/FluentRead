@@ -210,7 +210,7 @@ describe('图片 OCR 处理与结果缓存', () => {
                 }
             }
         });
-        ({recognizeImage} = await import('@/src/features/image-translation/services/ocrRuntime'));
+        ({recognizeImageText: recognizeImage} = await import('@/src/features/image-translation/ocr'));
     });
 
     afterEach(() => {

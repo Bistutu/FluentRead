@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
+import {registerAllUiLanguageBundles} from './helpers/uiLanguageBundles';
 import {translate, translateLegacyText} from '@/src/core/i18n';
 import {navigationItems} from '@/src/features/settings/model/navigation';
 import {

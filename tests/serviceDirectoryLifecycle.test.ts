@@ -2,25 +2,19 @@
  * @file tests/serviceDirectoryLifecycle.test.ts
  * 文件职责：验证服务目录和免费权重设置的实际组件生命周期、缓存模板及有界读取。
  * 主要内容：覆盖停用与切换、迟到后台快照、轮询合并、目录焦点、搜索计算、显式设置默认服务、公开版套餐旧配置展示及默认动作门控、开发版正常选择、分组导航、帧内布局合并、缓存位置与尺寸/字体观察的旧 DOM 事件。
- * 模块边界：编译真实客户端 Vue setup 和缓存模板并实际 mount，模块加载器只解析导入；浏览器消息、DOM 几何与观察器使用受控端口，不复制目录业务；真实 UI 另行验证。
+ * 模块边界：直接导入并实际挂载生产客户端 SFC；浏览器消息、DOM 几何与观察器使用受控端口，不复制目录业务；真实 UI 另行验证。
  */
-import {createRequire} from 'node:module'
-import {resolve} from 'node:path'
-import vue from '@vitejs/plugin-vue'
-import {createServer, type ViteDevServer} from 'vite'
-import {compileVueFixture} from './helpers/compiledVueFixture'
+import * as runtime from 'vue'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {Config} from '@/src/core/config/model'
 import {FREE_TRANSLATION_PROVIDERS} from '@/src/core/config/freeTranslation'
 import {calculateFreeTranslationWeightSnapshot, FREE_TRANSLATION_WEIGHT_REFRESH_INTERVAL_MS} from '@/src/services/translation/freeWeights'
 
-const runtime = createRequire(import.meta.url)('vue') as typeof import('vue')
-let server: ViteDevServer, app: import('vue').App, state: Record<string, any>, props: Record<string, any>
+let app: import('vue').App, state: Record<string, any>, props: Record<string, any>
 let shown: import('vue').Ref<boolean>, nodes: Node[], source: Record<string, any>, hostRoot: Node
 type Node = {tag: string; props: Record<string, any>; value?: string; focus?: () => void; closest?: (selector?: string) => unknown; parent?: Node; children?: Node[];
   style?: Record<string, string>; dataset?: Record<string, string>; scrollTop?: number; clientHeight?: number; scrollHeight?: number;
   getClientRects?: () => unknown[]; getBoundingClientRect?: () => {top: number}; querySelectorAll?: (selector: string) => Node[]}
-const clientModules = new Map<string, string>()
 const groupScroll = vi.fn(), readRects = vi.fn(), readBounds = vi.fn(), sectionQueries = vi.fn(), reducedMotion = vi.fn(() => false)
 const animationFrames = new Map<number, FrameRequestCallback>(), fontListeners = new Set<() => void>()
 let animationFrameId = 0, frameTime = 0, development = false
@@ -52,7 +46,7 @@ function deferred<T>() {let resolve!: (value: T) => void, reject!: (error: unkno
 function response(ids = props.config.freeTranslationOrder) {return {success: true, snapshot: calculateFreeTranslationWeightSnapshot(ids, [], 123)}}
 function node(predicate: (n: Node) => boolean) {const found = [...nodes].reverse().find(predicate);expect(found).toBeDefined();return found!}
 beforeEach(async () => {
-  vi.clearAllMocks();intervals.clear();timeouts.clear();clientModules.clear();observers.length = 0;animationFrames.clear();fontListeners.clear();geometry.visible = true;geometry.tops.clear();reducedMotion.mockReturnValue(false);development = false
+  vi.clearAllMocks();intervals.clear();timeouts.clear();observers.length = 0;animationFrames.clear();fontListeners.clear();geometry.visible = true;geometry.tops.clear();reducedMotion.mockReturnValue(false);development = false
   vi.stubGlobal('requestAnimationFrame', requestFrame);vi.stubGlobal('cancelAnimationFrame', cancelFrame)
   // 免费设置会注册/释放页面恢复事件；端口保留真实 EventTarget 语义，不用空函数掩盖监听生命周期。
   vi.stubGlobal('document', Object.assign(new EventTarget(), {visibilityState: 'visible', fonts: {addEventListener: (_type: string, callback: () => void) => fontListeners.add(callback), removeEventListener: (_type: string, callback: () => void) => fontListeners.delete(callback)}}))
@@ -61,41 +55,26 @@ beforeEach(async () => {
     observe = vi.fn();unobserve = vi.fn();disconnect = vi.fn()
     constructor(callback: () => void) {observers.push({callback, observe: this.observe, unobserve: this.unobserve, disconnect: this.disconnect})}
   })
-  send.mockReset();send.mockResolvedValue({success: false});vi.stubGlobal('__fluentreadDirectorySend', send)
-  server = await createServer({root: process.cwd(), configFile: false, appType: 'custom', logLevel: 'silent',
-    resolve: {alias: {'@': process.cwd()}}, server: {hmr: false, middlewareMode: true}, ssr: {noExternal: ['webextension-polyfill']},
-    plugins: [{name: 'service-directory-controlled-ports', enforce: 'pre', resolveId(id) {
-      if (clientModules.has(id)) return id
-      if (id === 'webextension-polyfill') return '\0directory-browser'
-      if (/\/src\/ui\/i18n(?:\.ts)?$/u.test(id)) return '\0directory-i18n'
-      if (/\/src\/platform\/chatgpt-plan\/buildMode(?:\.ts)?$/u.test(id)) return '\0directory-build-mode'
-      if (id.endsWith('.vue') && !/\/(?:ServiceCatalog|FreeTranslationSettings)\.vue$/u.test(id)) return '\0directory-display'
-      return null
-    }, load(id) {
-      if (clientModules.has(id)) return clientModules.get(id)
-      if (id === '\0directory-browser') return 'export default {runtime: {sendMessage: (...args) => globalThis.__fluentreadDirectorySend(...args)}}'
-      if (id === '\0directory-i18n') return 'export const useUiI18n = () => ({t: key => key, translateLegacy: text => text})'
-      if (id === '\0directory-build-mode') return `export const chatGPTPlanDevelopmentEnabled = ${development};`
-      if (id === '\0directory-display') return "import {h} from 'vue';export default {setup(_, {attrs, slots}) {return () => h('button', {...attrs, 'data-directory-port': attrs.item?.value}, slots.default?.())}}"
-      return null
-    }}, vue()]})
+  send.mockReset();send.mockResolvedValue({success: false})
+  vi.doMock('webextension-polyfill', () => ({default: {runtime: {sendMessage: send}}}))
+  vi.doMock('@/src/ui/i18n', () => ({useUiI18n: () => ({t: (key: string) => key, translateLegacy: (text: string) => text})}))
+  vi.doMock('@/src/platform/chatgpt-plan/buildMode', () => ({get chatGPTPlanDevelopmentEnabled() {return development}}))
+  const display = () => ({default: {setup(_: unknown, {attrs, slots}: any) {return () => runtime.h('button', {...attrs, 'data-directory-port': attrs.item?.value}, slots.default?.())}}})
+  vi.doMock('@/src/ui/components/ServiceIcon.vue', display)
+  vi.doMock('@/src/features/settings/ui/services/ServiceNatureBadge.vue', display)
+  vi.doMock('@/src/features/settings/ui/services/ModelPicker.vue', display)
+  vi.doMock('@/src/features/settings/ui/services/ServiceCatalogItem.vue', display)
+  vi.doMock('@/src/features/settings/ui/components/FieldHelp.vue', display)
 })
 afterEach(async () => {
   try {app?.unmount();await settle()}
-  finally {
-    vi.restoreAllMocks()
-    try {await server?.close()}
-    finally {vi.unstubAllGlobals();clientModules.clear()}
-  }
+  finally {vi.restoreAllMocks();vi.unstubAllGlobals()}
 })
 async function mount(name: string, values: Record<string, unknown>, listeners: Record<string, unknown> = {}) {
-  const path = `src/features/settings/ui/services/${name}.vue`, filename = resolve(path)
-  const compiled = compileVueFixture(filename, {id: 'directory-lifecycle', cacheHandlers: true, includeScript: false})
-  const clientId = `${filename}.lifecycle-client.ts`
-  clientModules.set(clientId, compiled.scriptSource)
-  const component = (await server.ssrLoadModule(clientId)).default
-  expect(compiled.templateErrors).toEqual([])
-  component.render = new Function('Vue', compiled.renderCode)(runtime)
+  vi.resetModules()
+  const component = name === 'ServiceCatalog'
+    ? (await import('@/src/features/settings/ui/services/ServiceCatalog.vue')).default
+    : (await import('@/src/features/settings/ui/services/FreeTranslationSettings.vue')).default
   if (!vi.isMockFunction(globalThis.setInterval)) {
     const originalInterval = globalThis.setInterval, originalTimeout = globalThis.setTimeout, clearInterval = globalThis.clearInterval, clearTimeout = globalThis.clearTimeout
     vi.spyOn(globalThis, 'setInterval').mockImplementation(((callback: () => void, ms: number, ...args: any[]) => {
@@ -146,7 +125,7 @@ async function mount(name: string, values: Record<string, unknown>, listeners: R
     insertStaticContent: (_html, parent, anchor) => {const start = {tag: '#static-start', props: {}}, end = {tag: '#static-end', props: {}};insert(start, parent, anchor);insert(end, parent, anchor);return [start, end]}})
   source = runtime.shallowReactive({active: true, context: {}, ...values})
   app = renderer.createApp({setup: () => () => runtime.h(runtime.KeepAlive, null, {default: () => shown.value
-    ? runtime.h(component, {...source, ...listeners, ref: (vm: any) => {if (vm) {state = vm.$.setupState;props = vm.$.props}}})
+    ? runtime.h(component as runtime.Component, {...source, ...listeners, ref: (vm: any) => {if (vm) {state = vm.$.setupState;props = vm.$.props}}})
     : runtime.h({render: () => null}, {key: 'other'})})})
   const display = {setup(_props: unknown, {attrs, slots}: any) {return () => runtime.h('input', attrs, slots.default?.())}}
   app.component('el-input', display);app.component('el-input-number', display);app.component('el-switch', display)

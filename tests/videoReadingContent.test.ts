@@ -1,7 +1,7 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {annotateVideoReading} from '@/src/features/video-subtitle/content/readingAnnotationClient';
 import {createVideoReadingController} from '@/src/features/video-subtitle/content/readingAnnotationController';
-import {startReadingAnnotationWorker} from '@/src/features/video-subtitle/reading/worker';
+import {startReadingAnnotationWorkerApp as startReadingAnnotationWorker} from '@/src/app/offscreen/readingAnnotationWorker';
 import type {VideoReadingAnnotation} from '@/src/core/messaging/readingAnnotation';
 
 const mocks = vi.hoisted(() => ({send: vi.fn(), capabilities: {extensionDom: true}, annotate: vi.fn()}));

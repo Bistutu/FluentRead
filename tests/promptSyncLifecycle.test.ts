@@ -2,23 +2,16 @@
  * @file tests/promptSyncLifecycle.test.ts
  * 文件职责：通过实际 ServiceConfiguration 模板控件与确认端口验证服务设置的操作归属。
  * 主要内容：挂载真实折叠容器及其始终保留的默认插槽，覆盖原生合批开关的服务范围、默认状态、独立修改和失活事件；验证提示词同步的来源编辑或删除、配置和服务切换、页签和活跃生命周期、目标列表重算、重复确认及旧按钮。
- * 模块边界：编译真实客户端 SFC setup 与缓存模板并实际挂载，Element Plus 和浏览器为受控端口；不访问 setup 私有函数、不证明真实浏览器或存储。
+ * 模块边界：正常导入实际客户端 SFC 并挂载，Element Plus 和浏览器为受控端口；不访问 setup 私有函数、不证明真实浏览器或存储。
  */
-import {createRequire} from 'node:module'
-import {resolve} from 'node:path'
+import * as runtime from 'vue'
 import {parseHTML} from 'linkedom'
-import {compileVueFixture} from './helpers/compiledVueFixture'
-import vue from '@vitejs/plugin-vue'
-import {createServer, type Plugin, type ViteDevServer} from 'vite'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {Config} from '@/src/core/config/model'
 import {defaultOption, options, services, servicesType} from '@/src/core/config/catalog'
 
-const runtime = createRequire(import.meta.url)('vue') as typeof import('vue')
-const fixtureKey = '__frPromptSyncLifecycle'
-const clientModules = new Map<string, string>()
 const sourceId = 'custom:sync-source', removedId = 'custom:sync-removed', secondId = 'custom:sync-second', addedId = 'custom:sync-added'
-let server: ViteDevServer, app: import('vue').App | undefined, document: Document, win: any
+let app: import('vue').App | undefined, document: Document, win: any
 let props: Record<string, any>, visible: import('vue').Ref<boolean>, fixture: Record<string, any>
 let events: Map<Element, Record<string, any>>
 const feedback = vi.fn(), send = vi.fn(), save = vi.fn(), queue = vi.fn(), deleted = vi.fn()
@@ -47,78 +40,44 @@ function confirmation(): Confirmation {
     return {accept: eventOf(buttons[1]), cancel: eventOf(buttons[0]), dismiss: () => instance.emit('update:modelValue', false), title: dialog.getAttribute('data-title')!,
       message: dialog.querySelector('p')!.textContent!, confirmLabel: buttons[1].textContent!, cancelLabel: buttons[0].textContent!}
   }
-  // 同一公共确认端口兼容修复前 main 的 MessageBox，让失效用例比较配置写入行为。
-  const box = fixture.messageBoxes.at(-1);expect(box).toBeDefined()
-  return {accept: box.accept, cancel: box.cancel, dismiss: box.cancel, title: box.title, message: box.message,
-    confirmLabel: box.options.confirmButtonText, cancelLabel: box.options.cancelButtonText}
+  throw new Error('Missing active service confirmation dialog')
 }
 function snapshot() {return JSON.stringify(props.config)}
-beforeEach(async () => {
-  vi.clearAllMocks();app = undefined;events = new Map();clientModules.clear()
-  const parsed = parseHTML('<html><body><div id="app"></div></body></html>');win = parsed.window;document = win.document
-  fixture = {feedback, send, save, queue, messageBoxes: [], tabs: [], dialogs: []}
-  fixture.confirm = (message: string, title: string, options: unknown) => new Promise((accept, reject) => {
-    fixture.messageBoxes.push({message, title, options, accept, cancel: () => reject('cancel')})
-  })
-  ;(globalThis as any)[fixtureKey] = fixture
-  vi.stubGlobal('window', win)
-  const mocks: Plugin = {name: 'prompt-sync-client-sfc-ports', enforce: 'pre', resolveId(id) {
-    // Vite 会把父组件的本机绝对路径导入改写为 /src URL；两种入口必须指向同一个已编译模块。
-    const clientId = id.startsWith('/src/') ? resolve(process.cwd(), id.slice(1)) : id
-    if (clientModules.has(clientId)) return clientId
-    if (id.endsWith('SettingsDisclosure.vue')) return `${resolve('src/features/settings/ui/components/SettingsDisclosure.vue')}.lifecycle-client.ts`
-    if (id.endsWith('.vue') && !id.endsWith('ServiceConfiguration.vue')) return '\0prompt-sync-child'
-    if (id === 'webextension-polyfill') return '\0prompt-sync-browser'
-    if (id === 'element-plus') return '\0prompt-sync-element'
-    if (/\/src\/ui\/i18n(?:\.ts)?$/u.test(id)) return '\0prompt-sync-i18n'
-    if (/\/src\/services\/config\/store(?:\.ts)?$/u.test(id)) return '\0prompt-sync-config'
-    if (/\/src\/platform\/browser\/chromeTranslationPreparationRequest(?:\.ts)?$/u.test(id)) return '\0prompt-sync-chrome-store'
-    if (/\/src\/features\/settings\/model\/chromeTranslationPreparation(?:\.ts)?$/u.test(id)) return '\0prompt-sync-chrome-preparation'
-    return null
-  }, load(id) {
-    if (clientModules.has(id)) return clientModules.get(id)
-    if (id === '\0prompt-sync-child') return 'export default {render: () => null}'
-    if (id === '\0prompt-sync-browser') return `export default {runtime: {sendMessage: globalThis.${fixtureKey}.send}}`
-    if (id === '\0prompt-sync-config') return `export const {queue: waitForConfigPersistenceQueue, save: requestConfigSave} = globalThis.${fixtureKey}`
-    if (id === '\0prompt-sync-i18n') return "import {ref} from 'vue';export const useUiI18n = () => ({language: ref('zh-CN'), t: (key, params) => params?.count === undefined ? key : key + ' count=' + params.count, translateLegacy: text => text})"
-    if (id === '\0prompt-sync-element') return `import {computed, h, inject, provide} from 'vue';
-      export const ElMessage = {success: globalThis.${fixtureKey}.feedback}, ElMessageBox = {confirm: globalThis.${fixtureKey}.confirm};
-      export const ElTabs = {props: ['modelValue'], emits: ['update:modelValue'], setup(props, {slots, emit}) {
-        provide('prompt-sync-tab', computed(() => props.modelValue));globalThis.${fixtureKey}.tabs.push({select: tab => emit('update:modelValue', tab)});
-        return () => h('div', slots.default?.())}};
-      export const ElTabPane = {props: ['name'], setup(props, {slots}) {const tab = inject('prompt-sync-tab');return () => tab.value === props.name ? h('section', slots.default?.()) : null}};`
-    if (id === '\0prompt-sync-chrome-store') return 'export const chromeTranslationPreparationStore = {get: async () => null, clear: async () => {}, subscribe: () => () => {}}'
-    if (id === '\0prompt-sync-chrome-preparation') return `export class ChromeTranslationPreparationError extends Error {}
-      export const prepareChromeTranslationInPage = () => {throw new Error('unexpected preparation')};
-      export const resolveChromeTranslationPreparationPair = (from, to) => ({sourceLanguage: from === 'auto' ? 'en' : from, targetLanguage: to});
-      export const getChromeTranslationPreparationLanguageLabel = language => language;`
-    return null
-  }}
-  server = await createServer({root: process.cwd(), configFile: false, appType: 'custom', logLevel: 'silent', plugins: [mocks, vue()],
-    resolve: {alias: {'@': resolve(process.cwd())}}, ssr: {noExternal: ['webextension-polyfill', 'element-plus']}, server: {hmr: false, middlewareMode: true}})
+vi.mock('webextension-polyfill',()=>({default:{runtime:{sendMessage:(...args:unknown[])=>send(...args)}}}))
+vi.mock('@/src/services/config/store',()=>({waitForConfigPersistenceQueue:()=>queue(),requestConfigSave:(...args:unknown[])=>save(...args)}))
+vi.mock('@/src/ui/i18n',async()=>{const {ref}=await import('vue');return{useUiI18n:()=>({language:ref('zh-CN'),t:(key:string,params?:{count?:number})=>params?.count===undefined?key:key+' count='+params.count,translateLegacy:(text:string)=>text})}})
+vi.mock('element-plus',()=>({
+  ElMessage:{success:(...args:unknown[])=>feedback(...args)},
+  ElTabs:{props:['modelValue'],emits:['update:modelValue'],setup(tabProps:any,{slots,emit}:any){runtime.provide('prompt-sync-tab',runtime.computed(()=>tabProps.modelValue));fixture.tabs.push({select:(tab:string)=>emit('update:modelValue',tab)});return()=>runtime.h('div',slots.default?.())}},
+  ElTabPane:{props:['name'],setup(paneProps:any,{slots}:any){const tab=runtime.inject<runtime.Ref<string>>('prompt-sync-tab')!;return()=>tab.value===paneProps.name?runtime.h('section',slots.default?.()):null}},
+}))
+vi.mock('element-plus/es/components/tabs/style/css',()=>({}))
+vi.mock('@/src/platform/browser/chromeTranslationPreparationRequest',()=>({chromeTranslationPreparationStore:{get:async()=>null,clear:async()=>{},subscribe:()=>()=>{}}}))
+vi.mock('@/src/features/settings/model/chromeTranslationPreparation',()=>({ChromeTranslationPreparationError:class extends Error{},prepareChromeTranslationInPage:()=>{throw new Error('unexpected preparation')},resolveChromeTranslationPreparationPair:(from:string,to:string)=>({sourceLanguage:from==='auto'?'en':from,targetLanguage:to}),getChromeTranslationPreparationLanguageLabel:(language:string)=>language}))
+vi.mock('@/src/features/settings/ui/components/FieldHelp.vue',()=>({default:{render:()=>null}}))
+vi.mock('@/src/features/settings/ui/components/SegmentedControl.vue',()=>({default:{render:()=>null}}))
+vi.mock('@/src/features/settings/ui/services/PromptTemplateEditor.vue',()=>({default:{render:()=>null}}))
+vi.mock('@/src/features/settings/ui/services/FreeTranslationSettings.vue',()=>({default:{render:()=>null}}))
+vi.mock('@/src/features/settings/ui/services/ApiKeyList.vue',()=>({default:{render:()=>null}}))
+vi.mock('@/src/features/settings/ui/services/ModelVisionSettings.vue',()=>({default:{render:()=>null}}))
+vi.mock('@/src/features/settings/ui/services/RequestLimitSettings.vue',()=>({default:{render:()=>null}}))
+vi.mock('@/src/features/settings/ui/services/RequestHeaderSettings.vue',()=>({default:{render:()=>null}}))
+vi.mock('@/src/features/settings/ui/services/CompositeTranslationSettings.vue',()=>({default:{render:()=>null}}))
+vi.mock('@/src/features/settings/ui/services/ServiceRepairReturn.vue',()=>({default:{render:()=>null}}))
+vi.mock('@/src/features/settings/ui/LocalTranslationModelSettings.vue',()=>({default:{render:()=>null}}))
+vi.mock('@/src/features/settings/ui/services/ChatGPTPlanSettings.vue',()=>({default:{render:()=>null}}))
+vi.mock('@/src/ui/components/DownloadProgress.vue',()=>({default:{render:()=>null}}))
+import component from '@/src/features/settings/ui/services/ServiceConfiguration.vue'
+beforeEach(() => {
+  vi.clearAllMocks();app=undefined;events=new Map();
+  const parsed=parseHTML('<html><body><div id="app"></div></body></html>');win=parsed.window;document=win.document;
+  fixture={tabs:[],dialogs:[]};vi.stubGlobal('window',win);
 })
-afterEach(async () => {
-  try {app?.unmount();for (const box of fixture.messageBoxes) box.cancel();await settle();await server?.close()}
-  finally {delete (globalThis as any)[fixtureKey];vi.unstubAllGlobals();clientModules.clear()}
-  expect(document.querySelector('[data-confirmation-port]')).toBeNull()
-  expect(send).not.toHaveBeenCalled();expect(save).not.toHaveBeenCalled();expect(queue).not.toHaveBeenCalled()
+afterEach(async()=>{
+  try{app?.unmount();await settle()}finally{vi.unstubAllGlobals()}
+  expect(document.querySelector('[data-confirmation-port]')).toBeNull();expect(send).not.toHaveBeenCalled();expect(save).not.toHaveBeenCalled();expect(queue).not.toHaveBeenCalled();
 })
 async function mount(raw = false) {
-  // 折叠容器本身必须执行真实客户端模板，不能把默认插槽一起替换成空子组件。
-  const disclosureFile = resolve('src/features/settings/ui/components/SettingsDisclosure.vue')
-  const disclosure = compileVueFixture(disclosureFile, {id: 'prompt-sync-disclosure', cacheHandlers: true, includeScript: false})
-  const disclosureId = `${disclosureFile}.lifecycle-client.ts`
-  clientModules.set(disclosureId, disclosure.scriptSource)
-  const disclosureComponent = (await server.ssrLoadModule(disclosureId)).default
-  expect(disclosure.templateErrors).toEqual([])
-  disclosureComponent.render = new Function('Vue', disclosure.renderCode)(runtime)
-  const filename = resolve('src/features/settings/ui/services/ServiceConfiguration.vue')
-  const compiled = compileVueFixture(filename, {id: 'prompt-sync-public', cacheHandlers: true, includeScript: false})
-  const clientId = `${filename}.lifecycle-client.ts`
-  clientModules.set(clientId, compiled.scriptSource)
-  const component = (await server.ssrLoadModule(clientId)).default
-  expect(compiled.templateErrors).toEqual([])
-  component.render = new Function('Vue', compiled.renderCode)(runtime)
   const renderer = runtime.createRenderer({patchProp(element: any, key: string, previous: any, next: any) {
     if (/^on[A-Z]/u.test(key)) {
       const handlers = events.get(element) || {};handlers[key] = next;events.set(element, handlers)
@@ -140,7 +99,7 @@ async function mount(raw = false) {
     compute: runtime.reactive({showAI: true, showModel: false, showToken: false, showCustomOpenAI: true}), customProvider: config.customOpenAIProviders[0]})
   visible = runtime.ref(true)
   app = renderer.createApp({setup: () => () => runtime.h(runtime.KeepAlive, null, {default: () => visible.value
-    ? runtime.h(component, {...props, 'onDelete:custom-provider': deleted}) : runtime.h({render: () => null}, {key: 'other'})})})
+    ? runtime.h(component as runtime.Component, {...props, 'onDelete:custom-provider': deleted}) : runtime.h({render: () => null}, {key: 'other'})})})
   app.component('el-button', {setup(_: unknown, {attrs, slots}: any) {return () => runtime.h('button', attrs, slots.default?.())}})
   app.component('el-input', {render: () => null})
   app.component('el-switch', {inheritAttrs: false, props: ['modelValue'], setup(switchProps: {modelValue?: boolean}, {attrs}: any) {
@@ -261,7 +220,7 @@ describe('提示词同步的实际按钮与确认归属', () => {
   })
   it('原生按钮重复点击只开一个确认，确认与关闭事件重复到达只写一次', async () => {
     await mount();const oldEntry = eventOf(syncButton());oldEntry();oldEntry();await settle()
-    expect(fixture.messageBoxes.length + document.querySelectorAll('[data-confirmation-port]').length).toBe(1)
+    expect(document.querySelectorAll('[data-confirmation-port]').length).toBe(1)
     const old = confirmation();old.accept();await settle();const system = props.config.system_role, user = props.config.user_role
     props.config.system_role[services.openai] = 'later-target';const before = snapshot()
     old.accept();old.cancel();old.dismiss();oldEntry();await settle()
@@ -304,7 +263,7 @@ describe('提示词同步的实际按钮与确认归属', () => {
     if (reason === 'cached') visible.value = true
     if (reason === 'source') props.config.user_role[sourceId] = `user:${sourceId}`
     await settle();const before = snapshot();oldEntry();await settle()
-    expect(snapshot()).toBe(before);expect(fixture.messageBoxes).toHaveLength(0);expect(document.querySelector('[data-confirmation-port]')).toBeNull()
+    expect(snapshot()).toBe(before);expect(document.querySelector('[data-confirmation-port]')).toBeNull()
     const current = await openSync();current.accept();await settle();expect(feedback).toHaveBeenCalledOnce()
   })
   it.each(['reset', 'delete'])('同步使用原有翻译文案，取消不写；旧同步确认不能操作后来打开的 %s 确认', async kind => {

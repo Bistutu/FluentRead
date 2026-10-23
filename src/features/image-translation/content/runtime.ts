@@ -8,7 +8,7 @@ import {imageTranslationFailureCode, imageLocalFailureMessage, type ImageLocalFa
 import {sendRuntimeMessage} from '@/src/platform/browser/runtimeMessages';
 import type {ImageTranslationStage} from '../progress';
 import { config, subscribeConfig } from '@/src/services/config/store';
-import {watchEffect} from 'vue';
+import {watch} from 'vue';
 import {getCompositeTranslationConfigFingerprint} from '@/src/core/config/compositeTranslation';
 import {normalizeUiLanguage, translateLegacyText} from '@/src/core/i18n';
 import {renderWithUiLanguageBundle} from '@/src/platform/i18n/uiLanguageBundles';
@@ -312,7 +312,7 @@ function configurationIdentity(manga = false): string {
 }
 
 function watchTranslationConfiguration(): () => void {
-    return watchEffect(() => {
+    return watch(() => {
         const service = config.imageTranslationService || config.service;
         const selectedModel = config.model?.[service];
         const customModel = config.customModel?.[service];
@@ -341,10 +341,21 @@ function watchTranslationConfiguration(): () => void {
         void config.minimaxRegion;
         void config.mimoBillingPlan;
         void config.mimoRegion;
+        // 回调中的 UI 文案/动效读取不能反向成为翻译身份依赖。
+        return {};
+    }, () => {
         configurationRevision += 1;
         clearMangaCache();
+        for (const state of activeStates) {
+            if (!state.abortController) continue;
+            state.abortController.abort();
+            state.abortController = null;
+            state.waitingForImage = false;
+            state.needsPreparation = false;
+            setButtonState(state, 'error', '翻译设置已更改，请重试');
+        }
         mangaReader?.schedule();
-    }, {flush: 'sync'});
+    }, {flush: 'sync', immediate: true});
 }
 
 function deleteCachedResult(image: HTMLImageElement): void {

@@ -1,7 +1,7 @@
 /**
  * @file src/features/image-translation/services/client.ts
  * 文件职责：封装网页与扩展页面调用图片翻译后台的 runtime 消息，统一支持跨域图片读取与整图翻译两种可取消客户端操作。
- * 主要内容：提供 fetchImageInExtension 与 translateImageInExtension，生成跨页面安全请求标识，固定开始时的取消信号、进度回调与登记端口，清理异常不阻止结束等待；传播超时与本地模型失败原因，订阅当前任务真实阶段和百分比，并在消息断线时按共享截止时间恢复一次。
+ * 主要内容：提供 fetchImageInExtension 与 translateImageInExtension，生成跨页面安全请求标识，固定开始时的取消信号、进度回调与登记端口，清理异常不阻止结束等待；传播超时与本地模型失败原因，订阅当前任务真实阶段和百分比，并在消息断线时按共享截止时间恢复一次；语言准备的状态预读有独立短上限，不能阻塞正式下载。
  * 模块边界：客户端不读取图片像素、不直接访问网络或 Offscreen；跨域 URL 只作为受控消息交给 background，再由 Offscreen 校验和读取，页面 UI 由 content/runtime 决定。
  */
 import {createImageTranslationFailure} from '../failure';
@@ -41,6 +41,7 @@ export interface ImageExtensionOperationOptions {
 }
 
 const DEFAULT_IMAGE_OPERATION_TIMEOUT_MS = 180_000;
+const IMAGE_OCR_STATUS_TIMEOUT_MS = 5_000;
 let imageRequestSequence = 0;
 const imageRequestContextNonce = (() => {
     try {
@@ -245,14 +246,21 @@ export async function prepareImageOcrLanguages(
     if (onProgress) {
         // 状态只影响进度分母，读取失败仍继续下载；取消必须立即结束等待，迟到回复只被消费。
         const status = await new Promise<ImageOcrStatusResponse | undefined>((resolve, reject) => {
-            const finish = (response: ImageOcrStatusResponse | undefined) => {
+            let settled = false;
+            const cleanup = () => {
+                clearTimeout(timer);
                 signal?.removeEventListener('abort', handleAbort);
-                resolve(response);
             };
-            const handleAbort = () => {
-                signal?.removeEventListener('abort', handleAbort);
-                reject(createImageClientError('图片 OCR 请求已取消', 'AbortError'));
+            const finish = (response: ImageOcrStatusResponse | undefined, aborted = false) => {
+                if (settled) return;
+                settled = true;
+                cleanup();
+                if (aborted) reject(createImageClientError('图片 OCR 请求已取消', 'AbortError'));
+                else resolve(response);
             };
+            const handleAbort = () => finish(undefined, true);
+            const timer = setTimeout(() => finish(undefined), IMAGE_OCR_STATUS_TIMEOUT_MS);
+            // 函数入口已检查取消；至此无 await 或外部回调，统一由监听器结束后续等待。
             signal?.addEventListener('abort', handleAbort, {once: true});
             void (async () => browser.runtime.sendMessage({type: 'fluentReadImageOcrStatus'}))().then(
                 response => finish(response as ImageOcrStatusResponse | undefined),

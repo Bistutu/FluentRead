@@ -27,6 +27,26 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals(); });
 
 describe('verified resumable model downloads', () => {
+  it.each(['http', 'range', 'overflow'])('releases a rejected %s response before falling back even when cancel never settles', async stage => {
+    const bytes = new Uint8Array([7]);
+    const file = fileFor(bytes);
+    let rejectCancel!: (reason: unknown) => void;
+    const cancel = vi.fn(() => new Promise<void>((_resolve, reject) => {rejectCancel = reject;}));
+    const body = new ReadableStream<Uint8Array>({start(controller) {
+      if (stage === 'overflow') controller.enqueue(new Uint8Array([7, 8]));
+    }, cancel});
+    const rejected = new Response(body, {status: stage === 'http' ? 503 : stage === 'range' ? 206 : 200});
+    const fetcher = vi.fn().mockResolvedValueOnce(rejected).mockResolvedValueOnce(new Response(bytes));
+    vi.stubGlobal('fetch', fetcher);
+    await downloadTranslationArtifact(file, new AbortController().signal, () => undefined);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(body.locked).toBe(false);
+    expect(await artifactComplete(file)).toBe(true);
+    rejectCancel(new Error('late cleanup failure'));
+    await Promise.resolve();
+  });
+
   it('reads only catalogued verified files and detects missing or inconsistent chunks', async () => {
     expect(getTranslationArtifacts(LOCAL_TRANSLATION_MODEL_IDS.m2m100)).toEqual([]);
     const file = getTranslationArtifacts(LOCAL_TRANSLATION_MODEL_IDS.opusZhEn).find((file) => file.path === 'config.json')!;

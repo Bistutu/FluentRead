@@ -278,6 +278,10 @@ describe('ChatGPT 套餐设置真实组件', () => {
             for (const value of Object.values(chatGPTPlanMessages[locale])) expect(value.trim()).not.toBe('');
         }
         expect(chatGPTPlanText('model', 'future-locale' as UiLanguage)).toBe(chatGPTPlanMessages['zh-CN'].model);
+        for (const code of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) {
+            expect(chatGPTPlanErrorText({code}, 'en-US')).toBe(chatGPTPlanMessages['en-US'].operationFailed);
+            expect(chatGPTPlanText('model', code as UiLanguage)).toBe(chatGPTPlanMessages['zh-CN'].model);
+        }
         expect(chatGPTPlanErrorText({}, 'en-US')).toBe(chatGPTPlanMessages['en-US'].operationFailed);
         expect(chatGPTPlanErrorText(null, 'en-US')).toBe(chatGPTPlanMessages['en-US'].operationFailed);
         expect(chatGPTPlanErrorText({message: 'not_connected'}, 'en-US')).toBe(chatGPTPlanMessages['en-US'].notConnected);

@@ -6,6 +6,7 @@
  */
 import {sha256} from '@noble/hashes/sha256';
 import {huggingFaceDownloadOrigins} from '@/src/platform/http/modelDownloads';
+import {cancelUnreadResponseBody} from '@/src/platform/http/runtime';
 export interface ModelArtifact {url: string; size: number; sha256: string}
 export const MODEL_ARTIFACT_CHUNK_BYTES = 4 * 1024 * 1024;
 export async function removeModelArtifactCache(cacheName: string): Promise<void> {await caches.delete(cacheName);}
@@ -68,9 +69,11 @@ export function createModelArtifactStore(cacheName: string, files: readonly Mode
         let timer: ReturnType<typeof setTimeout> | undefined;
         const arm = (ms: number) => {clearTimeout(timer); timer = setTimeout(abort, ms);};
         let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+        let originalBody: ReadableStream<Uint8Array> | null | undefined;
         try {
             active(signal); arm(20_000);
             const response = await fetch(file.url.replace('https://huggingface.co', origin), {signal: controller.signal, credentials: 'omit', referrerPolicy: 'no-referrer', headers: offset ? {Range: `bytes=${offset}-`} : {}});
+            originalBody = response.body;
             if (!response.ok || !response.body) throw new Error('MODEL_NETWORK');
             if (response.status === 206) {
                 const range = /^bytes (\d+)-(\d+)\/(\d+)$/u.exec(response.headers.get('Content-Range') || '');
@@ -96,7 +99,12 @@ export function createModelArtifactStore(cacheName: string, files: readonly Mode
             }
             if (offset !== file.size) throw new Error('MODEL_NETWORK');
             progress(offset, true); await verify(file, signal);
-        } finally {clearTimeout(timer); controller.abort(); void reader?.cancel().catch(() => undefined); reader?.releaseLock(); signal.removeEventListener('abort', abort);}
+        } finally {
+            clearTimeout(timer); controller.abort();
+            if (reader) {void reader.cancel().catch(() => undefined); reader.releaseLock();}
+            else cancelUnreadResponseBody({body: originalBody});
+            signal.removeEventListener('abort', abort);
+        }
     };
     return {complete, downloaded, remove, blob,
         async match(request: string | Request): Promise<Response | undefined> {

@@ -1,0 +1,1386 @@
+{
+  "source": "OpenStax University Physics Volume 1, PDF page 699 / printed page 689; revision UP1-2016-002(05/18)-MJ",
+  "copyright": "Copyright 2018 Rice University",
+  "license": "CC BY 4.0, https://creativecommons.org/licenses/by/4.0/",
+  "attribution": "Download for free at https://openstax.org/details/books/university-physics-volume-1.",
+  "changes": "PDF.js text items transformed into unrotated page geometry; no textbook text changed. Regression data only, not part of extension builds.",
+  "pdfPage": 699,
+  "input": {
+    "atoms": [
+      {
+        "text": "Solids",
+        "x": 93.109,
+        "y": 61.01426562500001,
+        "width": 29.96,
+        "height": 11.171875,
+        "fontFamily": "sans-serif",
+        "baseline": 70.06700000000001,
+        "fontSize": 10
+      },
+      {
+        "text": "(",
+        "x": 93.109,
+        "y": 73.01426562500001,
+        "width": 3.33,
+        "height": 11.171875,
+        "fontFamily": "sans-serif",
+        "baseline": 82.06700000000001,
+        "fontSize": 10
+      },
+      {
+        "text": "0.0°C",
+        "x": 98.439,
+        "y": 71.51700000000001,
+        "width": 23.709999999999994,
+        "height": 15.1,
+        "fontFamily": "serif",
+        "baseline": 82.06700000000001,
+        "fontSize": 10
+      },
+      {
+        "text": ")",
+        "x": 123.589,
+        "y": 73.01426562500001,
+        "width": 3.33,
+        "height": 11.171875,
+        "fontFamily": "sans-serif",
+        "baseline": 82.06700000000001,
+        "fontSize": 10
+      },
+      {
+        "text": "Liquids",
+        "x": 231.84199999999998,
+        "y": 61.01426562500001,
+        "width": 35.50000000000001,
+        "height": 11.171875,
+        "fontFamily": "sans-serif",
+        "baseline": 70.06700000000001,
+        "fontSize": 10
+      },
+      {
+        "text": "(",
+        "x": 231.84199999999998,
+        "y": 73.01426562500001,
+        "width": 3.33,
+        "height": 11.171875,
+        "fontFamily": "sans-serif",
+        "baseline": 82.06700000000001,
+        "fontSize": 10
+      },
+      {
+        "text": "0.0°C",
+        "x": 237.172,
+        "y": 71.51700000000001,
+        "width": 23.710000000000008,
+        "height": 15.1,
+        "fontFamily": "serif",
+        "baseline": 82.06700000000001,
+        "fontSize": 10
+      },
+      {
+        "text": ")",
+        "x": 262.322,
+        "y": 73.01426562500001,
+        "width": 3.33,
+        "height": 11.171875,
+        "fontFamily": "sans-serif",
+        "baseline": 82.06700000000001,
+        "fontSize": 10
+      },
+      {
+        "text": "Gases",
+        "x": 371.818,
+        "y": 61.01426562500001,
+        "width": 30.010000000000005,
+        "height": 11.171875,
+        "fontFamily": "sans-serif",
+        "baseline": 70.06700000000001,
+        "fontSize": 10
+      },
+      {
+        "text": "(",
+        "x": 371.818,
+        "y": 73.01426562500001,
+        "width": 3.33,
+        "height": 11.171875,
+        "fontFamily": "sans-serif",
+        "baseline": 82.06700000000001,
+        "fontSize": 10
+      },
+      {
+        "text": "0.0°C,",
+        "x": 377.149,
+        "y": 71.51700000000001,
+        "width": 25.650000000000006,
+        "height": 15.1,
+        "fontFamily": "serif",
+        "baseline": 82.06700000000001,
+        "fontSize": 10
+      },
+      {
+        "text": "101.3 kPa)",
+        "x": 410.91,
+        "y": 73.01426562500001,
+        "width": 48.889999999999986,
+        "height": 11.171875,
+        "fontFamily": "sans-serif",
+        "baseline": 82.06700000000001,
+        "fontSize": 10
+      },
+      {
+        "text": "Concrete",
+        "x": 93.10900000000004,
+        "y": 95.90390234375002,
+        "width": 38.532,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 104.50400000000002,
+        "fontSize": 9.5
+      },
+      {
+        "text": "2.40 × 10",
+        "x": 167.23,
+        "y": 96.88800000000005,
+        "width": 38.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 107.11800000000005,
+        "fontSize": 10
+      },
+      {
+        "text": "3",
+        "x": 206.343,
+        "y": 94.72600000000008,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 102.91000000000008,
+        "fontSize": 8
+      },
+      {
+        "text": "Gasoline",
+        "x": 231.842,
+        "y": 95.90390234375002,
+        "width": 37.47749999999999,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 104.50400000000002,
+        "fontSize": 9.5
+      },
+      {
+        "text": "6.80 × 10",
+        "x": 307.206,
+        "y": 96.77599999999997,
+        "width": 38.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 107.00599999999997,
+        "fontSize": 10
+      },
+      {
+        "text": "2",
+        "x": 346.319,
+        "y": 94.72599999999997,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 102.90999999999997,
+        "fontSize": 8
+      },
+      {
+        "text": "Helium",
+        "x": 371.818,
+        "y": 95.90390234375002,
+        "width": 29.5545,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 104.50400000000002,
+        "fontSize": 9.5
+      },
+      {
+        "text": "1.80 × 10",
+        "x": 468.307,
+        "y": 96.77599999999997,
+        "width": 38.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 107.00599999999997,
+        "fontSize": 10
+      },
+      {
+        "text": "−1",
+        "x": 507.42,
+        "y": 94.72599999999997,
+        "width": 9.48,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 102.90999999999997,
+        "fontSize": 8
+      },
+      {
+        "text": "Copper",
+        "x": 93.109,
+        "y": 118.15790234375004,
+        "width": 31.1505,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 126.75800000000004,
+        "fontSize": 9.5
+      },
+      {
+        "text": "8.92 × 10",
+        "x": 167.23,
+        "y": 119.14199999999995,
+        "width": 38.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 129.37199999999996,
+        "fontSize": 10
+      },
+      {
+        "text": "3",
+        "x": 206.343,
+        "y": 116.97999999999999,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 125.16399999999999,
+        "fontSize": 8
+      },
+      {
+        "text": "Glycerin",
+        "x": 231.842,
+        "y": 118.15790234375004,
+        "width": 34.827,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 126.75800000000004,
+        "fontSize": 9.5
+      },
+      {
+        "text": "1.26 × 10",
+        "x": 307.206,
+        "y": 119.14199999999995,
+        "width": 38.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 129.37199999999996,
+        "fontSize": 10
+      },
+      {
+        "text": "3",
+        "x": 346.319,
+        "y": 116.97999999999999,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 125.16399999999999,
+        "fontSize": 8
+      },
+      {
+        "text": "Hydrogen",
+        "x": 371.818,
+        "y": 118.15790234375004,
+        "width": 41.18249999999999,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 126.75800000000004,
+        "fontSize": 9.5
+      },
+      {
+        "text": "9.00 × 10",
+        "x": 468.307,
+        "y": 119.02999999999999,
+        "width": 38.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 129.26,
+        "fontSize": 10
+      },
+      {
+        "text": "−2",
+        "x": 507.42,
+        "y": 116.97999999999999,
+        "width": 9.48,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 125.16399999999999,
+        "fontSize": 8
+      },
+      {
+        "text": "Cork",
+        "x": 93.109,
+        "y": 140.41290234375003,
+        "width": 20.0545,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 149.01300000000003,
+        "fontSize": 9.5
+      },
+      {
+        "text": "2.40 × 10",
+        "x": 167.23,
+        "y": 141.285,
+        "width": 38.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 151.515,
+        "fontSize": 10
+      },
+      {
+        "text": "2",
+        "x": 206.343,
+        "y": 139.23499999999999,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 147.41899999999998,
+        "fontSize": 8
+      },
+      {
+        "text": "Mercury",
+        "x": 231.842,
+        "y": 140.41290234375003,
+        "width": 34.3045,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 149.01300000000003,
+        "fontSize": 9.5
+      },
+      {
+        "text": "1.36 × 10",
+        "x": 307.206,
+        "y": 141.285,
+        "width": 38.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 151.515,
+        "fontSize": 10
+      },
+      {
+        "text": "4",
+        "x": 346.319,
+        "y": 139.23499999999999,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 147.41899999999998,
+        "fontSize": 8
+      },
+      {
+        "text": "Methane",
+        "x": 371.818,
+        "y": 140.41290234375003,
+        "width": 36.955,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 149.01300000000003,
+        "fontSize": 9.5
+      },
+      {
+        "text": "7.20 × 10",
+        "x": 468.307,
+        "y": 141.285,
+        "width": 38.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 151.515,
+        "fontSize": 10
+      },
+      {
+        "text": "−2",
+        "x": 507.42,
+        "y": 139.23499999999999,
+        "width": 9.48,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 147.41899999999998,
+        "fontSize": 8
+      },
+      {
+        "text": "Earth’s crust",
+        "x": 93.109,
+        "y": 162.55490234374997,
+        "width": 52.60379900000001,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 171.15499999999997,
+        "fontSize": 9.5
+      },
+      {
+        "text": "3.30 × 10",
+        "x": 167.23,
+        "y": 163.54,
+        "width": 38.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 173.76999999999998,
+        "fontSize": 10
+      },
+      {
+        "text": "3",
+        "x": 206.343,
+        "y": 161.37800000000001,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 169.562,
+        "fontSize": 8
+      },
+      {
+        "text": "Olive oil",
+        "x": 231.842,
+        "y": 162.55490234374997,
+        "width": 33.76299999999999,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 171.15499999999997,
+        "fontSize": 9.5
+      },
+      {
+        "text": "9.20 × 10",
+        "x": 307.206,
+        "y": 163.42800000000003,
+        "width": 38.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 173.65800000000002,
+        "fontSize": 10
+      },
+      {
+        "text": "2",
+        "x": 346.319,
+        "y": 161.37800000000001,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 169.562,
+        "fontSize": 8
+      },
+      {
+        "text": "Nitrogen",
+        "x": 371.818,
+        "y": 162.55490234374997,
+        "width": 35.891,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 171.15499999999997,
+        "fontSize": 9.5
+      },
+      {
+        "text": "1.25 × 10",
+        "x": 468.307,
+        "y": 163.54,
+        "width": 38.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 173.76999999999998,
+        "fontSize": 10
+      },
+      {
+        "text": "0",
+        "x": 507.42,
+        "y": 161.37800000000001,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 169.562,
+        "fontSize": 8
+      },
+      {
+        "text": "Glass",
+        "x": 93.109,
+        "y": 184.80990234374997,
+        "width": 24.2725,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 193.40999999999997,
+        "fontSize": 9.5
+      },
+      {
+        "text": "2.60 × 10",
+        "x": 167.23,
+        "y": 185.794,
+        "width": 38.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 196.024,
+        "fontSize": 10
+      },
+      {
+        "text": "3",
+        "x": 206.343,
+        "y": 183.63200000000003,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 191.81600000000003,
+        "fontSize": 8
+      },
+      {
+        "text": "Nitrous oxide",
+        "x": 371.818,
+        "y": 184.80990234374997,
+        "width": 55.41350000000001,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 193.40999999999997,
+        "fontSize": 9.5
+      },
+      {
+        "text": "1.98 × 10",
+        "x": 468.307,
+        "y": 185.794,
+        "width": 38.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 196.024,
+        "fontSize": 10
+      },
+      {
+        "text": "0",
+        "x": 507.42,
+        "y": 183.63200000000003,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 191.81600000000003,
+        "fontSize": 8
+      },
+      {
+        "text": "Gold",
+        "x": 93.109,
+        "y": 207.06390234375,
+        "width": 20.054499999999997,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 215.664,
+        "fontSize": 9.5
+      },
+      {
+        "text": "1.93 × 10",
+        "x": 167.23,
+        "y": 207.93700000000004,
+        "width": 38.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 218.16700000000003,
+        "fontSize": 10
+      },
+      {
+        "text": "4",
+        "x": 206.343,
+        "y": 205.88700000000003,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 214.07100000000003,
+        "fontSize": 8
+      },
+      {
+        "text": "Oxygen",
+        "x": 371.818,
+        "y": 207.06390234375,
+        "width": 32.7275,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 215.664,
+        "fontSize": 9.5
+      },
+      {
+        "text": "1.43 × 10",
+        "x": 468.307,
+        "y": 208.049,
+        "width": 38.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 218.279,
+        "fontSize": 10
+      },
+      {
+        "text": "0",
+        "x": 507.42,
+        "y": 205.88700000000003,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 214.07100000000003,
+        "fontSize": 8
+      },
+      {
+        "text": "Granite",
+        "x": 93.109,
+        "y": 229.31890234374998,
+        "width": 31.131500000000003,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 237.91899999999998,
+        "fontSize": 9.5
+      },
+      {
+        "text": "2.70 × 10",
+        "x": 167.23,
+        "y": 230.30300000000003,
+        "width": 38.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 240.53300000000002,
+        "fontSize": 10
+      },
+      {
+        "text": "3",
+        "x": 206.343,
+        "y": 228.14100000000005,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 236.32500000000005,
+        "fontSize": 8
+      },
+      {
+        "text": "Iron",
+        "x": 93.109,
+        "y": 251.57290234375,
+        "width": 16.359,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 260.173,
+        "fontSize": 9.5
+      },
+      {
+        "text": "7.86 × 10",
+        "x": 167.23,
+        "y": 252.55800000000002,
+        "width": 38.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 262.788,
+        "fontSize": 10
+      },
+      {
+        "text": "3",
+        "x": 206.343,
+        "y": 250.39600000000004,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 258.58000000000004,
+        "fontSize": 8
+      },
+      {
+        "text": "Lead",
+        "x": 93.109,
+        "y": 273.82790234375,
+        "width": 21.128,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 282.428,
+        "fontSize": 9.5
+      },
+      {
+        "text": "1.13 × 10",
+        "x": 167.23,
+        "y": 274.7,
+        "width": 38.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 284.93,
+        "fontSize": 10
+      },
+      {
+        "text": "4",
+        "x": 206.343,
+        "y": 272.65,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 280.834,
+        "fontSize": 8
+      },
+      {
+        "text": "Oak",
+        "x": 93.109,
+        "y": 295.96990234375,
+        "width": 17.4135,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 304.57,
+        "fontSize": 9.5
+      },
+      {
+        "text": "7.10 × 10",
+        "x": 167.23,
+        "y": 296.84299999999996,
+        "width": 38.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 307.073,
+        "fontSize": 10
+      },
+      {
+        "text": "2",
+        "x": 206.343,
+        "y": 294.79299999999995,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 302.977,
+        "fontSize": 8
+      },
+      {
+        "text": "Pine",
+        "x": 93.109,
+        "y": 318.11290234375,
+        "width": 19,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 326.713,
+        "fontSize": 9.5
+      },
+      {
+        "text": "3.73 × 10",
+        "x": 167.23,
+        "y": 318.98499999999996,
+        "width": 38.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 329.215,
+        "fontSize": 10
+      },
+      {
+        "text": "2",
+        "x": 206.343,
+        "y": 316.93499999999995,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 325.11899999999997,
+        "fontSize": 8
+      },
+      {
+        "text": "Platinum",
+        "x": 93.109,
+        "y": 340.25490234375,
+        "width": 36.936,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 348.855,
+        "fontSize": 9.5
+      },
+      {
+        "text": "2.14 × 10",
+        "x": 167.23,
+        "y": 341.128,
+        "width": 38.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 351.358,
+        "fontSize": 10
+      },
+      {
+        "text": "4",
+        "x": 206.343,
+        "y": 339.078,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 347.262,
+        "fontSize": 8
+      },
+      {
+        "text": "Polystyrene",
+        "x": 93.109,
+        "y": 362.39790234375,
+        "width": 49.608999999999995,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 370.998,
+        "fontSize": 9.5
+      },
+      {
+        "text": "1.00 × 10",
+        "x": 167.23,
+        "y": 363.27,
+        "width": 38.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 373.5,
+        "fontSize": 10
+      },
+      {
+        "text": "2",
+        "x": 206.343,
+        "y": 361.21999999999997,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 369.404,
+        "fontSize": 8
+      },
+      {
+        "text": "Tungsten",
+        "x": 93.109,
+        "y": 384.53990234375,
+        "width": 39.241896999999994,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 393.14,
+        "fontSize": 9.5
+      },
+      {
+        "text": "1.93 × 10",
+        "x": 167.23,
+        "y": 385.41299999999995,
+        "width": 38.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 395.643,
+        "fontSize": 10
+      },
+      {
+        "text": "4",
+        "x": 206.343,
+        "y": 383.36299999999994,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 391.54699999999997,
+        "fontSize": 8
+      },
+      {
+        "text": "Uranium",
+        "x": 93.109,
+        "y": 406.68290234375,
+        "width": 35.891000000000005,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 415.283,
+        "fontSize": 9.5
+      },
+      {
+        "text": "1.87 × 10",
+        "x": 167.23,
+        "y": 407.668,
+        "width": 38.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 417.898,
+        "fontSize": 10
+      },
+      {
+        "text": "3",
+        "x": 206.343,
+        "y": 405.506,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 413.69,
+        "fontSize": 8
+      },
+      {
+        "text": "Table 14.1 Densities of Some Common Substances",
+        "x": 83.359,
+        "y": 430.68790234375,
+        "width": 229.83869649999997,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 439.288,
+        "fontSize": 9.5
+      },
+      {
+        "text": "As you can see by examining",
+        "x": 72,
+        "y": 456.472423828125,
+        "width": 112.51750599999998,
+        "height": 10.5205078125,
+        "fontFamily": "serif",
+        "baseline": 464.938,
+        "fontSize": 9.5
+      },
+      {
+        "text": "Table 14.1",
+        "x": 187.124,
+        "y": 456.33790234375,
+        "width": 45.43750249999998,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 464.938,
+        "fontSize": 9.5
+      },
+      {
+        "text": ", the density of an object may help identify its composition. The density of gold,",
+        "x": 232.574,
+        "y": 456.472423828125,
+        "width": 307.4179955000001,
+        "height": 10.5205078125,
+        "fontFamily": "serif",
+        "baseline": 464.938,
+        "fontSize": 9.5
+      },
+      {
+        "text": "for example, is about 2.5 times the density of iron, which is about 2.5 times the density of aluminum. Density also reveals",
+        "x": 72,
+        "y": 467.87242382812497,
+        "width": 467.96630450000026,
+        "height": 10.5205078125,
+        "fontFamily": "serif",
+        "baseline": 476.33799999999997,
+        "fontSize": 9.5
+      },
+      {
+        "text": "something about the phase of the matter and its substructure. Notice that the densities of liquids and solids are roughly",
+        "x": 72,
+        "y": 479.27242382812494,
+        "width": 467.99199250000026,
+        "height": 10.5205078125,
+        "fontFamily": "serif",
+        "baseline": 487.73799999999994,
+        "fontSize": 9.5
+      },
+      {
+        "text": "comparable, consistent with the fact that their atoms are in close contact. The densities of gases are much less than those of",
+        "x": 72,
+        "y": 490.6724238281249,
+        "width": 467.99991550000004,
+        "height": 10.5205078125,
+        "fontFamily": "serif",
+        "baseline": 499.1379999999999,
+        "fontSize": 9.5
+      },
+      {
+        "text": "liquids and solids, because the atoms in gases are separated by large amounts of empty space. The gases are displayed for a",
+        "x": 72,
+        "y": 502.0724238281249,
+        "width": 467.99191650000023,
+        "height": 10.5205078125,
+        "fontFamily": "serif",
+        "baseline": 510.5379999999999,
+        "fontSize": 9.5
+      },
+      {
+        "text": "standard temperature of",
+        "x": 72,
+        "y": 513.4724238281249,
+        "width": 90.8186035,
+        "height": 10.5205078125,
+        "fontFamily": "serif",
+        "baseline": 521.9379999999999,
+        "fontSize": 9.5
+      },
+      {
+        "text": "0.0°C",
+        "x": 167.499,
+        "y": 511.70799999999997,
+        "width": 23.16000000000001,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 521.938,
+        "fontSize": 10
+      },
+      {
+        "text": "and a standard pressure of 101.3 kPa, and there is a strong dependence of the densities on",
+        "x": 195.329,
+        "y": 513.472423828125,
+        "width": 344.6708965,
+        "height": 10.5205078125,
+        "fontFamily": "serif",
+        "baseline": 521.938,
+        "fontSize": 9.5
+      },
+      {
+        "text": "temperature and pressure. The densities of the solids and liquids displayed are given for the standard temperature of",
+        "x": 72.00000000000001,
+        "y": 527.0124238281251,
+        "width": 438.56099250000017,
+        "height": 10.5205078125,
+        "fontFamily": "serif",
+        "baseline": 535.4780000000001,
+        "fontSize": 9.5
+      },
+      {
+        "text": "0.0°C",
+        "x": 514.85,
+        "y": 525.248,
+        "width": 23.16000000000001,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 535.4780000000001,
+        "fontSize": 10
+      },
+      {
+        "text": "and the densities of solids and liquids depend on the temperature. The density of solids and liquids normally increase with",
+        "x": 72,
+        "y": 540.552423828125,
+        "width": 467.9826160000002,
+        "height": 10.5205078125,
+        "fontFamily": "serif",
+        "baseline": 549.018,
+        "fontSize": 9.5
+      },
+      {
+        "text": "decreasing temperature.",
+        "x": 72,
+        "y": 551.952423828125,
+        "width": 90.63000000000001,
+        "height": 10.5205078125,
+        "fontFamily": "serif",
+        "baseline": 560.418,
+        "fontSize": 9.5
+      },
+      {
+        "text": "Table 14.2",
+        "x": 72,
+        "y": 568.05590234375,
+        "width": 45.52459849999998,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 576.656,
+        "fontSize": 9.5
+      },
+      {
+        "text": "shows the density of water in various phases and temperature. The density of water increases with decreasing",
+        "x": 120.182,
+        "y": 568.190423828125,
+        "width": 419.7759965000001,
+        "height": 10.5205078125,
+        "fontFamily": "serif",
+        "baseline": 576.656,
+        "fontSize": 9.5
+      },
+      {
+        "text": "temperature, reaching a maximum at",
+        "x": 72,
+        "y": 579.590423828125,
+        "width": 141.74550049999996,
+        "height": 10.5205078125,
+        "fontFamily": "serif",
+        "baseline": 588.056,
+        "fontSize": 9.5
+      },
+      {
+        "text": "4.0°C,",
+        "x": 218.693,
+        "y": 577.826,
+        "width": 25.66000000000001,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 588.056,
+        "fontSize": 10
+      },
+      {
+        "text": "and then decreases as the temperature falls below",
+        "x": 249.274,
+        "y": 579.590423828125,
+        "width": 191.4186064999999,
+        "height": 10.5205078125,
+        "fontFamily": "serif",
+        "baseline": 588.056,
+        "fontSize": 9.5
+      },
+      {
+        "text": "4.0°C",
+        "x": 445.642,
+        "y": 577.826,
+        "width": 23.16000000000001,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 588.056,
+        "fontSize": 10
+      },
+      {
+        "text": ". This behavior of",
+        "x": 470.792,
+        "y": 579.590423828125,
+        "width": 69.2080985,
+        "height": 10.5205078125,
+        "fontFamily": "serif",
+        "baseline": 588.056,
+        "fontSize": 9.5
+      },
+      {
+        "text": "the density of water explains why ice forms at the top of a body of water.",
+        "x": 72,
+        "y": 594.400423828125,
+        "width": 277.53169849999995,
+        "height": 10.5205078125,
+        "fontFamily": "serif",
+        "baseline": 602.866,
+        "fontSize": 9.5
+      },
+      {
+        "text": "Substance",
+        "x": 215.006,
+        "y": 613.524265625,
+        "width": 50.53000000000001,
+        "height": 11.171875,
+        "fontFamily": "sans-serif",
+        "baseline": 622.577,
+        "fontSize": 10
+      },
+      {
+        "text": "ρ",
+        "x": 347.282,
+        "y": 614.678,
+        "width": 4.95,
+        "height": 13.629999999999999,
+        "fontFamily": "serif",
+        "baseline": 624.718,
+        "fontSize": 10
+      },
+      {
+        "text": "(kg/m",
+        "x": 352.31199999999995,
+        "y": 614.168,
+        "width": 24.960000000000036,
+        "height": 15.1,
+        "fontFamily": "serif",
+        "baseline": 624.718,
+        "fontSize": 10
+      },
+      {
+        "text": "3",
+        "x": 376.83899999999994,
+        "y": 612.0699999999999,
+        "width": 4,
+        "height": 12.08,
+        "fontFamily": "serif",
+        "baseline": 620.51,
+        "fontSize": 8
+      },
+      {
+        "text": ")",
+        "x": 380.83899999999994,
+        "y": 614.168,
+        "width": 3.33,
+        "height": 15.1,
+        "fontFamily": "serif",
+        "baseline": 624.718,
+        "fontSize": 10
+      },
+      {
+        "text": "Ice",
+        "x": 215.006,
+        "y": 639.31490234375,
+        "width": 12.663499999999999,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 647.915,
+        "fontSize": 9.5
+      },
+      {
+        "text": "(0°C)",
+        "x": 232.318,
+        "y": 637.685,
+        "width": 22.299999999999997,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 647.915,
+        "fontSize": 10
+      },
+      {
+        "text": "9.17 × 10",
+        "x": 346.882,
+        "y": 640.188,
+        "width": 38.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 650.418,
+        "fontSize": 10
+      },
+      {
+        "text": "2",
+        "x": 385.995,
+        "y": 638.138,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 646.322,
+        "fontSize": 8
+      },
+      {
+        "text": "Water",
+        "x": 215.006,
+        "y": 661.45790234375,
+        "width": 24.973001500000013,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 670.058,
+        "fontSize": 9.5
+      },
+      {
+        "text": "(0°C)",
+        "x": 244.629,
+        "y": 659.828,
+        "width": 22.300000000000026,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 670.058,
+        "fontSize": 10
+      },
+      {
+        "text": "9.998 × 10",
+        "x": 346.882,
+        "y": 662.3299999999999,
+        "width": 43.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 672.56,
+        "fontSize": 10
+      },
+      {
+        "text": "2",
+        "x": 390.995,
+        "y": 660.28,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 668.4639999999999,
+        "fontSize": 8
+      },
+      {
+        "text": "Water",
+        "x": 215.006,
+        "y": 683.59990234375,
+        "width": 24.973001500000013,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 692.2,
+        "fontSize": 9.5
+      },
+      {
+        "text": "(4°C)",
+        "x": 244.629,
+        "y": 681.97,
+        "width": 22.300000000000026,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 692.2,
+        "fontSize": 10
+      },
+      {
+        "text": "1.000 × 10",
+        "x": 346.882,
+        "y": 684.585,
+        "width": 43.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 694.815,
+        "fontSize": 10
+      },
+      {
+        "text": "3",
+        "x": 390.995,
+        "y": 682.423,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 690.607,
+        "fontSize": 8
+      },
+      {
+        "text": "Table 14.2 Densities of Water",
+        "x": 205.256,
+        "y": 707.60490234375,
+        "width": 130.39790250000001,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 716.205,
+        "fontSize": 9.5
+      },
+      {
+        "text": "Chapter 14 | Fluid Mechanics",
+        "x": 72,
+        "y": 24.89008593750009,
+        "width": 90.86000000000003,
+        "height": 7.8203125,
+        "fontFamily": "sans-serif",
+        "baseline": 31.22700000000009,
+        "fontSize": 7
+      },
+      {
+        "text": "689",
+        "x": 528.321,
+        "y": 24.89008593750009,
+        "width": 11.676,
+        "height": 7.8203125,
+        "fontFamily": "sans-serif",
+        "baseline": 31.22700000000009,
+        "fontSize": 7
+      }
+    ],
+    "graphics": [
+      {
+        "x": 83.359,
+        "y": 57.60000000000002,
+        "width": 138.733,
+        "height": 34.90999999999997,
+        "kind": "path"
+      },
+      {
+        "x": 222.092,
+        "y": 57.60000000000002,
+        "width": 139.977,
+        "height": 34.90999999999997,
+        "kind": "path"
+      },
+      {
+        "x": 362.068,
+        "y": 57.60000000000002,
+        "width": 166.57299999999998,
+        "height": 34.90999999999997,
+        "kind": "path"
+      },
+      {
+        "x": 83.359,
+        "y": 91.00999999999999,
+        "width": 138.733,
+        "height": 1.5,
+        "kind": "path"
+      },
+      {
+        "x": 222.092,
+        "y": 91.00999999999999,
+        "width": 139.977,
+        "height": 1.5,
+        "kind": "path"
+      },
+      {
+        "x": 362.068,
+        "y": 91.00999999999999,
+        "width": 166.57299999999998,
+        "height": 1.5,
+        "kind": "path"
+      },
+      {
+        "x": 205.256,
+        "y": 610.111,
+        "width": 129.876,
+        "height": 25.811000000000035,
+        "kind": "path"
+      },
+      {
+        "x": 335.132,
+        "y": 610.111,
+        "width": 71.61200000000002,
+        "height": 25.811000000000035,
+        "kind": "path"
+      },
+      {
+        "x": 205.256,
+        "y": 634.422,
+        "width": 129.876,
+        "height": 1.5,
+        "kind": "path"
+      },
+      {
+        "x": 335.132,
+        "y": 634.422,
+        "width": 71.61200000000002,
+        "height": 1.5,
+        "kind": "path"
+      }
+    ],
+    "width": 612,
+    "height": 792
+  }
+}

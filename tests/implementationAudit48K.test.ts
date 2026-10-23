@@ -1,3 +1,4 @@
+import {siteRuleTextRows} from '@/src/core/i18n/messages/siteRules';
 /**
  * @file tests/implementationAudit48K.test.ts
  * 文件职责：经公开消费者验证第 48 批 K 的学习装配、词书状态、轻量引导资源及漫画排印边界。
@@ -57,7 +58,7 @@ import {registerUiLanguageBundle, translate, translateLegacyText, type Registere
 import * as i18n from '@/src/core/i18n';
 import * as onboardingMessages from '@/src/core/i18n/messages/onboarding';
 import brandTaglines from '@/src/core/i18n/messages/brand-taglines.json';
-import {createLegacyCorrectionText, getLegacyCorrectionSources} from '@/src/core/i18n/messages/legacy-corrections';
+import {createLegacyCorrectionText, correctionRows} from '@/src/core/i18n/messages/legacy-corrections';
 import {useSettingsActionContext} from '@/src/features/settings/model/useSettingsActionContext';
 import {layoutMangaTranslationText} from '@/src/features/image-translation/services/mangaTypography';
 import {drawMangaTranslations} from '@/src/features/image-translation/services/mangaRendering';
@@ -301,7 +302,7 @@ describe('48K 轻量资源经实际运行时消费者', () => {
         expect(translateLegacyText('CSS 选择器', language)).toBe(selector);
         for (const userValue of ['example.test', 'article[data-title="网站偏好"]', '{"name":"CSS 选择器"}']) expect(translateLegacyText(userValue, language)).toBe(userValue);
         // 通过目录的公开消费者取源项，逐条验证真实登记结果可用，不复制私有行或键清单。
-        for (const source of getLegacyCorrectionSources()) expect(translateLegacyText(source, language)).toBe(legacyText[source]);
+        for (const source of [...correctionRows, ...siteRuleTextRows].map(row => row[0])) expect(translateLegacyText(source, language)).toBe(legacyText[source]);
     });
 });
 

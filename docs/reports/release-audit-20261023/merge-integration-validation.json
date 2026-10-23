@@ -1,0 +1,224 @@
+{
+  "createdAt": "2026-10-23T15:46:31.280516+00:00",
+  "auditParent": "e8306d6c7e9973e602ea07a39bfb1e07836a0152",
+  "integratedMain": "f2885bc93fcc54feecb602ce337009bd8ea79029",
+  "artifactStatus": "local_integration_checks_passed_not_release_approval",
+  "sourceFiles": 2136,
+  "sourceHashDelta": [],
+  "sourceManifestSha256": "f068853f106be210288e8d9517b02860a2a50ad033abc6ead83f937fceb8946f",
+  "buildChecks": [
+    {
+      "name": "compile",
+      "command": [
+        "pnpm",
+        "compile"
+      ],
+      "exit": 0,
+      "startedAt": "2026-10-23T15:43:09.922186+00:00",
+      "seconds": 47.662821,
+      "log": "integration-compile.log"
+    },
+    {
+      "name": "chrome",
+      "command": [
+        "pnpm",
+        "build"
+      ],
+      "exit": 0,
+      "startedAt": "2026-10-23T15:43:57.585962+00:00",
+      "seconds": 28.526648,
+      "log": "integration-chrome.log"
+    },
+    {
+      "name": "firefox",
+      "command": [
+        "pnpm",
+        "build:firefox"
+      ],
+      "exit": 0,
+      "startedAt": "2026-10-23T15:44:26.113061+00:00",
+      "seconds": 29.208251,
+      "log": "integration-firefox.log"
+    },
+    {
+      "name": "manifests",
+      "command": [
+        "pnpm",
+        "verify:extension-manifests"
+      ],
+      "exit": 0,
+      "startedAt": "2026-10-23T15:44:55.321779+00:00",
+      "seconds": 0.460807,
+      "log": "integration-manifests.log"
+    },
+    {
+      "name": "userscript",
+      "command": [
+        "pnpm",
+        "build:userscript"
+      ],
+      "exit": 0,
+      "startedAt": "2026-10-23T15:44:55.783046+00:00",
+      "seconds": 5.974135,
+      "log": "integration-userscript.log"
+    },
+    {
+      "name": "userscript-verify",
+      "command": [
+        "node",
+        "scripts/verify-userscript-build.mjs"
+      ],
+      "exit": 0,
+      "startedAt": "2026-10-23T15:45:01.757663+00:00",
+      "seconds": 0.066041,
+      "log": "integration-userscript-verify.log"
+    },
+    {
+      "name": "standalone",
+      "command": [
+        "pnpm",
+        "build:userscript:standalone"
+      ],
+      "exit": 0,
+      "startedAt": "2026-10-23T15:45:01.824135+00:00",
+      "seconds": 10.964659,
+      "log": "integration-standalone.log"
+    },
+    {
+      "name": "standalone-verify",
+      "command": [
+        "node",
+        "scripts/verify-userscript-standalone-build.mjs"
+      ],
+      "exit": 0,
+      "startedAt": "2026-10-23T15:45:12.789359+00:00",
+      "seconds": 0.057028,
+      "log": "integration-standalone-verify.log"
+    }
+  ],
+  "docsChecks": [
+    {
+      "script": "docs:typecheck",
+      "exit": 0,
+      "seconds": 2.272996667
+    },
+    {
+      "script": "docs:build",
+      "exit": 0,
+      "seconds": 4.498955084
+    },
+    {
+      "script": "storybook:typecheck",
+      "exit": 0,
+      "seconds": 3.4087422920000003
+    },
+    {
+      "script": "storybook:build",
+      "exit": 0,
+      "seconds": 6.2328206250000004
+    },
+    {
+      "script": "docs:check",
+      "exit": 0,
+      "seconds": 0.886864874999997
+    },
+    {
+      "script": "storybook:check",
+      "exit": 0,
+      "seconds": 0.3638009999999987
+    }
+  ],
+  "artifacts": [
+    {
+      "path": ".output/userscript/fluent-read.user.js",
+      "bytes": 1860457,
+      "sha256": "6410a0a3c7d385f517c63f74f3b07b1f29c0c1487b43b7f7dcb24f92c62ad1e4",
+      "originalLimit": 2125100,
+      "remainingBytes": 264643
+    },
+    {
+      "path": ".output/userscript-standalone/fluent-read.user.js",
+      "bytes": 3598492,
+      "sha256": "cbf4f15122761b566ca39dca950ab7e995bd49efe8c5c8ebda002bb88a0a6fa7",
+      "originalLimit": 3600000,
+      "remainingBytes": 1508
+    }
+  ],
+  "targetedTests": [
+    {
+      "scope": "core",
+      "files": 6,
+      "passed": 879
+    },
+    {
+      "scope": "UI",
+      "files": 7,
+      "passed": 468
+    },
+    {
+      "scope": "reading strict two modules",
+      "files": 3,
+      "passed": 144,
+      "perFileFourDimensions": 100
+    },
+    {
+      "scope": "build/data encoding",
+      "files": 2,
+      "passed": 300,
+      "helperFourDimensions": 100
+    }
+  ],
+  "testAudit": {
+    "files": 789,
+    "declaredCases": 15426,
+    "architecture": 38,
+    "unit": 441,
+    "functional": 264,
+    "regression": 46
+  },
+  "coveragePolicy": "No thresholds or exclusions changed. Two-module strict pass is not repository-wide 100%.",
+  "remoteCI": "Must pass latest PR head before merge; final run/head/merge recorded outside source after remote verification.",
+  "limitations": [
+    "No new complete all-source coverage collection on integrated source.",
+    "S11 global 100%, Greasy Fork original 2MB, full actual site acceptance remain open release requirements.",
+    "No extension publication.",
+    "No new real-browser launch."
+  ],
+  "followup": {
+    "reason": "CI ownership registry failure for SettingsDisclosure actual consumer",
+    "changedProductionFiles": [],
+    "targetedFiles": 9,
+    "targetedPassed": 517,
+    "architectureFiles": 38,
+    "architecturePassed": 2315,
+    "checks": [
+      {
+        "script": "test:architecture",
+        "exit": 0,
+        "seconds": 67.458425625
+      },
+      {
+        "script": "compile",
+        "exit": 0,
+        "seconds": 48.446997417000006
+      },
+      {
+        "script": "test:audit",
+        "exit": 0,
+        "seconds": 3.327430167000003
+      }
+    ],
+    "testAudit": {
+      "status": "ok",
+      "groups": {
+        "architecture": 38,
+        "unit": 441,
+        "functional": 264,
+        "regression": 46
+      },
+      "files": 789,
+      "cases": 15427
+    },
+    "remoteCI": "New head must pass remote checks; prior 1cbb CI failed one ownership assertion, all 165 strict modules passed four dimensions."
+  }
+}

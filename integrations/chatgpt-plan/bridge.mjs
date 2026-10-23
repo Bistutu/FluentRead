@@ -7,7 +7,7 @@ import { createServer } from 'node:http';
 import { randomBytes } from 'node:crypto';
 import { once } from 'node:events';
 import { openCredentialStore } from './credential-store.mjs';
-import { BridgeError, createOAuthRuntime, digest, equalSecret, safeUpstreamCode } from './oauth-runtime.mjs';
+import { BridgeError, cancelStream, createOAuthRuntime, digest, equalSecret, safeUpstreamCode } from './oauth-runtime.mjs';
 
 export const BRIDGE_PORT = 18743;
 const MAX_BODY = 2_000_000;
@@ -59,7 +59,10 @@ export function validateResponseRequest(body) {
 }
 
 async function streamResponse(upstream, response, signal) {
-  if (!upstream.body || !upstream.headers.get('content-type')?.includes('text/event-stream')) throw error('invalid_stream', 'OpenAI 未返回事件流。', 502);
+  if (!upstream.body || !upstream.headers.get('content-type')?.includes('text/event-stream')) {
+    cancelStream(upstream.body);
+    throw error('invalid_stream', 'OpenAI 未返回事件流。', 502);
+  }
   response.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'X-Accel-Buffering': 'no' });
   const reader = upstream.body.getReader();
   const decoder = new TextDecoder('utf-8', { fatal: true });
@@ -90,7 +93,7 @@ async function streamResponse(upstream, response, signal) {
       if (done) break;
     }
     if (!terminal) throw error('stream_incomplete', 'ChatGPT 事件流提前结束，请重试。', 502);
-  } finally { await reader.cancel().catch(() => {}); }
+  } finally { cancelStream(reader); reader.releaseLock(); }
   response.end();
 }
 

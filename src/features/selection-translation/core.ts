@@ -43,11 +43,6 @@ export interface SelectionContentRequest {
     generation: number;
 }
 
-/** 中英双向入口仅用于默认目标为英语或中文的划词卡片。 */
-export function isChineseEnglishTarget(language: string): boolean {
-    return language === 'en' || Boolean(getChineseScript(language));
-}
-
 /** 只在选区可信地属于当前目标语言时反向；不对短歧义词或其他语言猜测方向。 */
 export function selectionReverseTarget(text: string, targetLanguage: string, sourceLanguage: string): string | null {
     if (getChineseScript(targetLanguage) && shouldSkipChineseSelection(text, targetLanguage)) return 'en';
@@ -453,18 +448,6 @@ export function calculateSelectionPopupPosition(
         left,
         top: clamp(rawTop, minTop, maxTop),
         placement,
-    };
-}
-
-/** 阅读卡先预留固定屏幕尺寸，再以补偿后的可见尺寸定位。 */
-export function calculateReadingPopupLayout(anchor: SelectionRect, viewport: ViewportSize, scale = 1): PopupPosition & PopupSize {
-    const safeScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
-    const visibleWidth = Math.max(0, Math.min(388 * safeScale, viewport.width - 2 * DEFAULT_PADDING));
-    const visibleHeight = Math.max(0, Math.min(520 * safeScale, viewport.height - 2 * DEFAULT_PADDING));
-    return {
-        ...calculateSelectionPopupPosition(anchor, {width: visibleWidth, height: visibleHeight}, viewport),
-        width: visibleWidth / safeScale,
-        height: visibleHeight / safeScale,
     };
 }
 

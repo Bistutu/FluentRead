@@ -15,6 +15,7 @@ import {createUserscriptAboutImagesCompressionPlugin} from './aboutImagesPlugin'
 import {createUserscriptServiceBrandIconsCompressionPlugin} from './serviceBrandIconsPlugin';
 import {createUserscriptSettingsDataPlugin} from './settingsDataPlugin';
 import {gzipUserscriptBuildData} from './buildGzip';
+import {encodeUserscriptData} from './buildDataEncoding';
 import {UI_LANGUAGE_BUNDLES, zhCNMessages} from './languageBundles';
 import {createDeepLXRuntimeBuildPlugin} from '../scripts/testing/deeplx-runtime-build';
 
@@ -77,17 +78,19 @@ function serializeUiMessages(value: unknown): string {
     return JSON.stringify(value, (_key, item) => item && typeof item === 'object' && !Array.isArray(item)
         ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) : item);
 }
-// 文档翻译页面（含 PDF 阅读器）只存在于扩展里；中英内嵌词典使用同一页面能力裁剪。
+// 文档页与请求统计组件在所有 userscript 入口都不挂载；按构建能力裁剪内嵌词典，远程固定资源保持原样。
 function userscriptPageMessages<T extends Record<string, string>>(messages: T): T {
-    return Object.fromEntries(Object.entries(messages).filter(([key]) => !key.startsWith('document.'))) as T;
+    return Object.fromEntries(Object.entries(messages).filter(([key]) => !key.startsWith('document.')
+        && !key.startsWith('translationStats.'))) as T;
 }
 // 与中文内嵌目录一致，仅投影扩展文档页专用 key；固定远程与外部资源继续使用原 bundle。
 const compressedUiLanguageBundles = greasyForkSource ? {} : Object.fromEntries(Object.entries(UI_LANGUAGE_BUNDLES)
     .filter(([language]) => language === 'en-US')
     .map(([language, bundle]) => [
     language,
-    gzipUserscriptBuildData(Buffer.from(serializeUiMessages({...bundle,
-        messages: userscriptPageMessages(bundle.messages)}))).toString('base64'),
+    ((bytes: Uint8Array) => bundleLibraries ? encodeUserscriptData(bytes) : Buffer.from(bytes).toString('base64'))(
+        gzipUserscriptBuildData(Buffer.from(serializeUiMessages({...bundle,
+            messages: userscriptPageMessages(bundle.messages)})))),
 ]));
 const remoteUiLanguageBundles = Object.fromEntries(Object.entries(UI_LANGUAGE_BUNDLES)
     .filter(([language]) => language !== 'en-US')
@@ -154,11 +157,14 @@ export function createUserscriptCatalogCompressionPlugin(): Plugin {
                     return `export const zhCNMessages = {...globalThis.__FLUENTREAD_USERSCRIPT_DATA__.zhCNMessages,...${JSON.stringify(deeplxCopy)}};`;
                 }
                 const contents = serializeUiMessages(userscriptPageMessages(zhCNMessages));
-                const compressed = gzipUserscriptBuildData(Buffer.from(contents)).toString('base64');
+                const compressedBytes = gzipUserscriptBuildData(Buffer.from(contents));
+                const compressed = bundleLibraries ? encodeUserscriptData(compressedBytes) : compressedBytes.toString('base64');
                 return [
                     `/* Non-code Chinese UI messages; sha256 ${createHash('sha256').update(contents).digest('hex')}. */`,
                     "import {inflateWithPako} from '@/userscript/pakoRuntime';",
-                    `const bytes = Uint8Array.from(atob(${JSON.stringify(compressed)}), (character) => character.charCodeAt(0));`,
+                    ...(bundleLibraries ? ["import {decodeUserscriptData} from '@/userscript/dataEncoding';"] : []),
+                    bundleLibraries ? `const bytes = decodeUserscriptData(${JSON.stringify(compressed)});`
+                        : `const bytes = Uint8Array.from(atob(${JSON.stringify(compressed)}), (character) => character.charCodeAt(0));`,
                     'export const zhCNMessages = JSON.parse(inflateWithPako(bytes));',
                 ].join('\n');
             }
@@ -447,7 +453,9 @@ function bundleUserscriptCss(): Plugin {
 
             const cssEntries = Object.entries(bundle).filter(([, item]) => item.type === 'asset' && item.fileName.endsWith('.css'));
             const css = cssEntries.map(([, item]) => String(item.type === 'asset' ? item.source : '')).join('\n');
-            const compressedCss = greasyForkSource ? '' : gzipUserscriptBuildData(Buffer.from(css, 'utf8')).toString('base64');
+            const cssBytes = greasyForkSource ? undefined : gzipUserscriptBuildData(Buffer.from(css, 'utf8'));
+            const compressedCss = cssBytes === undefined ? '' : bundleLibraries
+                ? encodeUserscriptData(cssBytes) : cssBytes.toString('base64');
             cssEntries.forEach(([fileName]) => delete bundle[fileName]);
 
             if (greasyForkSource) {
@@ -489,7 +497,9 @@ function bundleUserscriptCss(): Plugin {
             entry.code = wrapUserscriptEntry(
                 entry.code,
                 bootstrap,
-                bundleLibraries ? bundledLibraryNotices(entry.moduleIds) : '',
+                bundleLibraries ? bundledLibraryNotices(entry.moduleIds)
+                    : entry.moduleIds.includes(resolve(root, 'src/providers/translation/ai-sdk/openai-http.ts'))
+                        ? bundledLibraryNotices([resolve(root, 'src/providers/translation/ai-sdk/openai-http.ts')]) : '',
             );
 
             entry.code = entry.code.replace(/[\uFFFE\uFFFF]/gu, (character) => {
@@ -537,7 +547,7 @@ function unwrapWxtEntrypoints(): Plugin {
     };
 }
 
-/** standalone 只替换 FluentRead 自有 provider 入口；SDK 包、其它相似文件和标准构建保持原实现。 */
+/** 直接安装的两种脚本复用自有非流式 provider 入口；Greasy Fork 继续使用固定版本 SDK。 */
 export function createStandaloneOpenAITransportPlugin(): Plugin {
     const original = resolve(root, 'src/providers/translation/ai-sdk/openai-compatible');
     return {
@@ -560,6 +570,7 @@ export const userscriptAliases = [
     {find: /^dexie$/u, replacement: resolve(root, 'userscript/dexie.ts')},
     {find: '@/src/platform/storage/credentialContext', replacement: resolve(root, 'userscript/credentialContext.ts')},
     {find: '@/src/platform/storage/configStorageRuntime', replacement: resolve(root, 'userscript/storage.ts')},
+    {find: /^@\/src\/services\/harness\/generation(?:\.ts)?$/u, replacement: resolve(root, 'userscript/readingGeneration.ts')},
     // 扩展从本地资源读取界面语言；userscript 内嵌英文，其他语言从仓库静态 JSON 按需加载。
     {find: '@/src/platform/i18n/uiLanguageBundles', replacement: resolve(root, 'userscript/uiLanguageBundles.ts')},
     {find: /^@\/src\/services\/translation\/context\/browser$/u, replacement: resolve(root, 'userscript/pageContext.ts')},
@@ -586,7 +597,7 @@ export const userscriptAliases = [
 export default defineConfig({
     root,
     publicDir: false,
-    plugins: [...(bundleLibraries && !greasyForkSource ? [createStandaloneOpenAITransportPlugin()] : []), createUserscriptSettingsDataPlugin(root, !greasyForkSource, bundleLibraries), createDeepLXRuntimeBuildPlugin(root), unwrapWxtEntrypoints(), createUserscriptCatalogCompressionPlugin(), createUserscriptCharacterDataCompressionPlugin(root, !greasyForkSource), createUserscriptFrancDataCompressionPlugin(root, !greasyForkSource), createUserscriptTldtsDataCompressionPlugin(root, bundleLibraries && !greasyForkSource), createUserscriptAboutImagesCompressionPlugin(root, bundleLibraries && !greasyForkSource), createUserscriptServiceBrandIconsCompressionPlugin(root, bundleLibraries && !greasyForkSource), injectUserscriptBrowserShim(), vue(), bundleUserscriptCss(), createUserscriptInlineCssCompressionPlugin(root, !greasyForkSource)],
+    plugins: [...(!greasyForkSource ? [createStandaloneOpenAITransportPlugin()] : []), createUserscriptSettingsDataPlugin(root, !greasyForkSource, bundleLibraries), createDeepLXRuntimeBuildPlugin(root), unwrapWxtEntrypoints(), createUserscriptCatalogCompressionPlugin(), createUserscriptCharacterDataCompressionPlugin(root, !greasyForkSource), createUserscriptFrancDataCompressionPlugin(root, !greasyForkSource), createUserscriptTldtsDataCompressionPlugin(root, bundleLibraries && !greasyForkSource), createUserscriptAboutImagesCompressionPlugin(root, bundleLibraries && !greasyForkSource), createUserscriptServiceBrandIconsCompressionPlugin(root, bundleLibraries && !greasyForkSource), injectUserscriptBrowserShim(), vue(), bundleUserscriptCss(), createUserscriptInlineCssCompressionPlugin(root, !greasyForkSource)],
     resolve: {
         alias: userscriptAliases,
     },

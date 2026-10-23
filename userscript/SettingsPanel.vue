@@ -1,7 +1,7 @@
 <!--
  * @file userscript/SettingsPanel.vue
  * 文件职责：提供 userscript 紧凑设置对话框，编辑翻译服务、触发方式、输入翻译与界面配置草稿。
- * 主要内容：以共享纯配置 editor 管理手动保存、外部快照和在途草稿所有权，后继编辑与默认恢复不被旧保存覆盖；编辑资源由应用卸载入口与组件正常卸载共用幂等清理，失败挂载也释放订阅；复用配置目录及模型删除命令，AI 超时按秒保留输入草稿并在确认或保存时规范化；只有已保存的运行时设置应用到当前页面。
+ * 主要内容：以共享纯配置 editor 管理手动保存、外部快照和在途草稿所有权，后继编辑与默认恢复不被旧保存覆盖；编辑资源由应用卸载入口与组件正常卸载共用幂等清理，失败挂载也释放订阅；复用配置目录及模型删除命令，AI 超时按秒保留输入草稿并在确认或保存时规范化；只有已保存的运行时设置应用到当前页面；页面翻译动作等待时禁止重复触发，失败可重试；无变更保存的页面重应用也按会话隔离，后续编辑或卸载使旧反馈失效。
  * 模块边界：只管理设置草稿和保存反馈，不实现网页翻译或扩展专有能力。
 -->
 <template>
@@ -166,7 +166,7 @@
         <span class="status" :class="{ error: statusIsError }">{{ status }}</span>
         <div>
           <button type="button" class="secondary" :disabled="!hydrated" @click="restoreDefaults">恢复默认</button>
-          <button type="button" class="secondary" @click="togglePageTranslation">翻译 / 恢复当前页</button>
+          <button type="button" class="secondary" :disabled="pageTranslationPending || saving" @click="togglePageTranslation">翻译 / 恢复当前页</button>
           <button type="button" class="primary" :disabled="saving || !hydrated" @click="save">{{ !hydrated ? '加载设置中…' : saving ? '保存中…' : '保存设置' }}</button>
         </div>
       </footer>
@@ -244,6 +244,12 @@ function moveFallback(index: number, delta: number) {
 
 
 const saving = ref(false);
+const pageTranslationPending = ref(false);
+let pageFeedbackRevision = 0;
+// 仅在保存或页面动作等待期间观察草稿；后续编辑撤销旧反馈，旧动作不得关闭当前编辑器。
+watch(() => pageTranslationPending.value || saving.value ? draft.value : null, () => {
+  if (pageTranslationPending.value || saving.value) pageFeedbackRevision += 1;
+}, {deep: true, flush: 'sync'});
 const status = ref('');
 const statusIsError = ref(false);
 const addingCustomModel = ref(false);
@@ -383,6 +389,10 @@ function cancelAddCustomModel(): void {
 }
 
 function submitCustomModel(): void {
+  if (customModelLimitReached.value) {
+    customModelError.value = '已达到 50 个模型上限';
+    return;
+  }
   const model = customModelDraft.value.trim();
   if (!model) {
     customModelError.value = '请输入模型标识';
@@ -501,20 +511,22 @@ async function syncCurrentPage(next: Config): Promise<void> {
 
 async function save(): Promise<void> {
   if (disposed || saving.value || !hydrated.value) return;
+  pageFeedbackRevision += 1;
   aiRequestTimeoutActions.value.commit();
   saving.value = true;
   status.value = '';
   statusIsError.value = false;
   submitted = false;
+  const feedbackRevision = pageFeedbackRevision;
   try {
     await configEditor.save();
     // 无变化的手动保存仍允许把已有设置重新应用到页面，不生成空持久化请求。
     if (!submitted && !disposed) {
       await syncCurrentPage(normalizeUserscriptConfig(runtimeConfig));
-      if (!disposed && !status.value) status.value = '本次提交已保存，并已应用到当前页面。';
+      if (!disposed && feedbackRevision === pageFeedbackRevision && !status.value) status.value = '本次提交已保存，并已应用到当前页面。';
     }
   } catch (error) {
-    if (!disposed && !status.value) {
+    if (!disposed && feedbackRevision === pageFeedbackRevision && !status.value) {
       statusIsError.value = true;
       status.value = `保存失败：${error instanceof Error ? error.message : String(error)}`;
     }
@@ -525,6 +537,7 @@ async function save(): Promise<void> {
 
 function restoreDefaults(): void {
   if (disposed || !hydrated.value) return;
+  pageFeedbackRevision += 1;
   configEditor.invalidateFeedback();
   const next = new Config();
   next.disableFloatingBall = false;
@@ -534,8 +547,22 @@ function restoreDefaults(): void {
 }
 
 async function togglePageTranslation(): Promise<void> {
-  await browser.tabs.sendMessage(1, {type: 'userscriptTogglePageTranslation'});
-  close();
+  if (disposed || pageTranslationPending.value || saving.value) return;
+  pageTranslationPending.value = true;
+  const revision = ++pageFeedbackRevision;
+  status.value = '';
+  statusIsError.value = false;
+  try {
+    await browser.tabs.sendMessage(1, {type: 'userscriptTogglePageTranslation'});
+    if (!disposed && revision === pageFeedbackRevision) close();
+  } catch (error) {
+    if (!disposed && revision === pageFeedbackRevision) {
+      statusIsError.value = true;
+      status.value = `翻译操作失败：${error instanceof Error ? error.message : String(error)}`;
+    }
+  } finally {
+    pageTranslationPending.value = false;
+  }
 }
 </script>
 

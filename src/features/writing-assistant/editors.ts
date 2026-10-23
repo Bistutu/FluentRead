@@ -1,7 +1,7 @@
 /**
  * @file src/features/writing-assistant/editors.ts
  * 文件职责：识别 Gmail/GitHub 回复编辑器与普通文本框，捕获可审阅上下文并安全填入草稿。
- * 主要内容：按评论容器识别新旧 GitHub 回复及新建 Issue 编辑器与原生操作区，构造项目、标题、原帖和最近回复的有界参考信息；限定当前会话并排除重复译文，快照编辑器和页面身份后安全写回。
+ * 主要内容：按评论容器识别新旧 GitHub 回复及新建 Issue 编辑器与原生操作区，按剩余字符预算直接读取项目、标题、原帖和最近回复的参考信息，避免克隆长评论的整个子树；限定当前会话并排除重复译文，快照编辑器和页面身份后安全写回。
  * 模块边界：只处理显式传入的 DOM，不监听页面、不联网、不发送表单；复杂富文本提供复制回退。
  */
 export type WritingSite = 'gmail' | 'github' | null;
@@ -81,18 +81,33 @@ function visibleContextElements(root: ParentNode, selector: string): HTMLElement
         return true;
     });
 }
-function contextText(element: HTMLElement): string {
-    const copy = element.cloneNode(true) as HTMLElement;
-    const descendants = Array.from(copy.querySelectorAll('*'));
-    element.querySelectorAll('*').forEach((source, index) => { if (isCssHidden(source)) descendants[index].remove(); });
-    // 仅译文模式的 single-slot 轻 DOM 保存原文，不能连同重复译文一起剔除。
-    copy.querySelectorAll(contextExcluded).forEach(node => node.remove());
-    return (copy.textContent || '').trim();
+function contextText(element: HTMLElement, limit: number): string {
+    const fragments: string[] = [];
+    let length = 0;
+    let node: Node | null = element.firstChild;
+    // 不克隆原帖；按文档顺序遍历可见文本，预算耗尽后不再读后续节点或计算其样式。
+    while (node && length < limit) {
+        if (node.nodeType === 3) {
+            const value = node.textContent!;
+            const text = (length ? value : value.trimStart()).slice(0, limit - length);
+            fragments.push(text); length += text.length;
+        } else if (node.nodeType === 1) {
+            const child = node as Element;
+            if (!child.matches(contextExcluded) && !isCssHidden(child) && child.firstChild) {
+                node = child.firstChild;
+                continue;
+            }
+        }
+        while (node && node !== element && !node.nextSibling) node = node.parentNode;
+        if (!node || node === element) break;
+        node = node.nextSibling;
+    }
+    return fragments.join('').trim();
 }
 function firstContextText(root: ParentNode, selector: string, limit: number): string {
     for (const element of visibleContextElements(root, selector)) {
         // 仅显式命名的当前撰写窗口主题字段可以读取 value，其余上下文只读取可见正文。
-        const text = element.matches('input[name="subjectbox"]') ? (element as HTMLInputElement).value.trim() : contextText(element);
+        const text = element.matches('input[name="subjectbox"]') ? (element as HTMLInputElement).value.trim() : contextText(element, limit);
         if (text) return text.slice(0, limit);
     }
     return '';
@@ -119,7 +134,7 @@ function recentContextText(snippets: HTMLElement[], budget: number, site: Writin
     for (const element of snippets.slice(-12).reverse()) {
         const separatorLength = texts.length ? 2 : 0;
         if (remaining <= separatorLength) break;
-        const body = contextText(element);
+        const body = contextText(element, remaining - separatorLength);
         if (!body) continue;
         const comment = site === 'github' ? element.closest('[data-testid="issue-comment"], .js-comment, .timeline-comment') : null;
         const author = comment ? firstContextText(comment, '[data-testid="issue-comment-header-author"], [data-testid="comment-author"], .timeline-comment-header .author', 100) : '';
@@ -154,7 +169,8 @@ export function collectReplyContext(doc: Document, site: WritingSite, editor?: H
     const sections = header ? [header] : [];
     let remaining = 12000 - header.length;
     const comments = snippets.filter(element => element !== original);
-    const originalText = original ? contextText(original) : '';
+    const originalLimit = remaining - (sections.length ? 2 : 0) - '原帖：'.length;
+    const originalText = original ? contextText(original, comments.length ? Math.min(4000, originalLimit) : originalLimit) : '';
     if (originalText) {
         const prefixLength = (sections.length ? 2 : 0) + '原帖：'.length;
         // 有回复时为原帖保留最多 4000 字；其余预算从最近回复向前分配，标题永远不参与裁剪。

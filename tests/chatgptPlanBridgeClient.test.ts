@@ -38,6 +38,75 @@ function createFixture(initial: string | undefined = fixtureToken) {
 }
 afterEach(() => {buildMode.enabled = true;setRuntimeFetch();vi.unstubAllGlobals(); vi.useRealTimers();});
 describe('ChatGPT 本机助手端口', () => {
+    it('取消已开始的 SSE 读取不等待底层取消握手，并立即释放上游锁', async () => {
+        const fixture = createFixture(), caller = new AbortController();
+        const cancel = vi.fn(() => new Promise<void>(() => {}));
+        const upstream = new ReadableStream<Uint8Array>({cancel});
+        fixture.fetch.mockResolvedValueOnce(new Response(upstream));
+        const response = await fixture.bridge.respond({model: 'fixture', input: []}, caller.signal);
+        let settled = false;
+        const result = response.body!.getReader().read().catch(error => {settled = true; return error;});
+        await settle(); caller.abort(); await settle();
+        expect(cancel).toHaveBeenCalledOnce();
+        expect(upstream.locked).toBe(false);
+        expect(settled).toBe(true);
+        expect(await result).toMatchObject({name: 'AbortError'});
+    });
+    it('主动丢弃 SSE 正文不等待底层取消握手', async () => {
+        const fixture = createFixture();
+        const cancel = vi.fn(() => new Promise<void>(() => {}));
+        const upstream = new ReadableStream<Uint8Array>({cancel});
+        fixture.fetch.mockResolvedValueOnce(new Response(upstream));
+        const response = await fixture.bridge.respond({model: 'fixture', input: []});
+        let settled = false;
+        const result = response.body!.cancel().then(() => {settled = true;});
+        await settle();
+        expect(upstream.locked).toBe(false);
+        expect(settled).toBe(true);
+        await result;
+        expect(cancel).toHaveBeenCalledOnce();
+    });
+    it.each(['caller', 'metadata', 'status'] as const)('配对存储未决也受 %s 取消或预算约束，迟到读取不派发', async mode => {
+        vi.useFakeTimers();
+        const read = pending<string>(), fetch = vi.fn(), caller = new AbortController();
+        const bridge = createChatGPTPlanBridge({fetch, storage: {read: () => read.promise, write: vi.fn()}});
+        let settled = false;
+        const result = (mode === 'caller' ? bridge.respond({model: 'fixture', input: []}, caller.signal) : mode === 'status' ? bridge.status() : bridge.models())
+            .catch(error => {settled = true; return error;});
+        await settle();
+        if (mode === 'caller') caller.abort();
+        else await vi.advanceTimersByTimeAsync(15_000);
+        await settle();
+        expect(settled).toBe(true);
+        expect(await result).toMatchObject({name: 'AbortError'});
+        read.resolve(fixtureToken); await settle();
+        expect(fetch).not.toHaveBeenCalled();
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('传输端口同步取消时不会错过 abort 或等待不合作的返回值', async () => {
+        const caller = new AbortController();
+        const fetch = vi.fn(() => {caller.abort();return new Promise<Response>(() => {});});
+        const bridge = createChatGPTPlanBridge({fetch, storage: {read: async () => fixtureToken, write: vi.fn()}});
+        await expect(bridge.respond({model: 'fixture', input: []}, caller.signal)).rejects.toMatchObject({name: 'AbortError'});
+        expect(fetch).toHaveBeenCalledOnce();
+    });
+
+    it('状态的凭证读取耗时计入同一个十五秒预算', async () => {
+        vi.useFakeTimers();
+        const firstRead = pending<string>(), response = pending<Response>();
+        const read = vi.fn().mockReturnValueOnce(firstRead.promise).mockResolvedValue(fixtureToken);
+        const fetch = vi.fn(() => response.promise);
+        const bridge = createChatGPTPlanBridge({fetch, storage: {read, write: vi.fn()}});
+        const result = bridge.status().catch(error => error);
+        await vi.advanceTimersByTimeAsync(14_999);
+        firstRead.resolve(fixtureToken); await settle();
+        expect(fetch).toHaveBeenCalledOnce();
+        await vi.advanceTimersByTimeAsync(1);
+        expect(await result).toMatchObject({name: 'AbortError'});
+        expect(vi.getTimerCount()).toBe(0);
+        response.resolve(json(fixtureStatus)); await settle();
+    });
     it('错误结构保留HTTP和broker重试语义，套餐额度与授权失败不自动重试', () => {
         for (const [code, status, kind, retryable, expectedStatus] of [
             ['quota_exceeded', undefined, 'rate-limit', false, 429], ['not_connected', undefined, 'authentication', false, 401],

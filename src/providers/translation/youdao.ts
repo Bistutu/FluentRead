@@ -11,7 +11,7 @@ import { method } from "@/src/core/config/constants";
 import {sha256Hex} from '@/src/shared/function/sha256';
 import {getTranslationProviderLanguages} from '@/src/services/translation/requestSnapshot';
 import {createHttpStatusError, readJsonResponse} from '@/src/platform/http/errors';
-import {runtimeFetch} from '@/src/platform/http/runtime';
+import {cancelUnreadResponseBody, runtimeFetch} from '@/src/platform/http/runtime';
 import {requireTranslationProviderConfig} from '@/src/services/translation/requestSnapshot';
 import type {TranslationProviderRequest} from '@/src/services/translation/types';
 
@@ -138,6 +138,7 @@ async function youdao(message: TranslationProviderRequest<string>): Promise<stri
   });
 
   if (!response.ok) {
+    cancelUnreadResponseBody(response);
     throw createHttpStatusError(response, '有道翻译请求失败');
   }
 

@@ -81,6 +81,36 @@ function runtimeConsumer(source: string, component: string, filename: string): b
         if (clause?.namedBindings && ts.isNamedImports(clause.namedBindings))
             clause.namedBindings.elements.filter(item => !item.isTypeOnly).forEach(item => imported.add(item.name.text));
     }
+    // 正常 SFC 测试可能先为同一组件选择实际模板或 setup-only renderer，再交给 h。
+    // 只沿词法作用域内的 const 透明别名/展开追踪；属性引用、任意工厂和可变绑定不能作为证据。
+    const bindings = new Map<ts.Node, Map<string, ts.VariableDeclaration>>();
+    const collectBindings = (node: ts.Node) => {
+        if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) {
+            let scope: ts.Node | undefined = node.parent;
+            while (scope && !ts.isBlock(scope) && !ts.isSourceFile(scope) && !ts.isFunctionLike(scope)) scope = scope.parent;
+            if (scope) {
+                if (!bindings.has(scope)) bindings.set(scope, new Map());
+                bindings.get(scope)!.set(node.name.text, node);
+            }
+        }
+        ts.forEachChild(node, collectBindings);
+    };
+    collectBindings(ast);
+    const componentReference = (node: ts.Node, seen = new Set<ts.Node>()): boolean => {
+        if (seen.has(node)) return false;
+        const nextSeen = new Set(seen).add(node);
+        if (ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isNonNullExpression(node)) return componentReference(node.expression, nextSeen);
+        if (ts.isConditionalExpression(node)) return componentReference(node.whenTrue, nextSeen) || componentReference(node.whenFalse, nextSeen);
+        if (ts.isObjectLiteralExpression(node)) return node.properties.some(item => ts.isSpreadAssignment(item) && componentReference(item.expression, nextSeen));
+        if (!ts.isIdentifier(node)) return false;
+        for (let scope: ts.Node | undefined = node.parent; scope; scope = scope.parent) {
+            if (ts.isFunctionLike(scope) && scope.parameters.some(item => ts.isIdentifier(item.name) && item.name.text === node.text)) return false;
+            const declaration = bindings.get(scope)?.get(node.text);
+            if (declaration) return ts.isVariableDeclarationList(declaration.parent) && (declaration.parent.flags & ts.NodeFlags.Const) !== 0
+                && Boolean(declaration.initializer && componentReference(declaration.initializer, nextSeen));
+        }
+        return imported.has(node.text);
+    };
     const visit = (node: ts.Node) => {
         if (ts.isCallExpression(node)) {
             const name = ts.isIdentifier(node.expression) ? node.expression.text
@@ -94,7 +124,7 @@ function runtimeConsumer(source: string, component: string, filename: string): b
             if (name === 'effectScope') effect = true;
             if (/^(?:mount\w*|createApp|createSSRApp|h|createVNode)$/u.test(name)) {
                 const find = (argument: ts.Node) => {
-                    if (ts.isIdentifier(argument) && imported.has(argument.text)) materialized = true;
+                    if (ts.isIdentifier(argument) && componentReference(argument)) materialized = true;
                     ts.forEachChild(argument, find);
                 };
                 node.arguments.forEach(find);

@@ -7,7 +7,8 @@
 import {parseHTML} from 'linkedom';
 import {afterEach, describe, expect, it} from 'vitest';
 
-import {createTranslationCore, extractTranslationTextFromNodes} from '@/src/core/translation/public';
+import {extractTranslationTextFromNodes} from '@/src/core/translation/public';
+import {createTranslationCore} from './helpers/translationCore';
 import {beginTranslation, markTranslationComplete, restoreAllTranslations,
     setBilingualContent, tryRepairBilingualTranslationArtifact} from
     '@/src/features/full-page-translation/content/state';

@@ -22,7 +22,7 @@ import {createApp, h, nextTick, reactive, type App} from 'vue';
 import {Config, normalizeConfig} from '@/src/core/config/model';
 import {parseStoredConfig, serializeConfig} from '@/src/services/config/schema';
 import {DEFAULT_VIDEO_SENTENCE_LEARNING_APPEARANCE} from '@/src/core/config/videoSentenceLearningAppearance';
-import {registerAllUiLanguageBundles, UI_LANGUAGE_BUNDLES} from '@/src/core/i18n/bundles';
+import {registerAllUiLanguageBundles, UI_LANGUAGE_BUNDLES} from './helpers/uiLanguageBundles';
 import {zhCNMessages} from '@/src/core/i18n/messages/zh-CN';
 import {translate, translateLegacyText} from '@/src/core/i18n';
 import Settings from '@/src/features/settings/ui/VideoSentenceLearningAppearanceSettings.vue';

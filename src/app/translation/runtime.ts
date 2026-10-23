@@ -14,8 +14,8 @@ import {getTranslationLanguages} from '@/src/services/translation/languages';
 import {createTranslationBroker} from '@/src/services/translation/broker';
 import {buildTranslationCacheKey, translationCache} from '@/src/services/translation/cache';
 import {createTranslationCachePolicyBinding} from '@/src/services/translation/cachePolicyBinding';
-import {modelUsageRepository} from '@/src/platform/storage/modelUsageRepository';
-import {translationStatsRepository} from '@/src/platform/storage/translationStatsRepository';
+import {getModelUsageRepository} from '@/src/platform/storage/modelUsageRepository';
+import {getTranslationStatsRepository} from '@/src/platform/storage/translationStatsRepository';
 import {createTranslationRequestScheduler} from '@/src/services/translation/requestScheduler';
 import {createTranslationAvailability} from '@/src/services/translation/availability';
 
@@ -57,17 +57,23 @@ const broker = createTranslationBroker({
     getTranslationLanguages,
     resolveConfiguredModel,
     buildTranslationCacheKey,
-    captureModelUsageGeneration: () => isExtensionModelUsageRuntime()
-        ? modelUsageRepository.captureGeneration()
-        : 0,
-    recordModelUsage: async (events, generation) => {
-        if (!isExtensionModelUsageRuntime()) return;
-        await modelUsageRepository.recordMany(events, generation);
-    },
-    captureTranslationStatsGeneration: () => translationStatsRepository.captureGeneration(),
-    recordTranslationRequest: (event, generation) => {
-        if (isExtensionModelUsageRuntime()) translationStatsRepository.record(event, generation);
-    },
+    // 在组合边界按构建能力移除统计依赖；broker 未注入的统计旁路默认不采集，代次为 0。
+    // 扩展构建仍检查实际 origin，防止内容页把统计分散写入网页的 IndexedDB。
+    ...(import.meta.env.BROWSER === 'userscript' ? {} : {
+        captureModelUsageGeneration: () => isExtensionModelUsageRuntime()
+            ? getModelUsageRepository().captureGeneration()
+            : 0,
+        recordModelUsage: async (events, generation) => {
+            if (!isExtensionModelUsageRuntime()) return;
+            await getModelUsageRepository().recordMany(events, generation);
+        },
+        captureTranslationStatsGeneration: () => isExtensionModelUsageRuntime()
+            ? getTranslationStatsRepository().captureGeneration()
+            : 0,
+        recordTranslationRequest: (event, generation) => {
+            if (isExtensionModelUsageRuntime()) getTranslationStatsRepository().record(event, generation);
+        },
+    }),
     requestScheduler: translationRequestScheduler,
 });
 

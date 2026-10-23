@@ -2425,7 +2425,7 @@ describe('macOS 前台 native CDP helper 的启动与窗口契约（受控端口
     platform?: string; headless?: boolean; background?: boolean; browserPath?: string;
     pendingOwnership?: boolean; appExists?: boolean; secondaryMissing?: boolean; omitBrowserPath?: boolean;
     openError?: Error; captureError?: Error; placementError?: Error; viewportError?: Error; readbackError?: Error;
-    observedBounds?: Bounds;
+    observedBounds?: Bounds; frontmostPid?: number;
   };
 
   function controlledNativeHelper(options: FixtureOptions = {}) {
@@ -2536,7 +2536,7 @@ describe('macOS 前台 native CDP helper 的启动与窗口契约（受控端口
         events.push('native-open'); if (options.openError) throw options.openError; return {stdout: ''};
       }
       if (command === '/usr/bin/osascript') {
-        if (args[3].includes('frontmostApplication')) {events.push('frontmost-read'); return {stdout: JSON.stringify({pid: ownedPid, name: 'Microsoft Edge'})};}
+        if (args[3].includes('frontmostApplication')) {events.push('frontmost-read'); return {stdout: JSON.stringify({pid: options.frontmostPid ?? ownedPid, name: 'Microsoft Edge'})};}
         if (args[3].includes('NSScreen.screens')) return {stdout: JSON.stringify(layout)};
       }
       throw new Error(`Unexpected native I/O port ${command}`);
@@ -2661,6 +2661,20 @@ describe('macOS 前台 native CDP helper 的启动与窗口契约（受控端口
     await expect(f.launch()).rejects.toThrow();
     expect(f.guardedClose).toHaveBeenCalledOnce(); expect(f.browser.close).toHaveBeenCalledOnce();
     expectNoProfileRemoval(f);
+  });
+
+  it('后台新页复用已定位的正常窗口，每次仍读回几何和前台应用', async () => {
+    const f = controlledNativeHelper({background: true, frontmostPid: 99001});
+    const session = await f.launch();
+    await f.helper.newPageWithoutForeground(f.context);
+    await f.helper.newPageWithoutForeground(f.context);
+    const calls = f.browserSessions.flatMap(item => item.send.mock.calls);
+    expect(calls.filter(([method]) => method === 'Target.createTarget')).toHaveLength(3);
+    expect(calls.filter(([method]) => method === 'Browser.setWindowBounds')).toHaveLength(1);
+    expect(calls.filter(([method]) => method === 'Browser.getWindowBounds').length).toBeGreaterThanOrEqual(3);
+    expect(f.events.filter(event => event === 'frontmost-read')).toHaveLength(4);
+    expect(session.windowPlacement.browserFrontmost).toBe(false);
+    await session.close();
   });
 
   it('原background仍带-g及Target.background并拒绝自有Edge成为前台', async () => {

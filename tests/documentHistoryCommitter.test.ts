@@ -275,7 +275,8 @@ describe('document history durable revision ownership', () => {
         }
         const actualOpen = factory.open.bind(factory);
         const snapshotReady = deferred<void>();
-        const delayed = {} as IDBRequest<DocumentHistoryRecord[]>;
+        const delayed = {} as IDBRequest<IDBCursorWithValue | null>;
+        let entriesRead = 0;
         let intercept = true;
         vi.spyOn(factory, 'open').mockImplementation((name, version) => {
             const request = actualOpen(name, version);
@@ -289,12 +290,15 @@ describe('document history durable revision ownership', () => {
                         const objectStore = transaction.objectStore.bind(transaction);
                         vi.spyOn(transaction, 'objectStore').mockImplementation(store => {
                             const target = objectStore(store);
-                            const getAll = target.getAll.bind(target);
-                            vi.spyOn(target, 'getAll').mockImplementation(() => {
-                                const reading = getAll();
+                            const openCursor = target.openCursor.bind(target);
+                            vi.spyOn(target, 'openCursor').mockImplementation(() => {
+                                const reading = openCursor();
                                 reading.addEventListener('success', () => {
-                                    Object.defineProperty(delayed, 'result', {value: reading.result});
-                                    snapshotReady.resolve();
+                                    Object.defineProperty(delayed, 'result', {value: reading.result, configurable: true});
+                                    if (reading.result) {
+                                        entriesRead++;
+                                        delayed.onsuccess!(new Event('success'));
+                                    } else snapshotReady.resolve();
                                 });
                                 return delayed;
                             });
@@ -311,7 +315,8 @@ describe('document history durable revision ownership', () => {
         const task = {revision: 1, savedRevision: 0};
         const first = writer.save(task, record('same', 'Earlier correction'));
         await snapshotReady.promise;
-        expect(delayed.result).toHaveLength(21);
+        expect(entriesRead).toBe(21);
+        expect(delayed.result).toBeNull();
         await vi.advanceTimersByTimeAsync(30);
         expect(await first).toBe(false);
         task.revision = 2;

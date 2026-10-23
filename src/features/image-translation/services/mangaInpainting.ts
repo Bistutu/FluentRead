@@ -6,7 +6,7 @@
  */
 import {localWasmThreads, paceLocalInference} from '@/src/shared/onnx/resources';
 import {mangaInferenceClient, mangaExtensionUrl, type MangaPatch} from './mangaInferenceClient';
-import {probeMangaGpu} from './mangaGpu';
+import {probeWebGpu} from '@/src/shared/onnx/webgpu';
 import {protectMangaSession} from './mangaSessionFallback';
 import {configureOnnxWasmBackend} from '@/src/shared/onnx/wasmBinary';
 import {assertMangaOcrActive, loadMangaInpaintAsset, MANGA_INPAINT_ASSET, withMangaModelAdmission} from './mangaOcrAssets';
@@ -100,7 +100,7 @@ export async function createBrowserMangaInpainter(signal?:AbortSignal,progress?:
     });assertMangaOcrActive(signal);progress?.(undefined,true);
     const ort=await import('onnxruntime-web/webgpu');ort.env.wasm.numThreads=localWasmThreads();
     configureOnnxWasmBackend(ort.env.wasm,{mjs:mangaExtensionUrl('/fluent-read-ai/ort-wasm-simd-threaded.asyncify.mjs'),wasm:mangaExtensionUrl('/fluent-read-ai/ort-wasm-simd-threaded.asyncify.wasm')});
-    const gpu=await probeMangaGpu();
+    const gpu=await probeWebGpu();
     let activeSignal=signal;
     let usingGpu=gpu.available;
     const session=await ort.InferenceSession.create(model,{executionProviders:usingGpu?['webgpu','wasm']:['wasm'],graphOptimizationLevel:'all'}).catch(error=>{

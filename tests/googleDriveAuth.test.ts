@@ -13,6 +13,15 @@ function fixture() {
 }
 afterEach(() => vi.useRealTimers());
 describe('Chrome Google 身份边界', () => {
+    it('账号响应失败时不等未读正文取消握手，并及时释放超时计时器', async () => {
+        vi.useFakeTimers();
+        const f = fixture(), cancel = vi.fn(() => new Promise<void>(() => {}));
+        vi.mocked(f.ports.fetch).mockResolvedValueOnce(new Response(new ReadableStream({cancel}), {status: 403}));
+        await expect(f.auth.open()).rejects.toMatchObject({status: 403});
+        expect(cancel).toHaveBeenCalledOnce();
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
     it('只请求一项 Drive 权限并建立账号固定会话，令牌只出现在请求头和回调内', async () => {
         const f = fixture();
         expect(f.auth.availability()).toEqual({available: true, reason: ''});

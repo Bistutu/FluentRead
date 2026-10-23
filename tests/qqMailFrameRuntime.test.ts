@@ -4,7 +4,8 @@ vi.mock('webextension-polyfill', () => ({default: {}}));
 
 const mocks = vi.hoisted(() => ({
     config: {on: true, disabledExtensionDomains: [], bilingualSentenceHighlightEnabled: false,
-        selectionTranslatorMode: 'bilingual', disableSelectionTranslator: false},
+        selectionTranslatorMode: 'bilingual', disableSelectionTranslator: false, floatingBallHotkey: 'Alt+T', hotkey: 'Control'},
+    realHotkeys: false,
     configReady: Promise.resolve(),
     sendMessage: vi.fn(),
     addRuntimeListener: vi.fn(),
@@ -42,9 +43,10 @@ vi.mock('@/src/features/hover-translation/public', () => ({mountHoverTranslation
 vi.mock('@/src/features/selection-translation/public', () => ({
     mountSelectionTranslator: mocks.mountSelection, unmountSelectionTranslator: mocks.unmountSelection,
 }));
-vi.mock('@/src/app/content/hotkeyRuntime', () => ({
-    createContentHotkeyRuntime: () => ({installFloatingBallHotkey: () => vi.fn()}),
-}));
+vi.mock('@/src/app/content/hotkeyRuntime', async importOriginal => {
+    const actual = await importOriginal<typeof import('@/src/app/content/hotkeyRuntime')>();
+    return {createContentHotkeyRuntime: (...args: Parameters<typeof actual.createContentHotkeyRuntime>) => mocks.realHotkeys ? actual.createContentHotkeyRuntime(...args) : {installFloatingBallHotkey: () => vi.fn()}};
+});
 vi.mock('@/src/app/content/quickTranslationRuntime', () => ({mountConfiguredQuickTranslation: vi.fn()}));
 vi.mock('@/src/app/content/pageStyles', () => ({installPageStyles: mocks.installStyles}));
 vi.mock('@/src/app/content/bilingualSentenceHighlight', () => ({syncBilingualSentenceHighlight: mocks.syncHighlight}));
@@ -98,6 +100,7 @@ beforeEach(() => {
     mocks.getState.mockReset().mockReturnValue({sessionId: null, translationConfig: undefined, fullPageMode: 'all'});
     mocks.fontSet.mockReset(); mocks.fontReset.mockReset(); mocks.fontDispose.mockReset();
     mocks.config.on = true;
+    mocks.realHotkeys = false;
     mocks.configReady = Promise.resolve();
     mocks.config.bilingualSentenceHighlightEnabled = false;
     mocks.config.selectionTranslatorMode = 'bilingual';
@@ -338,6 +341,48 @@ describe('frame bridge cleanup after extension reload', () => {
             : kind === 'netease' ? mail.startNeteaseMailFrameApp : startEmbeddedFrameApp;
         return {...globals, start};
     }
+
+    it.each(['qq', 'netease', 'embedded'] as const)('%s forwards the real trusted full-page shortcut to the top session and follows its current snapshot', async kind => {
+        mocks.realHotkeys = true;mocks.config.selectionTranslatorMode = 'disabled';
+        const {start, listeners, window} = await readingFrame(kind);
+        const snapshot = {service: 'freeTranslation', model: '', sourceLanguage: 'en', targetLanguage: 'zh-CN', thinking: false,
+            useCache: true, enableAIContext: false, enableAIMultiSegment: false, displayMode: 'bilingual', style: 0, profileId: 'quick-test'};
+        let sessionId: number | null = null, revision = 0;
+        mocks.sendMessage.mockImplementation(async message => {
+            if (message.action === 'toggle') {sessionId = sessionId === null ? 5 : null;revision++;return;}
+            return {enabled: true, revision, sessionId, fullPageMode: 'viewport', scope: 'content', translationConfig: snapshot};
+        });
+        let invalidate!: () => void;
+        await start({isInvalid: false, onInvalidated: (callback: () => void) => {invalidate = callback;}} as never);
+        const press = (trusted = true) => {
+            for (const type of ['keydown', 'keyup']) {
+                const event = Object.assign(new Event(type, {cancelable: true}), {key: 't', code: 'KeyT', altKey: true, repeat: false});
+                Object.defineProperty(event, 'isTrusted', {value: trusted});
+                for (const listener of [...listeners.get(type) ?? []]) listener(event);
+            }
+        };
+        press(false);expect(mocks.sendMessage.mock.calls.filter(([message]) => message.action === 'toggle')).toHaveLength(0);
+        press();await vi.waitFor(() => expect(mocks.autoTranslateEnglishPage).toHaveBeenCalledOnce());
+        expect(mocks.autoTranslateEnglishPage).toHaveBeenCalledWith({service: 'freeTranslation', model: '', targetLanguage: 'zh-CN', displayMode: 'bilingual', profileId: 'quick-test', fullPageMode: 'viewport', scope: 'content'}, snapshot);
+        press();await vi.waitFor(() => expect(mocks.sendMessage.mock.calls.filter(([message]) => message.action === 'state')).toHaveLength(3));
+        expect(mocks.autoTranslateEnglishPage).toHaveBeenCalledOnce();expect(sessionId).toBeNull();
+        const hide = Object.assign(new Event('pagehide'), {persisted: true});Object.defineProperty(hide, 'isTrusted', {value: true});window.dispatchEvent(hide);
+        const count = mocks.sendMessage.mock.calls.length;press();expect(mocks.sendMessage).toHaveBeenCalledTimes(count);
+        const show = Object.assign(new Event('pageshow'), {persisted: true});Object.defineProperty(show, 'isTrusted', {value: true});window.dispatchEvent(show);
+        await vi.waitFor(() => expect(mocks.installStyles).toHaveBeenCalledTimes(2));press();await vi.waitFor(() => expect(mocks.autoTranslateEnglishPage).toHaveBeenCalledTimes(2));
+        invalidate();press();expect([...listeners.values()].every(set => set.size === 0)).toBe(true);
+    });
+    it.each(['qq', 'embedded'] as const)('%s releases current frame tools if top toggle messaging throws and allows explicit reauthorization', async kind => {
+        mocks.realHotkeys = true;const {start, listeners} = await readingFrame(kind);
+        let fail = true;
+        mocks.sendMessage.mockImplementation(message => {if (message.action === 'toggle' && fail) throw new Error('Context unavailable');return Promise.resolve({enabled: true, revision: 0, sessionId: null});});
+        let invalidate!: () => void;await start({isInvalid: false, onInvalidated: (callback: () => void) => {invalidate = callback;}} as never);
+        const press = () => {const event = Object.assign(new Event('keydown'), {key: 't', code: 'KeyT', altKey: true, repeat: false});Object.defineProperty(event, 'isTrusted', {value: true});for (const listener of [...listeners.get('keydown') ?? []]) listener(event);};
+        press();expect(mocks.removeStyles).toHaveBeenCalledOnce();expect(listeners.get('keydown')?.size).toBe(0);
+        fail = false;mocks.addRuntimeListener.mock.calls[0][0]({type: kind === 'qq' ? 'qqMailFrameRefresh' : 'embeddedFrameRefresh'}, {id: 'extension-id'});
+        await vi.waitFor(() => expect(mocks.installStyles).toHaveBeenCalledTimes(2));press();await vi.waitFor(() => expect(mocks.sendMessage.mock.calls.filter(([message]) => message.action === 'toggle')).toHaveLength(2));
+        invalidate();expect(mocks.removeStyles).toHaveBeenCalledTimes(2);
+    });
 
     it.each(['qq', 'netease', 'embedded'] as const)(
         '%s 正文字体跟随认证顶层真值，字体更新不恢复或重新请求翻译', async kind => {

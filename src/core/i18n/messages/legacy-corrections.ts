@@ -5,13 +5,13 @@
  * 模块边界：只提供纯数据，不读取配置、不访问浏览器；新界面仍应使用稳定 message key，这里只修正仍在界面中使用的旧中文文案。
  */
 import type {RegisteredUiLanguage} from '../types';
-import {createSiteRuleText, getSiteRuleTextSources} from './siteRules';
+import {createSiteRuleText} from './siteRules';
 
 /** 中文原文，随后依次为 English、日本語、한국어、Français、Русский、Español。 */
 type LegacyCorrectionRow = readonly [source: string, enUS: string, jaJP: string, koKR: string, frFR: string, ruRU: string, esES: string];
 
 /** 设置页、弹窗、文档页和各功能面板中的标签、按钮与说明。 */
-const correctionRows: readonly LegacyCorrectionRow[] = [
+export const correctionRows: readonly LegacyCorrectionRow[] = [
     // 个人校订、免费基础讲解与阅读失败恢复的现用界面文案。
     ["已保存的校订", "Saved corrections", "保存済みの校訂", "저장한 교정", "Corrections enregistrées", "Сохранённые исправления", "Correcciones guardadas"],
     ["关闭校订", "Close correction", "校訂を閉じる", "교정 닫기", "Fermer la correction", "Закрыть исправление", "Cerrar la corrección"],
@@ -268,8 +268,6 @@ const correctionRows: readonly LegacyCorrectionRow[] = [
     ['有道 AppSecret', 'Youdao AppSecret', 'Youdao AppSecret', 'Youdao AppSecret', 'Youdao AppSecret', 'Youdao AppSecret', 'Youdao AppSecret'],
     ["有道翻译服务提供的 App Key", 'The App Key issued by Youdao Translate.', 'Youdao Translate で発行された App Key です。', 'Youdao Translate에서 발급한 App Key입니다.', 'App Key fournie par Youdao Translate.', 'App Key, выданный Youdao Translate.', 'App Key emitida por Youdao Translate.'],
     ["有道翻译服务提供的 App Secret", 'The App Secret issued by Youdao Translate.', 'Youdao Translate で発行された App Secret です。', 'Youdao Translate에서 발급한 App Secret입니다.', 'App Secret fourni par Youdao Translate.', 'App Secret, выданный Youdao Translate.', 'App Secret emitido por Youdao Translate.'],
-    ["服务商提供的私密密钥，请妥善保管", 'The secret key issued by your provider. Keep it safe.', 'サービスから発行された秘密鍵です。安全に保管してください。', '서비스에서 발급한 비밀 키입니다. 안전하게 보관하세요.', 'Clé secrète fournie par le service. Conservez-la en lieu sûr.', 'Секретный ключ от провайдера. Храните его в надёжном месте.', 'Clave secreta emitida por tu proveedor. Guárdala en un lugar seguro.'],
-    ["服务商提供的访问密钥", 'The access key issued by your provider.', 'サービスから発行されたアクセスキーです。', '서비스에서 발급한 액세스 키입니다.', 'Clé d’accès fournie par le service.', 'Ключ доступа от провайдера.', 'Clave de acceso emitida por tu proveedor.'],
     ['未选择', 'Not selected', '未選択', '선택 안 됨', 'Non sélectionné', 'Не выбрано', 'Sin seleccionar'],
     ['查看全部用量', 'Show all usage', 'すべての使用量を表示', '전체 사용량 보기', 'Afficher toute l’utilisation', 'Показать всё использование', 'Ver todo el uso'],
     ['正在录制，请按下快捷键…', 'Recording… press your shortcut', '記録中… ショートカットを押してください', '기록 중… 단축키를 누르세요', 'Enregistrement… appuyez sur votre raccourci', 'Запись… нажмите сочетание клавиш', 'Grabando… pulsa tu atajo'],
@@ -304,8 +302,6 @@ const correctionRows: readonly LegacyCorrectionRow[] = [
     ['自定义服务名称', 'Custom service name', 'カスタムサービス名', '사용자 지정 서비스 이름', 'Nom du service personnalisé', 'Название пользовательского сервиса', 'Nombre del servicio personalizado'],
     ['自定义服务接口地址', 'Custom service endpoint URL', 'カスタムサービスのエンドポイント URL', '사용자 지정 서비스 엔드포인트 주소', 'Adresse du point de terminaison du service personnalisé', 'Адрес endpoint пользовательского сервиса', 'URL del endpoint del servicio personalizado'],
     ['触发快捷键', 'Trigger shortcut', '起動ショートカット', '실행 단축키', 'Raccourci de déclenchement', 'Сочетание клавиш для запуска', 'Atajo de activación'],
-    ['请输入Access Key', 'Enter Access Key', 'Access Key を入力', 'Access Key 입력', 'Saisissez l’Access Key', 'Введите Access Key', 'Introduce la Access Key'],
-    ['请输入Secret Key', 'Enter Secret Key', 'Secret Key を入力', 'Secret Key 입력', 'Saisissez la Secret Key', 'Введите Secret Key', 'Introduce la Secret Key'],
     ['请输入合法的 JSON 对象，否则该配置将被忽略', 'Enter a valid JSON object; otherwise this setting is ignored', '有効な JSON オブジェクトを入力してください。無効な場合、この設定は無視されます', '올바른 JSON 객체를 입력하세요. 그렇지 않으면 이 설정은 무시됩니다', 'Saisissez un objet JSON valide, sinon ce réglage sera ignoré', 'Введите корректный JSON-объект, иначе эта настройка будет проигнорирована', 'Introduce un objeto JSON válido; si no, se ignorará este ajuste'],
     ["请输入 New API 接口地址", 'Enter your New API endpoint URL', 'New API のエンドポイント URL を入力', 'New API 엔드포인트 주소 입력', 'Saisissez l’adresse de votre point de terminaison New API', 'Введите адрес endpoint New API', 'Introduce la URL del endpoint de New API'],
     ['请输入服务名称', 'Enter a service name', 'サービス名を入力してください', '서비스 이름을 입력하세요', 'Saisissez un nom de service', 'Введите название сервиса', 'Introduce un nombre de servicio'],
@@ -716,11 +712,6 @@ const LANGUAGE_COLUMNS: Readonly<Record<RegisteredUiLanguage, 1 | 2 | 3 | 4 | 5 
     'ru-RU': 5,
     'es-ES': 6,
 };
-
-/** 返回全部校正原文，供契约测试核对仍在界面源码中使用。 */
-export function getLegacyCorrectionSources(): string[] {
-    return [...correctionRows.map(([source]) => source), ...getSiteRuleTextSources()];
-}
 
 /** 按界面语言展开校正词典，由各语言目录作为最后一层合并进 legacyText。 */
 export function createLegacyCorrectionText(language: RegisteredUiLanguage): Readonly<Record<string, string>> {

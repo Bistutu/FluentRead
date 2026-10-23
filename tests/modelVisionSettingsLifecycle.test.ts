@@ -1,26 +1,23 @@
 /**
  * @file tests/modelVisionSettingsLifecycle.test.ts
  * 文件职责：运行实际模型识图设置组件与状态 composable，验证消息契约、请求归属和等待预算。
- * 主要内容：观察真实 Vite 模块加载，确保纯消息契约不初始化探测实现、正文候选或语言检测器；核对实际 probe/cancel 发送与同一请求编号，覆盖配置等待、取消、迟到响应及缓存订阅生命周期。
+ * 主要内容：直接导入客户端 SFC，并用依赖边界哨兵及独立 Vite 模块图确保纯消息契约不初始化探测实现、正文候选或语言检测器；核对实际 probe/cancel 发送与同一请求编号，覆盖配置等待、取消、迟到响应及缓存订阅生命周期。
  * 模块边界：只控制浏览器、配置持久化和本地存储端口，不替换消息契约或探测策略，不证明真实供应商网络与浏览器样式。
  */
-import {createRequire} from 'node:module'
+import * as runtime from 'vue'
 import {resolve} from 'node:path'
-import vue from '@vitejs/plugin-vue'
-import {createServer, type Plugin, type ViteDevServer} from 'vite'
+import {createServer} from 'vite'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {Config} from '@/src/core/config/model'
 import {createVisionProbeIdentity} from '@/src/core/config/visionProbe'
 
 // 运行实际 SFC 与识图状态 composable；只控制浏览器、持久化和存储边界。
-const runtime = createRequire(import.meta.url)('vue') as typeof import('vue')
-const key = '__frModelVisionSettingsLifecycle'
-let server: ViteDevServer, app: import('vue').App, state: Record<string, any>
+let app: import('vue').App, state: Record<string, any>
 let props: {config: Config; service: string; model: string; active: boolean}, visible: import('vue').Ref<boolean>
 const send = vi.fn(), save = vi.fn(), queue = vi.fn(), read = vi.fn()
 const subscriptions: {callback: (value: unknown) => void; stop: ReturnType<typeof vi.fn>}[] = []
 const releases: (() => void)[] = [], jobs: Promise<unknown>[] = []
-const loadedModules: string[] = []
+const forbiddenImports: string[] = []
 function pending() {let resolve!: (value?: any) => void, reject!: (error: unknown) => void
   const promise = new Promise<any>((yes, no) => {resolve = yes;reject = no});releases.push(() => resolve(undefined));return {promise, resolve, reject}}
 async function settle() {for (let i = 0; i < 12; i++) await Promise.resolve();await runtime.nextTick();await runtime.nextTick()}
@@ -37,34 +34,26 @@ function mutate(reason: string) {
   if (reason === 'service') props.service = 'openai'
 }
 beforeEach(async () => {
-  vi.clearAllMocks();subscriptions.length = 0;releases.length = 0;jobs.length = 0;loadedModules.length = 0
+  vi.clearAllMocks();subscriptions.length = 0;releases.length = 0;jobs.length = 0;forbiddenImports.length = 0
   queue.mockResolvedValue(undefined);save.mockResolvedValue(undefined);read.mockResolvedValue([])
   send.mockImplementation(async message => message.type === 'fluentReadModelVisionProbe'
     ? {success: true, capability: 'supported', source: 'probe'} : {cancelled: true})
-  Object.assign(globalThis, {[key]: {send, save, queue, read, subscriptions}})
-  const mocks: Plugin = {name: 'vision-settings-ports', enforce: 'pre', resolveId(id) {
-    if (id.endsWith('.vue') && !id.endsWith('ModelVisionSettings.vue')) return '\0vision-child'
-    if (id === 'webextension-polyfill') return '\0vision-browser'
-    if (id === '@wxt-dev/storage') return '\0vision-storage'
-    if (/\/src\/ui\/i18n(?:\.ts)?$/u.test(id)) return '\0vision-i18n'
-    if (/\/src\/services\/config\/store(?:\.ts)?$/u.test(id)) return '\0vision-config'
-    return null
-  }, load(id) {
-    loadedModules.push(id)
-    if (id === '\0vision-child') return 'export default {render: () => null}'
-    if (id === '\0vision-browser') return `export default {runtime: {sendMessage: globalThis.${key}.send}}`
-    if (id === '\0vision-config') return `export const {queue: waitForConfigPersistenceQueue, save: requestConfigSave} = globalThis.${key}`
-    if (id === '\0vision-i18n') return 'export const useUiI18n = () => ({t: key => key})'
-    if (id === '\0vision-storage') return `export const storage = {getItem: globalThis.${key}.read, watch: (_key, callback) => {
-      const item = {callback, stop: () => {item.stopped = true}};globalThis.${key}.subscriptions.push(item);return item.stop}}`
-    return null
-  }}
-  server = await createServer({root: process.cwd(), configFile: false, appType: 'custom', logLevel: 'silent',
-    plugins: [mocks, vue()], resolve: {alias: {'@': resolve(process.cwd())}}, ssr: {noExternal: ['webextension-polyfill', '@wxt-dev/storage']},
-    // 只加载实际模块，不测试文件变化；禁用观察，避免 Chokidar 节流进入组件的全局 fake clock。
-    server: {hmr: false, middlewareMode: true, watch: null}})
-  const component = (await server.ssrLoadModule('/src/features/settings/ui/services/ModelVisionSettings.vue')).default
-  component.ssrRender = undefined;component.render = () => null
+  vi.resetModules()
+  vi.doMock('webextension-polyfill', () => ({default: {runtime: {sendMessage: send}}}))
+  vi.doMock('@/src/services/config/store', () => ({waitForConfigPersistenceQueue: queue, requestConfigSave: save}))
+  vi.doMock('@/src/ui/i18n', () => ({useUiI18n: () => ({t: (key: string) => key})}))
+  vi.doMock('@/src/features/settings/ui/components/SegmentedControl.vue', () => ({default: {render: () => null}}))
+  vi.doMock('@wxt-dev/storage', () => ({storage: {getItem: read, watch: (_key: string, callback: (value: unknown) => void) => {
+    const item = {callback, stopped: false, stop: vi.fn(() => {item.stopped = true})};subscriptions.push(item);return item.stop
+  }}}))
+  vi.doMock('@/src/services/translation/visionProbe', () => {forbiddenImports.push('src/services/translation/visionProbe');throw new Error('UI imported translation implementation: src/services/translation/visionProbe')})
+  vi.doMock('@/src/services/translation/requestSnapshot', () => {forbiddenImports.push('src/services/translation/requestSnapshot');throw new Error('UI imported translation implementation: src/services/translation/requestSnapshot')})
+  vi.doMock('@/src/core/translation/public', () => {forbiddenImports.push('src/core/translation/public');throw new Error('UI imported translation implementation: src/core/translation/public')})
+  vi.doMock('@/src/core/translation/registry', () => {forbiddenImports.push('src/core/translation/registry');throw new Error('UI imported translation implementation: src/core/translation/registry')})
+  vi.doMock('@/src/core/site-adaptation/compiler', () => {forbiddenImports.push('src/core/site-adaptation/compiler');throw new Error('UI imported translation implementation: src/core/site-adaptation/compiler')})
+  vi.doMock('@/src/providers/translation/registry', () => {forbiddenImports.push('src/providers/translation/registry');throw new Error('UI imported translation implementation: src/providers/translation/registry')})
+  vi.doMock('@/src/core/language/detect', () => {forbiddenImports.push('src/core/language/detect');throw new Error('UI imported translation implementation: src/core/language/detect')})
+  const component = (await import('@/src/features/settings/ui/services/ModelVisionSettings.vue')).default
   const renderer = runtime.createRenderer<Record<string, never>, Record<string, unknown>>({patchProp: () => {}, insert: () => {},
     remove: () => {}, createElement: () => ({}), createText: () => ({}), createComment: () => ({}), setText: () => {},
     setElementText: () => {}, parentNode: () => null, nextSibling: () => null, querySelector: () => null,
@@ -72,23 +61,29 @@ beforeEach(async () => {
   const config = runtime.reactive(new Config());config.model.deepseek = 'future-vision'
   props = runtime.reactive({config, service: 'deepseek', model: 'future-vision', active: true});visible = runtime.ref(true)
   app = renderer.createApp({setup: () => () => runtime.h(runtime.KeepAlive, null, {default: () => visible.value
-    ? runtime.h(component, {...props, ref: (vm: any) => {if (vm) state = vm.$.setupState}}) : runtime.h({render: () => null}, {key: 'other'})})})
-  app.provide(runtime.ssrContextKey, {modules: new Set<string>()});app.config.warnHandler = () => {};app.mount({});await settle()
+    ? runtime.h(component as runtime.Component, {...props, ref: (vm: any) => {if (vm) state = vm.$.setupState}}) : runtime.h({render: () => null}, {key: 'other'})})})
+  app.config.warnHandler = () => {};app.mount({});await settle()
 })
 afterEach(async () => {
   app?.unmount();for (const release of releases) release();await settle();await Promise.allSettled(jobs)
-  await server?.close();delete (globalThis as any)[key];vi.useRealTimers()
+  vi.useRealTimers()
 })
 
 describe('实际模型识图设置的请求归属与等待预算', () => {
   it('纯消息契约不初始化翻译实现，实际组件按同一契约发送探测和取消', async () => {
-    const contract = await server.ssrLoadModule('/src/services/translation/types.ts')
+    const contract = await import('@/src/services/translation/types')
     expect([contract.VISION_PROBE_MESSAGE, contract.VISION_PROBE_CANCEL_MESSAGE])
       .toEqual(['fluentReadModelVisionProbe', 'fluentReadModelVisionProbeCancel'])
-    const contractModule = await server.moduleGraph.getModuleByUrl('/src/services/translation/types.ts')
-    expect(contractModule?.ssrTransformResult?.deps).toEqual([])
-    expect(loadedModules.filter(id => /\/src\/(?:services\/translation\/(?:visionProbe|requestSnapshot)|core\/translation\/(?:public|registry)|core\/site-adaptation\/compiler|providers\/translation\/registry|core\/language\/detect)\.ts(?:\?|$)/u.test(id)))
-      .toEqual([])
+    // Only the independent dependency-graph assertion needs Vite's SSR loader.
+    // The component and every behavior assertion above run through normal client imports.
+    const contractServer = await createServer({root: process.cwd(), configFile: false, appType: 'custom', logLevel: 'silent',
+      resolve: {alias: {'@': resolve(process.cwd())}}, server: {hmr: false, middlewareMode: true, watch: null}})
+    try {
+      await contractServer.ssrLoadModule('/src/services/translation/types.ts')
+      const contractModule = await contractServer.moduleGraph.getModuleByUrl('/src/services/translation/types.ts')
+      expect(contractModule?.ssrTransformResult?.deps).toEqual([])
+    } finally {await contractServer.close()}
+    expect(forbiddenImports).toEqual([])
 
     const response = pending()
     send.mockImplementation(message => message.type === contract.VISION_PROBE_MESSAGE ? response.promise : Promise.resolve({cancelled: true}))

@@ -1,7 +1,7 @@
 <!--
  * @file src/features/vocabulary/ui/MaterialWorkspace.vue
  * 文件职责：以阅读材料和收藏原句为主要内容，提供主题整理、回到出处、连续学习和本地笔记。
- * 主要内容：保留轻量材料列表，空库隐藏无效搜索与主题筛选但保留管理和恢复入口，详情按来源聚合原句、实时收藏和问答；窄屏引用正文预留覆盖式滚动条空间，保持滚动时行尾可读；加载、重试、编辑、归档恢复均保护异步代次和卸载边界，保存成功只清理所属材料中与提交快照相同的草稿。
+ * 主要内容：保留轻量材料列表，空库隐藏无效搜索与主题筛选但保留管理和恢复入口，详情按来源聚合原句、实时收藏和问答；窄屏引用正文预留覆盖式滚动条空间，保持滚动时行尾可读；加载、重试、编辑、归档恢复均保护异步代次和卸载边界，笔记焦点只回到仍属于当前材料的自有输入框，保存成功只清理所属材料中与提交快照相同的草稿。
  * 模块边界：只通过本地材料与既有学习客户端读写，不访问数据库或供应商；来源恢复由公共适配器处理，个人内容不进入配置同步。
  -->
 <template>
@@ -83,7 +83,7 @@
           <button v-if="visibleReferences.length < selected.references.length" type="button" :disabled="detailLoading" @click="showMoreReferences">显示更多学习内容</button>
         </section>
         <form v-if="!archived" class="fr-material-note-form" @submit.prevent="saveNote">
-          <label for="fr-material-note">记下这份材料的想法</label><textarea id="fr-material-note" v-model="note" rows="3" maxlength="2000" placeholder="用自己的话记下理解、疑问或下一步…" :disabled="busy" />
+          <label for="fr-material-note">记下这份材料的想法</label><textarea ref="noteInput" id="fr-material-note" v-model="note" rows="3" maxlength="2000" placeholder="用自己的话记下理解、疑问或下一步…" :disabled="busy" />
           <div><small>仅保存在本机</small><span><button v-if="editingNoteId" type="button" :disabled="busy" @click="editingNoteId = ''; note = ''">取消编辑</button> <button type="submit" class="fr-material-primary" :disabled="busy || !note.trim()">{{ editingNoteId ? '更新笔记' : '保存笔记' }}</button></span></div>
         </form>
       </article>
@@ -116,6 +116,7 @@ const materials = ref<MaterialRecord[]>([]), selectedId = ref(''), query = ref('
 const loading = ref(false), busy = ref(false), error = ref(''), feedback = ref(''), editing = ref(false), note = ref('');
 const draft = ref({ title: '', topics: '', url: '' });
 const confirmClear = ref(false), importInput = ref<HTMLInputElement>(), editingNoteId = ref('');
+const noteInput = ref<HTMLTextAreaElement>();
 const organizeButton = ref<HTMLButtonElement>(), titleInput = ref<HTMLInputElement>(), materialListElement = ref<HTMLElement>();
 const detailLoading = ref(false), detailError = ref(''), detailHeading = ref<HTMLElement>();
 const referenceLimit = ref(24);
@@ -349,7 +350,15 @@ async function archiveSelected() { const item = selected.value; if (!item)
     return; await mutate(() => materialArchive(item.id), () => { materials.value = materials.value.filter(value => value.id !== item.id); resetSelection(); feedback.value = '已移除材料，可在材料管理中恢复。原有收藏与问答仍保留。'; }); }
 async function restoreSelected() { const item = selected.value; if (!item)
     return; await mutate(() => materialRestore(item.id), () => { materials.value = materials.value.filter(value => value.id !== item.id); resetSelection(); feedback.value = '材料已恢复，返回阅读材料即可继续。'; }); }
-function editNote(reference: MaterialReference) { if (archived.value) return; editingNoteId.value = reference.id; note.value = reference.note || ''; void nextTick(() => document.getElementById('fr-material-note')?.focus()); }
+function editNote(reference: MaterialReference) {
+    const id = selectedId.value;
+    if (!id || archived.value) return;
+    editingNoteId.value = reference.id;
+    note.value = reference.note || '';
+    void nextTick(() => {
+        if (active && selectedId.value === id && editingNoteId.value === reference.id) noteInput.value?.focus();
+    });
+}
 async function saveNote() {
     const item = selected.value, content = note.value.trim(), capturedAt = Date.now();
     if (!item || !content)
@@ -415,8 +424,6 @@ async function importMaterials(event: Event) {
         error.value = '材料备份超过 20 MB，请选择较小的备份文件。';
         return;
     }
-    if (busy.value)
-        return;
     busy.value = true;
     const ticket = ++generation;
     loading.value = false;

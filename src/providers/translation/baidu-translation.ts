@@ -10,7 +10,7 @@ import {services} from '@/src/core/config/catalog';
 import {method, urls} from '@/src/core/config/constants';
 import {getTranslationProviderLanguages} from '@/src/services/translation/requestSnapshot';
 import {createHttpStatusError, createProviderCodeError, readJsonResponse} from '@/src/platform/http/errors';
-import {runtimeFetch} from '@/src/platform/http/runtime';
+import {cancelUnreadResponseBody, runtimeFetch} from '@/src/platform/http/runtime';
 import {requireTranslationProviderConfig} from '@/src/services/translation/requestSnapshot';
 import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import {resolveCloudLanguages} from './cloud/languages';
@@ -71,6 +71,7 @@ async function baiduTranslation(message: TranslationProviderRequest<string>) {
     });
 
     if (!response.ok) {
+        cancelUnreadResponseBody(response);
         throw createHttpStatusError(response, '百度翻译请求失败');
     }
 

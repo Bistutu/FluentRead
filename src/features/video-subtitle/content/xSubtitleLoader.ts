@@ -1,11 +1,11 @@
 /**
  * @file src/features/video-subtitle/content/xSubtitleLoader.ts
  * 文件职责：为单个 X 播放器加载原生字幕资源，隔离媒体替换前后的网络结果。
- * 主要内容：限制 HLS 资源并发与体积、选取单一语言，切换媒体时取消请求并丢弃迟到结果。
+ * 主要内容：限制 HLS 资源并发、体积和单资源十五秒等待，选取单一语言；切换媒体与超时立即释放队列槽，迟到响应仅清理未读正文，不再提交旧字幕。
  * 模块边界：通过注入 fetch 和 cue 回调工作，不查找页面播放器、不持久化字幕也不执行翻译。
  */
 import {isXSubtitleResourceUrl, parseXSubtitleResource, selectXSubtitleLanguageResources, type XSubtitleResource} from './xVideoSubtitleData';
-import {readBoundedMediaResponse} from './hlsAudio';
+import {readVideoCaptionText} from './subtitleTransport';
 import type {VideoSubtitleCue} from './youtubeSubtitleData';
 
 interface LoadJob { resource: XSubtitleResource; text?: string; generation: number }
@@ -51,11 +51,8 @@ export class XSubtitleLoader {
 
     private async run(job: LoadJob, signal: AbortSignal): Promise<void> {
         let source = job.text;
-        if (source === undefined) {
-            const response = await this.options.fetch(job.resource.url, {signal});
-            if (!response.ok || Number(response.headers.get('content-length')) > 1_000_000) return;
-            source = new TextDecoder().decode(await readBoundedMediaResponse(response, 1_000_000, signal));
-        }
+        if (source === undefined) source = await readVideoCaptionText(job.resource.url, this.options.fetch,
+            {signal, credentials: 'omit', maxBytes: 1_000_000});
         if (signal.aborted || job.generation !== this.generation || source.length > 1_000_000) return;
         const parsed = parseXSubtitleResource(source, job.resource.url, job.resource.offsetMs);
         if (parsed.cues.length) this.options.onCues(job.resource.url, parsed.cues);

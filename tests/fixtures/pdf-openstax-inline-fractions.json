@@ -1,0 +1,1120 @@
+{
+  "source": "OpenStax University Physics Volume 1, PDF pages 336, 777, 792, 820 and 979; revision UP1-2016-002(05/18)-MJ",
+  "copyright": "Copyright 2018 Rice University",
+  "license": "CC BY 4.0, https://creativecommons.org/licenses/by/4.0/",
+  "attribution": "Download for free at https://openstax.org/details/books/university-physics-volume-1.",
+  "changes": "PDF.js text items transformed into unrotated page geometry; no textbook text changed. Regression data only, not part of extension builds.",
+  "cases": [
+    {
+      "page": 336,
+      "input": {
+        "atoms": [
+          {
+            "text": "desired independent variable and not",
+            "x": 315,
+            "y": 58.03942382812488,
+            "width": 140.37331100000003,
+            "height": 10.5205078125,
+            "fontFamily": "serif",
+            "baseline": 66.50499999999988,
+            "fontSize": 9.5
+          },
+          {
+            "text": "t",
+            "x": 457.899,
+            "y": 58.03942382812488,
+            "width": 2.6315,
+            "height": 10.5205078125,
+            "fontFamily": "serif",
+            "baseline": 66.50499999999988,
+            "fontSize": 9.5
+          },
+          {
+            "text": ". Use the Chain Rule",
+            "x": 460.538,
+            "y": 58.03942382812488,
+            "width": 79.4361025,
+            "height": 10.5205078125,
+            "fontFamily": "serif",
+            "baseline": 66.50499999999988,
+            "fontSize": 9.5
+          },
+          {
+            "text": "to change the variable:",
+            "x": 315,
+            "y": 73.10442382812494,
+            "width": 86.15550000000002,
+            "height": 10.5205078125,
+            "fontFamily": "serif",
+            "baseline": 81.56999999999994,
+            "fontSize": 9.5
+          },
+          {
+            "text": "dv",
+            "x": 406.293,
+            "y": 71.00000000000004,
+            "width": 9.699999999999992,
+            "height": 7.010000000000001,
+            "fontFamily": "serif",
+            "baseline": 77.83000000000004,
+            "fontSize": 10
+          },
+          {
+            "text": "dt",
+            "x": 407.033,
+            "y": 80.63500000000003,
+            "width": 8.039999999999992,
+            "height": 6.960000000000001,
+            "fontFamily": "serif",
+            "baseline": 87.46500000000003,
+            "fontSize": 10
+          },
+          {
+            "text": "=",
+            "x": 419.428,
+            "y": 77.71000000000005,
+            "width": 6.8500000000000005,
+            "height": 2.66,
+            "fontFamily": "serif",
+            "baseline": 81.57000000000005,
+            "fontSize": 10
+          },
+          {
+            "text": "dv",
+            "x": 429.858,
+            "y": 71.00000000000004,
+            "width": 9.699999999999992,
+            "height": 7.010000000000001,
+            "fontFamily": "serif",
+            "baseline": 77.83000000000004,
+            "fontSize": 10
+          },
+          {
+            "text": "dx",
+            "x": 429.713,
+            "y": 80.63500000000003,
+            "width": 13.311999999999959,
+            "height": 6.960000000000001,
+            "fontFamily": "serif",
+            "baseline": 87.46500000000003,
+            "fontSize": 10
+          },
+          {
+            "text": "dx",
+            "x": 443.025,
+            "y": 71.05,
+            "width": 9.959999999999983,
+            "height": 6.960000000000001,
+            "fontFamily": "serif",
+            "baseline": 77.88,
+            "fontSize": 10
+          },
+          {
+            "text": "dt",
+            "x": 443.90999999999997,
+            "y": 80.63500000000003,
+            "width": 8.039999999999992,
+            "height": 6.960000000000001,
+            "fontFamily": "serif",
+            "baseline": 87.46500000000003,
+            "fontSize": 10
+          },
+          {
+            "text": "=",
+            "x": 456.45,
+            "y": 77.71000000000005,
+            "width": 6.8500000000000005,
+            "height": 2.66,
+            "fontFamily": "serif",
+            "baseline": 81.57000000000005,
+            "fontSize": 10
+          },
+          {
+            "text": "v",
+            "x": 466.068,
+            "y": 77.16000000000005,
+            "width": 5.242000000000021,
+            "height": 4.59,
+            "fontFamily": "serif",
+            "baseline": 81.57000000000005,
+            "fontSize": 10
+          },
+          {
+            "text": "dv",
+            "x": 471.31,
+            "y": 71.00000000000004,
+            "width": 9.699999999999992,
+            "height": 7.010000000000001,
+            "fontFamily": "serif",
+            "baseline": 77.83000000000004,
+            "fontSize": 10
+          },
+          {
+            "text": "dx",
+            "x": 471.165,
+            "y": 80.63500000000003,
+            "width": 9.959999999999983,
+            "height": 6.960000000000001,
+            "fontFamily": "serif",
+            "baseline": 87.46500000000003,
+            "fontSize": 10
+          },
+          {
+            "text": ".)",
+            "x": 481.811,
+            "y": 74.81000000000004,
+            "width": 5.83,
+            "height": 8.53,
+            "fontFamily": "serif",
+            "baseline": 81.57000000000005,
+            "fontSize": 10
+          }
+        ],
+        "graphics": [
+          {
+            "x": 73.86,
+            "y": 57.60000000000002,
+            "width": 221.27999999999997,
+            "height": 380.64,
+            "kind": "image"
+          },
+          {
+            "x": 405.6265,
+            "y": 79.00999999999999,
+            "width": 11.023000000000025,
+            "height": 0,
+            "kind": "path"
+          },
+          {
+            "x": 429.0454,
+            "y": 79.00999999999999,
+            "width": 11.312999999999988,
+            "height": 0,
+            "kind": "path"
+          },
+          {
+            "x": 442.3587,
+            "y": 79.00999999999999,
+            "width": 11.312999999999988,
+            "height": 0,
+            "kind": "path"
+          },
+          {
+            "x": 470.4976,
+            "y": 79.00999999999999,
+            "width": 11.312999999999988,
+            "height": 0,
+            "kind": "path"
+          }
+        ],
+        "width": 612,
+        "height": 792
+      }
+    },
+    {
+      "page": 777,
+      "input": {
+        "atoms": [
+          {
+            "text": "Once again, the equation says that the second time derivative of the position (in this case, the angle) equals minus a constant",
+            "x": 72,
+            "y": 593.614423828125,
+            "width": 467.966599,
+            "height": 10.5205078125,
+            "fontFamily": "serif",
+            "baseline": 602.08,
+            "fontSize": 9.5
+          },
+          {
+            "text": "⎛",
+            "x": 74,
+            "y": 606.3803,
+            "width": 4.37895,
+            "height": 9.779655000000002,
+            "fontFamily": "sans-serif",
+            "baseline": 613.192,
+            "fontSize": 9.731
+          },
+          {
+            "text": "⎝",
+            "x": 74,
+            "y": 615.965645,
+            "width": 4.37895,
+            "height": 9.779654999999998,
+            "fontFamily": "sans-serif",
+            "baseline": 622.826,
+            "fontSize": 9.731
+          },
+          {
+            "text": "−",
+            "x": 77.805,
+            "y": 615.856,
+            "width": 6.8500000000000005,
+            "height": 0.6600000000000004,
+            "fontFamily": "serif",
+            "baseline": 618.716,
+            "fontSize": 10
+          },
+          {
+            "text": "mgL",
+            "x": 85.867,
+            "y": 606.566,
+            "width": 17.83999999999999,
+            "height": 8.59,
+            "fontFamily": "serif",
+            "baseline": 613.096,
+            "fontSize": 10
+          },
+          {
+            "text": "I",
+            "x": 92.922,
+            "y": 617.7710000000001,
+            "width": 3.33,
+            "height": 6.53,
+            "fontFamily": "serif",
+            "baseline": 624.301,
+            "fontSize": 10
+          },
+          {
+            "text": "⎞",
+            "x": 104.404,
+            "y": 606.3803,
+            "width": 4.37895,
+            "height": 9.779655000000002,
+            "fontFamily": "sans-serif",
+            "baseline": 613.192,
+            "fontSize": 9.731
+          },
+          {
+            "text": "⎠",
+            "x": 104.404,
+            "y": 615.965645,
+            "width": 4.37895,
+            "height": 9.779654999999998,
+            "fontFamily": "sans-serif",
+            "baseline": 622.826,
+            "fontSize": 9.731
+          },
+          {
+            "text": "times the position. The solution is",
+            "x": 112.585,
+            "y": 610.249423828125,
+            "width": 128.64900000000003,
+            "height": 10.5205078125,
+            "fontFamily": "serif",
+            "baseline": 618.715,
+            "fontSize": 9.5
+          }
+        ],
+        "graphics": [
+          {
+            "x": 85.2009,
+            "y": 616.1549,
+            "width": 19.203000000000003,
+            "height": 0,
+            "kind": "path"
+          }
+        ],
+        "width": 612,
+        "height": 792
+      }
+    },
+    {
+      "page": 979,
+      "input": {
+        "atoms": [
+          {
+            "text": "upon substitution, we have",
+            "x": 72,
+            "y": 240.5469804687499,
+            "width": 98.013204,
+            "height": 9.966796875,
+            "fontFamily": "serif",
+            "baseline": 248.5669999999999,
+            "fontSize": 9
+          },
+          {
+            "text": "Δ",
+            "x": 174.791,
+            "y": 241.20100000000002,
+            "width": 7.22,
+            "height": 6.74,
+            "fontFamily": "serif",
+            "baseline": 247.94100000000003,
+            "fontSize": 10
+          },
+          {
+            "text": "U",
+            "x": 182.001,
+            "y": 241.41100000000003,
+            "width": 7.22,
+            "height": 6.710000000000001,
+            "fontFamily": "serif",
+            "baseline": 247.94100000000003,
+            "fontSize": 10
+          },
+          {
+            "text": "=",
+            "x": 192.429,
+            "y": 244.08100000000002,
+            "width": 6.8500000000000005,
+            "height": 2.66,
+            "fontFamily": "serif",
+            "baseline": 247.94100000000003,
+            "fontSize": 10
+          },
+          {
+            "text": "GM",
+            "x": 202.047,
+            "y": 241.28100000000003,
+            "width": 15.730000000000008,
+            "height": 6.840000000000001,
+            "fontFamily": "serif",
+            "baseline": 247.94100000000003,
+            "fontSize": 10
+          },
+          {
+            "text": "E",
+            "x": 218.434,
+            "y": 245.29300000000006,
+            "width": 4.888,
+            "height": 5.296,
+            "fontFamily": "serif",
+            "baseline": 250.58900000000006,
+            "fontSize": 8
+          },
+          {
+            "text": "m",
+            "x": 224.814,
+            "y": 243.53100000000003,
+            "width": 7.22,
+            "height": 4.5,
+            "fontFamily": "serif",
+            "baseline": 247.94100000000003,
+            "fontSize": 10
+          },
+          {
+            "text": "⎛",
+            "x": 232.024,
+            "y": 230.8885,
+            "width": 4.34925,
+            "height": 9.713325000000001,
+            "fontFamily": "sans-serif",
+            "baseline": 237.654,
+            "fontSize": 9.665
+          },
+          {
+            "text": "⎝",
+            "x": 232.024,
+            "y": 249.97617499999996,
+            "width": 4.34925,
+            "height": 9.713324999999998,
+            "fontFamily": "sans-serif",
+            "baseline": 256.78999999999996,
+            "fontSize": 9.665
+          },
+          {
+            "text": "⎜",
+            "x": 232.024,
+            "y": 240.40817499999997,
+            "width": 4.34925,
+            "height": 9.76165,
+            "fontFamily": "sans-serif",
+            "baseline": 247.22199999999998,
+            "fontSize": 9.665
+          },
+          {
+            "text": "h",
+            "x": 239.858,
+            "y": 237.47099999999992,
+            "width": 5,
+            "height": 6.920000000000001,
+            "fontFamily": "serif",
+            "baseline": 244.30099999999993,
+            "fontSize": 10
+          },
+          {
+            "text": "R",
+            "x": 236.6,
+            "y": 249.97199999999995,
+            "width": 6.11,
+            "height": 6.53,
+            "fontFamily": "serif",
+            "baseline": 256.50199999999995,
+            "fontSize": 10
+          },
+          {
+            "text": "E",
+            "x": 243.367,
+            "y": 254.38399999999996,
+            "width": 4.888,
+            "height": 5.296,
+            "fontFamily": "serif",
+            "baseline": 259.67999999999995,
+            "fontSize": 8
+          },
+          {
+            "text": "2",
+            "x": 243.367,
+            "y": 246.99799999999996,
+            "width": 4,
+            "height": 5.408,
+            "fontFamily": "serif",
+            "baseline": 252.40599999999995,
+            "fontSize": 8
+          },
+          {
+            "text": "⎞",
+            "x": 248.913,
+            "y": 230.8885,
+            "width": 4.34925,
+            "height": 9.713325000000001,
+            "fontFamily": "sans-serif",
+            "baseline": 237.654,
+            "fontSize": 9.665
+          },
+          {
+            "text": "⎠",
+            "x": 248.913,
+            "y": 249.97617499999996,
+            "width": 4.34925,
+            "height": 9.713324999999998,
+            "fontFamily": "sans-serif",
+            "baseline": 256.78999999999996,
+            "fontSize": 9.665
+          },
+          {
+            "text": "⎟",
+            "x": 248.913,
+            "y": 240.40817499999997,
+            "width": 4.34925,
+            "height": 9.76165,
+            "fontFamily": "sans-serif",
+            "baseline": 247.22199999999998,
+            "fontSize": 9.665
+          },
+          {
+            "text": "=",
+            "x": 255.47,
+            "y": 244.08100000000002,
+            "width": 6.8500000000000005,
+            "height": 2.66,
+            "fontFamily": "serif",
+            "baseline": 247.94100000000003,
+            "fontSize": 10
+          },
+          {
+            "text": "m",
+            "x": 265.088,
+            "y": 243.53100000000003,
+            "width": 7.22,
+            "height": 4.5,
+            "fontFamily": "serif",
+            "baseline": 247.94100000000003,
+            "fontSize": 10
+          },
+          {
+            "text": "⎛",
+            "x": 272.298,
+            "y": 230.8885,
+            "width": 4.34925,
+            "height": 9.713325000000001,
+            "fontFamily": "sans-serif",
+            "baseline": 237.654,
+            "fontSize": 9.665
+          },
+          {
+            "text": "⎝",
+            "x": 272.298,
+            "y": 249.97617499999996,
+            "width": 4.34925,
+            "height": 9.713324999999998,
+            "fontFamily": "sans-serif",
+            "baseline": 256.78999999999996,
+            "fontSize": 9.665
+          },
+          {
+            "text": "⎜",
+            "x": 272.298,
+            "y": 240.40817499999997,
+            "width": 4.34925,
+            "height": 9.76165,
+            "fontFamily": "sans-serif",
+            "baseline": 247.22199999999998,
+            "fontSize": 9.665
+          },
+          {
+            "text": "GM",
+            "x": 276.744,
+            "y": 235.07299999999995,
+            "width": 15.730000000000008,
+            "height": 6.840000000000001,
+            "fontFamily": "serif",
+            "baseline": 241.73299999999995,
+            "fontSize": 10
+          },
+          {
+            "text": "E",
+            "x": 293.13100000000003,
+            "y": 239.08499999999998,
+            "width": 4.888,
+            "height": 5.296,
+            "fontFamily": "serif",
+            "baseline": 244.38099999999997,
+            "fontSize": 8
+          },
+          {
+            "text": "R",
+            "x": 281.619,
+            "y": 249.97199999999995,
+            "width": 6.11,
+            "height": 6.53,
+            "fontFamily": "serif",
+            "baseline": 256.50199999999995,
+            "fontSize": 10
+          },
+          {
+            "text": "E",
+            "x": 288.386,
+            "y": 254.38399999999996,
+            "width": 4.888,
+            "height": 5.296,
+            "fontFamily": "serif",
+            "baseline": 259.67999999999995,
+            "fontSize": 8
+          },
+          {
+            "text": "2",
+            "x": 288.386,
+            "y": 246.99799999999996,
+            "width": 4,
+            "height": 5.408,
+            "fontFamily": "serif",
+            "baseline": 252.40599999999995,
+            "fontSize": 8
+          },
+          {
+            "text": "⎞",
+            "x": 298.677,
+            "y": 230.8885,
+            "width": 4.34925,
+            "height": 9.713325000000001,
+            "fontFamily": "sans-serif",
+            "baseline": 237.654,
+            "fontSize": 9.665
+          },
+          {
+            "text": "⎠",
+            "x": 298.677,
+            "y": 249.97617499999996,
+            "width": 4.34925,
+            "height": 9.713324999999998,
+            "fontFamily": "sans-serif",
+            "baseline": 256.78999999999996,
+            "fontSize": 9.665
+          },
+          {
+            "text": "⎟",
+            "x": 298.677,
+            "y": 240.40817499999997,
+            "width": 4.34925,
+            "height": 9.76165,
+            "fontFamily": "sans-serif",
+            "baseline": 247.22199999999998,
+            "fontSize": 9.665
+          },
+          {
+            "text": "h",
+            "x": 302.456,
+            "y": 241.11100000000002,
+            "width": 5,
+            "height": 6.920000000000001,
+            "fontFamily": "serif",
+            "baseline": 247.94100000000003,
+            "fontSize": 10
+          },
+          {
+            "text": "where we recognize the expression with the parenthesis as the",
+            "x": 312.219,
+            "y": 240.54698046875,
+            "width": 227.76560099999998,
+            "height": 9.966796875,
+            "fontFamily": "serif",
+            "baseline": 248.567,
+            "fontSize": 9
+          }
+        ],
+        "graphics": [
+          {
+            "x": 235.8027,
+            "y": 245.38049999999998,
+            "width": 13.109999999999985,
+            "height": 0,
+            "kind": "path"
+          },
+          {
+            "x": 276.0773,
+            "y": 245.38049999999998,
+            "width": 22.600000000000023,
+            "height": 0,
+            "kind": "path"
+          }
+        ],
+        "width": 612,
+        "height": 792
+      }
+    },
+    {
+      "page": 792,
+      "input": {
+        "atoms": [
+          {
+            "text": "•",
+            "x": 90.674,
+            "y": 84.45590234375004,
+            "width": 3.3249999999999997,
+            "height": 10.61328125,
+            "fontFamily": "sans-serif",
+            "baseline": 93.05600000000004,
+            "fontSize": 9.5
+          },
+          {
+            "text": "A mass",
+            "x": 102,
+            "y": 84.59042382812504,
+            "width": 29.3075,
+            "height": 10.5205078125,
+            "fontFamily": "serif",
+            "baseline": 93.05600000000004,
+            "fontSize": 9.5
+          },
+          {
+            "text": "m",
+            "x": 134.792,
+            "y": 84.59042382812504,
+            "width": 6.859,
+            "height": 10.5205078125,
+            "fontFamily": "serif",
+            "baseline": 93.05600000000004,
+            "fontSize": 9.5
+          },
+          {
+            "text": "suspended by a wire of length",
+            "x": 145.118,
+            "y": 84.59042382812504,
+            "width": 119.13850250000002,
+            "height": 10.5205078125,
+            "fontFamily": "serif",
+            "baseline": 93.05600000000004,
+            "fontSize": 9.5
+          },
+          {
+            "text": "L",
+            "x": 267.746,
+            "y": 84.59042382812504,
+            "width": 5.282,
+            "height": 10.5205078125,
+            "fontFamily": "serif",
+            "baseline": 93.05600000000004,
+            "fontSize": 9.5
+          },
+          {
+            "text": "and negligible mass is a simple pendulum and undergoes SHM for",
+            "x": 276.495,
+            "y": 84.59042382812504,
+            "width": 263.503305,
+            "height": 10.5205078125,
+            "fontFamily": "serif",
+            "baseline": 93.05600000000004,
+            "fontSize": 9.5
+          },
+          {
+            "text": "amplitudes less than about",
+            "x": 101.99799999999999,
+            "y": 100.83142382812503,
+            "width": 100.0769045,
+            "height": 10.5205078125,
+            "fontFamily": "serif",
+            "baseline": 109.29700000000003,
+            "fontSize": 9.5
+          },
+          {
+            "text": "15°",
+            "x": 206.324,
+            "y": 99.06700000000002,
+            "width": 14,
+            "height": 14.66,
+            "fontFamily": "serif",
+            "baseline": 109.29700000000003,
+            "fontSize": 10
+          },
+          {
+            "text": ". The period of a simple pendulum is",
+            "x": 222.314,
+            "y": 100.83142382812503,
+            "width": 138.81581450000004,
+            "height": 10.5205078125,
+            "fontFamily": "serif",
+            "baseline": 109.29700000000003,
+            "fontSize": 9.5
+          },
+          {
+            "text": "T",
+            "x": 365.37,
+            "y": 102.76700000000002,
+            "width": 5.5600000000000005,
+            "height": 6.53,
+            "fontFamily": "serif",
+            "baseline": 109.29700000000003,
+            "fontSize": 10
+          },
+          {
+            "text": "= 2",
+            "x": 374.468,
+            "y": 102.53700000000002,
+            "width": 14.617999999999974,
+            "height": 6.760000000000001,
+            "fontFamily": "serif",
+            "baseline": 109.29700000000003,
+            "fontSize": 10
+          },
+          {
+            "text": "π",
+            "x": 389.086,
+            "y": 105.01700000000002,
+            "width": 5.04,
+            "height": 4.46,
+            "fontFamily": "serif",
+            "baseline": 109.29700000000003,
+            "fontSize": 10
+          },
+          {
+            "text": "L",
+            "x": 400.183,
+            "y": 99.20700000000008,
+            "width": 5.5600000000000005,
+            "height": 6.53,
+            "fontFamily": "serif",
+            "baseline": 105.73700000000008,
+            "fontSize": 10
+          },
+          {
+            "text": "g",
+            "x": 400.443,
+            "y": 108.35200000000006,
+            "width": 5,
+            "height": 6.470000000000001,
+            "fontFamily": "serif",
+            "baseline": 112.76200000000006,
+            "fontSize": 10
+          },
+          {
+            "text": ", where",
+            "x": 408.439,
+            "y": 100.83142382812503,
+            "width": 27.795499,
+            "height": 10.5205078125,
+            "fontFamily": "serif",
+            "baseline": 109.29700000000003,
+            "fontSize": 9.5
+          },
+          {
+            "text": "L",
+            "x": 438.483,
+            "y": 100.83142382812503,
+            "width": 5.282,
+            "height": 10.5205078125,
+            "fontFamily": "serif",
+            "baseline": 109.29700000000003,
+            "fontSize": 9.5
+          },
+          {
+            "text": "is the length of the string",
+            "x": 445.997,
+            "y": 100.83142382812503,
+            "width": 93.98459250000002,
+            "height": 10.5205078125,
+            "fontFamily": "serif",
+            "baseline": 109.29700000000003,
+            "fontSize": 9.5
+          },
+          {
+            "text": "and",
+            "x": 101.99900000000002,
+            "y": 119.75642382812498,
+            "width": 13.7085,
+            "height": 10.5205078125,
+            "fontFamily": "serif",
+            "baseline": 128.22199999999998,
+            "fontSize": 9.5
+          },
+          {
+            "text": "g",
+            "x": 118.09100000000002,
+            "y": 119.75642382812498,
+            "width": 4.75,
+            "height": 10.5205078125,
+            "fontFamily": "serif",
+            "baseline": 128.22199999999998,
+            "fontSize": 9.5
+          },
+          {
+            "text": "is the acceleration due to gravity.",
+            "x": 125.21600000000002,
+            "y": 119.75642382812498,
+            "width": 125.47140200000001,
+            "height": 10.5205078125,
+            "fontFamily": "serif",
+            "baseline": 128.22199999999998,
+            "fontSize": 9.5
+          }
+        ],
+        "graphics": [
+          {
+            "x": 399.4458,
+            "y": 106.73670000000004,
+            "width": 6.992999999999995,
+            "height": 0,
+            "kind": "path"
+          },
+          {
+            "x": 394.9458,
+            "y": 102.73179999999998,
+            "width": 0.8999999999999773,
+            "height": 3.4539999999999935,
+            "kind": "path"
+          },
+          {
+            "x": 395.8458,
+            "y": 102.73149999999998,
+            "width": 1.3500000000000227,
+            "height": 12.090000000000003,
+            "kind": "path"
+          },
+          {
+            "x": 397.1958,
+            "y": 97.54969999999997,
+            "width": 2.25,
+            "height": 17.27199999999999,
+            "kind": "path"
+          },
+          {
+            "x": 399.4458,
+            "y": 97.54999999999995,
+            "width": 7.492999999999995,
+            "height": 0,
+            "kind": "path"
+          }
+        ],
+        "width": 612,
+        "height": 792
+      }
+    },
+    {
+      "page": 820,
+      "input": {
+        "atoms": [
+          {
+            "text": "simple harmonic motion, the angular frequency is equal to",
+            "x": 72,
+            "y": 665.254423828125,
+            "width": 223.50900799999994,
+            "height": 10.5205078125,
+            "fontFamily": "serif",
+            "baseline": 673.72,
+            "fontSize": 9.5
+          },
+          {
+            "text": "ω",
+            "x": 300.098,
+            "y": 669.331,
+            "width": 6.86,
+            "height": 4.5,
+            "fontFamily": "serif",
+            "baseline": 673.721,
+            "fontSize": 10
+          },
+          {
+            "text": "=",
+            "x": 309.726,
+            "y": 669.861,
+            "width": 6.8500000000000005,
+            "height": 2.66,
+            "fontFamily": "serif",
+            "baseline": 673.721,
+            "fontSize": 10
+          },
+          {
+            "text": "k",
+            "x": 325.01,
+            "y": 661.463,
+            "width": 4.44,
+            "height": 6.94,
+            "fontFamily": "serif",
+            "baseline": 668.293,
+            "fontSize": 10
+          },
+          {
+            "text": "s",
+            "x": 330.10699999999997,
+            "y": 666.5210000000001,
+            "width": 3.112,
+            "height": 3.64,
+            "fontFamily": "serif",
+            "baseline": 670.057,
+            "fontSize": 8
+          },
+          {
+            "text": "m",
+            "x": 325.506,
+            "y": 672.7760000000001,
+            "width": 7.22,
+            "height": 4.5,
+            "fontFamily": "serif",
+            "baseline": 677.186,
+            "fontSize": 10
+          },
+          {
+            "text": ".",
+            "x": 333.878,
+            "y": 672.721,
+            "width": 2.5,
+            "height": 1.11,
+            "fontFamily": "serif",
+            "baseline": 673.721,
+            "fontSize": 10
+          },
+          {
+            "text": "As each mass element oscillates in simple harmonic",
+            "x": 340.959,
+            "y": 665.255423828125,
+            "width": 199.00921099999996,
+            "height": 10.5205078125,
+            "fontFamily": "serif",
+            "baseline": 673.721,
+            "fontSize": 9.5
+          },
+          {
+            "text": "motion, the spring constant is equal to",
+            "x": 72,
+            "y": 684.7914238281251,
+            "width": 144.73249999999996,
+            "height": 10.5205078125,
+            "fontFamily": "serif",
+            "baseline": 693.2570000000001,
+            "fontSize": 9.5
+          },
+          {
+            "text": "k",
+            "x": 221.231,
+            "y": 686.4259999999999,
+            "width": 4.44,
+            "height": 6.94,
+            "fontFamily": "serif",
+            "baseline": 693.256,
+            "fontSize": 10
+          },
+          {
+            "text": "s",
+            "x": 226.328,
+            "y": 691.484,
+            "width": 3.112,
+            "height": 3.64,
+            "fontFamily": "serif",
+            "baseline": 695.02,
+            "fontSize": 8
+          },
+          {
+            "text": "= Δ",
+            "x": 232.21,
+            "y": 686.516,
+            "width": 16.838,
+            "height": 6.74,
+            "fontFamily": "serif",
+            "baseline": 693.256,
+            "fontSize": 10
+          },
+          {
+            "text": "mω",
+            "x": 249.038,
+            "y": 688.846,
+            "width": 14.07000000000001,
+            "height": 4.5200000000000005,
+            "fontFamily": "serif",
+            "baseline": 693.256,
+            "fontSize": 10
+          },
+          {
+            "text": "2",
+            "x": 263.765,
+            "y": 683.752,
+            "width": 4,
+            "height": 5.408,
+            "fontFamily": "serif",
+            "baseline": 689.16,
+            "fontSize": 8
+          },
+          {
+            "text": ".",
+            "x": 267.765,
+            "y": 692.256,
+            "width": 2.5,
+            "height": 1.11,
+            "fontFamily": "serif",
+            "baseline": 693.256,
+            "fontSize": 10
+          },
+          {
+            "text": "The potential energy of the mass element is equal to",
+            "x": 274.639,
+            "y": 684.790423828125,
+            "width": 197.8217964999999,
+            "height": 10.5205078125,
+            "fontFamily": "serif",
+            "baseline": 693.256,
+            "fontSize": 9.5
+          }
+        ],
+        "graphics": [
+          {
+            "x": 324.3437,
+            "y": 671.1607,
+            "width": 9.533999999999992,
+            "height": 0,
+            "kind": "path"
+          },
+          {
+            "x": 319.8437,
+            "y": 665.0368,
+            "width": 0.8999999999999773,
+            "height": 3.494000000000028,
+            "kind": "path"
+          },
+          {
+            "x": 320.7437,
+            "y": 665.0369000000001,
+            "width": 1.3500000000000227,
+            "height": 12.229000000000042,
+            "kind": "path"
+          },
+          {
+            "x": 322.0937,
+            "y": 659.7957,
+            "width": 2.25,
+            "height": 17.470000000000027,
+            "kind": "path"
+          },
+          {
+            "x": 324.3437,
+            "y": 659.796,
+            "width": 10.033999999999992,
+            "height": 0,
+            "kind": "path"
+          }
+        ],
+        "width": 612,
+        "height": 792
+      }
+    }
+  ]
+}

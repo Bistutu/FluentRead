@@ -22,7 +22,8 @@ export function getReadingAnnotationLanguage(text: string, sourceLanguage: strin
   const tag = sourceLanguage.trim().toLowerCase().replace(/_/g, '-');
   // 同是汉字也不能把粤语/闽南语标成普通话，明确 Latin 轨道同样不需要反向转写。
   if (/(?:^|-)(?:yue|nan|hak|wuu|latn)(?:-|$)/u.test(tag)) return null;
-  const language = aliases[tag.split('-')[0]];
+  const primary = tag.split('-')[0];
+  const language = Object.hasOwn(aliases, primary) ? aliases[primary] : undefined;
   if (language) return scripts[language].test(text) ? language : null;
   if (tag && !['auto','und','unknown','original'].includes(tag)) return null;
   // 假名和现代韩文足以选择对应引擎；纯汉字及共用文字的语言不猜测。

@@ -1,7 +1,7 @@
 <!--
  * @file src/features/settings/ui/services/ServiceConfiguration.vue
  * 文件职责：渲染当前翻译服务的详细连接配置：连接字段（密钥、区域、端点等）直接排在服务标题下方、不再单设“连接与密钥”标题，输入下方是添加密钥与密钥使用方式；其后用模型偏好、提示词、请求限制、接口兼容几个页签显示代理、密钥要求、提示词、自定义请求体与请求头、按域名移除来源头等字段，以及服务和模型的独立请求限制；只有请求限制页签的服务默认收起低频表单，摘要显示沿用全局或自定义，表单始终挂载。
- * 主要内容：提示 MiMo 官方端点退役编号的请求兼容与新计费规则；Safari 免费连接检查只包含已授权线路，权限读取失败与未授权分别显示可响应语言包的安全状态；组件派生字段可见性与连接示例，密钥列表始终展示全部已保存的密钥并区分参与请求与备用的行，密钥要求放在接口兼容页签，提示词可在确认后一键同步到所有 AI 服务；原生支持多文本的服务在请求限制中独立编辑默认开启的合并请求开关，当前模型限额按自定义请求体覆盖后的真实模型显示、读取和保存，保留其他模型限额；将成对密钥 ID 同步到 apiKeys 和兼容 token，区分缺少必填 Key 与允许匿名的连接检查并管理等待超时；免费翻译检查完整目录中的已授权服务并逐服务展示结果，Chrome 在点击时准备当前语言对并用进度条显示模型下载比例，通过配置 store 提交修改；有效修复链接首次进入且未发生用户聚焦时直达连接按钮或当前标题；所有服务可手动停止等待；错误只保留共享诊断分类与可操作下一步，禁止展示原始错误详情，手动重试与字段定位保留当前选择；隐藏、缓存停用或配置变化取消所属等待，Chrome 状态只在活跃服务订阅，恢复、同步模板和删除共用当前操作所属确认，同步复验来源并按确认时刻重算目标。
+ * 主要内容：提示 MiMo 官方端点退役编号的请求兼容与新计费规则；Safari 免费连接检查只包含已授权线路，权限读取失败与未授权分别显示可响应语言包的安全状态；组件派生字段可见性与连接示例，密钥列表始终展示全部已保存的密钥并区分参与请求与备用的行，密钥要求放在接口兼容页签，提示词可在确认后一键同步到所有 AI 服务；原生支持多文本的服务在请求限制中独立编辑默认开启的合并请求开关，当前模型限额按自定义请求体覆盖后的真实模型显示、读取和保存，保留其他模型限额；将成对密钥 ID 同步到 apiKeys 和兼容 token，区分缺少必填 Key 与允许匿名的连接检查并管理等待超时；免费翻译检查完整目录中的已授权服务并逐服务展示结果，Chrome 在点击时准备当前语言对并用进度条显示模型下载比例，通过配置 store 提交修改；有效修复链接首次进入且未发生用户聚焦时直达连接按钮或当前标题；所有服务可手动停止等待；连接和接口字段的迟到输入只属于原服务、配置及活跃会话；错误只保留共享诊断分类与可操作下一步，禁止展示原始错误详情，手动重试与字段定位保留当前选择；隐藏、缓存停用或配置变化取消所属等待，Chrome 状态只在活跃服务订阅，恢复、同步模板和删除共用当前操作所属确认，同步复验来源并按确认时刻重算目标。
  * 状态本地化：逐密钥、逐免费服务及独立失败状态保留安全资源 key，在展示时响应语言选择与异步语言包更新，不重新请求服务或翻译供应商原始错误。
  * 模块边界：组合服务交给独立草稿表单编辑，不展示普通服务的模型或凭据页签；无成员禁止连接测试，组合与各成员配置修改使旧测试失效，测试等待不早于逐路预算与整轮上限；本地模型设置只在对应服务首次呈现时异步加载，实例归属与后台下载由子组件维持；ChatGPT 套餐公开构建不渲染配置或确认窗口、不加载登录子模块，并停用全部设置动作，显式开发模式才通过独立子组件连接本机助手，不显示通用凭据或接口覆写；本组件不执行网页正文翻译或保存公开配置中的明文凭据；Chrome 内置翻译仅在当前点击页完成模型自检，其他连接测试经后台消息，字段规则来自 core/config，服务切换由 ServiceCatalog 和 SettingsSections 负责。
  -->
@@ -60,7 +60,7 @@
       <div class="connection-field" data-mymemory-email>
         <div class="connection-field-label"><strong>联系邮箱（可选）</strong><small>不填写也可以使用</small></div>
         <div class="connection-field-control">
-          <el-input v-model="myMemoryEmailDraft" type="email" aria-label="MyMemory 联系邮箱" placeholder="不填写也可以使用" :aria-invalid="myMemoryEmailInvalid" @change="commitMyMemoryEmail" />
+          <el-input :model-value="myMemoryEmailDraft" :onUpdate:modelValue="fieldActions.myMemoryEmail" type="email" aria-label="MyMemory 联系邮箱" placeholder="不填写也可以使用" :aria-invalid="myMemoryEmailInvalid" :onChange="fieldActions.commitMyMemoryEmail" />
           <small v-if="myMemoryEmailInvalid" class="field-warning" role="status">请输入有效邮箱，或留空</small>
         </div>
       </div>
@@ -101,7 +101,7 @@
             data-testid="custom-service-edit-name"
             placeholder="请输入服务名称"
             :maxlength="MAX_CUSTOM_OPENAI_PROVIDER_NAME_LENGTH"
-            @update:model-value="updateCustomProvider('name', String($event))"
+            :onUpdate:modelValue="fieldActions.customName"
           />
         </div>
       </div>
@@ -114,7 +114,7 @@
             data-testid="custom-service-edit-endpoint"
             placeholder="http://localhost:11434/v1/chat/completions"
             :maxlength="MAX_CUSTOM_OPENAI_PROVIDER_ENDPOINT_LENGTH"
-            @update:model-value="updateCustomProvider('endpoint', String($event))"
+            :onUpdate:modelValue="fieldActions.customEndpoint"
           />
         </div>
       </div>
@@ -125,7 +125,7 @@
         <strong>{{ t('settings.services.deepl.plan') }}</strong>
       </div>
       <div class="connection-field-control">
-        <el-select v-model="config.deeplApiPlan" :aria-label="t('settings.services.deepl.plan')">
+        <el-select :model-value="config.deeplApiPlan" :onUpdate:modelValue="fieldActions.deeplApiPlan" :aria-label="t('settings.services.deepl.plan')">
           <el-option value="free" :label="t('settings.services.deepl.free')" />
           <el-option value="pro" :label="t('settings.services.deepl.pro')" />
         </el-select>
@@ -151,7 +151,7 @@
         </FieldHelp>
       </div>
       <div class="connection-field-control">
-        <el-input v-model="config.proxy[service]" aria-label="Ollama 服务地址" :placeholder="DEFAULT_OLLAMA_ENDPOINT" />
+        <el-input :model-value="config.proxy[service]" :onUpdate:modelValue="fieldActions.proxy" aria-label="Ollama 服务地址" :placeholder="DEFAULT_OLLAMA_ENDPOINT" />
       </div>
     </div>
 
@@ -163,7 +163,7 @@
       <div class="connection-field-control credential-control">
         <el-input
           :model-value="apiKeys[0] || ''"
-          @update:model-value="updateApiKey(0, String($event))"
+          :onUpdate:modelValue="fieldActions.firstApiKey"
           type="password"
           show-password
           :aria-label="compute.showCloudVendor ? compute.cloudCredentialLabels.token : 'API Key'"
@@ -171,7 +171,7 @@
         />
         <div v-if="compute.showAI" class="api-key-requirement">
           <span>{{ compute.requireApiKey ? '此模型需要 API Key' : '允许无 Key 请求' }}</span>
-          <el-switch v-model="compute.requireApiKey" aria-label="当前模型是否需要 API Key" size="small" />
+          <el-switch :model-value="compute.requireApiKey" :onUpdate:modelValue="fieldActions.requireApiKey" aria-label="当前模型是否需要 API Key" size="small" />
         </div>
       </div>
     </div>
@@ -182,7 +182,7 @@
       </div>
       <div class="connection-field-control credential-control">
         <el-input
-          v-model="config.secret[service]"
+          :model-value="config.secret[service]" :onUpdate:modelValue="fieldActions.secret"
           type="password"
           show-password
           :aria-label="compute.cloudCredentialLabels.secret"
@@ -207,7 +207,7 @@
           :model-value="config.serviceRegion[service] || compute.defaultCloudRegion"
           aria-label="云服务区域"
           placeholder="请选择服务区域"
-          @update:model-value="config.serviceRegion[service] = String($event)"
+          :onUpdate:modelValue="fieldActions.serviceRegion"
         >
           <el-option
             v-for="item in compute.cloudRegionOptions"
@@ -224,11 +224,11 @@
     </p>
 
     <div v-if="compute.showMiniMaxRegion" class="provider-account-fields">
-    <div v-if="compute.showMiniMaxRegion" class="connection-field"><div class="connection-field-label"><strong>MiniMax 计费方式</strong><FieldHelp :content="translateLegacy('按量付费和 Token Plan 使用不同的账户权益；请按控制台中 Key 的来源选择')" /></div><div class="connection-field-control"><el-select v-model="config.minimaxBillingPlan" aria-label="MiniMax 计费方式" placeholder="请选择 MiniMax 计费方式">
+    <div v-if="compute.showMiniMaxRegion" class="connection-field"><div class="connection-field-label"><strong>MiniMax 计费方式</strong><FieldHelp :content="translateLegacy('按量付费和 Token Plan 使用不同的账户权益；请按控制台中 Key 的来源选择')" /></div><div class="connection-field-control"><el-select :model-value="config.minimaxBillingPlan" :onUpdate:modelValue="fieldActions.minimaxBillingPlan" aria-label="MiniMax 计费方式" placeholder="请选择 MiniMax 计费方式">
           <el-option class="select-left" v-for="item in options.minimaxBillingPlan" :key="item.value" :label="item.label" :value="item.value" />
         </el-select></div></div>
 
-    <div v-if="compute.showMiniMaxRegion" class="connection-field"><div class="connection-field-label"><strong>MiniMax 区域</strong><FieldHelp :content="translateLegacy('选择与 MiniMax Key 来源一致的 API 区域，Token Plan Key（sk-cp-）与按量付费 Key 不能互换')"><template #content><div>{{ translateLegacy('选择与 MiniMax Key 来源一致的 API 区域，Token Plan Key（sk-cp-）与按量付费 Key 不能互换') }}</div><code data-minimax-endpoint>{{ minimaxEndpoint }}</code></template></FieldHelp></div><div class="connection-field-control"><el-select v-model="config.minimaxRegion" aria-label="MiniMax API 区域" placeholder="请选择 MiniMax API 区域">
+    <div v-if="compute.showMiniMaxRegion" class="connection-field"><div class="connection-field-label"><strong>MiniMax 区域</strong><FieldHelp :content="translateLegacy('选择与 MiniMax Key 来源一致的 API 区域，Token Plan Key（sk-cp-）与按量付费 Key 不能互换')"><template #content><div>{{ translateLegacy('选择与 MiniMax Key 来源一致的 API 区域，Token Plan Key（sk-cp-）与按量付费 Key 不能互换') }}</div><code data-minimax-endpoint>{{ minimaxEndpoint }}</code></template></FieldHelp></div><div class="connection-field-control"><el-select :model-value="config.minimaxRegion" :onUpdate:modelValue="fieldActions.minimaxRegion" aria-label="MiniMax API 区域" placeholder="请选择 MiniMax API 区域">
           <el-option class="select-left" v-for="item in options.minimaxRegion" :key="item.value" :label="item.label" :value="item.value" />
         </el-select></div></div>
     </div>
@@ -243,11 +243,11 @@
     </p>
 
     <div v-if="compute.showMiMoRegion" class="provider-account-fields">
-    <div v-if="compute.showMiMoRegion" class="connection-field"><div class="connection-field-label"><strong>小米 MiMo 计费方式</strong><FieldHelp :content="translateLegacy('按量付费和 Token Plan 使用不同的账户权益；请按小米 MiMo 控制台中 Key 的来源选择')" /></div><div class="connection-field-control"><el-select v-model="config.mimoBillingPlan" aria-label="小米 MiMo 计费方式" placeholder="请选择小米 MiMo 计费方式">
+    <div v-if="compute.showMiMoRegion" class="connection-field"><div class="connection-field-label"><strong>小米 MiMo 计费方式</strong><FieldHelp :content="translateLegacy('按量付费和 Token Plan 使用不同的账户权益；请按小米 MiMo 控制台中 Key 的来源选择')" /></div><div class="connection-field-control"><el-select :model-value="config.mimoBillingPlan" :onUpdate:modelValue="fieldActions.mimoBillingPlan" aria-label="小米 MiMo 计费方式" placeholder="请选择小米 MiMo 计费方式">
           <el-option class="select-left" v-for="item in options.mimoBillingPlan" :key="item.value" :label="item.label" :value="item.value" />
         </el-select></div></div>
 
-    <div v-if="compute.showMiMoRegion" class="connection-field"><div class="connection-field-label"><strong>MiMo API 集群</strong><FieldHelp :content="translateLegacy('Token Plan 使用购买页面提供的集群地址，中国、新加坡和欧洲集群的 tp- Key 不能混用；按量付费统一使用 api.xiaomimimo.com')"><template #content><div>{{ translateLegacy('Token Plan 使用购买页面提供的集群地址，中国、新加坡和欧洲集群的 tp- Key 不能混用；按量付费统一使用 api.xiaomimimo.com') }}</div><code data-mimo-endpoint>{{ mimoEndpoint }}</code></template></FieldHelp></div><div class="connection-field-control"><el-select v-model="config.mimoRegion" aria-label="小米 MiMo API 集群" placeholder="请选择小米 MiMo API 集群">
+    <div v-if="compute.showMiMoRegion" class="connection-field"><div class="connection-field-label"><strong>MiMo API 集群</strong><FieldHelp :content="translateLegacy('Token Plan 使用购买页面提供的集群地址，中国、新加坡和欧洲集群的 tp- Key 不能混用；按量付费统一使用 api.xiaomimimo.com')"><template #content><div>{{ translateLegacy('Token Plan 使用购买页面提供的集群地址，中国、新加坡和欧洲集群的 tp- Key 不能混用；按量付费统一使用 api.xiaomimimo.com') }}</div><code data-mimo-endpoint>{{ mimoEndpoint }}</code></template></FieldHelp></div><div class="connection-field-control"><el-select :model-value="config.mimoRegion" :onUpdate:modelValue="fieldActions.mimoRegion" aria-label="小米 MiMo API 集群" placeholder="请选择小米 MiMo API 集群">
           <el-option class="select-left" v-for="item in options.mimoRegion" :key="item.value" :label="item.label" :value="item.value" />
         </el-select></div></div>
     </div>
@@ -258,7 +258,7 @@
         <strong>{{ t('settings.services.azure.endpoint') }}</strong>
       </div>
       <div class="connection-field-control">
-        <el-input v-model="config.azureOpenaiEndpoint" :aria-label="t('settings.services.azure.endpoint')" placeholder="https://your-resource.services.ai.azure.com/openai/v1/" :class="{ 'input-error': config.azureOpenaiEndpoint && !isValidAzureEndpoint(config.azureOpenaiEndpoint) }" />
+        <el-input :model-value="config.azureOpenaiEndpoint" :onUpdate:modelValue="fieldActions.azureOpenaiEndpoint" :aria-label="t('settings.services.azure.endpoint')" placeholder="https://your-resource.services.ai.azure.com/openai/v1/" :class="{ 'input-error': config.azureOpenaiEndpoint && !isValidAzureEndpoint(config.azureOpenaiEndpoint) }" />
         <div v-if="config.azureOpenaiEndpoint && !isValidAzureEndpoint(config.azureOpenaiEndpoint)" class="error-text" role="alert">{{ t('settings.services.azure.endpointError') }}</div>
         <p class="provider-field-help">{{ t('settings.services.azure.endpointHelp') }}</p>
         <p class="provider-field-help">{{ t('settings.services.azure.deploymentHelp') }}</p>
@@ -268,7 +268,7 @@
     <div v-if="compute.showDeepLX" class="connection-field" data-deeplx-endpoint>
       <div class="connection-field-label"><strong>{{ t('settings.services.deeplx.endpoint') }}</strong></div>
       <div class="connection-field-control">
-        <el-input v-model="config.deeplx" :aria-label="t('settings.services.deeplx.endpoint')" :placeholder="t('settings.services.deeplx.defaultRoute')" aria-describedby="deeplx-endpoint-help" />
+        <el-input :model-value="config.deeplx" :onUpdate:modelValue="fieldActions.deeplx" :aria-label="t('settings.services.deeplx.endpoint')" :placeholder="t('settings.services.deeplx.defaultRoute')" aria-describedby="deeplx-endpoint-help" />
         <div id="deeplx-endpoint-help">
           <p class="provider-field-help">{{ t('settings.services.deeplx.endpointHelp') }}</p>
           <p class="provider-field-help">无需密钥的接口可留空；需要验证时填写 Token</p>
@@ -283,16 +283,14 @@
       </div>
     </div>
 
-    <div v-if="compute.showAkSk" class="connection-field"><div class="connection-field-label"><strong>API Key</strong></div><div class="connection-field-control"><el-input v-model="config.ak" aria-label="API Key" placeholder="请输入Access Key" /><p class="provider-field-help">服务商提供的访问密钥</p></div></div>
-    <div v-if="compute.showAkSk" class="connection-field"><div class="connection-field-label"><strong>Secret Key</strong></div><div class="connection-field-control"><el-input v-model="config.sk" aria-label="Secret Key" type="password" placeholder="请输入Secret Key" /><p class="provider-field-help">服务商提供的私密密钥，请妥善保管</p></div></div>
 
-    <div v-if="compute.showYoudao" class="connection-field"><div class="connection-field-label"><strong>App Key</strong></div><div class="connection-field-control"><el-input v-model="config.youdaoAppKey" aria-label="App Key" placeholder="有道 AppKey" /><p class="provider-field-help">有道翻译服务提供的 App Key</p></div></div>
-    <div v-if="compute.showYoudao" class="connection-field"><div class="connection-field-label"><strong>App Secret</strong></div><div class="connection-field-control"><el-input v-model="config.youdaoAppSecret" aria-label="App Secret" type="password" show-password placeholder="有道 AppSecret" /><p class="provider-field-help">有道翻译服务提供的 App Secret</p></div></div>
+    <div v-if="compute.showYoudao" class="connection-field"><div class="connection-field-label"><strong>App Key</strong></div><div class="connection-field-control"><el-input :model-value="config.youdaoAppKey" :onUpdate:modelValue="fieldActions.youdaoAppKey" aria-label="App Key" placeholder="有道 AppKey" /><p class="provider-field-help">有道翻译服务提供的 App Key</p></div></div>
+    <div v-if="compute.showYoudao" class="connection-field"><div class="connection-field-label"><strong>App Secret</strong></div><div class="connection-field-control"><el-input :model-value="config.youdaoAppSecret" :onUpdate:modelValue="fieldActions.youdaoAppSecret" aria-label="App Secret" type="password" show-password placeholder="有道 AppSecret" /><p class="provider-field-help">有道翻译服务提供的 App Secret</p></div></div>
 
-    <div v-if="compute.showTencent" class="connection-field"><div class="connection-field-label"><strong>Secret ID</strong></div><div class="connection-field-control"><el-input v-model="config.tencentSecretId" aria-label="Secret ID" placeholder="腾讯云 SecretId" /><p class="provider-field-help">腾讯云翻译服务提供的 SecretId</p></div></div>
-    <div v-if="compute.showTencent" class="connection-field"><div class="connection-field-label"><strong>Secret Key</strong></div><div class="connection-field-control"><el-input v-model="config.tencentSecretKey" aria-label="Secret Key" type="password" show-password placeholder="腾讯云 SecretKey" /><p class="provider-field-help">腾讯云翻译服务提供的 SecretKey</p></div></div>
+    <div v-if="compute.showTencent" class="connection-field"><div class="connection-field-label"><strong>Secret ID</strong></div><div class="connection-field-control"><el-input :model-value="config.tencentSecretId" :onUpdate:modelValue="fieldActions.tencentSecretId" aria-label="Secret ID" placeholder="腾讯云 SecretId" /><p class="provider-field-help">腾讯云翻译服务提供的 SecretId</p></div></div>
+    <div v-if="compute.showTencent" class="connection-field"><div class="connection-field-label"><strong>Secret Key</strong></div><div class="connection-field-control"><el-input :model-value="config.tencentSecretKey" :onUpdate:modelValue="fieldActions.tencentSecretKey" aria-label="Secret Key" type="password" show-password placeholder="腾讯云 SecretKey" /><p class="provider-field-help">腾讯云翻译服务提供的 SecretKey</p></div></div>
 
-    <div v-if="compute.showNewAPI" class="connection-field"><div class="connection-field-label"><strong>NewAPI接口</strong></div><div class="connection-field-control"><el-input v-model="config.newApiUrl" aria-label="接口地址" placeholder="请输入 New API 接口地址" /><p class="provider-field-help">填写 New API 服务的接口地址</p></div></div>
+    <div v-if="compute.showNewAPI" class="connection-field"><div class="connection-field-label"><strong>NewAPI接口</strong></div><div class="connection-field-control"><el-input :model-value="config.newApiUrl" :onUpdate:modelValue="fieldActions.newApiUrl" aria-label="接口地址" placeholder="请输入 New API 接口地址" /><p class="provider-field-help">填写 New API 服务的接口地址</p></div></div>
 
     <ApiKeyList :active="active" :context="config" :context-key="service"
       v-if="compute.showToken && !compute.showServiceSecret"
@@ -309,8 +307,8 @@
         <div class="credential-usage" data-api-key-rotation-setting role="radiogroup" :aria-label="t('settings.services.keys.usage')">
           <span class="credential-usage-label" aria-hidden="true">{{ t('settings.services.keys.usage') }}</span>
           <div class="credential-modes">
-            <label :class="{'is-selected': apiKeyRotationEnabled}"><input type="radio" :name="`api-key-mode-${service}`" value="rotation" :checked="apiKeyRotationEnabled" @change="setApiKeyRotationEnabled(true)" /><span>{{ t('settings.services.keys.rotate') }}</span></label>
-            <label :class="{'is-selected': !apiKeyRotationEnabled}"><input type="radio" :name="`api-key-mode-${service}`" value="single" :checked="!apiKeyRotationEnabled" @change="setApiKeyRotationEnabled(false)" /><span>{{ t('settings.services.keys.firstOnly') }}</span></label>
+            <label :class="{'is-selected': apiKeyRotationEnabled}"><input type="radio" :name="`api-key-mode-${service}`" value="rotation" :checked="apiKeyRotationEnabled" :onChange="fieldActions.rotateApiKeys" /><span>{{ t('settings.services.keys.rotate') }}</span></label>
+            <label :class="{'is-selected': !apiKeyRotationEnabled}"><input type="radio" :name="`api-key-mode-${service}`" value="single" :checked="!apiKeyRotationEnabled" :onChange="fieldActions.useFirstApiKey" /><span>{{ t('settings.services.keys.firstOnly') }}</span></label>
           </div>
           <FieldHelp :content="t('settings.services.keys.usageHelp')" />
         </div>
@@ -346,7 +344,7 @@
 
     <ServiceRepairReturn :active="active" :context="config" :context-key="service" @repair-ready="focusInitialRepair" />
 
-    <el-tabs v-if="settingsTabs.requests && !isCompositeService" v-model="activeSettingsTab" class="service-settings-tabs" :class="{ 'is-single-tab': singleSettingsTab }" data-service-settings-tabs>
+    <el-tabs v-if="settingsTabs.requests && !isCompositeService" :model-value="activeSettingsTab" :onUpdate:modelValue="fieldActions.tab" class="service-settings-tabs" :class="{ 'is-single-tab': singleSettingsTab }" data-service-settings-tabs>
     <el-tab-pane v-if="settingsTabs.translation" name="translation" :label="t(SETTINGS_TAB_LABELS.translation)">
       <section id="service-translation-settings" class="service-settings-panel" data-configuration-group="translation">
 
@@ -360,7 +358,7 @@
                 :model-value="selectedModelThinking"
                 :disabled="!effectiveModelLabel"
                 aria-label="当前模型是否启用 Thinking"
-                @update:model-value="$emit('update:model-thinking', Boolean($event))"
+                :onUpdate:modelValue="fieldActions.modelThinking"
               />
             </div>
           </div>
@@ -394,8 +392,8 @@
           </div>
 
           <div class="prompt-template-list" data-testid="prompt-template-list">
-            <PromptTemplateEditor v-model="config.system_role[service]" role="system" :active="active && activeSettingsTab === 'prompts'" :context="config" :context-key="service" />
-            <PromptTemplateEditor v-model="config.user_role[service]" role="user" :active="active && activeSettingsTab === 'prompts'" :context="config" :context-key="service" />
+            <PromptTemplateEditor :model-value="config.system_role[service]" :onUpdate:modelValue="fieldActions.system_role" role="system" :active="active && activeSettingsTab === 'prompts'" :context="config" :context-key="service" />
+            <PromptTemplateEditor :model-value="config.user_role[service]" :onUpdate:modelValue="fieldActions.user_role" role="user" :active="active && activeSettingsTab === 'prompts'" :context="config" :context-key="service" />
           </div>
 
       </section>
@@ -424,9 +422,9 @@
     </el-tab-pane>
     <el-tab-pane v-if="settingsTabs['custom-request']" name="custom-request" :label="t(SETTINGS_TAB_LABELS['custom-request'])">
       <section id="service-custom-request-settings" class="service-settings-panel" data-configuration-group="custom-request">
-        <div v-if="compute.showDeepseekApiType" class="connection-field"><div class="connection-field-label"><strong>API 格式</strong><FieldHelp :content="translateLegacy('选择 DeepSeek 接口使用的 API 格式')" /></div><div class="connection-field-control"><el-select v-model="config.deepseekApiType" aria-label="API 格式" placeholder="请选择 API 格式"><el-option class="select-left" v-for="item in options.deepseekApiType" :key="item.value" :label="item.label" :value="item.value" /></el-select></div></div>
+        <div v-if="compute.showDeepseekApiType" class="connection-field"><div class="connection-field-label"><strong>API 格式</strong><FieldHelp :content="translateLegacy('选择 DeepSeek 接口使用的 API 格式')" /></div><div class="connection-field-control"><el-select :model-value="config.deepseekApiType" :onUpdate:modelValue="fieldActions.deepseekApiType" aria-label="API 格式" placeholder="请选择 API 格式"><el-option class="select-left" v-for="item in options.deepseekApiType" :key="item.value" :label="item.label" :value="item.value" /></el-select></div></div>
 
-          <div v-if="compute.showAI && compute.showProxy" class="connection-field"><div class="connection-field-label"><strong>代理地址</strong><FieldHelp :content="translateLegacy('可选的代理地址；填写后，当前 AI 服务请求会优先发送到这里')" /></div><div class="connection-field-control"><el-input v-model="config.proxy[service]" aria-label="代理地址" placeholder="默认直连自定义接口" /></div></div>
+          <div v-if="compute.showAI && compute.showProxy" class="connection-field"><div class="connection-field-label"><strong>代理地址</strong><FieldHelp :content="translateLegacy('可选的代理地址；填写后，当前 AI 服务请求会优先发送到这里')" /></div><div class="connection-field-control"><el-input :model-value="config.proxy[service]" :onUpdate:modelValue="fieldActions.proxy" aria-label="代理地址" placeholder="默认直连自定义接口" /></div></div>
 
         <div v-if="compute.showAI && usesApiKeyList" class="connection-field" data-api-key-requirement-row>
           <div class="connection-field-label"><strong>{{ t('settings.services.keys.requirement') }}</strong><FieldHelp :content="t('settings.services.keys.requirementHelp')" /></div>
@@ -435,7 +433,7 @@
               compact class="credential-requirement" data-api-key-auth-policy
               :label="t('settings.services.keys.requirement')" :options="apiKeyRequirementOptions"
               :model-value="compute.requireApiKey ? 'required' : 'optional'"
-              @update:model-value="setApiKeyRequirement"
+              :onUpdate:modelValue="fieldActions.apiKeyRequirement"
             />
           </div>
         </div>
@@ -443,7 +441,7 @@
           <div v-if="customProvider" class="connection-field custom-headers-field" data-testid="custom-service-headers">
             <div class="connection-field-label"><strong>自定义请求头</strong><FieldHelp :content="translateLegacy('填写值为字符串的 JSON 对象，仅用于当前自定义服务，同名请求头会覆盖默认值；留空则不启用')" /></div>
             <div class="connection-field-control">
-              <el-input v-model="config.customHeaders[service]" type="textarea" :rows="3"
+              <el-input :model-value="config.customHeaders[service]" :onUpdate:modelValue="fieldActions.customHeaders" type="textarea" :rows="3"
                 aria-label="自定义请求头" :spellcheck="false" :class="{ 'input-error': !isValidCustomHeaders(config.customHeaders[service]) }"
                 placeholder='{"x-opencode-session": "your-stable-session-id"}' />
               <div v-if="!isValidCustomHeaders(config.customHeaders[service])" class="error-text">请输入有效的请求头 JSON 对象，名称和值必须符合 HTTP 格式</div>
@@ -452,7 +450,7 @@
 
           <RequestHeaderSettings v-if="compute.showAI" :active="active && activeSettingsTab === 'custom-request'" :config="config" />
 
-          <div v-if="compute.showCustomBody" class="connection-field"><div class="connection-field-label"><strong>自定义请求体</strong><FieldHelp :content="translateLegacy('填写要合并到翻译请求中的 JSON 参数对象')" /></div><div class="connection-field-control"><el-input v-model="config.customBody[service]" type="textarea" :rows="3" aria-label="自定义请求体" :class="{ 'input-error': !isValidCustomBody(config.customBody[service]) }" placeholder='例如：{"thinking": {"type": "disabled"}}' />
+          <div v-if="compute.showCustomBody" class="connection-field"><div class="connection-field-label"><strong>自定义请求体</strong><FieldHelp :content="translateLegacy('填写要合并到翻译请求中的 JSON 参数对象')" /></div><div class="connection-field-control"><el-input :model-value="config.customBody[service]" :onUpdate:modelValue="fieldActions.customBody" type="textarea" :rows="3" aria-label="自定义请求体" :class="{ 'input-error': !isValidCustomBody(config.customBody[service]) }" placeholder='例如：{"thinking": {"type": "disabled"}}' />
               <div v-if="!isValidCustomBody(config.customBody[service])" class="error-text">请输入合法的 JSON 对象，否则该配置将被忽略</div></div></div>
 
 
@@ -616,6 +614,37 @@ function commitMyMemoryEmail(): void {
   if (!active.value || myMemoryEmailInvalid.value) return
   config.value.myMemoryEmail = normalizeMyMemoryEmail(myMemoryEmailDraft.value)
 }
+
+// 第三方控件可能在服务切换、缓存停用或卸载后迟到发出 update；每个绑定捕获当时的编辑上下文。
+const fieldContext = useSettingsActionContext(() => active.value, () => [
+  config.value, service.value, customProvider.value, activeSettingsTab.value,
+  config.value.model[service.value], config.value.customModel[service.value], props.selectedModelThinking, compute.value.requireApiKey,
+])
+const fieldActions = computed(() => {
+  const current = fieldContext.capture()
+  const own = <Args extends unknown[]>(apply: (...args: Args) => void) => (...args: Args) => {if (current()) apply(...args)}
+  const owner = config.value, ownerService = service.value
+  const set = <Key extends keyof Config>(key: Key) => {
+    const before = owner[key]
+    return own((value: Config[Key]) => {if (owner[key] === before) owner[key] = value})
+  }
+  const setService = (key: 'proxy' | 'secret' | 'system_role' | 'user_role' | 'customHeaders' | 'customBody' | 'serviceRegion') => {
+    const fields = owner[key], before = fields[ownerService]
+    return own((value: string) => {if (owner[key] === fields && fields[ownerService] === before) fields[ownerService] = String(value)})
+  }
+  return {
+    deeplApiPlan: set('deeplApiPlan'), minimaxBillingPlan: set('minimaxBillingPlan'), minimaxRegion: set('minimaxRegion'), mimoBillingPlan: set('mimoBillingPlan'), mimoRegion: set('mimoRegion'),
+    azureOpenaiEndpoint: set('azureOpenaiEndpoint'), deeplx: set('deeplx'), youdaoAppKey: set('youdaoAppKey'), youdaoAppSecret: set('youdaoAppSecret'),
+    tencentSecretId: set('tencentSecretId'), tencentSecretKey: set('tencentSecretKey'), newApiUrl: set('newApiUrl'), deepseekApiType: set('deepseekApiType'),
+    proxy: setService('proxy'), secret: setService('secret'), system_role: setService('system_role'), user_role: setService('user_role'),
+    customHeaders: setService('customHeaders'), customBody: setService('customBody'), serviceRegion: setService('serviceRegion'),
+    myMemoryEmail: own((value: string) => {myMemoryEmailDraft.value = value}), commitMyMemoryEmail: own(commitMyMemoryEmail),
+    customName: own((value: string) => updateCustomProvider('name', String(value))), customEndpoint: own((value: string) => updateCustomProvider('endpoint', String(value))),
+    firstApiKey: own((value: string) => updateApiKey(0, String(value))), requireApiKey: own((value: boolean) => {compute.value.requireApiKey = value}),
+    rotateApiKeys: own(() => setApiKeyRotationEnabled(true)), useFirstApiKey: own(() => setApiKeyRotationEnabled(false)), apiKeyRequirement: own(setApiKeyRequirement),
+    modelThinking: own((value: unknown) => emit('update:model-thinking', Boolean(value))), tab: own((value: string | number) => {activeSettingsTab.value = String(value)}),
+  }
+})
 
 const deepLXTokenHelp = computed(() => translateLegacy('DeepLX 地址包含 {{apiKey}} 或 {{token}} 占位符，请填写 API Key；无 Key 地址请移除占位符'))
 const deepLXRequiresToken = computed(() => requiresDeepLXToken(config.value.deeplx, config.value.proxy[services.deeplx]))

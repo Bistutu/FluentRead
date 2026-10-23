@@ -208,6 +208,31 @@ describe('ShadowRoot 与路由 MAIN world bridge core', () => {
         }
     });
 
+    it('实际页面适配器发送可传播 CustomEvent 并在卸载时恢复宿主 API', async () => {
+        const events = new FakeEvents(), documentEvents = new FakeEvents();
+        const location = {href: 'https://example.test/start'};
+        class ElementPort extends EventTarget {attachShadow(init: ShadowRootInit) {return {mode: init.mode};}}
+        class CustomEventPort extends Event {readonly detail: unknown; constructor(type: string, init?: CustomEventInit) {super(type, init);this.detail = init?.detail;}}
+        const originalAttach = ElementPort.prototype.attachShadow;
+        const historyPort = {pushState(_data: unknown, _title: string, url: string) {location.href = new URL(url, location.href).href;}, replaceState() {}};
+        const originalPush = historyPort.pushState;
+        vi.stubGlobal('document', Object.assign(documentEvents, {contentType: 'text/html'}));
+        vi.stubGlobal('window', events);vi.stubGlobal('history', historyPort);vi.stubGlobal('location', location);
+        vi.stubGlobal('Element', ElementPort);vi.stubGlobal('CustomEvent', CustomEventPort);
+        let dispose: (() => void) | undefined;
+        try {
+            dispose = installShadowAndRouteBridge();
+            const host = new ElementPort();const seen: Event[] = [];
+            host.addEventListener(SHADOW_ROOT_EVENT, event => seen.push(event));
+            host.attachShadow({mode: 'open'});host.attachShadow({mode: 'closed'});
+            expect(seen).toHaveLength(1);expect(seen[0]).toBeInstanceOf(CustomEventPort);
+            expect(seen[0].bubbles).toBe(true);expect(seen[0].composed).toBe(true);
+            historyPort.pushState(null, '', '/article');await flush();
+            expect(documentEvents.dispatched.map(event => (event as Event).type)).toContain(ROUTE_CHANGE_EVENT);
+        } finally {dispose?.();vi.unstubAllGlobals();}
+        expect(ElementPort.prototype.attachShadow).toBe(originalAttach);expect(historyPort.pushState).toBe(originalPush);
+    });
+
     it('透明转发宿主方法的真实参数数量，保留缺参异常及既有包装器语义', () => {
         const fixture = shadowFixture();
         const expectedError = new TypeError('2 arguments required');
@@ -740,6 +765,57 @@ describe('YouTube timedtext MAIN world bridge core', () => {
         await flush();
         expect(fixture.posts).toHaveLength(2);
         dispose();
+    });
+
+    it('YouTube 默认限制 8MB 克隆正文且宿主仍可完整读取', async () => {
+        const fixture = youtubeFixture();
+        const original = new Response('x'.repeat(8_000_001));
+        (fixture.originalFetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(original);
+        const dispose = installYoutubeTimedTextBridgeCore(fixture.environment);
+        try {
+            expect(await fixture.fetch.value.call({}, '/api/timedtext')).toBe(original);
+            expect((await original.text()).length).toBe(8_000_001);
+            await new Promise(resolve => setTimeout(resolve, 10));
+            expect(fixture.posts).toHaveLength(0);
+        } finally { dispose(); }
+    });
+
+    it('YouTube 未结束的克隆正文在 15 秒总读取预算后释放并忽略迟到数据', async () => {
+        vi.useFakeTimers();
+        const fixture = youtubeFixture();
+        let rejectCancel!: (error: Error) => void;
+        const cancelled = vi.fn(() => new Promise<void>((_resolve, reject) => {rejectCancel = reject;}));
+        const stream = new ReadableStream<Uint8Array>({
+            start(controller) { controller.enqueue(new TextEncoder().encode('<timedtext>')); },
+            cancel: cancelled,
+        });
+        (fixture.originalFetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({clone: () => ({body: stream, text: async () => ''})});
+        const dispose = installYoutubeTimedTextBridgeCore(fixture.environment);
+        try {
+            await fixture.fetch.value.call({}, '/api/timedtext');
+            await vi.advanceTimersByTimeAsync(14_999);
+            expect(cancelled).not.toHaveBeenCalled();
+            await vi.advanceTimersByTimeAsync(1);
+            expect(cancelled).toHaveBeenCalledTimes(1);
+            expect(stream.locked).toBe(false);
+            expect(fixture.posts).toHaveLength(0);
+            rejectCancel(new Error('late stream cleanup failure'));
+            await flush();
+        } finally { dispose(); vi.useRealTimers(); }
+    });
+
+    it('卸载后迟到的 fetch 响应直接交还宿主且不克隆', async () => {
+        const fixture = youtubeFixture();
+        let resolveResponse!: (response: YoutubeFetchResponsePort) => void;
+        (fixture.originalFetch as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(() => new Promise(resolve => {resolveResponse = resolve;}));
+        const clone = vi.fn(() => ({text: async () => '<timedtext/>'}));
+        const original = {clone};
+        const dispose = installYoutubeTimedTextBridgeCore(fixture.environment);
+        const pending = fixture.fetch.value.call({}, '/api/timedtext');
+        dispose();
+        resolveResponse(original);
+        expect(await pending).toBe(original);
+        expect(clone).not.toHaveBeenCalled();
     });
 
     it('unloading cancels only a pending bounded clone stream', async () => {

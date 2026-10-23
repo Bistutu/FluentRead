@@ -50,10 +50,10 @@ vi.mock('@/src/core/config/catalog', async importOriginal => {
 });
 vi.mock('@/src/app/translation/visionProbeRuntime', () => ({modelVisionProbe: {resolve: mocks.resolveVisionProbe}}));
 vi.mock('@/src/platform/storage/modelUsageRepository', () => ({
-    modelUsageRepository: {
+    getModelUsageRepository: () => ({
         captureGeneration: mocks.captureGeneration,
         recordMany: mocks.recordMany,
-    },
+    }),
 }));
 
 import {createProviderTestRuntimeHandlers, getFreeTranslationWeightSnapshot, runTranslationServiceConnectionTestWithUsage} from '@/src/app/background/providerRuntime';

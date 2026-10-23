@@ -1,6 +1,7 @@
 import {parseHTML} from 'linkedom';
 import {describe, expect, it} from 'vitest';
-import {createTranslationCore, extractTranslationText, createTranslationSourceSnapshot} from '@/src/core/translation/public';
+import {extractTranslationText, createTranslationSourceSnapshot} from '@/src/core/translation/public';
+import {createTranslationCore} from './helpers/translationCore';
 import {isHiddenTranslationElement} from '@/src/core/translation/dom';
 
 const clippedStyle = {

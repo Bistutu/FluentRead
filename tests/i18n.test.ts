@@ -1,15 +1,15 @@
+import {siteRuleTextRows} from '@/src/core/i18n/messages/siteRules';
 import {readdirSync, readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {describe, expect, it} from 'vitest';
 import {createLegacyPatternSet, localizedLegacyPatterns} from '@/src/core/i18n/messages/legacy-patterns';
-import {createRuntimeFeedbackLegacyText, getRuntimeFeedbackSources} from '@/src/core/i18n/messages/runtime-feedback';
-import {createLegacyCorrectionText, getLegacyCorrectionSources} from '@/src/core/i18n/messages/legacy-corrections';
+import {createRuntimeFeedbackLegacyText, runtimeFeedbackRows} from '@/src/core/i18n/messages/runtime-feedback';
+import {createLegacyCorrectionText, correctionRows} from '@/src/core/i18n/messages/legacy-corrections';
 import {runtimeFeedbackPatterns} from '@/src/core/i18n/messages/runtime-feedback-patterns';
 import * as onboardingMessages from '@/src/core/i18n/messages/onboarding';
 
 import {
   DEFAULT_UI_LANGUAGE,
-  getUiLanguageBilingualLabel,
   getUiLanguageDisplayLabel,
   UI_LANGUAGE_OPTIONS,
   normalizeUiLanguage,
@@ -38,13 +38,22 @@ import {renderContextMenuTitle} from '@/src/core/context-menu/presentation';
 import {navigationItems} from '@/src/features/settings/model/navigation';
 import {parseHotkey} from '@/src/core/hotkey';
 import {IMAGE_OCR_LANGUAGE_PACKS} from '@/src/features/image-translation/ocrLanguages';
-import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
+import {registerAllUiLanguageBundles} from './helpers/uiLanguageBundles';
 import {translateServiceLabel} from '@/src/core/i18n/serviceLabels';
 
 // 扩展运行时按需加载界面语言；本文件验证全部语言的文案契约，因此一次注册全部资源包。
 registerAllUiLanguageBundles();
 
 describe('界面 i18n 契约', () => {
+  it('原型属性名既不是资源键也不是旧文案，不会被替换为原生函数或对象', () => {
+    for (const key of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) {
+      for (const language of ['zh-CN', 'en-US', 'ja-JP'] as const) {
+        expect(translate(key, language)).toBe(key);
+        expect(translateLegacyText(`  ${key}  `, language)).toBe(`  ${key}  `);
+      }
+    }
+  });
+
   it('Popup 站点规则的保存、暂停与网站范围反馈覆盖六种语言并保留用户域名', () => {
     for (const language of ['en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES'] as const) {
       for (const text of ['自动翻译已暂停', '应用于此网站及其子域名，跳转后按新网站规则执行', '禁用会停止此网站的翻译，保留始终翻译偏好', '禁用优先于自动翻译', '恢复扩展后继续自动翻译', '请先恢复扩展', '无法读取当前网站，请重试']) {
@@ -208,6 +217,8 @@ describe('界面 i18n 契约', () => {
     expect(resolveUiLanguageFromLocale('zh-TW')).toBe('zh-CN');
     expect(resolveUiLanguageFromLocale('es-ES')).toBe('es-ES');
     expect(resolveUiLanguageFromLocale(null)).toBe('zh-CN');
+    expect(resolveUiLanguageFromLocale('ar-EG')).toBe('zh-CN');
+    expect(resolveUiLanguageFromLocale('')).toBe('zh-CN');
     expect(options.to.slice(0, 8).map(item => item.label)).toEqual([
       '简体中文', '繁體中文', 'English', '日本語', '한국어', 'Français', 'Русский', 'Español',
     ]);
@@ -363,16 +374,10 @@ describe('界面 i18n 契约', () => {
       'Russian / Русский',
       'Spanish / Español',
     ]);
-    expect(UI_LANGUAGE_OPTIONS.map((item) => getUiLanguageBilingualLabel(item.value))).toEqual([
-      '中文 / Chinese',
-      '英语 / English',
-      '日语 / Japanese',
-      '韩语 / Korean',
-      '法语 / French',
-      '俄语 / Russian',
-      '西班牙语 / Spanish',
-    ]);
     expect(getUiLanguageDisplayLabel('ja-JP', 'es-ES')).toBe('Japonés / Japanese / 日本語');
+    expect(getUiLanguageDisplayLabel('en-US')).toBe('English / 英语');
+    expect(getUiLanguageDisplayLabel('constructor' as never, 'en-US')).toBe('中文');
+    expect(getUiLanguageDisplayLabel('ja-JP', 'constructor' as never)).toBe('日本語 / Japanese / 日语');
     expect(translate('popup.current', 'en-US', {value: 'Ctrl'})).toBe('Current: Ctrl');
     expect(translate('popup.current', 'zh-CN', {value: 'Ctrl'})).toBe('当前：Ctrl');
     expect(translate('popup.current', 'es-ES', {value: 'Ctrl'})).toBe('Actual: Ctrl');
@@ -1087,7 +1092,7 @@ describe('运行期反馈文案资源', () => {
   it('每条精确反馈都来自真实源码，不重复，并在每种界面语言中完整本地化', () => {
     const sourceText = collectSourceText('src', (path) => !path.includes('/i18n/messages/'))
       + collectSourceText('userscript', () => true);
-    const sources = getRuntimeFeedbackSources();
+    const sources = runtimeFeedbackRows.map(row => row[0]);
     expect(new Set(sources).size).toBe(sources.length);
     expect(sources.filter((source) => !sourceText.includes(source))).toEqual([]);
     for (const locale of locales) {
@@ -1166,7 +1171,7 @@ describe('旧界面译文人工校正', () => {
       translate(unavailableServiceKey, 'zh-CN', {service: option.label})
     ));
     const generatedSourceText = generatedServiceSources.join('\n');
-    const sources = getLegacyCorrectionSources();
+    const sources = [...correctionRows, ...siteRuleTextRows].map(row => row[0]);
     expect(new Set(sources).size).toBe(sources.length);
     expect(sources.filter((source) => !sourceText.includes(source) && !generatedSourceText.includes(source))).toEqual([]);
     for (const locale of ['en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES'] as const) {
@@ -1307,5 +1312,16 @@ describe('源码审计的只读本地语言表', () => {
   it('完整表之外同字脚本与模板仍收集，不按字串或文件豁免', async () => {
     const audit = await auditFixture(`${importType}${standard}const rawLabel = '清空';`, '<button title="清空">清空</button>');
     expect(audit.sources.find(item => item.source === '清空')?.files).toEqual(['src/Fixture.vue']);
+  });
+});
+
+
+describe('legacy compound whitespace boundaries', () => {
+  it('preserves blank compound segments while translating their registered neighbors', () => {
+    registerUiLanguageBundle('en-US', {messages: {}, legacyText: {'前': 'Before', '后': 'After'}, legacyPatterns: {early: [], late: []}});
+    try {
+      expect(translateLegacyText('前 ·  · 后', 'en-US')).toBe('Before ·  · After');
+      expect(translateLegacyText(' \t前\n', 'en-US')).toBe(' \tBefore\n');
+    } finally {registerAllUiLanguageBundles();}
   });
 });

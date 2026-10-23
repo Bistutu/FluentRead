@@ -375,9 +375,12 @@ export function createFreeFallbackRunner(maxConcurrency = 3, dependencies: FreeF
                     const result = await work.result;
                     if (signal.aborted) throw abortErrorFromSignal(signal);
                     observe({identity: candidate.identity, outcome: 'success', durationMs: Date.now() - startedAt});
-                    state.generation += 1;
-                    state.retryAt = 0;
-                    state.failures = 0;
+                    // 更早发出的请求可能在新一轮限流后才成功；它可交付译文，不能解除新冷却。
+                    if (state.generation === generation) {
+                        state.generation += 1;
+                        state.retryAt = 0;
+                        state.failures = 0;
+                    }
                     state.performance = observeFreeProviderPerformance(state.performance, true, Date.now() - startedAt, Date.now());
                     persistHealth();
                     outcome = {value: result};

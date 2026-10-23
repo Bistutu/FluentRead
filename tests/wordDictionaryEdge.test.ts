@@ -102,6 +102,7 @@ describe('optional full ECDICT asset', () => {
 
         const rows = await downloadFullEcdict();
         expect(rows).toHaveLength(20_000);
+        expect(rows.every(row => Array.isArray(row) && row.length === 4 && row.every(cell => typeof cell === 'string'))).toBe(true);
         expect(rows.at(-1)?.[0]).toBe('bis');
         expect(requested).toHaveLength(2);
         expect(requested.every(url => !url.includes('puma') && url.includes('ecdict-core.json'))).toBe(true);
@@ -121,6 +122,19 @@ describe('optional full ECDICT asset', () => {
         setRuntimeFetch(async () => new Response(++attempts === 1 ? new Uint8Array(bytes.length + 1) : bytes));
         expect(await downloadFullEcdict()).toHaveLength(20_000);
         expect(attempts).toBe(2);
+    });
+
+    it('releases HTTP failures, skips missing bodies and keeps validated rows when cache writes fail', async () => {
+        const {cache} = optionalDictionaryCache();
+        vi.spyOn(cache, 'put').mockRejectedValue(new Error('Cache quota exceeded'));
+        const cancel = vi.fn(async () => {});
+        const fetch = vi.fn().mockResolvedValueOnce({ok:false, status:503, body:{cancel}})
+            .mockResolvedValueOnce(new Response(null)).mockResolvedValueOnce(new Response(fullEcdictBytes()));
+        setRuntimeFetch(fetch);
+        expect(await downloadFullEcdict()).toHaveLength(20_000);
+        expect(cancel).toHaveBeenCalledOnce(); expect(fetch).toHaveBeenCalledTimes(3);
+        vi.stubGlobal('caches', {open: vi.fn(async () => {throw new Error('Cache blocked');})});
+        expect(await readCachedFullEcdict()).toBeNull();
     });
 
     it('serves uncommon words after background download while keeping the first lookup nonblocking', async () => {
@@ -415,6 +429,7 @@ describe('word dictionary provider network adapters', () => {
         const rows = JSON.parse(readFileSync(resolve(process.cwd(), 'assets/optional/ecdict-core-full.json'), 'utf8')) as string[][];
         expect(core).toHaveLength(3_000);
         expect(rows).toHaveLength(20_000);
+        expect(rows.every(row => Array.isArray(row) && row.length === 4 && row.every(cell => typeof cell === 'string'))).toBe(true);
         expect(core).toEqual(rows.slice(0, 3_000));
         expect(rows.every(row => row.length === 4 && row.every(value => typeof value === 'string'))).toBe(true);
         const originalShape = rows.map(([w, p, d, t]) => ({w, p, d, t, pos: ''}));
@@ -488,6 +503,15 @@ describe('word dictionary provider network adapters', () => {
             {definition: 'without example'},
         ]);
         expect((await provider(providers, 'wiktapi').lookup('word'))?.meanings[0]?.definitions[0]?.definition).toBe('English');
+    });
+
+    it.each([404, 429])('releases unused HTTP %s response bodies before finishing dictionary lookups', async status => {
+        const cancel = vi.fn(async () => {});
+        vi.stubGlobal('fetch', vi.fn(async () => ({ok: false, status, body: {cancel}})));
+        const pending = provider(createDefaultWordDictionaryProviders(), 'youdao-web').lookup('word');
+        if (status === 404) expect(await pending).toBeNull();
+        else await expect(pending).rejects.toThrow('dictionary request failed: 429');
+        expect(cancel).toHaveBeenCalledOnce();
     });
 
     it('returns null for structurally invalid remote payloads and rejects HTTP/JSON failures', async () => {

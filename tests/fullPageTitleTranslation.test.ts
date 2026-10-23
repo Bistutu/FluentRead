@@ -5,6 +5,7 @@
  * 循环守卫、SPA 改写跟随、迟到结果丢弃，以及恢复时不覆盖页面新标题。
  */
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import {parseHTML} from 'linkedom';
 
 const hooks = vi.hoisted(() => ({
     translateText: vi.fn<(origin: string, context: string, options: unknown) => Promise<string>>(),
@@ -55,7 +56,7 @@ beforeEach(() => {
     });
     vi.stubGlobal('MutationObserver', class {
         constructor(private readonly callback: () => void) { allCallbacks.push(callback); }
-        observe(): void { connected.push(this.callback); }
+        observe(): void { if (!connected.includes(this.callback)) connected.push(this.callback); }
         disconnect(): void {
             const index = connected.indexOf(this.callback);
             if (index >= 0) connected.splice(index, 1);
@@ -79,6 +80,82 @@ afterEach(() => {
 });
 
 describe('全文翻译的页面标题', () => {
+    it('整棵 head 被 SPA 替换后跟随新标题，且旧 head 的后续写入不再触发请求', async () => {
+        const {document, MutationObserver} = parseHTML('<html><head><title>First Article</title></head><body></body></html>');
+        vi.stubGlobal('document', document);
+        vi.stubGlobal('MutationObserver', MutationObserver);
+        hooks.translateText.mockImplementation(async text => `翻译：${text}`);
+        startFullPageTitleTranslation(snapshot);
+        await vi.advanceTimersByTimeAsync(0);
+        const oldHead = document.head;
+        const nextHead = document.createElement('head');
+        nextHead.innerHTML = '<title>Second Article</title>';
+        oldHead.replaceWith(nextHead);
+        await vi.advanceTimersByTimeAsync(200);
+        expect(document.title).toBe('翻译：Second Article');
+        expect(hooks.translateText.mock.calls.map(([text]) => text)).toEqual(['First Article', 'Second Article']);
+        oldHead.querySelector('title')!.textContent = 'Detached Article';
+        await vi.advanceTimersByTimeAsync(200);
+        expect(hooks.translateText).toHaveBeenCalledTimes(2);
+        document.title = 'Third Article';
+        await vi.advanceTimersByTimeAsync(200);
+        expect(document.title).toBe('翻译：Third Article');
+        stopFullPageTitleTranslation();
+        expect(document.title).toBe('Third Article');
+        document.title = 'After Stop';
+        await vi.advanceTimersByTimeAsync(200);
+        expect(hooks.translateText).toHaveBeenCalledTimes(3);
+    });
+
+    it('页面整体置换 html 后仍翻译新标题，并清理旧请求', async () => {
+        const {document, MutationObserver} = parseHTML('<html><head><title>Previous Page</title></head><body></body></html>');
+        vi.stubGlobal('document', document);
+        vi.stubGlobal('MutationObserver', MutationObserver);
+        let staleResolve!: (text: string) => void;
+        let staleSignal!: AbortSignal;
+        hooks.translateText.mockImplementationOnce((_text, _context, options) => new Promise(resolve => {
+            staleResolve = resolve; staleSignal = (options as {signal: AbortSignal}).signal;
+        })).mockResolvedValue('新页面');
+        startFullPageTitleTranslation(snapshot);
+        const root = document.createElement('html');
+        root.innerHTML = '<head><title>Next Page</title></head><body><p>Text</p></body>';
+        document.documentElement.replaceWith(root);
+        await vi.advanceTimersByTimeAsync(200);
+        expect(staleSignal.aborted).toBe(true);
+        expect(document.title).toBe('新页面');
+        staleResolve('旧页面');
+        await vi.advanceTimersByTimeAsync(0);
+        expect(document.title).toBe('新页面');
+        stopFullPageTitleTranslation();
+        expect(document.title).toBe('Next Page');
+    });
+
+    it('不存在 head 和 html 的文档仅观察根结构，停止后不再绑定', () => {
+        currentTitle = '';
+        Object.assign(document, {head: null, documentElement: null});
+        const observe = vi.spyOn(MutationObserver.prototype, 'observe');
+        startFullPageTitleTranslation(snapshot);
+        expect(observe.mock.calls).toEqual([[document, {childList: true}]]);
+        stopFullPageTitleTranslation();
+        allCallbacks[0]!();
+        expect(observe).toHaveBeenCalledOnce();
+    });
+
+    it('head 暂时不存在也可启动，并在页面补回 head 后翻译', async () => {
+        const {document, MutationObserver} = parseHTML('<html><head></head><body></body></html>');
+        document.head.remove();
+        vi.stubGlobal('document', document);
+        vi.stubGlobal('MutationObserver', MutationObserver);
+        hooks.translateText.mockResolvedValue('新页面');
+        expect(() => startFullPageTitleTranslation(snapshot)).not.toThrow();
+        const head = document.createElement('head');
+        head.innerHTML = '<title>New Page</title>';
+        document.documentElement.prepend(head);
+        await vi.advanceTimersByTimeAsync(200);
+        expect(document.title).toBe('新页面');
+        expect(hooks.translateText).toHaveBeenCalledOnce();
+    });
+
     it('路由改写标题时立即取消旧请求，只为稳定标题创建新请求', async () => {
         const signals: AbortSignal[] = [];
         hooks.translateText.mockImplementation((_text, _context, options) => {

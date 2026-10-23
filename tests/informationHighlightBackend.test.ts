@@ -357,6 +357,36 @@ describe('bounded model runtime and explicit downloads', () => {
         failed.store.remove.mockRejectedValueOnce('bad removal'); await expect(failed.runtime.remove()).rejects.toBe('bad removal'); expect(await failed.runtime.status()).toMatchObject({errorCode: 'INFORMATION_HIGHLIGHT_REMOVE_FAILED'});
         const disposeDownload = fixture(false); let signal!: AbortSignal; disposeDownload.store.download.mockImplementationOnce((_file, active) => {signal = active; return new Promise(() => {});}); await disposeDownload.runtime.prepare(); await flush(); disposeDownload.runtime.dispose(); expect(signal.aborted).toBe(true);
     });
+    it.each(['releaseWorker', 'dispose'] as const)('does not recreate a worker after %s invalidates a pending model status read', async operation => {
+        const value = fixture();
+        let complete!: (ready: boolean) => void;
+        value.store.complete.mockImplementationOnce(() => new Promise<boolean>(resolve => {complete = resolve;}));
+        const task = value.runtime.score('late source', new AbortController().signal);
+        const assertion = expect(task).rejects.toMatchObject({name: 'AbortError'});
+        await flush(); expect(value.store.complete).toHaveBeenCalled();
+        value.runtime[operation](); complete(true); await flush();
+        expect(value.createWorker).not.toHaveBeenCalled();
+        await assertion;
+        if (operation === 'releaseWorker') {
+            const next = value.runtime.score('fresh source', new AbortController().signal);
+            await flush(); value.answer(); await expect(next).resolves.toEqual(result);
+        } else {
+            await expect(value.runtime.score('after dispose', new AbortController().signal)).rejects.toMatchObject({name: 'AbortError'});
+            expect(value.createWorker).not.toHaveBeenCalled();
+        }
+        value.runtime.dispose();
+    });
+    it('does not start model downloads when disposed while preparation is reading storage', async () => {
+        const value = fixture(false);
+        let complete!: (ready: boolean) => void;
+        value.store.complete.mockImplementationOnce(() => new Promise<boolean>(resolve => {complete = resolve;}));
+        const task = value.runtime.prepare();
+        const assertion = expect(task).rejects.toThrow('DISPOSED');
+        await flush(); value.runtime.dispose(); complete(false); await flush();
+        expect(value.store.download).not.toHaveBeenCalled();
+        await assertion;
+        await expect(value.runtime.prepare()).rejects.toThrow('DISPOSED');
+    });
     it('retries status after disk failure and observes cancellation while the status probe is pending', async () => {
         const retry = fixture(); retry.store.complete.mockRejectedValueOnce(new Error('cache failed')); await expect(retry.runtime.status()).rejects.toThrow('cache failed'); expect(await retry.runtime.status()).toMatchObject({downloaded: true});
         const value = fixture(), controller = new AbortController(); value.store.complete.mockImplementationOnce(async () => {controller.abort(); return true;});

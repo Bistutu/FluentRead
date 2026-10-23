@@ -142,7 +142,8 @@ const artifactBytes = Buffer.byteLength(source);
 // 净增 1,844（0.0868%）；无新增依赖，涵盖语言边界、等待取消和动态扫描。
 // 利用原余量后按既有 1 KB 步长最小增加 2 KB，余 930 字节；全部协议、资源及 VM 断言保留。
 // 构建对照与散列见 docs/reports/reading-consistency-20261023/userscript-size.json。
-const MAX_USERSCRIPT_BYTES = 2_127_100;
+// 发布审计整合已进一步缩小产物，继续使用审计开始时的原上限，不沿用上游增加的 2 KB 余量。
+const MAX_USERSCRIPT_BYTES = 2_125_100;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';
 const preludeEndMarker = '/* FluentRead userscript compatibility prelude:end */';
 const preludeStart = source.indexOf(preludeStartMarker);

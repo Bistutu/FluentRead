@@ -23,6 +23,21 @@ function fixture(urls: string[]) {
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); FakeContext.closed = 0; });
 
 describe('X 首页音轨恢复', () => {
+  it.each(['cancel', 'timeout'] as const)('releases a pending MP4 stream after %s without waiting for its cancellation handshake', async reason => {
+    vi.useFakeTimers();
+    const url = 'https://video.twimg.com/ext_tw_video/111/pu/vid/video.mp4';
+    const {reader, video, fetcher} = fixture([url]);
+    const controller = new AbortController();
+    const cancel = vi.fn(() => new Promise<void>(() => {}));
+    const body = new ReadableStream<Uint8Array>({cancel});
+    fetcher.mockResolvedValue(new Response(body));
+    const reading = reader.read(video, controller.signal);
+    await vi.advanceTimersByTimeAsync(0); expect(fetcher).toHaveBeenCalledOnce(); expect(body.locked).toBe(true);
+    if (reason === 'cancel') controller.abort(); else await vi.advanceTimersByTimeAsync(20_000);
+    await expect(reading).resolves.toBeNull();
+    expect(cancel).toHaveBeenCalledOnce(); expect(body.locked).toBe(false);
+    expect(FakeContext.closed).toBe(0); expect(vi.getTimerCount()).toBe(0);
+  });
   it('uses metadata MP4 when no manifest was observed, preferring low bitrate and matching the current media', async () => {
     const {reader, video, signal, fetcher} = fixture([]);
     const mp4 = (id: string, name: string) => `https://video.twimg.com/ext_tw_video/${id}/pu/vid/${name}.mp4`;

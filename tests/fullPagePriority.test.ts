@@ -15,7 +15,8 @@ import {
     type FullPageQueueState,
 } from '@/src/features/full-page-translation/content/fullPageQueue';
 import type {TranslationCandidate} from '@/src/core/translation/public';
-import {createTranslationCore, getTranslationCandidateKey} from '@/src/core/translation/public';
+import {getTranslationCandidateKey} from '@/src/core/translation/public';
+import {createTranslationCore} from './helpers/translationCore';
 
 function priority(overrides: Partial<Parameters<typeof scoreFullPageCandidatePriority>[0]> = {}) {
     return scoreFullPageCandidatePriority({

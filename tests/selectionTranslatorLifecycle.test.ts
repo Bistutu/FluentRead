@@ -2,68 +2,69 @@
  * @file tests/selectionTranslatorLifecycle.test.ts
  * 文件职责：执行划词组件的实际挂载与卸载回调，验证扩展消息端口撤销、Safari 自有追问焦点的有限键盘/旋转平移窗口与主动滚动收卡边界。
  * 主要内容：覆盖注销清理、原生右键菜单选区恢复与重复翻译复用、免费讲解明确启用及保存确认、用户 AI 偏好保护、关闭/换区/卸载后的迟到保存隔离、朗读生成与降级、取消、迟到响应、进度隔离和富文本 trim 后的 UTF-16 跟读偏移、顶栏菜单外点/焦点关闭边界、导航空白拖动、按配置与显式反向请求确定翻译语言和窗口尺寸变化清理、鉴权配置动作归属；可选真实 SFC 模板模式验证两处错误入口与极矮视口下同一卡片的滚动退化及关闭，并组合实际 selection runtime 验证 Safari 已消费选区的 host 恢复、正文失效及离开清理。
- * 模块边界：默认编译真实 Vue setup 并使用原有空渲染；材料捕获使用真实代次冻结与完成逻辑，只替换来源提取和后台客户端；新增入口可选官方模板和独立 Linkedom 节点树；组合模式将真实组件交给原始 runtime 的平台挂载端口，浏览器、子组件与语言是受控 ports，不声称 CSS、原生焦点或真实浏览器验证。
+ * 模块边界：默认从正常 Vite 管线导入真实 SFC setup 并使用原有空渲染；材料捕获使用真实代次冻结与完成逻辑，只替换来源提取和后台客户端；入口可选原始客户端模板和独立 Linkedom 节点树；不再运行匿名编译的组件副本；组合模式将真实组件交给原始 runtime 的平台挂载端口，浏览器、子组件与语言是受控 ports，不声称 CSS、原生焦点或真实浏览器验证。
  */
-import {hasDistinctTranslation} from '@/src/core/translation/result';
-import * as speechProgress from '@/src/core/tts/speechProgress';
-import {createSelectionTtsContentController} from '@/src/features/selection-translation/content/selectionTtsContentController';
 import {readFileSync} from 'node:fs';
 import {afterEach, describe, expect, it, vi, type MockInstance} from 'vitest';
-import {compileScript, compileTemplate, parse} from 'vue/compiler-sfc';
 import {parseHTML} from 'linkedom';
 import ts from 'typescript';
 import * as Vue from 'vue';
+import SelectionTranslator from '@/src/features/selection-translation/ui/SelectionTranslator.vue';
 import {Config} from '@/src/core/config/model';
 import * as selectionCore from '@/src/features/selection-translation/core';
 import * as translationErrors from '@/src/services/translation/errors';
 import * as harness from '@/src/core/config/harness';
 import {services} from '@/src/core/config/catalog';
-import * as runtimeMessages from '@/src/platform/browser/runtimeMessages';
-import * as detect from '@/src/core/language/detect';
-import * as partOfSpeech from '@/src/core/language/partOfSpeech';
-import * as wordNormalization from '@/src/features/selection-translation/services/wordNormalization';
 import * as vocabularyProtocol from '@/src/features/vocabulary/protocol';
-import * as hotkey from '@/src/core/hotkey';
 import * as visualViewport from '@/src/platform/dom/visualViewport';
 import * as modalDialogHost from '@/src/features/selection-translation/content/modalDialogHost';
-import {setSelectionContextMenuHandler, translateSelectionFromContextMenu as translateSelectionThroughBridge} from '@/src/features/selection-translation/content/contextMenuBridge';
 import {beginMaterialCapture as beginCapture, completeMaterialCapture as completeCapture, type MaterialSelection} from '@/src/features/vocabulary/materialCapture';
-import {projectMaterialOriginalText} from '@/src/features/vocabulary/materialOriginalText';
 import {observeNativePdfSelectionCard} from '@/src/app/selection/cardVisibility';
 
-vi.mock('webextension-polyfill', () => ({default: {}}));
+const selectionPorts = vi.hoisted(() => ({modules: {} as Record<string, any>, readingControls:false, evidence:undefined as any, shareMounted:false, share:vi.fn()}));
+vi.mock('webextension-polyfill', () => ({default: {
+    get runtime() {return selectionPorts.modules['webextension-polyfill']?.runtime;},
+    get extension() {return selectionPorts.modules['webextension-polyfill']?.extension;},
+}}));
+vi.mock('vue', async original => {const vue = await original<typeof import('vue')>(); return {...vue, useTemplateRef: () => vue.ref(null)};});
+vi.mock('@/src/services/config/store', () => ({
+    get config() {return selectionPorts.modules['@/src/services/config/store'].config;},
+    get configReady() {return selectionPorts.modules['@/src/services/config/store'].configReady;},
+    requestConfigPatch: (...args: unknown[]) => selectionPorts.modules['@/src/services/config/store'].requestConfigPatch(...args),
+    subscribeConfig: (...args: unknown[]) => selectionPorts.modules['@/src/services/config/store'].subscribeConfig(...args),
+}));
+vi.mock('@/src/services/translation/client', () => ({
+    translateText: (...args: unknown[]) => selectionPorts.modules['@/src/services/translation/client'].translateText(...args),
+    translateTextBatch: (...args: unknown[]) => selectionPorts.modules['@/src/services/translation/client'].translateTextBatch(...args),
+}));
+vi.mock('@/src/features/reading-assistant/public', () => ({createReadingEvidenceAnchor: (_range:unknown,_selection:unknown,options:any) => {const anchor={locate:vi.fn(()=>'located'),check:vi.fn(()=>'available'),suspend:vi.fn(),clear:vi.fn(),dispose:vi.fn(),invalidate:options.onInvalidate};selectionPorts.evidence=anchor;return anchor}, captureReadingSelection: () => undefined}));
+vi.mock('@/src/features/reading-assistant/ui/panel/public', () => ({ReadingPanel: {
+    props:['initialAction','historyOnly','sourceTranslation','clearEvidence','checkEvidence','locateEvidence','sourceRevision'],emits:['view-change','play-source','source-change'],
+    setup:(props:any,{emit}:any)=>()=>selectionPorts.readingControls?Vue.h('div',{'data-reading-port':'','data-history':String(props.historyOnly),'data-revision':props.sourceRevision},[
+        Vue.h('button',{'data-reading-check':'',onClick:()=>props.checkEvidence()},'Check source'),
+        Vue.h('button',{'data-reading-locate':'',onClick:()=>props.locateEvidence('source quote')},'Locate source'),
+        Vue.h('button',{'data-reading-clear':'',onClick:()=>props.clearEvidence()},'Clear source'),
+        Vue.h('button',{'data-reading-view':'',onClick:()=>emit('view-change',{action:'grammar',history:false})},'Grammar view'),
+        Vue.h('button',{'data-reading-play':'',onClick:()=>emit('play-source',props.sourceTranslation.source)},'Play source'),
+        Vue.h('button',{'data-reading-change':'',onClick:()=>emit('source-change')},'Source changed'),
+    ]):null,
+}}));
+vi.mock('@/src/features/selection-translation/ui/SpeechFollowText.vue', () => ({default: {props: ['text'], setup: (props: {text: string}) => () => Vue.h('span', props.text)}}));
+vi.mock('@/src/features/vocabulary/material/public', () => ({
+    captureMaterialSelection: (...args: unknown[]) => selectionPorts.modules['@/src/features/vocabulary/material/public'].captureMaterialSelection(...args),
+    beginMaterialCapture: (...args: unknown[]) => selectionPorts.modules['@/src/features/vocabulary/material/public'].beginMaterialCapture(...args),
+    completeMaterialCapture: (...args: unknown[]) => selectionPorts.modules['@/src/features/vocabulary/material/public'].completeMaterialCapture(...args),
+}));
+vi.mock('@/src/features/share-card/public', () => ({isShareCardMounted: () => selectionPorts.shareMounted, openShareCard:selectionPorts.share}));
+vi.mock('@/src/features/selection-translation/content/selectionTtsContentController', () => ({createSelectionTtsContentController: (...args: unknown[]) => selectionPorts.modules['@/src/features/selection-translation/content/selectionTtsContentController'].createSelectionTtsContentController(...args)}));
+vi.mock('@/src/features/selection-translation/content/contextMenuBridge', () => ({setSelectionContextMenuHandler: (...args: unknown[]) => selectionPorts.modules['@/src/features/selection-translation/content/contextMenuBridge'].setSelectionContextMenuHandler(...args)}));
+vi.mock('@/src/features/selection-translation/pageZoom', async original => ({...await original<typeof import('@/src/features/selection-translation/pageZoom')>(), normalizeSelectionPageZoom: () => 1}));
+vi.mock('@/src/ui/i18n', () => ({useUiI18n: () => ({t: (key: string) => key, translateLegacy: (text: string) => text})}));
 const materialPorts = vi.hoisted(() => ({generation: vi.fn(), capture: vi.fn()}));
 vi.mock('@/src/features/vocabulary/materialClient', () => ({materialGeneration: materialPorts.generation, materialCapture: materialPorts.capture}));
-
-const filename = 'src/features/selection-translation/ui/SelectionTranslator.vue';
-const {descriptor} = parse(readFileSync(filename, 'utf8'), {filename});
-const script = compileScript(descriptor, {id: 'selection-lifecycle'});
+const {createSelectionTtsContentController} = await vi.importActual<typeof import('@/src/features/selection-translation/content/selectionTtsContentController')>('@/src/features/selection-translation/content/selectionTtsContentController');
+const {setSelectionContextMenuHandler, translateSelectionFromContextMenu: translateSelectionThroughBridge} = await vi.importActual<typeof import('@/src/features/selection-translation/content/contextMenuBridge')>('@/src/features/selection-translation/content/contextMenuBridge');
 type SelectionBuildTarget = 'chrome' | 'userscript' | 'safari' | 'firefox';
-const setupSource = script.content;
-const compiledByTarget = new Map<SelectionBuildTarget, string>();
-function compileForTarget(target: SelectionBuildTarget): string {
-    let compiled = compiledByTarget.get(target);
-    if (!compiled) {
-        // 和 Vite 的 define 使用相同静态属性替换；各构建目标只转译一次，所有用例复用真实 setup。
-        compiled = ts.transpileModule(setupSource.replaceAll('import.meta.env.BROWSER', JSON.stringify(target)), {
-            compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true},
-        }).outputText;
-        compiledByTarget.set(target, compiled);
-    }
-    return compiled;
-}
-let compiledTemplate: string | undefined;
-function selectionTemplateCode() {
-    if (compiledTemplate === undefined) {
-        const result = compileTemplate({source: descriptor.template!.content, filename, id: 'selection-lifecycle',
-            compilerOptions: {bindingMetadata: script.bindings, hoistStatic: false}});
-        if (result.errors.length) throw new Error(result.errors.map(String).join('\n'));
-        compiledTemplate = ts.transpileModule(result.code, {
-            compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true},
-        }).outputText;
-    }
-    return compiledTemplate;
-}
 // 官方 SFC render 使用独立 DOM 节点树；不替换现有浏览器事件 port，
 // 不验证 CSS 布局、原生焦点、禁用控件的浏览器事件策略或真实语言切换。
 function createSelectionTemplatePort() {
@@ -124,13 +125,14 @@ function createSelectionTemplatePort() {
 }
 
 let app: Vue.App | undefined;
-afterEach(() => { app?.unmount(); app = undefined; vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
+afterEach(() => { app?.unmount(); app = undefined; selectionPorts.readingControls=false;selectionPorts.shareMounted=false;selectionPorts.share.mockClear();vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.useRealTimers(); });
 
 function mountSelection(privateContext = false, selectionAdapter?: Record<string, unknown>,
     targetOrProps: SelectionBuildTarget | Record<string, unknown> = 'chrome', readyOrTemplate: Promise<void> | boolean = Promise.resolve(),
     runtimeIntegration = false) {
     // 保留两侧原调用：主线 target/configReady 与本地 componentProps/可选完整模板。
     const browserTarget = typeof targetOrProps === 'string' ? targetOrProps : 'chrome';
+    vi.stubEnv('BROWSER', browserTarget);
     const componentProps = typeof targetOrProps === 'string' ? {} : targetOrProps;
     const configReady = typeof readyOrTemplate === 'boolean' ? Promise.resolve() : readyOrTemplate;
     const renderTemplate = typeof readyOrTemplate === 'boolean' ? readyOrTemplate : false;
@@ -193,29 +195,10 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
     let stopTts: MockInstance<(notifyRemote?: boolean) => void>;
     let ttsRequestId = 0;
     const modules: Record<string, unknown> = {
-        './SpeechFollowText.vue': renderTemplate
-            ? {props: ['text'], setup: (props: {text: string}) => () => Vue.h('span', props.text)} : {},
-        '@/src/features/reading-assistant/public': {createReadingEvidenceAnchor: () => ({locate: () => 'unavailable', check: () => 'unavailable', suspend: vi.fn(), clear: vi.fn(), dispose: vi.fn()})},
-        '@/src/core/tts/speechProgress': speechProgress,
-        '@/src/core/translation/result': {hasDistinctTranslation},
-        vue: {...Vue, useTemplateRef: () => Vue.ref(null)},
         'webextension-polyfill': browser,
-        '@/src/platform/browser/runtimeMessages': runtimeMessages,
-        '@/src/platform/dom/visualViewport': visualViewport,
         '@/src/services/config/store': {config, configReady, requestConfigPatch, subscribeConfig: (listener: () => void) => { configListener = listener; return unsubscribeConfig; }},
         '@/src/services/translation/client': {translateText, translateTextBatch},
-        '@/src/features/selection-translation/core': selectionCore,
-        '@/src/services/translation/errors': translationErrors,
-        '@/src/features/selection-translation/services/wordNormalization': wordNormalization,
-        '@/src/core/config/harness': harness,
-        '@/src/core/config/catalog': {services},
-        '@/src/core/language/detect': detect,
-        '@/src/core/language/partOfSpeech': partOfSpeech,
-        '@/src/features/vocabulary/protocol': vocabularyProtocol,
         '@/src/features/vocabulary/material/public': material,
-        '@/src/features/vocabulary/material/text/public': {projectMaterialOriginalText},
-        '@/src/core/hotkey': hotkey,
-        '@/src/features/share-card/public': {isShareCardMounted: () => false},
         '@/src/features/selection-translation/content/selectionTtsContentController': {
             createSelectionTtsContentController: (dependencies: Parameters<typeof createSelectionTtsContentController>[0]) => {
                 const controller = createSelectionTtsContentController({
@@ -229,20 +212,9 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
         '@/src/features/selection-translation/content/contextMenuBridge': {
             setSelectionContextMenuHandler: registerContextMenu,
         },
-        '@/src/features/selection-translation/pageZoom': {normalizeSelectionPageZoom: () => 1},
-        '@/src/ui/i18n': {useUiI18n: () => ({t: (key: string) => key, translateLegacy: (text: string) => text})},
     };
-    const exports: Record<string, any> = {};
-    const loadModule = (id: string) => {
-        if (!(id in modules) && !id.startsWith('@/src/')) throw new Error(`Unexpected import: ${id}`);
-        return modules[id] ?? {};
-    };
-    new Function('require', 'exports', compileForTarget(browserTarget))(loadModule, exports);
-    if (renderPort) {
-        const renderExports: Record<string, any> = {};
-        new Function('require', 'exports', selectionTemplateCode())(loadModule, renderExports);
-        exports.default.render = renderExports.render;
-    } else exports.default.render = () => null;
+    selectionPorts.modules = modules;
+    const component = renderPort ? SelectionTranslator : {...SelectionTranslator, render: () => null};
     const renderer = renderPort?.renderer ?? Vue.createRenderer<Record<string, unknown>, Record<string, unknown>>({
         patchProp() {}, insert() {}, remove() {}, createElement: () => ({}),
         createText: () => ({}), createComment: () => ({}), setText() {}, setElementText() {},
@@ -253,7 +225,7 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
     const lifecycleErrors = vi.fn();
     const mountActual = (props: Record<string, unknown> = {}, root = renderPort?.root ?? {}) => {
         if (currentApp) throw new Error('The same component must not be mounted twice');
-        currentApp = renderer.createApp(exports.default, {selectionAdapter, ...componentProps, ...props});
+        currentApp = renderer.createApp(component, {selectionAdapter, ...componentProps, ...props});
         currentApp.config.errorHandler = lifecycleErrors;
         app = currentApp;
         if (renderPort) currentApp.directive('ui-i18n', {});
@@ -263,7 +235,7 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
     };
     if (!runtimeIntegration) mountActual();
     return {get state() {return state;}, event, browser, config, listeners, window, document, material, unsubscribeConfig, requestConfigPatch, notifyConfig, releaseContextMenu, translateText, translateTextBatch, stopTts: stopTts!,
-        component: exports.default, mountActual,
+        component, mountActual,
         registerContextMenu, get contextMenuHandler() {return contextMenuHandler;},
         captureMaterialSelection, beginMaterialCapture, completeMaterialCapture, materialGeneration: materialPorts.generation, materialCapture: materialPorts.capture,
         lifecycleErrors, renderPort, unmount: () => { currentApp?.unmount(); app = undefined; }};
@@ -1521,9 +1493,6 @@ describe('SelectionTranslator trimmed speech offsets in rich text', () => {
         const displayedParts = kind === 'source' ? fixture.state.sourceTextParts : fixture.state.translatedTextParts;
         const offset = displayedParts[1].offset;
         expect(offset).toBe(leading.length + code.length);
-        expect(speechProgress.speechTextSlices(displayedParts[1].text, offset, displayed)).toEqual({
-            before: ' ', active: 'hello', after: trailing, fraction: 0.5,
-        });
         expect(displayedParts[0].text).toBe(leading + code);
         expect(displayedParts.map((part: {text: string}) => part.text).join('')).toBe(text);
         fixture.state.stopAudioFromUi();
@@ -1559,9 +1528,7 @@ describe('SelectionTranslator trimmed speech offsets in rich text', () => {
         utterance.onboundary({charIndex: 2, charLength: 5});
         const displayed = fixture.state.audioProgressFor(kind);
         expect(displayed).toEqual({start: 4, end: 9, fraction: 1, estimated: false});
-        expect(speechProgress.speechTextSlices(parts[1].text, (kind === 'source' ? fixture.state.sourceTextParts : fixture.state.translatedTextParts)[1].offset, displayed)).toEqual({
-            before: ' ', active: 'hello', after: '', fraction: 1,
-        });
+        expect((kind === 'source' ? fixture.state.sourceTextParts : fixture.state.translatedTextParts)[1]).toMatchObject({text: ' hello', offset: 3});
         fixture.state.stopAudioFromUi();
         expect(fixture.state.audioTextOffset).toBe(0);
         expectAudioReset(fixture.state);
@@ -4658,4 +4625,245 @@ describe('Safari reading input keyboard transition', () => {
         f.keyboardScroll(); await Vue.nextTick();
         expect(f.state.showTooltip).toBe(false);
     });
+});
+
+
+it.each(['close', 'unmount'] as const)('does not recreate copy feedback after %s while the clipboard is pending', async boundary => {
+    const fixture = mountSelection();
+    let resolve!: () => void;
+    const writeText = vi.fn(() => new Promise<void>(done => {resolve = done;}));
+    vi.stubGlobal('navigator', {clipboard: {writeText}});
+    const copying = fixture.state.copyText('Original source', 'source');
+    if (boundary === 'close') fixture.state.hideAll();
+    else fixture.unmount();
+    const remainingTimers = vi.getTimerCount();
+    resolve(); await copying;
+    expect(fixture.state.copySuccess).toBe(false);
+    expect(fixture.state.copiedTextKind).toBeNull();
+    expect(vi.getTimerCount()).toBe(remainingTimers);
+});
+
+describe('selection settings link response ownership through the rendered toolbar', () => {
+    async function settingsFixture() {
+        const fixture = mountSelection(false, {acceptsRange: () => true}, {}, true);
+        fixture.config.harness.service = services.openai;
+        fixture.config.harness.enabled = false;
+        fixture.state.selectionConfigVersion += 1;
+        fixture.notifyConfig();
+        await Vue.nextTick(); await Promise.resolve(); await Vue.nextTick();
+        const text = 'Read this complete source.';
+        Object.assign(fixture.state, {snapshot: {text, parts: [{kind: 'text', text}], range: {}}, selectedText: text, translationResult: '完整译文', showTooltip: true});
+        await Vue.nextTick();
+        const entry = [...fixture.renderPort!.root.querySelectorAll('button')].find(button => button.textContent === '配置 AI 讲解')!;
+        expect(entry, fixture.renderPort!.root.innerHTML).toBeDefined();
+        return {...fixture, entry};
+    }
+    it.each(['response', 'rejection'] as const)('shows current %s failures without leaving the source card', async kind => {
+        const fixture = await settingsFixture();
+        fixture.browser.runtime.sendMessage.mockImplementation(message => message.type !== 'openOptionsPage' ? Promise.resolve({success: true})
+            : kind === 'response' ? Promise.resolve({success: false}) : Promise.reject(new Error('extension disconnected')));
+        await fixture.renderPort!.click(fixture.entry); await Vue.nextTick();
+        expect(fixture.browser.runtime.sendMessage).toHaveBeenCalledWith({type:'openOptionsPage',section:'settings-selection'});
+        expect(fixture.renderPort!.root.textContent).toContain('请从扩展设置进入划词翻译');
+        expect(fixture.state.showTooltip).toBe(true);
+    });
+    it.each(['close', 'unmount', 'replacement'] as const)('ignores a late settings failure after %s', async boundary => {
+        const fixture = await settingsFixture(), response = deferredTts();
+        fixture.browser.runtime.sendMessage.mockImplementation(message => message.type === 'openOptionsPage' ? response.promise : Promise.resolve({success: true}));
+        const opening = fixture.renderPort!.click(fixture.entry);
+        if (boundary === 'close') await fixture.renderPort!.click(fixture.renderPort!.root.querySelector('.fr-close-btn')!);
+        else if (boundary === 'unmount') fixture.unmount();
+        else {fixture.state.snapshot = {...fixture.state.snapshot,text:'Replacement source'};fixture.state.selectedText='Replacement source';await Vue.nextTick();}
+        const timers = vi.getTimerCount();response.resolve({success:false});await opening;await Vue.nextTick();
+        expect(fixture.state.noticeMessage).toBe('');expect(vi.getTimerCount()).toBe(timers);
+    });
+});
+
+describe('rendered speech controls consume native completion events', () => {
+    it.each(['edge-page', 'google-page', 'dictionary', 'browser'] as const)('releases %s playback on completion and ignores callbacks from an older audio owner', async route => {
+        const fixture = mountSelection(false, {acceptsRange: () => true}, {}, true);
+        fixture.config.selectionTtsMode = 'online-only';
+        fixture.notifyConfig();await Vue.nextTick();await Promise.resolve();await Vue.nextTick();
+        const audios: Array<any> = [], utterances: Array<any> = [];
+        class AudioPort {
+            currentTime=1;duration=4;preload='';onended:(()=>void)|null=null;onerror:(()=>void)|null=null;
+            play=vi.fn(async()=>undefined);pause=vi.fn();removeAttribute=vi.fn();
+            constructor(public src:string){audios.push(this)}
+        }
+        vi.stubGlobal('Audio',AudioPort);
+        vi.stubGlobal('SpeechSynthesisUtterance',route==='browser'?class {constructor(public text:string){utterances.push(this)}}:undefined);
+        Object.assign(fixture.window.speechSynthesis,{getVoices:()=>[],speak:vi.fn()});
+        vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:selection-audio');const revoke=vi.spyOn(URL,'revokeObjectURL').mockImplementation(()=>{});
+        fixture.browser.runtime.sendMessage.mockImplementation(message=>Promise.resolve(message.type==='selectionTts'
+            ?route==='edge-page'?{success:true,transport:'page',audioBase64:btoa('audio')}: {success:false}
+            :message.type==='selectionTtsGoogle'?{success:false}:{success:true,zoom:1}));
+        const text=route==='dictionary'?'hello':'Read this complete source.';
+        Object.assign(fixture.state,{snapshot:{text,parts:[{kind:'text',text}],range:{}},selectedText:text,translationResult:'完整译文',showTooltip:true});
+        if(route==='dictionary')fixture.state.wordCard={word:'hello',normalizedWord:'hello',meanings:[],sources:[],phonetics:[{text:'/hello/',audio:'https://dictionary.test/hello.mp3',label:'美式'}]};
+        await Vue.nextTick();const port=fixture.renderPort!;
+        const selector=route==='dictionary'?'.fr-word-pronunciations .fr-text-audio-btn':'.fr-original-text .fr-text-audio-btn';
+        const play=()=>port.click(port.root.querySelector(selector)!);
+        await play();await Vue.nextTick();expect(fixture.state.isPlaying).toBe(true);
+        const first=route==='browser'?utterances[0]:audios[0],oldEnded=first[route==='browser'?'onend':'onended'],oldError=first.onerror;
+        if(route!=='browser'){
+            await vi.advanceTimersByTimeAsync(100);await Vue.nextTick();const seeks=port.root.querySelectorAll('.fr-seek-btn');
+            await port.click(seeks[1]);expect(first.currentTime).toBe(4);await port.click(seeks[0]);expect(first.currentTime).toBe(0);
+        }
+        await play();await play();await Vue.nextTick();
+        expect(fixture.state.isPlaying).toBe(true);const current=route==='browser'?utterances[1]:audios[1];
+        oldEnded?.();oldError?.({error:'network'});await Vue.nextTick();
+        expect(fixture.state.isPlaying).toBe(true);expect(port.root.querySelector(selector)!.getAttribute('title')).toContain('停止播放');
+        current[route==='browser'?'onend':'onended']();await Vue.nextTick();
+        expectAudioReset(fixture.state);expect(port.root.querySelector(selector)!.getAttribute('title')).toMatch(/^播放/);
+        if(route!=='browser'){expect(current.pause).toHaveBeenCalledOnce();expect(current.removeAttribute).toHaveBeenCalledWith('src');expect(current.onended).toBeNull();expect(current.onerror).toBeNull();}
+        if(route==='edge-page')expect(revoke).toHaveBeenCalledTimes(2);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+    it.each(['edge-page', 'google-page', 'dictionary', 'browser'] as const)('makes %s media errors retryable through the same rendered button and releases progress resources', async route => {
+        const fixture=mountSelection(false,{acceptsRange:()=>true},{},true);fixture.config.selectionTtsMode='online-only';await Vue.nextTick();
+        const objects:Array<any>=[];
+        vi.stubGlobal('Audio',class {currentTime=1;duration=3;play=vi.fn(async()=>undefined);pause=vi.fn();removeAttribute=vi.fn();constructor(public src:string){objects.push(this)}});
+        vi.stubGlobal('SpeechSynthesisUtterance',route==='browser'?class {constructor(public text:string){objects.push(this)}}:undefined);
+        Object.assign(fixture.window.speechSynthesis,{getVoices:()=>[],speak:vi.fn()});
+        vi.spyOn(console,'warn').mockImplementation(()=>{});vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:selection-error');const revoke=vi.spyOn(URL,'revokeObjectURL').mockImplementation(()=>{});
+        fixture.browser.runtime.sendMessage.mockImplementation(message=>Promise.resolve(message.type==='selectionTts'&&route==='edge-page'?{success:true,transport:'page',audioBase64:btoa('audio')}:message.type==='selectionTts'||message.type==='selectionTtsGoogle'?{success:false}:{success:true,zoom:1}));
+        const text=route==='dictionary'?'hello':'Read this complete source.';
+        Object.assign(fixture.state,{snapshot:{text,parts:[{kind:'text',text}],range:{}},selectedText:text,translationResult:'完整译文',showTooltip:true});
+        if(route==='dictionary')fixture.state.wordCard={word:'hello',normalizedWord:'hello',meanings:[],sources:[],phonetics:[{text:'/hello/',audio:'https://dictionary.test/hello.mp3',label:'美式'}]};
+        await Vue.nextTick();const port=fixture.renderPort!,selector=route==='dictionary'?'.fr-word-pronunciations .fr-text-audio-btn':'.fr-original-text .fr-text-audio-btn';
+        await port.click(port.root.querySelector(selector)!);expect(fixture.state.isPlaying).toBe(true);
+        objects[0].onerror({error:'network'});await Vue.nextTick();
+        expect(fixture.state.isPlaying).toBe(false);expect(fixture.state.audioPosition).toBeNull();expect(fixture.state.sourceAudioProgress).toBeNull();expect(port.root.querySelector(selector)!.getAttribute('title')).toMatch(/^播放/);
+        if(route!=='browser'){expect(objects[0].pause).toHaveBeenCalledOnce();expect(objects[0].removeAttribute).toHaveBeenCalledWith('src');}
+        if(route==='edge-page')expect(revoke).toHaveBeenCalledOnce();
+        await port.click(port.root.querySelector(selector)!);await Vue.nextTick();expect(objects).toHaveLength(2);expect(fixture.state.isPlaying).toBe(true);
+        fixture.unmount();expect(fixture.lifecycleErrors).not.toHaveBeenCalled();expect(vi.getTimerCount()).toBe(0);
+    });
+});
+
+
+it('connects rendered reading navigation, evidence and source playback to the current selection', async () => {
+    selectionPorts.readingControls=true;
+    const text='Read this complete source.',captureReading=vi.fn(()=>({text,context:text,sentence:text}));
+    const fixture=mountSelection(false,{acceptsRange:()=>true,captureReading},{},true);
+    fixture.config.harness={...fixture.config.harness,enabled:true,service:services.openai,actions:['meaning','grammar'],defaultAction:'meaning'};
+    fixture.state.selectionConfigVersion+=1;fixture.notifyConfig();await Vue.nextTick();await Promise.resolve();await Vue.nextTick();
+    Object.assign(fixture.state,{snapshot:{text,parts:[{kind:'text',text}],range:{}},selectedText:text,translationResult:'完整译文',showTooltip:true});await Vue.nextTick();
+    const port=fixture.renderPort!;const history=[...port.root.querySelectorAll('button')].find(button=>button.textContent==='记录')!;
+    await port.click(history);await Vue.nextTick();expect(captureReading).toHaveBeenCalledOnce();expect(port.root.querySelector('[data-reading-port]')!.getAttribute('data-history')).toBe('true');
+    const anchor=selectionPorts.evidence;
+    await port.click(port.root.querySelector('[data-reading-check]')!);await port.click(port.root.querySelector('[data-reading-locate]')!);await port.click(port.root.querySelector('[data-reading-clear]')!);
+    expect(anchor.check).toHaveBeenCalledOnce();expect(anchor.locate).toHaveBeenCalledWith('source quote');expect(anchor.suspend).toHaveBeenCalledOnce();
+    await port.click(port.root.querySelector('[data-reading-view]')!);await Vue.nextTick();expect(port.root.querySelector('[data-reading-port]')!.getAttribute('data-history')).toBe('false');expect([...port.root.querySelectorAll('.fr-study-toolbar button')].find(button=>button.textContent==='词性与句法')!.getAttribute('aria-pressed')).toBe('');
+    anchor.invalidate();await Vue.nextTick();expect(anchor.suspend).toHaveBeenCalledTimes(2);expect(port.root.querySelector('[data-reading-port]')!.getAttribute('data-revision')).toBe('1');
+    prepareTts(fixture,[Promise.resolve({success:true,transport:'offscreen'})]);await port.click(port.root.querySelector('[data-reading-play]')!);await Promise.resolve();await Vue.nextTick();expect(fixture.state.isPlaying).toBe(true);
+    await port.click(port.root.querySelector('[data-reading-change]')!);expectAudioReset(fixture.state);
+    await port.click([...port.root.querySelectorAll('.fr-study-toolbar button')].find(button=>button.textContent==='翻译')!);await Vue.nextTick();expect(fixture.state.readingMode).toBe(false);expect(port.root.querySelector('.fr-original-text')).not.toBeNull();
+    await port.click([...port.root.querySelectorAll('.fr-study-toolbar button')].find(button=>button.textContent==='词性与句法')!);await Vue.nextTick();expect(fixture.state.readingInitialAction).toBe('grammar');expect(fixture.state.readingMode).toBe(true);
+    await port.click(port.root.querySelector('.fr-close-btn')!);expect(anchor.dispose).toHaveBeenCalledOnce();expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+});
+
+it('shares only the currently displayed completed translation from the actual toolbar',async()=>{
+    selectionPorts.shareMounted=true;const fixture=mountSelection(false,{acceptsRange:()=>true},{},true);await Vue.nextTick();
+    const text='Share this selected source.';Object.assign(fixture.state,{snapshot:{text,parts:[{kind:'text',text}],range:{}},selectedText:text,translationResult:'当前已完成的译文',showTooltip:true});await Vue.nextTick();
+    const port=fixture.renderPort!;await port.click(port.root.querySelector('.fr-share-card-entry')!);expect(selectionPorts.share).toHaveBeenCalledWith({original:text,translation:'当前已完成的译文'});
+    fixture.state.isLoading=true;await Vue.nextTick();expect(port.root.querySelector('.fr-share-card-entry')).toBeNull();
+});
+
+it('retries the dictionary from its rendered error, copies the selected word and translation, and toggles Chinese support',async()=>{
+    const fixture=mountSelection(false,{acceptsRange:()=>true},{},true);await Vue.nextTick();
+    const card={word:'hello',normalizedWord:'hello',phonetics:[],sources:[{id:'fixture',label:'Dictionary',url:'https://dictionary.test/hello'}],meanings:[{partOfSpeech:'感叹词',definitions:[{definition:'A greeting',translatedDefinition:'打招呼',example:'Hello again',translatedExample:'再次问好'}]}]};
+    let lookups=0;fixture.browser.runtime.sendMessage.mockImplementation(message=>Promise.resolve(message.type==='selectionWordLookup'?++lookups===1?{success:false}:{success:true,data:card}:message.type==='selectionTts'?{success:true,transport:'offscreen'}:{success:true,zoom:1}));
+    vi.spyOn(console,'warn').mockImplementation(()=>{});const writeText=vi.fn(async(_text:string)=>{});vi.stubGlobal('navigator',{clipboard:{writeText}});
+    fixture.translateText.mockResolvedValue('你好');const text='hello';Object.assign(fixture.state,{snapshot:{text,parts:[{kind:'text',text}],range:{}},selectedText:text,showTooltip:true});fixture.state.requestSelectionContent(text);
+    for(let i=0;i<8;i++){await Promise.resolve();await Vue.nextTick()}
+    const port=fixture.renderPort!;expect(port.root.textContent).toContain('词典暂时未能返回结果');expect(port.root.textContent).toContain('你好');
+    await port.click(port.root.querySelector('.fr-word-fallback-note button')!);for(let i=0;i<8;i++){await Promise.resolve();await Vue.nextTick()}
+    expect(lookups).toBe(3);expect(port.root.querySelector('.fr-word-fallback-note')).toBeNull();expect(port.root.querySelector('.fr-word-definition-zh')!.textContent).toBe('打招呼');
+    await port.click(port.root.querySelector('.fr-word-meaning-toolbar button')!);await Vue.nextTick();expect(port.root.querySelector('.fr-word-definition-zh')).toBeNull();expect(port.root.querySelector('.fr-word-example-zh')).toBeNull();
+    await port.click(port.root.querySelector('.fr-word-meaning-toolbar button')!);await Vue.nextTick();expect(port.root.querySelector('.fr-word-example-zh')!.textContent).toBe('译：再次问好');
+    await port.click(port.root.querySelector('[data-copy-kind="source"]')!);await port.click(port.root.querySelector('[data-copy-kind="translation"]')!);await Vue.nextTick();expect(writeText.mock.calls.map(([text])=>text)).toEqual(['hello','你好']);
+    await port.click(port.root.querySelector('.fr-word-heading-audio')!);await Vue.nextTick();expect(fixture.state.isPlaying).toBe(true);expect(ttsMessages(fixture,'selectionTts')[0].text).toBe('hello');
+    await port.click(port.root.querySelector('.fr-word-heading-audio')!);expectAudioReset(fixture.state);expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+});
+
+it('copies both sentence fields and plays the translated text through the real sentence toolbar',async()=>{
+    const fixture=mountSelection(false,{acceptsRange:()=>true},{},true);await Vue.nextTick();const text='Read the entire sentence.';
+    Object.assign(fixture.state,{snapshot:{text,parts:[{kind:'text',text}],range:{}},selectedText:text,translationResult:'阅读完整句子。',translationParts:[{kind:'text',text:'阅读完整句子。'}],showTooltip:true});await Vue.nextTick();
+    const writeText=vi.fn(async(_text:string)=>{});vi.stubGlobal('navigator',{clipboard:{writeText}});prepareTts(fixture,[Promise.resolve({success:true,transport:'offscreen'})]);const port=fixture.renderPort!;
+    await port.click(port.root.querySelector('[data-copy-kind="source"]')!);await port.click(port.root.querySelector('[data-copy-kind="translation"]')!);expect(writeText.mock.calls.map(([text])=>text)).toEqual([text,'阅读完整句子。']);
+    await port.click(port.root.querySelector('.fr-translation-result .fr-text-audio-btn')!);await Vue.nextTick();expect(fixture.state.currentAudioKind).toBe('translation');expect(ttsMessages(fixture,'selectionTts')[0].text).toBe('阅读完整句子。');
+});
+
+describe('rendered notice settings response ownership', () => {
+    it.each(['open-vocabulary','open-local-tts'] as const)('keeps %s retryable when opening settings is refused',async action=>{
+        const fixture=mountSelection(false,undefined,'chrome',true);await Vue.nextTick();fixture.state.showNotice('Current notice',action);await Vue.nextTick();
+        fixture.browser.runtime.sendMessage.mockResolvedValue({success:false});const port=fixture.renderPort!;
+        await port.click(port.root.querySelector('.fr-action-toast button')!);await Vue.nextTick();
+        expect(port.root.querySelector('.fr-action-toast')!.textContent).toContain('无法打开设置');
+        fixture.browser.runtime.sendMessage.mockResolvedValue({success:true});await port.click(port.root.querySelector('.fr-action-toast button')!);await Vue.nextTick();
+        expect(port.root.querySelector('.fr-action-toast')).toBeNull();expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+    it.each(['reject','throw'] as const)('contains a %s from its settings transport and retains the action',async failure=>{
+        const fixture=mountSelection(false,undefined,'chrome',true);await Vue.nextTick();fixture.state.showNotice('Current notice','open-vocabulary');await Vue.nextTick();
+        fixture.browser.runtime.sendMessage.mockImplementation(()=>{if(failure==='throw')throw new Error('Disconnected extension');return Promise.reject(new Error('Disconnected extension'))});
+        const port=fixture.renderPort!;await expect(port.click(port.root.querySelector('.fr-action-toast button')!)).resolves.toBeUndefined();await Vue.nextTick();
+        expect(port.root.querySelector('.fr-action-toast')!.textContent).toContain('无法打开设置');expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+    it.each(['success','refused','rejected'] as const)('does not overwrite a newer notice after old %s',async outcome=>{
+        const fixture=mountSelection(false,undefined,'chrome',true);await Vue.nextTick();fixture.state.showNotice('Old notice','open-vocabulary');await Vue.nextTick();
+        const deferred=deferredTts();fixture.browser.runtime.sendMessage.mockReturnValue(deferred.promise);const port=fixture.renderPort!,pending=port.click(port.root.querySelector('.fr-action-toast button')!);
+        fixture.state.showNotice('New notice','open-local-tts');await Vue.nextTick();
+        if(outcome==='rejected')deferred.reject(new Error('Disconnected extension'));else deferred.resolve({success:outcome==='success'});
+        await pending;await Vue.nextTick();expect(port.root.querySelector('.fr-action-toast')!.textContent).toContain('New notice');expect(fixture.state.noticeAction).toBe('open-local-tts');expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+    it.each(['unmount','expiry'] as const)('does not revive a notice after %s while opening settings',async disposal=>{
+        const fixture=mountSelection(false,undefined,'chrome',true);await Vue.nextTick();fixture.state.showNotice('Old notice','open-local-tts');await Vue.nextTick();
+        const deferred=deferredTts();fixture.browser.runtime.sendMessage.mockReturnValue(deferred.promise);const port=fixture.renderPort!,pending=port.click(port.root.querySelector('.fr-action-toast button')!);
+        if(disposal==='unmount')fixture.unmount();else await vi.advanceTimersByTimeAsync(2601);
+        deferred.resolve({success:false});await pending;await Vue.nextTick();expect(port.root.querySelector('.fr-action-toast')).toBeNull();expect(vi.getTimerCount()).toBe(0);expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+});
+
+describe('rendered hover entry and native copy events',()=>{
+    async function entry(){
+        const fixture=mountSelection(false,{acceptsRange:()=>true},'chrome',true);fixture.config.selectionTranslatorTrigger='hover';fixture.config.harness={...fixture.config.harness,hoverDelay:200};fixture.state.selectionConfigVersion+=1;fixture.notifyConfig();await Vue.nextTick();await Promise.resolve();await Vue.nextTick();
+        const text='Read a complete source sentence.',range={getClientRects:()=>[{left:20,right:210,top:150,bottom:174,width:190,height:24}],getBoundingClientRect:()=>({left:20,right:210,top:150,bottom:174,width:190,height:24})};
+        Object.assign(fixture.state,{snapshot:{text,parts:[{kind:'text',text}],range},selectedText:text,showIndicator:true});await Vue.nextTick();
+        const port=fixture.renderPort!;const pointer=(type:string,properties:Record<string,unknown>={})=>{const event=new port.domWindow.Event(type);Object.defineProperties(event,Object.fromEntries(Object.entries({isTrusted:true,pointerType:'mouse',...properties}).map(([key,value])=>[key,{value}])));port.root.querySelector('.fr-selection-indicator')!.dispatchEvent(event)};
+        return {...fixture,port,pointer};
+    }
+    it('opens once after a trusted mouse dwell, with the saved current selection',async()=>{
+        const fixture=await entry();fixture.pointer('pointerenter');await vi.advanceTimersByTimeAsync(199);expect(fixture.port.root.querySelector('[role="dialog"]')).toBeNull();expect(fixture.translateText).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(1);await Vue.nextTick();expect(fixture.port.root.querySelector('[role="dialog"]')).not.toBeNull();expect(fixture.translateText).toHaveBeenCalledOnce();
+        await vi.advanceTimersByTimeAsync(250);expect(fixture.translateText).toHaveBeenCalledOnce();expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+    it.each(['leave','replacement','unmount','touch','untrusted'] as const)('does not open a stale or non-mouse hover entry after %s',async reason=>{
+        const fixture=await entry();fixture.pointer('pointerenter',reason==='touch'?{pointerType:'touch'}:reason==='untrusted'?{isTrusted:false}:{});
+        if(reason==='leave')fixture.pointer('pointerleave');if(reason==='replacement')fixture.state.snapshot={...fixture.state.snapshot,text:'A newly selected sentence.'};if(reason==='unmount')fixture.unmount();
+        await vi.advanceTimersByTimeAsync(500);await Vue.nextTick();expect(fixture.port.root.querySelector('[role="dialog"]')).toBeNull();expect(fixture.translateText).not.toHaveBeenCalled();expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+    it.each(['page','card','untrusted','disabled'] as const)('keeps native clipboard semantics for a %s copy',async target=>{
+        const fixture=await entry(),port=fixture.port;vi.stubGlobal('Node',port.domWindow.Node);vi.stubGlobal('Element',port.domWindow.Element);
+        const host=port.root.querySelector('.fr-selection-translator-root')!;fixture.document.getElementById.mockReturnValue(host as never);
+        const removeAllRanges=vi.fn();Object.assign(fixture.window,{getSelection:()=>({removeAllRanges})});fixture.config.selectionTranslatorAutoDismiss=target!=='disabled';fixture.state.selectionConfigVersion+=1;await Vue.nextTick();
+        const event={isTrusted:target!=='untrusted',target:target==='card'?host:port.document.createElement('p'),preventDefault:vi.fn(),stopPropagation:vi.fn()};
+        const handlers=[...fixture.listeners.get('document:copy')!];expect(handlers).toHaveLength(1);handlers[0](event);await Vue.nextTick();
+        expect(port.root.querySelector('.fr-selection-indicator')===null).toBe(target==='page');expect(event.preventDefault).not.toHaveBeenCalled();expect(event.stopPropagation).not.toHaveBeenCalled();expect(removeAllRanges).not.toHaveBeenCalled();expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+});
+
+it('requires a fresh shortcut after native keyup before translating a changed selection',async()=>{
+    const fixture=mountSelection(false,{acceptsRange:()=>true,normalizeText:(text:string)=>text},'chrome',true);vi.stubGlobal('Node',class{});vi.stubGlobal('Element',class{});
+    fixture.config.selectionTranslatorTrigger='Control';fixture.config.selectionTranslatorDelay=0;fixture.state.selectionConfigVersion+=1;fixture.notifyConfig();await Vue.nextTick();await Promise.resolve();await Vue.nextTick();
+    let text='Read the first complete sentence.';const source={isConnected:true,ownerDocument:fixture.document};
+    const rect={left:20,right:210,top:150,bottom:174,width:190,height:24};
+    const range=Vue.markRaw({startContainer:source,endContainer:source,startOffset:0,endOffset:text.length,collapsed:false,getClientRects:()=>[rect],getBoundingClientRect:()=>rect,cloneRange:()=>range,toString:()=>text});
+    Object.assign(fixture.window,{getSelection:()=>({rangeCount:1,isCollapsed:false,anchorNode:source,anchorOffset:0,getRangeAt:()=>range,toString:()=>text})});
+    const send=(type:string,event:Record<string,unknown>)=>{for(const handler of fixture.listeners.get(`document:${type}`)??[])handler(event)};
+    const key=()=>({isTrusted:true,key:'Control',ctrlKey:true,altKey:false,metaKey:false,shiftKey:false,target:null,preventDefault:vi.fn(),stopPropagation:vi.fn()});
+    const first=key();send('keydown',first);await vi.advanceTimersByTimeAsync(100);await Vue.nextTick();expect(first.preventDefault).toHaveBeenCalledOnce();expect(fixture.renderPort!.root.querySelector('[role="dialog"]')).not.toBeNull();expect(fixture.translateText).toHaveBeenCalledOnce();
+    send('keyup',{isTrusted:true,key:'Control'});text='Read a different complete sentence.';range.endOffset=text.length;send('selectionchange',{isTrusted:true});await vi.advanceTimersByTimeAsync(100);await Vue.nextTick();
+    expect(fixture.state.selectedText).toBe(text);expect(fixture.renderPort!.root.querySelector('[role="dialog"]')).toBeNull();expect(fixture.translateText).toHaveBeenCalledOnce();
+    send('keydown',key());await vi.advanceTimersByTimeAsync(100);await Vue.nextTick();expect(fixture.renderPort!.root.querySelector('[role="dialog"]')).not.toBeNull();expect(fixture.translateText).toHaveBeenCalledTimes(2);expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
 });

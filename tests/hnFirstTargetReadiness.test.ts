@@ -1,7 +1,8 @@
 import {createRequire} from 'node:module';
 import {parseHTML} from 'linkedom';
 import {describe, expect, it, vi} from 'vitest';
-import {createTranslationCore, createTranslationSourceSnapshot} from '@/src/core/translation/public';
+import {createTranslationSourceSnapshot} from '@/src/core/translation/public';
+import {createTranslationCore} from './helpers/translationCore';
 
 const require = createRequire(import.meta.url);
 const harness = require('../scripts/run-site-translation-test.cjs');

@@ -14,10 +14,10 @@
 import {ref, watch} from 'vue';
 import {useUiI18n} from '@/src/ui/i18n';
 import type {ReadingEvidenceBlock} from '@/src/core/harness/evidence';
-import type {ReadingEvidenceAnchor, ReadingEvidenceLocation} from '../evidenceAnchor';
-const props = defineProps<{citation: Extract<ReadingEvidenceBlock, {kind: 'citation'}>; locateEvidence?: ReadingEvidenceAnchor['locate']; sourceState?: ReadingEvidenceLocation}>();
+import type {ReadingEvidenceCitation, ReadingEvidenceLocation} from '../evidenceAnchor';
+const props = defineProps<{citation: Extract<ReadingEvidenceBlock, {kind: 'citation'}>; locateEvidence?: (citation: ReadingEvidenceCitation) => ReadingEvidenceLocation; sourceState?: ReadingEvidenceLocation}>();
 const {t} = useUiI18n();
-const state = ref<'ready' | ReturnType<ReadingEvidenceAnchor['locate']>>('ready');
+const state = ref<'ready' | ReadingEvidenceLocation>('ready');
 watch(() => [props.citation.id, props.citation.quote, props.locateEvidence, props.sourceState], () => {
   state.value = props.sourceState && props.sourceState !== 'located' ? props.sourceState : 'ready';
 }, {immediate: true});

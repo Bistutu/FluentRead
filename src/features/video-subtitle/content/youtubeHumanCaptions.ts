@@ -1,10 +1,11 @@
 /**
  * @file src/features/video-subtitle/content/youtubeHumanCaptions.ts
  * 文件职责：读取 YouTube 目标语言人工字幕，供现有双语显示与下载优先使用。
- * 主要内容：选择当前视频的人工轨、取消过期请求、限制失败重试，并按播放时间读取目标语言原始时间轴。
+ * 主要内容：选择当前视频的人工轨、以统一总时限及字节预算读取、取消过期请求、限制失败重试，并按播放时间读取目标语言原始时间轴。
  * 模块边界：网络函数由调用者注入，不切换原生字幕语言、不覆盖原文轨，也不调用翻译服务。
  */
 import {chooseTargetHumanCaptionTrack} from './platforms';
+import {readVideoCaptionText} from './subtitleTransport';
 import {buildYoutubeTimedTextUrl, extractYoutubeCaptionTracks, getYoutubeVideoId, parseYoutubeTimedTextResponse, finalizeVideoSubtitleCues, type VideoSubtitleCue} from './youtubeSubtitleData';
 
 export class YoutubeHumanCaptions {
@@ -35,9 +36,8 @@ export class YoutubeHumanCaptions {
         this.controller = controller;
         const pending = (async () => {
             try {
-                const response = await this.request(url.href, {credentials: 'include', signal: controller.signal});
-                if (!response.ok) throw new Error('人工字幕暂不可用');
-                const cues = finalizeVideoSubtitleCues(parseYoutubeTimedTextResponse(await response.text()));
+                const text = await readVideoCaptionText(url.href, this.request, {credentials: 'include', signal: controller.signal});
+                const cues = finalizeVideoSubtitleCues(parseYoutubeTimedTextResponse(text));
                 if (controller.signal.aborted || this.key !== key) return;
                 if (!cues.length) throw new Error('人工字幕为空');
                 this.cues = cues;

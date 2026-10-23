@@ -1,7 +1,7 @@
 /**
  * @file src/features/reading-assistant/client.ts
  * 文件职责：封装阅读助手的流式 runtime port、本机会话与长期学习记忆协议，向 UI 提供稳定的异步边界。
- * 主要内容：发送 run 请求、消费流式进度和取消，查询最近会话，并按白名单快照发送用户主动管理的记忆。
+ * 主要内容：发送 run 请求、消费流式进度并统一持有取消；扩展重载后的远程取消失败不能中断本地清理，查询最近会话，并按白名单快照发送用户主动管理的记忆。
  * 模块边界：本文件不解析提示词、不保存 DOM 或密钥；后台负责模型调用、来源校验和数据持久化，组件负责展示和生命周期。
  */
 import browser from 'webextension-polyfill';
@@ -27,7 +27,9 @@ export function streamReading(request: ReadingRequest, handlers: HarnessStreamHa
     const cancel = () => {
         if (closed) return;
         close();
-        void browser.runtime.sendMessage({type: 'fluentReadHarness', action: 'cancel', requestId: request.requestId}).catch(() => undefined);
+        try {
+            void browser.runtime.sendMessage({type: 'fluentReadHarness', action: 'cancel', requestId: request.requestId}).catch(() => undefined);
+        } catch { /* 扩展重载可能同步撤销 runtime；端口与监听已释放，清理不再依赖远端应答。 */ }
     };
     const handleMessage = (rawMessage: unknown) => {
         if (closed || !rawMessage || typeof rawMessage !== 'object') return;

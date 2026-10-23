@@ -4,22 +4,32 @@
  * 主要内容：逐次刷新回答与结构变化、同帧首次回答/完成/错误、用户阅读位置、晚到译文、隐藏/替换/卸载的迟到响应；统一导航顶栏的唯一传送工具、正文外追问的焦点与输入法连续性、菜单边界和监听清理，以及真实表单/按钮事件。
  * 模块边界：仅控制后台流端口、展示子组件与 DOM 几何；不复制阅读业务，不请求模型，不声称真实浏览器性能。
  */
-import {createRequire} from 'node:module';
+import {readFileSync} from 'node:fs';
+import {parse, compileStyle} from 'vue/compiler-sfc';
+import * as runtime from 'vue';
+import ReadingPanel from '@/src/features/reading-assistant/ui/ReadingPanel.vue';
 import {parseHTML} from 'linkedom';
-import {useRenderDateFormatter} from '@/src/ui/dateFormat';
-import {getSafeVisualViewportRect} from '@/src/platform/dom/visualViewport';
-import {compileVueFixture} from './helpers/compiledVueFixture';
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import {DEFAULT_HARNESS_PREFERENCES, HARNESS_ACTIONS, isReadingActionSupported, isReadingFollowUpSupported} from '@/src/core/config/harness';
-import {hasDistinctTranslation} from '@/src/core/translation/result';
-import {buildReadingEvidence, readingEvidenceText} from '@/src/core/harness/evidence';
+import {DEFAULT_HARNESS_PREFERENCES} from '@/src/core/config/harness';
+import {buildReadingEvidence} from '@/src/core/harness/evidence';
 import type {ReadingProgress, ReadingRequest, ReadingResponse} from '@/src/features/reading-assistant/types';
-import {beginMaterialCapture, completeMaterialCapture} from '@/src/features/vocabulary/material/public';
 
-const materialTransport = vi.hoisted(() => ({sendMessage: vi.fn()}));
-vi.mock('webextension-polyfill', () => ({default: {runtime: {sendMessage: materialTransport.sendMessage}, extension: {inIncognitoContext: false}}}));
+const materialTransport = vi.hoisted(() => ({sendMessage: vi.fn(), actualRuntime: undefined as any}));
+vi.mock('webextension-polyfill', () => ({default: {get runtime() {return materialTransport.actualRuntime ?? {sendMessage: materialTransport.sendMessage};}, extension: {inIncognitoContext: false}}}));
 
-const runtime=createRequire(import.meta.url)('vue') as typeof import('vue');
+const readingPorts = vi.hoisted(() => ({client: {} as any, translateLegacy: ((text: string) => text) as (text: string) => string}));
+vi.mock('@/src/ui/i18n', () => ({useUiI18n: () => ({t: (key: string) => key, translateLegacy: (text: string) => readingPorts.translateLegacy(text)})}));
+vi.mock('@/src/features/reading-assistant/client', () => ({
+  streamReading: (...args: unknown[]) => readingPorts.client.streamReading(...args),
+  getHarnessSession: async () => null, listHarnessSessions: async () => ({sessions: [], hasMore: false}),
+  saveLearningMemory: (...args: unknown[]) => readingPorts.client.saveLearningMemory(...args),
+}));
+vi.mock('@/src/features/reading-assistant/ui/ReadingAnswer.vue', () => ({default: {props: ['text'], setup: (props: {text: string}) => () => runtime.h('div', {'data-reading-answer': ''}, props.text)}}));
+const filename = 'src/features/reading-assistant/ui/ReadingPanel.vue';
+const scopeId = (ReadingPanel as unknown as {__scopeId: string}).__scopeId;
+const {descriptor} = parse(readFileSync(filename, 'utf8'), {filename});
+const compiledStyle = compileStyle({source: descriptor.styles[0].content, filename, id: scopeId, scoped: true});
+
 type HostNode=Node & {__readingProps?:Record<string,any>;__readingEvents?:Record<string,EventListener>};
 type StreamCall={request:ReadingRequest;callbacks:{progress:(progress:ReadingProgress)=>void;result:(response:ReadingResponse)=>void;error:(error:Error)=>void};cancel:ReturnType<typeof vi.fn>};
 let dispose:(()=>void)|undefined;
@@ -49,30 +59,10 @@ async function mountPanel(overrides:Record<string,unknown>={}) {
   const saveLearningMemory=vi.fn(async(_memory: {kind: string; content: string})=>({id:'memory-fixture'}));
   const translateLegacy=vi.fn((text:string)=>text);
   vi.stubGlobal('navigator',{clipboard:{writeText:writeClipboard}});
-  const modules:Record<string,unknown>={
-    vue:runtime,
-    // 日期复用属于本组件的真实 Vue update 生命周期，不能以格式化 stub 绕过。
-    '@/src/ui/dateFormat':{useRenderDateFormatter},
-    '@/src/platform/dom/visualViewport':{getSafeVisualViewportRect},
-    '@/src/core/translation/result':{hasDistinctTranslation},
-    '@/src/core/harness/evidence':{buildReadingEvidence, readingEvidenceText},
-    '@/src/ui/i18n':{useUiI18n:()=>({t:(key:string)=>key,translateLegacy})},
-    'webextension-polyfill':{default:{runtime:{sendMessage}}},
-    '@/src/core/config/harness':{HARNESS_ACTIONS,isReadingActionSupported,isReadingFollowUpSupported},
-    './ReadingAnswer.vue':{default:runtime.defineComponent({props:['text'],setup:props=>()=>runtime.h('div',{'data-reading-answer':''},props.text)})},
-    '../client':{streamReading:(request:ReadingRequest,callbacks:StreamCall['callbacks'])=>{const call={request,callbacks,cancel:vi.fn()};calls.push(call);return {cancel:call.cancel};},
-      getHarnessSession:async()=>null,listHarnessSessions:async()=>({sessions:[],hasMore:false}),saveLearningMemory},
-    '@/src/features/vocabulary/material/public':{beginMaterialCapture, completeMaterialCapture},
-    '@/src/features/vocabulary/public':{normalizeLearningSourceText:(text:string)=>text.trim()},
-    '@/src/features/vocabulary/protocol':{VOCABULARY_BOOK_MESSAGE:'fixture-vocabulary'},
-    '@/src/core/language/detect':{detectlang:()=> 'en'},
-  };
-  const filename='src/features/reading-assistant/ui/ReadingPanel.vue';
-  const compiled=compileVueFixture(filename,{id:'reading-stream-resize',cacheHandlers:true,includeScript:true,includeScopedStyle:true});
-  const exports:Record<string,any>={};
-  new Function('require','exports',compiled.scriptCode)((id:string)=>{if(!(id in modules))throw new Error(`Unexpected ReadingPanel import: ${id}`);return modules[id];},exports);
-  exports.default.render=new Function('Vue',compiled.renderCode)(runtime);
-  exports.default.__scopeId='data-v-reading-stream-resize';
+  readingPorts.translateLegacy = translateLegacy;
+  readingPorts.client = {streamReading: (request: ReadingRequest, callbacks: StreamCall['callbacks']) => {
+    const call = {request, callbacks, cancel: vi.fn()}; calls.push(call); return {cancel: call.cancel};
+  }, saveLearningMemory};
   const remove=(node:HostNode)=>node.parentNode?.removeChild(node);
   const insert=(node:HostNode,parent:HostNode,anchor?:HostNode|null)=>parent.insertBefore(node,anchor||null);
   const renderer=runtime.createRenderer<HostNode,HostNode>({
@@ -85,11 +75,12 @@ async function mountPanel(overrides:Record<string,unknown>={}) {
         if(value){listeners[key]=event=>{for(const fn of Array.isArray(value)?value:[value])fn(event);};node.addEventListener(name,listeners[key]);}
       } else if(node.nodeType===1) {
         if(key==='value')(node as HTMLInputElement).value=value??'';
+        else if(key.startsWith('aria-') && value != null)(node as Element).setAttribute(key,String(value));
         else if(value===null||value===undefined||value===false)(node as Element).removeAttribute(key);
         else (node as Element).setAttribute(key,value===true?'':String(value));
       }
     },
-    insert,remove,createElement:tag=>document.createElement(tag) as unknown as HostNode,
+    insert,remove,createElement:tag=>runtime.markRaw(document.createElement(tag)) as unknown as HostNode,
     createText:text=>document.createTextNode(text) as unknown as HostNode,createComment:text=>document.createComment(text) as unknown as HostNode,
     setText:(node,text)=>{node.nodeValue=text;},setElementText:(node,text)=>{node.textContent=text;},
     parentNode:node=>node.parentNode as HostNode|null,nextSibling:node=>node.nextSibling as HostNode|null,
@@ -106,14 +97,14 @@ async function mountPanel(overrides:Record<string,unknown>={}) {
     vocabularyEnabled:true,privateContext:false,animations:false,historyOnly:false,externalNavigation:undefined as boolean|undefined,
     sourceTranslation:undefined as {source:string;text:string;pending?:boolean}|undefined,...overrides});
   let panel:any;
-  const app=renderer.createApp({setup:()=>()=>runtime.h(exports.default,{...props,onResize:resize,onPlaySource:playSource,ref:(instance:any)=>{if(instance)panel=instance.$.setupState;}})});
+  const app=renderer.createApp({setup:()=>()=>runtime.h(ReadingPanel,{...props,onResize:resize,onPlaySource:playSource,ref:(instance:any)=>{if(instance)panel=instance.$.setupState;}})});
   app.config.warnHandler=()=>undefined;app.config.errorHandler=errors;
   app.mount(mountRoot as unknown as HostNode);dispose=()=>app.unmount();await tick();
   expect(errors).not.toHaveBeenCalled();
   const viewport=host.querySelector('.fr-reading-result') as unknown as HTMLElement;
   if(viewport){Object.defineProperty(viewport,'scrollTop',{configurable:true,writable:true,value:0});Object.defineProperty(panel.answerBody,'offsetTop',{configurable:true,value:100});}
   const finish=(text:string,call=calls.at(-1)!)=>call.callbacks.result({success:true,text,service:'deepseek',model:'fixture-model'});
-  return {host,toolsTarget,panel,props,calls,resize,viewport,finish,errors,window,sendMessage,materialCaptures,writeClipboard,playSource,translateLegacy,saveLearningMemory,styles:compiled.styleCode,unmount:()=>{dispose?.();dispose=undefined;}};
+  return {host,toolsTarget,panel,props,calls,resize,viewport,finish,errors,window,sendMessage,materialCaptures,writeClipboard,playSource,translateLegacy,saveLearningMemory,styles:compiledStyle.code,unmount:()=>{dispose?.();dispose=undefined;}};
 }
 
 it('copies and saves readable source quotes without leaking model citation IDs or external markers', async () => {
@@ -154,9 +145,9 @@ describe('reading material associations through the public capture port',()=>{
   it.each([false,true])('associates vocabulary only after the real save response succeeds (success=%s)',async success=>{
     const {panel,sendMessage,materialCaptures}=await mountPanel({selection});
     const transport = sendMessage.getMockImplementation()!;
-    sendMessage.mockImplementation(async request=>request.type==='fixture-vocabulary' ? success ? {success:true,data:{id:'saved-entry'}} : {success:false,error:{message:'save failed'}} : transport(request));
+    sendMessage.mockImplementation(async request=>request.type==='fluentReadVocabularyBook' ? success ? {success:true,data:{id:'saved-entry'}} : {success:false,error:{message:'save failed'}} : transport(request));
     await panel.saveWord();
-    expect(sendMessage).toHaveBeenCalledWith(expect.objectContaining({type:'fixture-vocabulary',action:'upsert'}));
+    expect(sendMessage).toHaveBeenCalledWith(expect.objectContaining({type:'fluentReadVocabularyBook',action:'upsert'}));
     expect(materialCaptures).toHaveLength(success ? 1 : 0);
     if (success) expect(materialCaptures[0].reference).toEqual({kind:'vocabulary',id:'saved-entry',excerpt:'Practice helps.'});
   });
@@ -183,7 +174,7 @@ describe('reading panel streaming resize boundaries through actual setup and tem
     const button=form.querySelector('button')!;
     expect(form.parentNode).toBe(host.querySelector('[data-reading-panel]'));
     expect(host.querySelectorAll('.fr-reading-followup')).toHaveLength(1);
-    for(const element of [form,input,button,...host.querySelectorAll('.fr-reading-feedback')]) expect(element.hasAttribute('data-v-reading-stream-resize')).toBe(true);
+    for(const element of [form,input,button,...host.querySelectorAll('.fr-reading-feedback')]) expect(element.hasAttribute(scopeId)).toBe(true);
     for(const fragment of ['.fr-reading-followup input','.fr-reading-followup button','.fr-reading-feedback']){
       const selector=[...styles.matchAll(/([^{}]+)\{([^{}]+)\}/gu)].find(([,rule])=>rule.trim().startsWith(fragment))![1].trim();
       expect(host.querySelector(selector)).not.toBeNull();
@@ -582,4 +573,55 @@ describe('reading panel streaming resize boundaries through actual setup and tem
     removed.callbacks.progress({kind:'text',text:'After unmount'});removed.callbacks.error(new Error('After unmount'));await tick();
     expect(removed.cancel).toHaveBeenCalledOnce();expect(resize).not.toHaveBeenCalled();expect(host.querySelector('[data-reading-panel]')).toBeNull();expect(host.querySelector('.fr-reading-controls')).toBeNull();
   });
+});
+
+it('expands the selected phrase to its sentence through the tool and lets the parent dismiss only an open menu',async()=>{
+  const ui=await mountPanel({selection:{text:'Practice',sentence:'Practice helps every day.',context:'Practice helps every day.'}});
+  const details=ui.host.querySelector('.fr-reading-tools') as unknown as HTMLDetailsElement;
+  const summary=details.querySelector('summary')!;const focus=vi.fn();summary.focus=focus;
+  expect(ui.panel.dismissTools()).toBe(false);details.open=true;expect(ui.panel.dismissTools()).toBe(true);expect(details.open).toBe(false);expect(focus).toHaveBeenCalledWith({preventScroll:true});
+  const button=[...ui.host.querySelectorAll('button')].find(node=>node.textContent==='理解整句')!;expect(button).toBeTruthy();button.dispatchEvent(new ui.window.Event('click',{bubbles:true}));await tick();
+  expect(ui.calls).toHaveLength(2);expect(ui.calls[0].cancel).toHaveBeenCalledOnce();expect(ui.calls[1].request.selection.text).toBe('Practice helps every day.');expect(ui.host.querySelector('.fr-reading-source p')?.textContent).toBe('Practice helps every day.');
+});
+it('uses toolbar, prior-turn and service-repair buttons while keeping old answers and failed transport ownership explicit',async()=>{
+  const ui=await mountPanel();const click=async(text:string)=>{const button=[...ui.host.querySelectorAll('button')].find(node=>node.textContent===text);expect(button,`button ${text}`).toBeTruthy();button!.dispatchEvent(new ui.window.Event('click',{bubbles:true}));await tick();};
+  ui.finish('First meaning');await tick();await click('句法');expect(ui.calls.at(-1)?.request.intent).toBe('grammar');ui.finish('Grammar explanation');await tick();
+  const turn=ui.host.querySelector('.fr-reading-turn-toggle')!;expect(turn).toBeTruthy();const count=ui.calls.length;turn.dispatchEvent(new ui.window.Event('click',{bubbles:true}));await tick();expect(turn.getAttribute('aria-expanded')).toBe('true');expect(ui.host.textContent).toContain('First meaning');expect(ui.calls).toHaveLength(count);
+  readingPorts.client.streamReading=()=>{throw new Error('Port unavailable');};await click('重新生成');expect(ui.host.querySelector('[role="alert"]')?.textContent).toContain('Port unavailable');
+  await click('设置模型');expect(ui.sendMessage).toHaveBeenCalledWith({type:'openOptionsPage',section:'settings-services'});
+  ui.props.preferences.service='bilibili';await tick();await click('切换服务');expect(ui.sendMessage).toHaveBeenCalledWith({type:'openOptionsPage',section:'settings-selection'});
+});
+
+
+it('runs an actual userscript reading action from the rendered toolbar through the real client and owned stream port', async () => {
+  const ui = await mountPanel();ui.finish('Initial answer');await tick();
+  const {Config} = await import('@/src/core/config/model');const configuration = new Config();configuration.on = true;
+  configuration.harness = {...configuration.harness, enabled: true, service: 'openai', model: 'fixture-reader'};
+  const values = new Map<string, unknown>();const subscriptions = new Set<() => void>();
+  vi.stubGlobal('window', new EventTarget());vi.stubGlobal('location', {href: 'https://reading.test/article'});
+  vi.stubGlobal('GM', {getValue: (key: string, fallback: unknown) => values.get(key) ?? fallback,
+    setValue: (key: string, value: unknown) => {values.set(key, value);}, listValues: () => [...values.keys()], deleteValue: (key: string) => values.delete(key)});
+  const run = vi.fn(async (_request: ReadingRequest, _signal: AbortSignal, progress?: (value: ReadingProgress) => void): Promise<ReadingResponse> => {
+    progress?.({kind: 'text', text: '语法讲解正在生成'});return {success: true, text: 'Practice 是主语，helps 是谓语。', service: 'openai', model: 'fixture-reader'};
+  });
+  vi.doMock('@/src/services/config/store', () => ({config: configuration, configReady: Promise.resolve(),
+    subscribeConfig: (callback: () => void) => {subscriptions.add(callback);return () => subscriptions.delete(callback);}}));
+  // 此案控制模型运行器；userscriptReadingRuntime.test 另执行实际 Harness 模型编排与 GM 持久化。
+  vi.doMock('@/src/services/harness/runtime', () => ({createHarnessRuntime: () => ({run})}));
+  const adapter = await import('@/userscript/browser');const {createUserscriptReadingRuntime} = await import('@/userscript/readingRuntime');
+  const reading = createUserscriptReadingRuntime();adapter.setPlatformMessageHandler(Object.assign(reading.handle, {connect: reading.connect, dispose: reading.dispose}));
+  const actual = await vi.importActual<typeof import('@/src/features/reading-assistant/client')>('@/src/features/reading-assistant/client');
+  materialTransport.actualRuntime = adapter.default.runtime;readingPorts.client = actual;
+  try {
+    const action = [...ui.host.querySelectorAll<HTMLButtonElement>('.fr-reading-actions button')].find(button => button.getAttribute('aria-label') === '词性与句法')!;
+    expect(action).toBeTruthy();action.dispatchEvent(new ui.window.Event('click', {bubbles:true}));
+    await vi.waitFor(() => expect(ui.host.querySelector('[data-reading-answer]')?.textContent).toBe('Practice 是主语，helps 是谓语。'));
+    expect(ui.host.querySelector('[role="alert"]')).toBeNull();expect(run).toHaveBeenCalledOnce();expect(run.mock.calls[0][0]).toMatchObject({intent: 'grammar', selection: {text: 'Practice helps.'}});
+    expect((await actual.listHarnessSessions()).sessions).toHaveLength(1);expect(values.size).toBeGreaterThan(0);
+    ui.unmount();expect(ui.host.querySelector('[data-reading-panel]')).toBeNull();
+  } finally {
+    adapter.resetPlatformMessageHandler();materialTransport.actualRuntime = undefined;
+    vi.doUnmock('@/src/services/config/store');vi.doUnmock('@/src/services/harness/runtime');
+    expect(subscriptions.size).toBe(0);
+  }
 });

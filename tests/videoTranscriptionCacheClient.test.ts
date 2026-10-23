@@ -1,7 +1,7 @@
 import {parseHTML} from 'linkedom';
 import {buildVideoAiSubtitleVideoKey} from '@/src/features/video-subtitle/transcriptionCache';
 import {describe, expect, it, vi} from 'vitest';
-import {getVideoTranscriptionCacheRequest, getVideoTranscriptionMediaKey, getVideoTranscriptionMediaTransition, isSameVideoTranscriptionMedia, mergeVideoTranscriptionMediaIdentity, VideoTranscriptionCacheClient} from '@/src/features/video-subtitle/content/transcriptionCacheClient';
+import {getVideoTranscriptionCacheRequest, getVideoTranscriptionMediaTransition, isSameVideoTranscriptionMedia, mergeVideoTranscriptionMediaIdentity, VideoTranscriptionCacheClient} from '@/src/features/video-subtitle/content/transcriptionCacheClient';
 
 describe('内容页完整识别缓存', () => {
   const cues = [{startMs: 200, durationMs: 1000, text: '안녕하세요.'}];
@@ -70,9 +70,6 @@ describe('内容页完整识别缓存', () => {
     expect(getVideoTranscriptionMediaTransition(null, {}, false, '', '').key).toBe('');
     expect(getVideoTranscriptionMediaTransition({directSource: 'blob:one'}, {directSource: 'blob:two'}, false, 'blob:one', 'blob:two').sameMedia).toBe(false);
     expect(getVideoTranscriptionMediaTransition({directSource: 'blob:one'}, {directSource: 'blob:two'}, false, 'blob:one', 'blob:two').key).toBe('blob:two');
-    expect(getVideoTranscriptionMediaKey(null)).toBe('');
-    expect(getVideoTranscriptionMediaKey({})).toBe('');
-    expect(getVideoTranscriptionMediaKey({directSource: 'blob:one'})).toBe('blob:one');
     expect(getVideoTranscriptionCacheRequest({} as HTMLVideoElement, 'base', 'zh', '', media)).toEqual({source: media, model: 'base', videoSourceLanguage: 'zh'});
   });
   it('已有缓存中的异常重复不会自动恢复到字幕画面', async () => {

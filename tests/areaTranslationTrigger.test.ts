@@ -1,69 +1,14 @@
-import {readFileSync} from 'node:fs';
-import {createRequire} from 'node:module';
-import {resolve} from 'node:path';
-import {parse, compileScript} from 'vue/compiler-sfc';
-import ts from 'typescript';
-import {parseHTML} from 'linkedom';
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import {hasDistinctTranslation} from '@/src/core/translation/result';
-import * as areaCore from '@/src/features/area-translation/core';
-import * as areaHotkey from '@/src/core/config/areaTranslation';
+import {mountAreaTranslator} from './helpers/areaTranslatorHarness';
 import {shouldStartAreaTranslationFromHotkey} from '@/src/features/area-translation/content/areaHotkey';
 
-const Vue = createRequire(import.meta.url)('vue') as typeof import('vue');
-let app: import('vue').App | undefined;
-afterEach(() => {app?.unmount(); vi.unstubAllGlobals();});
-
+let close: (() => void) | undefined;
+afterEach(() => {close?.(); vi.unstubAllGlobals();});
 function mountTranslator() {
-  const {window, document} = parseHTML('<html><body><h1>Title</h1></body></html>');
-  Object.defineProperty(document, 'visibilityState', {value: 'visible'});
-  Object.assign(window, {innerWidth: 1000, innerHeight: 800, matchMedia: () => ({matches: false, addEventListener() {}, removeEventListener() {}})});
-  vi.stubGlobal('window', window); vi.stubGlobal('document', document);
-  vi.stubGlobal('Node', window.Node); vi.stubGlobal('HTMLElement', window.HTMLElement);
-  vi.stubGlobal('requestAnimationFrame', (callback: () => void) => setTimeout(callback, 0));
-  vi.stubGlobal('cancelAnimationFrame', clearTimeout);
-  let focused: unknown = document.body;
-  Object.defineProperty(document, 'activeElement', {configurable: true, get: () => focused});
-  const config: Record<string, unknown> = {
-    on: true, selectionAreaEnabled: true, animations: true, from: 'auto', theme: 'light',
-    selectionAreaHotkey: 'Shift+Z', customSelectionAreaHotkey: '',
-  };
-  const capture = vi.fn().mockResolvedValue('data:image/png,capture');
-  const translate = vi.fn().mockResolvedValue({
-    image: 'data:image/png,crop', sourceText: 'Source', translatedText: '译文',
-    service: 'microsoft', serviceName: '微软翻译', model: '', mode: 'standard', lines: [], warnings: [],
-  });
-  const modules: Record<string, any> = {
-    // AreaTranslator 自 fe2946df 起依赖译文比较；测试的模块表此前没有同步登记。
-    '@/src/core/translation/result': {hasDistinctTranslation},
-    vue: Vue, 'webextension-polyfill': {default: {runtime: {sendMessage: vi.fn()}}},
-    '@/src/services/config/store': {config, subscribeConfig: () => () => undefined},
-    '@/src/core/config/customOpenAI': {isCustomOpenAIProviderId: () => false},
-    '@/src/ui/i18n': {useUiI18n: () => ({translateLegacy: (text: string) => text})},
-    '@/src/features/area-translation/services/client': {captureVisibleAreaInExtension: capture, translateCapturedAreaInExtension: translate},
-    '@/src/features/area-translation/core': areaCore,
-    '@/src/core/config/areaTranslation': areaHotkey,
-    '@/src/features/image-translation/public': {prepareImageOcrLanguages: vi.fn()},
-    '@/src/ui/components/DownloadProgress.vue': {default: {}},
-    '@/src/features/area-translation/content/contextMenuBridge': {setAreaContextMenuHandler: () => () => undefined},
-  };
-  const filename = resolve('src/features/area-translation/ui/AreaTranslator.vue');
-  const {descriptor} = parse(readFileSync(filename, 'utf8'), {filename});
-  const script = compileScript(descriptor, {id: 'area-trigger'}).content;
-  const js = ts.transpileModule(script, {compilerOptions: {target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext}}).outputText
-    .replace(/import\s+([\s\S]*?)\s+from\s+['"]([^'"]+)['"];?/g, (_all, binding, id) => binding.startsWith('{')
-      ? `const ${binding.replace(/\s+as\s+/g, ': ')} = modules[${JSON.stringify(id)}];`
-      : `const ${binding} = modules[${JSON.stringify(id)}].default;`)
-    .replace('export default', 'return');
-  const component = new Function('modules', js)(modules);
-  component.render = () => null;
-  const renderer = Vue.createRenderer<any, any>({patchProp() {}, insert() {}, remove() {}, createElement: () => ({}), createText: () => ({}), createComment: () => ({}), setText() {}, setElementText() {}, parentNode: () => null, nextSibling: () => null});
-  app = renderer.createApp(component); app.config.warnHandler = () => undefined;
-  const vm = app.mount({});
-  const state = (vm.$ as any).setupState;
-  const focus = (element: unknown) => {focused = element;};
+  const fixture = mountAreaTranslator(); close = fixture.unmount;
+  const {config, document} = fixture;
   const press = (overrides: Record<string, unknown> = {}) => {
-    const target = overrides.target ?? focused ?? document.body;
+    const target = overrides.target ?? document.activeElement ?? document.body;
     const event = {
       isTrusted: true, key: 'Z', code: 'KeyZ', shiftKey: true, ctrlKey: false, altKey: false, metaKey: false,
       repeat: false, isComposing: false, target, composedPath: () => [target, document.body, document],
@@ -73,11 +18,11 @@ function mountTranslator() {
     if (shouldStartAreaTranslationFromHotkey(event as unknown as KeyboardEvent,
       config as unknown as Parameters<typeof shouldStartAreaTranslationFromHotkey>[1], document as unknown as Document)) {
       event.preventDefault();
-      (vm.$ as any).exposed.beginSelection();
+      fixture.beginSelection();
     }
     return event;
   };
-  return {state, config, document, focus, press, capture, translate};
+  return {...fixture, press};
 }
 
 describe('圈选翻译快捷键触发', () => {

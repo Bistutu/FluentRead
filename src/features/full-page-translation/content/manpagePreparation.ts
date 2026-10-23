@@ -92,10 +92,11 @@ export function prepareManpageContent(root: Node, url: URL | undefined, adapters
             byPre.set(pre, record);
             preparations.add(record);
         }
+        const existingWrappers = new Set(record.wrappers);
         let nodes: ChildNode[] = [];
         const flush = () => {if (nodes.length) prepareNodes(pre as HTMLElement, nodes, record!); nodes = [];};
         for (const node of Array.from(pre.childNodes)) {
-            if (record.wrappers.includes(node as HTMLElement)) flush();
+            if (existingWrappers.has(node as HTMLElement)) flush();
             else nodes.push(node);
         }
         flush();

@@ -177,8 +177,7 @@ export function findActiveTranslationModal(roots: Iterable<Node>): HTMLElement |
         const candidateHit = isHitAtCenter(candidate);
         const winnerHit = isHitAtCenter(winner);
         if (candidateHit !== winnerHit) { if (candidateHit) winner = candidate; return; }
-        if (zIndex(candidate) > zIndex(winner)) winner = candidate;
-        else if (zIndex(candidate) === zIndex(winner)) winner = candidate;
+        if (zIndex(candidate) >= zIndex(winner)) winner = candidate;
     });
     return winner;
 }

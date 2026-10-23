@@ -73,6 +73,16 @@ beforeEach(() => vi.stubGlobal('navigator', {language: 'en-US'}));
 afterEach(() => vi.unstubAllGlobals());
 
 describe('local TTS model cache upgrade compatibility', () => {
+    it('checks only the eight current resources when pinned files are ready, without reopening obsolete aliases', async () => {
+        const {modelCache, voiceCache} = installCaches();
+        await putModelFiles(modelCache, LOCAL_TTS_MODEL_FILES); await putVoices(voiceCache);
+        const matchModel = vi.spyOn(modelCache, 'match'), matchVoice = vi.spyOn(voiceCache, 'match');
+        expect(await isLocalTtsModelCached()).toBe(true);
+        expect(matchModel).toHaveBeenCalledTimes(LOCAL_TTS_MODEL_FILES.length);
+        expect(matchVoice).toHaveBeenCalledTimes(LOCAL_TTS_VOICES.length);
+        expect(matchModel.mock.calls.some(([key]) => requestKey(key).includes('/resolve/main/'))).toBe(false);
+    });
+
     it('keeps legacy-only q4f16 caches available for explicit removal but reports the preferred model as missing', async () => {
         const {modelCache, voiceCache} = installCaches();
         await putModelFiles(modelCache, [

@@ -1,7 +1,7 @@
 import {describe, expect, it, vi} from 'vitest';
 import {translate, translateLegacyText} from '@/src/core/i18n';
 import type {UiLanguage} from '@/src/core/i18n';
-import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
+import {registerAllUiLanguageBundles} from './helpers/uiLanguageBundles';
 import {options} from '@/src/core/config/catalog';
 import {FREE_TRANSLATION_PROVIDERS} from '@/src/core/config/freeTranslation';
 import {createUiI18nContext, localizeServiceOptions} from '@/src/ui/i18n';

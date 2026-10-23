@@ -23,7 +23,6 @@ import PopupPreview from './PopupPreview.vue'
 
 defineProps<{
   skin: InterfaceSkinOption
-  skinLabel: string
   previewLabel: string
 }>()
 </script>

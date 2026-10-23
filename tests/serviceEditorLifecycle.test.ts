@@ -1,68 +1,57 @@
 /**
  * @file tests/serviceEditorLifecycle.test.ts
  * 文件职责：验证实际设置子组件的写入边界与延迟焦点生命周期。
- * 主要内容：编译实际 SFC setup/watch，覆盖隐藏、缓存、卸载、配置切换、模型容量和对话框重入；使用真实事件目标与受控 RAF 验证窗口视口订阅的更新、释放和重开。
- * 模块边界：使用空 render 与受控浏览器端口；模板和实际 Element Plus 交互另由生产浏览器验证。
+ * 主要内容：直接导入实际 SFC setup/watch，覆盖隐藏、缓存、卸载、配置切换、模型容量和对话框重入；使用真实事件目标与受控 RAF 验证窗口视口订阅的更新、释放和重开。
+ * 模块边界：全部用例执行真实客户端模板；受控端口负责 Element Plus 展示与浏览器事件，生产浏览器另行验证。
  */
-import {createRequire} from 'node:module'
-import {resolve} from 'node:path'
-import {readFileSync} from 'node:fs'
-import {compileScript, compileTemplate, parse} from 'vue/compiler-sfc'
-import ts from 'typescript'
-import vue from '@vitejs/plugin-vue'
-import {createServer, type Plugin, type ViteDevServer} from 'vite'
+import * as runtime from 'vue'
+import {parseHTML} from 'linkedom'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {Config} from '@/src/core/config/model'
+import {CUSTOM_OPENAI_RESERVED_MODEL_ID} from '@/src/core/config/customOpenAI'
 
-const runtime = createRequire(import.meta.url)('vue') as typeof import('vue')
-let server: ViteDevServer, app: import('vue').App
+let app: import('vue').App
 let state: Record<string, any>, props: Record<string, any>, visible: import('vue').Ref<boolean>
 const emitted = vi.fn(), focus = vi.fn(), scroll = vi.fn()
 async function settle() {await runtime.nextTick();await runtime.nextTick()}
 beforeEach(async () => {
   vi.clearAllMocks()
   vi.stubGlobal('document', {activeElement: null})
-  const mocks: Plugin = {name: 'editor-lifecycle-ports', enforce: 'pre', resolveId(id) {
-    if (id === 'webextension-polyfill') return '\0editor-browser'
-    if (id === 'element-plus') return '\0editor-element'
-    if (/\/src\/ui\/i18n(?:\.ts)?$/u.test(id)) return '\0editor-i18n'
-    return null
-  }, load(id) {
-    if (id === '\0editor-browser') return 'export default {declarativeNetRequest: {updateDynamicRules: () => {}}}'
-    if (id === '\0editor-element') return "import {h, getCurrentInstance} from 'vue';export const ElPopover = {setup(_, {slots}) {const instance = getCurrentInstance();return () => h('div', {'data-port-popover-key': instance.vnode.key}, [slots.reference?.(), slots.default?.()])}}, ElButton = {}, ElCheckbox = {}, ElInput = {}"
-    if (id === '\0editor-i18n') return 'export const useUiI18n = () => ({t: key => key, translateLegacy: text => text});export const localizeServiceOptions = options => options'
-    return null
-  }}
-  server = await createServer({root: process.cwd(), configFile: false, appType: 'custom', logLevel: 'silent',
-    plugins: [mocks, vue()], resolve: {alias: {'@': resolve(process.cwd())}}, ssr: {noExternal: ['webextension-polyfill', 'element-plus']},
-    server: {hmr: false, middlewareMode: true}})
+  vi.doMock('webextension-polyfill', () => ({default: {declarativeNetRequest: {updateDynamicRules: () => {}}}}))
+  vi.doMock('element-plus/es/components/checkbox/style/css', () => ({}))
+  vi.doMock('element-plus', () => ({ElPopover: {setup(_: unknown, {slots}: any) {const instance = runtime.getCurrentInstance()!;return () => runtime.h('div', {'data-port-popover-key': instance.vnode.key}, [slots.reference?.(), slots.default?.()])}}, ElButton: {}, ElCheckbox: {}, ElInput: {}}))
+  vi.doMock('@/src/features/settings/ui/components/FieldHelp.vue', () => ({default: {render: () => null}}))
+  vi.doMock('@/src/ui/i18n', () => ({useUiI18n: () => ({t: (key: string) => key, translateLegacy: (text: string) => text}), localizeServiceOptions: (options: unknown) => options}))
 })
-afterEach(async () => {app?.unmount();await settle();await server?.close();vi.unstubAllGlobals()})
-async function mount(name: string, values: Record<string, unknown>, listeners: Record<string, unknown> = {}, template = false) {
-  const component = (await server.ssrLoadModule(`/src/features/settings/ui/services/${name}.vue`)).default
-  component.ssrRender = undefined;component.render = () => null
-  if (template) {
-    const filename = resolve(`src/features/settings/ui/services/${name}.vue`), {descriptor} = parse(readFileSync(filename, 'utf8'), {filename})
-    const bindings = compileScript(descriptor, {id: 'editor-template-test'}).bindings
-    const compiled = compileTemplate({source: descriptor.template!.content, filename, id: 'editor-template-test',
-      compilerOptions: {mode: 'function', cacheHandlers: true, bindingMetadata: bindings, expressionPlugins: ['typescript']}})
-    expect(compiled.errors).toEqual([])
-    component.render = new Function('Vue', ts.transpileModule(compiled.code, {compilerOptions: {target: ts.ScriptTarget.ES2022}}).outputText)(runtime)
+afterEach(async () => {app?.unmount();await settle();vi.unstubAllGlobals()})
+async function mount(name: string, values: Record<string, unknown>, listeners: Record<string, unknown> = {}) {
+  vi.resetModules()
+  const loaders: Record<string, () => Promise<{default: runtime.Component}>> = {
+    CustomOpenAIProviderDialog: () => import('@/src/features/settings/ui/services/CustomOpenAIProviderDialog.vue'),
+    CompositeTranslationFields: () => import('@/src/features/settings/ui/services/CompositeTranslationFields.vue'),
+    CompositeTranslationSettings: () => import('@/src/features/settings/ui/services/CompositeTranslationSettings.vue'),
+    ApiKeyList: () => import('@/src/features/settings/ui/services/ApiKeyList.vue'),
+    ModelPicker: () => import('@/src/features/settings/ui/services/ModelPicker.vue'),
+    RequestHeaderSettings: () => import('@/src/features/settings/ui/services/RequestHeaderSettings.vue'),
+    RequestLimitSettings: () => import('@/src/features/settings/ui/services/RequestLimitSettings.vue'),
   }
-  type Node = {tag?: string; props: Record<string, any>; focus?: () => void}
+  const component = (await loaders[name]()).default
+  type Node = {tag?: string; props: Record<string, any>; focus?: () => void; parent?: Node; children?: Node[]}
   const nodes: Node[] = []
-  const renderer = runtime.createRenderer<Node, Node>({patchProp: (node, key, _previous, value) => {node.props[key] = value}, insert: () => {},
-    remove: () => {}, createElement: tag => {const node = {tag, tagName: tag.toUpperCase(), value: '', props: {}, focus, addEventListener: () => {}, removeEventListener: () => {}};nodes.push(node);return node}, createText: () => ({props: {}}), createComment: () => ({props: {}}), setText: () => {},
-    setElementText: () => {}, parentNode: () => null, nextSibling: () => null, querySelector: () => null,
-    setScopeId: () => {}, cloneNode: () => ({props: {}}), insertStaticContent: () => [{props: {}}, {props: {}}]})
+  function remove(node: Node) {const siblings = node.parent?.children;if (siblings) {const index = siblings.indexOf(node);if (index >= 0) siblings.splice(index, 1)}node.parent = undefined}
+  function insert(node: Node, parent: Node, anchor?: Node | null) {remove(node);const siblings = parent.children ||= [];const at = anchor ? siblings.indexOf(anchor) : -1;siblings.splice(at < 0 ? siblings.length : at, 0, node);node.parent = parent}
+  const renderer = runtime.createRenderer<Node, Node>({patchProp: (node, key, _previous, value) => {node.props[key] = value}, insert,
+    remove, createElement: tag => {const node = {tag, tagName: tag.toUpperCase(), value: '', props: {}, focus, addEventListener: () => {}, removeEventListener: () => {}};nodes.push(node);return node}, createText: () => ({props: {}}), createComment: () => ({props: {}}), setText: () => {},
+    setElementText: () => {}, parentNode: node => node.parent || null, nextSibling: node => {const siblings = node.parent?.children || [];return siblings[siblings.indexOf(node) + 1] || null}, querySelector: () => null,
+    setScopeId: () => {}, cloneNode: () => ({props: {}}), insertStaticContent: (_html, parent, anchor) => {const first = {props: {}}, last = {props: {}};insert(first, parent, anchor);insert(last, parent, anchor);return [first, last]}})
   const source = runtime.shallowReactive({active: true, context: {}, contextKey: 'service-a', ...values})
   visible = runtime.ref(true)
   app = renderer.createApp({setup: () => () => runtime.h(runtime.KeepAlive, null, {default: () => visible.value
-    ? runtime.h(component, {...source, ...listeners, ref: (vm: any) => {if (vm) {state = vm.$.setupState;props = vm.$.props}}})
+    ? runtime.h(component as runtime.Component, {...source, ...listeners, ref: (vm: any) => {if (vm) {state = vm.$.setupState;props = vm.$.props}}})
     : runtime.h({render: () => null}, {key: 'other'})})})
   app.component('el-dialog', runtime.defineComponent({setup(_props, {slots}) {return () => runtime.h('div', null, slots.default?.())}}))
   app.component('el-input', runtime.defineComponent({setup(_props, {attrs}) {return () => runtime.h('input', attrs)}}))
-  app.provide(runtime.ssrContextKey, {modules: new Set<string>()});app.config.warnHandler = () => {};app.mount({props: {}});await settle()
+  app.config.warnHandler = () => {};app.mount({props: {}});await settle()
   return nodes
 }
 function change(reason: string) {
@@ -140,7 +129,7 @@ describe('服务子编辑器的写入与焦点归属', () => {
     expect(config.compositeTranslationProviders).toHaveLength(2)
   })
   it('实际缓存模板的旧模型点击不得在服务切换后使用新的事件身份', async () => {
-    const nodes = await mount('ModelPicker', picker, {onSelect: emitted}, true)
+    const nodes = await mount('ModelPicker', picker, {onSelect: emitted})
     const old = nodes.find(node => node.props.class === 'model-picker-option')!.props.onClick
     const oldKey = nodes.find(node => node.props['data-port-popover-key'])!.props['data-port-popover-key']
     props.contextKey = 'service-b';await settle();old();expect(emitted).not.toHaveBeenCalled()
@@ -148,14 +137,14 @@ describe('服务子编辑器的写入与焦点归属', () => {
     nodes.filter(node => node.props.class === 'model-picker-option').at(-2)!.props.onClick();expect(emitted).toHaveBeenCalledWith('fixed')
   })
   it('实际缓存模板的旧提交事件不得提交重开的新服务草稿', async () => {
-    const nodes = await mount('CustomOpenAIProviderDialog', {modelValue: true}, {onSubmit: emitted}, true)
+    const nodes = await mount('CustomOpenAIProviderDialog', {modelValue: true}, {onSubmit: emitted})
     const old = nodes.find(node => node.tag === 'form')!.props.onSubmit
     props.modelValue = false;await settle();props.modelValue = true;await settle();fillProvider()
     old({preventDefault: vi.fn()});expect(emitted).not.toHaveBeenCalled()
     nodes.find(node => node.tag === 'form')!.props.onSubmit({preventDefault: vi.fn()});expect(emitted).toHaveBeenCalledOnce()
   })
   it('实际密钥模板的旧行更新不得在服务切换后写入新的服务', async () => {
-    const nodes = await mount('ApiKeyList', {keys: ['fixture'], states: {}, summary: null, busy: false}, {onUpdate: emitted}, true)
+    const nodes = await mount('ApiKeyList', {keys: ['fixture'], states: {}, summary: null, busy: false}, {onUpdate: emitted})
     const old = nodes.find(node => node.tag === 'input')!.props['onUpdate:modelValue']
     props.contextKey = 'service-b';await settle();old('late');expect(emitted).not.toHaveBeenCalled()
     nodes.find(node => node.tag === 'input')!.props['onUpdate:modelValue']('new');expect(emitted).toHaveBeenCalledWith(0, 'new')
@@ -165,17 +154,37 @@ describe('服务子编辑器的写入与焦点归属', () => {
     const job = state.beginAddModel();change(reason);await job;expect(focus).not.toHaveBeenCalled()
   })
   it('取消添加后不再聚焦输入，正常添加可聚焦和提交一次', async () => {
-    await mount('ModelPicker', picker, {onAdd: emitted});state.pickerOpen = true;state.modelInput = {focus}
-    const job = state.beginAddModel();state.cancelAddModel();await job;expect(focus).not.toHaveBeenCalled()
-    await state.beginAddModel();expect(focus).toHaveBeenCalledOnce();state.modelDraft = 'new-model';state.submitModel();state.submitModel()
+    const nodes = await mount('ModelPicker', picker, {onAdd: emitted});state.actions.open(true)
+    const begin = nodes.find(node => node.props['data-testid'] === 'add-custom-model')!.props.onClick
+    begin();state.actions.cancel();await settle();expect(focus).not.toHaveBeenCalled()
+    begin();await settle();expect(focus).toHaveBeenCalledOnce()
+    const {window} = parseHTML('<html><body><input></body></html>')
+    vi.stubGlobal('HTMLInputElement', window.HTMLInputElement)
+    const input = window.document.querySelector('input')!;input.value = 'new-model'
+    nodes.find(node => node.props['data-testid'] === 'custom-model-input')!.props.onInput({target: input})
+    const submit = nodes.find(node => node.props['data-testid'] === 'custom-model-form')!.props.onSubmit
+    submit({preventDefault: vi.fn()});submit({preventDefault: vi.fn()})
     expect(emitted).toHaveBeenCalledOnce();expect(emitted).toHaveBeenCalledWith('new-model')
+    nodes.find(node => node.props['data-testid'] === 'model-picker')!.props.onKeydown({key: 'Escape', stopPropagation: vi.fn()})
+    expect(state.pickerOpen).toBe(false)
   })
-  it.each(['capacity', 'permission', 'length'])('模型提交重新验证%s而不依赖 HTML 属性', async reason => {
+  it.each(['capacity', 'permission', 'length', 'empty', 'reserved', 'duplicate'])('模型提交重新验证%s而不依赖 HTML 属性', async reason => {
     await mount('ModelPicker', picker, {onAdd: emitted});state.pickerOpen = true;await state.beginAddModel();state.modelDraft = 'new-model'
     if (reason === 'capacity') props.customModelCount = 2
     if (reason === 'permission') props.allowCustomModels = false
     if (reason === 'length') state.modelDraft = 'a'.repeat(13)
+    if (reason === 'empty') state.modelDraft = '  '
+    if (reason === 'reserved') state.modelDraft = CUSTOM_OPENAI_RESERVED_MODEL_ID
+    if (reason === 'duplicate') state.modelDraft = 'fixed'
     state.submitModel();expect(emitted).not.toHaveBeenCalled()
+    if (!['capacity', 'permission'].includes(reason)) expect(state.modelError).not.toBe('')
+  })
+  it('真实搜索输入筛选模型，父级切换当前模型后清空旧查询', async () => {
+    const nodes = await mount('ModelPicker', picker)
+    nodes.find(node => node.props.type === 'search')!.props['onUpdate:modelValue']('custom')
+    await settle();expect(state.filteredOptions.map((option: {value: string}) => option.value)).toEqual(['custom'])
+    props.selectedModel = 'custom';await settle();expect(state.query).toBe('')
+    expect(state.filteredOptions.map((option: {value: string}) => option.value)).toEqual(['fixed', 'custom'])
   })
   it('拒绝缺失模型与内置模型删除，隐藏和缓存时关闭草稿', async () => {
     await mount('ModelPicker', picker, {onSelect: emitted, onRemove: emitted});state.pickerOpen = true
@@ -197,8 +206,10 @@ describe('服务子编辑器的写入与焦点归属', () => {
   })
   it('密钥正常添加聚焦空行，隐藏时不添加或展开错误', async () => {
     await mount('ApiKeyList', {keys: ['fixture'], states: {}, summary: null, busy: false}, {onAdd: () => {props.keys = ['fixture', ''];emitted()}})
-    state.root = {querySelectorAll: () => [{focus, scrollIntoView: scroll}, {focus, scrollIntoView: scroll}]}
+    state.root.querySelectorAll = () => [{focus, scrollIntoView: scroll}, {focus, scrollIntoView: scroll}]
     await state.addKey();expect(emitted).toHaveBeenCalledOnce();expect(focus).toHaveBeenCalledOnce();expect(scroll).toHaveBeenCalledOnce()
+    state.actions.toggle(0);expect(state.expandedErrors.has(0)).toBe(true)
+    state.actions.toggle(0);expect(state.expandedErrors.size).toBe(0)
     props.active = false;await state.addKey();state.toggleError(0);expect(emitted).toHaveBeenCalledOnce();expect(state.expandedErrors.size).toBe(0)
   })
   it('外部关闭新服务对话框立即清空合成密钥，迟到 opened 不聚焦', async () => {
@@ -294,7 +305,7 @@ describe('服务子编辑器的写入与焦点归属', () => {
     props.busy = true;state.actions.test(0);expect(emitted).toHaveBeenCalledTimes(3)
   })
   it.each(['replace-list', 'shift-in-place', 'edit-in-place'])('密钥行%s之后旧索引事件不能写入、删除、检查或展开现在的另一行', async reason => {
-    const nodes = await mount('ApiKeyList', {keys: runtime.reactive(['first', 'second']), states: {0: {status: 'error'}}, summary: null, busy: false, allowMultiple: true}, {onUpdate: emitted, onRemove: emitted, onTest: emitted}, true)
+    const nodes = await mount('ApiKeyList', {keys: runtime.reactive(['first', 'second']), states: {0: {status: 'error'}}, summary: null, busy: false, allowMultiple: true}, {onUpdate: emitted, onRemove: emitted, onTest: emitted})
     const old = {update: nodes.find(node => node.tag === 'input')!.props['onUpdate:modelValue'],
       remove: nodes.find(node => node.props.class?.includes('api-key-remove'))!.props.onClick,
       test: nodes.find(node => node.props.class?.includes('api-key-retest'))!.props.onClick,

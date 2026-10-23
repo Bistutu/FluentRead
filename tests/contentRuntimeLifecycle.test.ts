@@ -1,14 +1,18 @@
 /**
  * @file tests/contentRuntimeLifecycle.test.ts
  * 文件职责：验证内容应用启动、配置等待、页面暂停恢复与离开时的生命周期边界。
- * 主要内容：隔离各 feature 的组合根依赖，验证自动站点规则在文章导航、锚点跳转、禁用与恢复后的触发归属，以及材料公开生命周期、原始 XML、失效上下文、迟到初始化和伪造页面事件的清理边界。
- * 模块边界：材料与浏览器 API 使用公开端口 mock，不测试各 feature 的 Vue 组件或真实翻译请求；跨域 frame 的身份与会话另有专门测试。
+ * 主要内容：验证文章导航、锚点跳转、禁用与恢复后的触发归属，以及材料生命周期、原始 XML、失效上下文和伪造事件；另经真实字体消息、输入翻译、悬浮与信息高亮入口验证配置代次、站点许可、后端端口和清理联动。
+ * 模块边界：常规生命周期隔离无关 feature；集成场景运行真实消息、字体、输入、悬浮与高亮生产控制器，仅提供确定性 DOM 布局、CSS Highlight、Shadow UI 和后端消息端口，不声称覆盖真实浏览器或在线翻译服务。
  */
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import {parseHTML} from 'linkedom';
+import {setMaxListeners} from 'node:events';
+import {Config} from '@/src/core/config/model';
 import {installContentPageLifecycle, waitForContentDocument} from '@/src/app/content/pageLifecycle';
 import {isRawXmlContentDocument} from '@/src/shared/dom/documentType';
 
 const mocks = vi.hoisted(() => ({
+    realComposition: false, createUi: vi.fn(),
     config: {
         on: true, autoTranslate: false, alwaysTranslateDomains: [] as string[], disabledExtensionDomains: [] as string[], bilingualSentenceHighlightEnabled: true,
         disableFloatingBall: true, disableSelectionTranslator: true, disableImageTranslator: true,
@@ -45,12 +49,15 @@ vi.mock('@/src/app/content/personalCorrections', () => ({
 vi.mock('@/src/services/config/store', () => ({
     config: mocks.config, get configReady() { return mocks.configReady; }, subscribeConfig: mocks.subscribeConfig,
 }));
-vi.mock('wxt/utils/content-script-ui/shadow-root', () => ({createShadowRootUi: vi.fn()}));
-vi.mock('@/src/app/content/features', () => ({
+vi.mock('wxt/utils/content-script-ui/shadow-root', () => ({createShadowRootUi: mocks.createUi}));
+vi.mock('@/src/app/content/features', async () => {
+    const input = await import('@/src/features/input-translation/public');
+    const hover = await import('@/src/features/hover-translation/public');
+    return ({
     ...Object.fromEntries([
         'autoTranslateEnglishPage', 'cancelPendingHoverTranslation', 'handleTranslation', 'noteBilingualHostGesture',
         'inputBoxTranslationConfigKey', 'isAreaTranslatorMounted', 'isFullPageTranslationActive',
-        'mountAreaTranslator', 'mountFloatingBall', 'mountImageTranslator', 'mountSelectionTranslator',
+        'mountAreaTranslator', 'startAreaTranslationFromContextMenu', 'mountFloatingBall', 'mountImageTranslator', 'mountSelectionTranslator',
         'isImageTranslatorNeeded', 'isMangaReaderPage', 'mountMangaEntry', 'unmountMangaEntry',
         'mountTranslationProgressPanel', 'mountVideoSubtitleTranslation', 'isSupportedVideoPage',
         'mountParagraphCopyContentFeature', 'mountSectionTranslationContentFeature',
@@ -70,35 +77,44 @@ vi.mock('@/src/app/content/features', () => ({
     resetFullPageTranslationRouteState: mocks.resetRouteState,
     autoTranslateEnglishPage: mocks.autoTranslate,
     isFullPageTranslationActive: () => mocks.fullPageActive,
-    createInputTranslationContentFeature: () => ({mount: mocks.mountInput, invalidate: mocks.invalidateInput}),
-    mountHoverTranslationContentFeature: () => vi.fn(),
-}));
+    getFullPageTranslationDocumentToken: () => 'composition-document',
+    inputBoxTranslationConfigKey: (...args: Parameters<typeof input.inputBoxTranslationConfigKey>) => mocks.realComposition ? input.inputBoxTranslationConfigKey(...args) : undefined,
+    createInputTranslationContentFeature: (...args: Parameters<typeof input.createInputTranslationContentFeature>) => mocks.realComposition ? input.createInputTranslationContentFeature(...args) : ({mount: mocks.mountInput, invalidate: mocks.invalidateInput}),
+    mountHoverTranslationContentFeature: (...args: Parameters<typeof hover.mountHoverTranslationContentFeature>) => mocks.realComposition ? hover.mountHoverTranslationContentFeature(...args) : vi.fn(),
+});});
 vi.mock('@/src/services/translation/client', () => ({cancelAllTranslations: vi.fn()}));
 vi.mock('@/src/services/translation/context', () => ({resetPageTranslationContextCache: vi.fn()}));
 vi.mock('@/src/services/translation/legacyPageCache', () => ({clearLegacyPageTranslationCache: vi.fn()}));
 vi.mock('@/src/app/content/hotkeyRuntime', () => ({
-    createContentHotkeyRuntime: () => ({installFloatingBallHotkey: () => vi.fn()}),
+    createContentHotkeyRuntime: () => ({installFloatingBallHotkey: () => vi.fn(), selectionShortcutPorts: {getConfiguredSelectionHotkey: () => 'none', getCustomSelectionHotkey: () => '', hasActiveSelectionTranslationCandidate: () => false, matchesSelectionTranslatorShortcut: () => false, shouldReserveSelectionShortcut: () => false}}),
 }));
 vi.mock('@/src/app/content/quickTranslationRuntime', () => ({mountConfiguredQuickTranslation: vi.fn()}));
 vi.mock('@/src/app/content/pageStyles', () => ({installPageStyles: mocks.installPageStyles}));
-vi.mock('@/src/app/content/pageTranslationFont', () => ({createPageTranslationFontRuntime: () => ({
+vi.mock('@/src/app/content/pageTranslationFont', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@/src/app/content/pageTranslationFont')>();
+    return {createPageTranslationFontRuntime: (...args: Parameters<typeof actual.createPageTranslationFontRuntime>) => mocks.realComposition ? actual.createPageTranslationFontRuntime(...args) : ({
     read: () => mocks.pageFontEnabled,
     set: (enabled: boolean) => {mocks.pageFontEnabled = enabled; return true;},
     reset: () => {mocks.pageFontEnabled = false; mocks.pageFontReset();},
     dispose: () => {mocks.pageFontEnabled = false; mocks.pageFontDispose();},
-})}));
+})};});
 vi.mock('@/src/app/content/qqMailFrameRuntime', () => ({
     installQqMailTopFrameBridge: vi.fn(),
     installNeteaseMailTopFrameBridge: vi.fn(),
 }));
 vi.mock('@/src/app/content/embeddedFrameRuntime', () => ({installEmbeddedTopFrameBridge: vi.fn()}));
 vi.mock('@/src/app/content/mainWorldBridgeLifecycle', () => ({setMainWorldBridgesEnabled: mocks.setBridges}));
-vi.mock('@/src/app/content/messageRuntime', () => ({createContentRuntimeMessageHandler: mocks.createMessageHandler}));
+vi.mock('@/src/app/content/messageRuntime', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@/src/app/content/messageRuntime')>();
+    return {createContentRuntimeMessageHandler: (...args: Parameters<typeof actual.createContentRuntimeMessageHandler>) => mocks.realComposition ? actual.createContentRuntimeMessageHandler(...args) : mocks.createMessageHandler(...args)};
+});
 vi.mock('@/src/app/content/bilingualSentenceHighlight', () => ({syncBilingualSentenceHighlight: mocks.syncHighlight}));
-vi.mock('@/src/app/content/informationHighlight', () => ({createPageInformationHighlightRuntime: () => ({
+vi.mock('@/src/app/content/informationHighlight', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@/src/app/content/informationHighlight')>();
+    return {...actual, createPageInformationHighlightRuntime: (...args: Parameters<typeof actual.createPageInformationHighlightRuntime>) => mocks.realComposition ? actual.createPageInformationHighlightRuntime(...args) : ({
     mount: vi.fn(), unmount: vi.fn(), updatePreferences: vi.fn(), routeChanged: vi.fn(), getState: vi.fn(), setEnabled: vi.fn(), retry: vi.fn(),
     feature: {id: 'information-highlight', isEnabled: () => mocks.config.on, mount: vi.fn(), unmount: vi.fn()},
-})}));
+})};});
 vi.mock('@/src/app/content/siteAdaptationRuntime', () => ({
     createContentSiteAdaptationRuntime: () => ({routeChanged: mocks.siteAdaptationRouteChanged, update: vi.fn()}),
     applyCoreTranslationPreferences: vi.fn(() => false),
@@ -419,9 +435,11 @@ describe('content composition root 冷启动与暂停恢复', () => {
     beforeEach(() => {
         vi.resetModules();
         vi.clearAllMocks();
+        mocks.realComposition = false;
         mocks.config.on = true;
         mocks.pageFontEnabled = false;
         mocks.config.autoTranslate = false;
+        Object.assign(mocks.config, {disableFloatingBall: true, disableSelectionTranslator: true, disableImageTranslator: true, selectionAreaEnabled: false, translationProgressPanelEnabled: false, imageTranslationMangaEnabled: false, selectionTranslatorMode: 'bilingual'});
         mocks.config.alwaysTranslateDomains = [];
         mocks.fullPageActive = false;
         mocks.siteAdaptationRouteChanged.mockReset();
@@ -756,6 +774,40 @@ describe('content composition root 冷启动与暂停恢复', () => {
         expect(mocks.mountReencounter).toHaveBeenCalledTimes(2);
     });
 
+    it('mounts enabled public feature entries once, reconciles disabled tools, and preserves independent features after a failed mount', async () => {
+        const features = await import('@/src/app/content/features');
+        const {resolveBrowserCapabilities} = await import('@/src/platform/browser/capabilities');
+        const hosts = new Set<string>();Object.assign(document, {getElementById: (id: string) => hosts.has(id) ? {} : null});
+        const rows = [
+            [features.mountFloatingBall, features.unmountFloatingBall, 'fluent-read-floating-ball-container'],
+            [features.mountSelectionTranslator, features.unmountSelectionTranslator, 'fluent-read-selection-translator-container'],
+            [features.mountTranslationProgressPanel, features.unmountTranslationProgressPanel, 'fluent-read-translation-status-container'],
+        ] as const;
+        for (const [mount, unmount, id] of rows) {vi.mocked(mount).mockImplementation((() => {hosts.add(id);}) as never);vi.mocked(unmount).mockImplementation(() => {hosts.delete(id);});}
+        let areaMounted = false;vi.mocked(features.mountAreaTranslator).mockImplementation((() => {areaMounted = true;}) as never);
+        vi.mocked(features.unmountAreaTranslator).mockImplementation(() => {areaMounted = false;});vi.mocked(features.isAreaTranslatorMounted).mockImplementation(() => areaMounted);
+        vi.mocked(features.isImageTranslatorNeeded).mockReturnValue(true);vi.mocked(features.isMangaReaderPage).mockReturnValue(true);
+        Object.assign(mocks.config, {disableFloatingBall: false, disableSelectionTranslator: false, disableImageTranslator: false, selectionAreaEnabled: true, translationProgressPanelEnabled: true, imageTranslationMangaEnabled: true});
+        const failure = new Error('Selection surface temporarily unavailable');vi.mocked(features.mountSelectionTranslator).mockImplementationOnce(() => {throw failure;});
+        const diagnostic = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const {startContentApp} = await import('@/src/app/content/runtime');const starting = startContentApp(context as never, resolveBrowserCapabilities({browser: 'chrome', manifestVersion: 3}));ready();await starting;
+        expect(diagnostic).toHaveBeenCalledWith('[FluentRead] 内容功能 selection-translator mount 失败:', failure);
+        expect(features.mountFloatingBall).toHaveBeenCalledOnce();expect(features.mountAreaTranslator).toHaveBeenCalledOnce();expect(features.mountImageTranslator).toHaveBeenCalledOnce();expect(features.mountMangaEntry).toHaveBeenCalledWith(context, {startAreaTranslation: features.startAreaTranslationFromContextMenu});expect(features.mountTranslationProgressPanel).toHaveBeenCalledOnce();
+        mocks.subscribeConfig.mock.calls[0][0](mocks.config);await vi.waitFor(() => expect(hosts.has('fluent-read-selection-translator-container')).toBe(true));
+        expect(features.mountFloatingBall).toHaveBeenCalledOnce();expect(features.mountImageTranslator).toHaveBeenCalledOnce();
+        Object.assign(mocks.config, {disableFloatingBall: true, disableSelectionTranslator: true, selectionAreaEnabled: false, translationProgressPanelEnabled: false, imageTranslationMangaEnabled: false});
+        vi.mocked(features.isImageTranslatorNeeded).mockReturnValue(false);mocks.subscribeConfig.mock.calls[0][0](mocks.config);
+        for (const [, unmount] of rows) expect(unmount).toHaveBeenCalled();expect(features.unmountAreaTranslator).toHaveBeenCalledOnce();expect(features.unmountImageTranslator).toHaveBeenCalledOnce();expect(features.unmountMangaEntry).toHaveBeenCalledOnce();expect(hosts.size).toBe(0);
+        invalidated();diagnostic.mockRestore();
+    });
+    it('keeps image, manga and area feature entry points disabled for a browser without their capabilities', async () => {
+        const features = await import('@/src/app/content/features');const {resolveBrowserCapabilities} = await import('@/src/platform/browser/capabilities');
+        Object.assign(mocks.config, {selectionAreaEnabled: true, imageTranslationMangaEnabled: true});vi.mocked(features.isImageTranslatorNeeded).mockReturnValue(true);vi.mocked(features.isMangaReaderPage).mockReturnValue(true);
+        const {startContentApp} = await import('@/src/app/content/runtime');const starting = startContentApp(context as never, resolveBrowserCapabilities({browser: 'thunderbird', manifestVersion: 2}));ready();await starting;
+        expect(features.mountAreaTranslator).not.toHaveBeenCalled();expect(features.mountImageTranslator).not.toHaveBeenCalled();expect(features.mountMangaEntry).not.toHaveBeenCalled();expect(mocks.mountShareCard).toHaveBeenCalledOnce();
+        invalidated();
+    });
+
     it('宿主伪造相同 URL 的路由通知不能反复失效正在执行的翻译', async () => {
         const {startContentApp} = await import('@/src/app/content/runtime');
         const starting = startContentApp(context as never);
@@ -767,5 +819,157 @@ describe('content composition root 冷启动与暂停恢复', () => {
         document.dispatchEvent(new Event('fluentread-route-change'));
         document.dispatchEvent(new Event('fluentread-route-change'));
         expect(mocks.resetRouteState).toHaveBeenCalledOnce();
+    });
+});
+
+/** 浏览器缺失端口只提供 DOM/CSS Highlight/Shadow UI 语义；入口、消息、输入、悬浮和高亮控制器均运行生产实现。 */
+describe('content composition root 的真实页面入口联动', () => {
+    let dispose = () => {};
+    let page: Window;
+    let doc: Document;
+    let frames: Map<number, FrameRequestCallback>;
+    let paints: Map<string, Set<Range>>;
+    let send: ReturnType<typeof vi.fn>;
+    let listener: (message: unknown, sender: unknown, reply: (response: any) => void) => boolean;
+    const settle = async () => {
+        for (let i = 0; i < 80; i++) {
+            const pending = [...frames.values()]; frames.clear(); pending.forEach(callback => callback(0));
+            await Promise.resolve();
+        }
+    };
+    const message = async (payload: Record<string, unknown>) => {
+        let response: any;
+        expect(listener(payload, {id: 'composition-extension'}, value => {response = value;})).toBe(true);
+        await settle();
+        return response;
+    };
+    const key = (target: EventTarget, type: string, fields: Record<string, unknown>) => {
+        const event = new (page as unknown as {Event: typeof Event}).Event(type, {bubbles: true, cancelable: true});
+        Object.assign(event, {key: '', code: '', ctrlKey: false, altKey: false, shiftKey: false, metaKey: false, repeat: false, ...fields});
+        Object.defineProperty(event, 'isTrusted', {value: true});
+        target.dispatchEvent(event);
+        return event;
+    };
+    beforeEach(async () => {
+        vi.resetModules(); vi.clearAllMocks(); vi.useFakeTimers(); mocks.realComposition = true;
+        Object.assign(mocks.config, new Config());
+        Object.assign(mocks.config, {on: true, autoTranslate: false, alwaysTranslateDomains: [], disabledExtensionDomains: [],
+            disableFloatingBall: true, disableSelectionTranslator: true, disableImageTranslator: true, selectionAreaEnabled: false,
+            imageTranslationMangaEnabled: false, translationProgressPanelEnabled: false, paragraphCopyEnabled: false,
+            vocabularyReencounterEnabled: false, inputBoxTranslationTrigger: 'ctrl_enter', inputBoxTranslationTarget: 'zh',
+            hotkey: 'Alt', mouseHoverTranslationDelay: 0, animations: false,
+            informationHighlight: {enabled: false, mode: 'surprisal-local', hotkeyEnabled: true, hotkey: 'Alt+H', style: 'background', density: 'high'}});
+        mocks.config.writing.enabled = false; mocks.configReady = Promise.resolve(); mocks.shareCardMounted = false;
+        mocks.installPageStyles.mockReturnValue(mocks.removeStyles); mocks.subscribeConfig.mockReturnValue(vi.fn());
+        mocks.mountMaterial.mockReturnValue(mocks.unmountMaterial);
+        const parsed = parseHTML('<html><head></head><body><article><p>The extraordinary algorithm preserves original paragraphs and inline links.</p></article><textarea>Hello world</textarea></body></html>');
+        doc = parsed.document as unknown as Document;
+        frames = new Map(); paints = new Map(); let frameId = 0;
+        const href = {href: 'https://example.com/article'};
+        const Observer = class {observe() {} disconnect() {}};
+        page = new Proxy(parsed.window, {get(target, prop) {
+            if (prop === 'location') return href;
+            if (prop === 'CSS') return {highlights: paints};
+            if (prop === 'Highlight') return Set;
+            if (prop === 'MutationObserver') return Observer;
+            if (prop === 'innerWidth') return 1000;
+            if (prop === 'innerHeight') return 600;
+            if (prop === 'getComputedStyle') return (element: HTMLElement) => ({display: element.style.display || 'block', visibility: 'visible', color: 'rgb(0,0,0)'});
+            if (prop === 'requestAnimationFrame') return (callback: FrameRequestCallback) => {frames.set(++frameId, callback); return frameId;};
+            if (prop === 'cancelAnimationFrame') return (id: number) => frames.delete(id);
+            return Reflect.get(target, prop);
+        }}) as unknown as Window;
+        Object.defineProperty(doc, 'defaultView', {value: page});
+        Object.defineProperty(doc, 'readyState', {value: 'complete'});
+        Object.defineProperty(doc, 'contentType', {value: 'text/html'});
+        Object.defineProperty(doc, 'activeElement', {configurable: true, value: doc.querySelector('textarea')});
+        // linkedom 没有布局、原生 CSS Highlight Range 或 signal 自动移除；在浏览器边界补齐这些确定性语义。
+        for (const target of [doc, page]) {
+            const add = target.addEventListener.bind(target), remove = target.removeEventListener.bind(target);
+            target.addEventListener = ((type: string, handler: EventListenerOrEventListenerObject, options?: AddEventListenerOptions | boolean) => {
+                const signal = typeof options === 'object' ? options.signal : undefined;
+                if (signal?.aborted) return;
+                if (signal) setMaxListeners(0, signal);
+                add(type, handler, options);
+                signal?.addEventListener('abort', () => remove(type, handler, options), {once: true});
+            }) as typeof target.addEventListener;
+        }
+        for (const element of doc.querySelectorAll('*')) {
+            element.getBoundingClientRect = () => ({left: 10, right: 400, top: 20, bottom: 50, width: 390, height: 30, x: 10, y: 20, toJSON() {return {};}});
+        }
+        doc.createRange = () => {
+            let text: Text, start = 0, end = 0;
+            return {setStart(node: Text, offset: number) {text = node; start = offset;}, setEnd(_node: Text, offset: number) {end = offset;},
+                toString: () => text.data.slice(start, end), getBoundingClientRect: () => ({top: 20, bottom: 50})} as unknown as Range;
+        };
+        vi.stubGlobal('window', page); vi.stubGlobal('document', doc); vi.stubGlobal('navigator', {platform: 'Linux'});
+        vi.stubGlobal('Event', parsed.window.Event); vi.stubGlobal('HTMLElement', parsed.window.HTMLElement); vi.stubGlobal('Element', parsed.window.Element);
+        send = vi.fn(async (payload: any) => payload.type === 'SCORE_INFORMATION_HIGHLIGHT'
+            ? {success: true, result: {spans: [{start: 4, end: 17, score: 1}], engine: 'local'}}
+            : payload.type === 'inputBoxTranslation' ? {success: true, translatedText: '你好世界'} : {success: true});
+        vi.stubGlobal('browser', {extension: {inIncognitoContext: false}, runtime: {id: 'composition-extension', sendMessage: send,
+            onMessage: {addListener: mocks.addRuntimeListener, removeListener: mocks.removeRuntimeListener}}});
+        mocks.createUi.mockImplementation(async (_ctx, options) => {
+            const host = doc.createElement('div'), container = doc.createElement('div'); host.append(container);
+            const ui = {shadowHost: host, mounted: undefined as HTMLElement | undefined,
+                mount() {doc.body.append(host); ui.mounted = options.onMount(container);}, remove() {host.remove();}};
+            return ui;
+        });
+        const {startContentApp} = await import('@/src/app/content/runtime');
+        await startContentApp({isInvalid: false, onInvalidated(callback: () => void) {dispose = callback;}} as never);
+        listener = mocks.addRuntimeListener.mock.calls[0][0];
+    });
+    afterEach(() => {dispose(); mocks.realComposition = false; vi.useRealTimers(); vi.unstubAllGlobals();});
+
+    it('runtime 字体消息更新真实样式并发通知，站点停用清除样式且拒绝旧页面写入', async () => {
+        const changed = vi.fn(); doc.addEventListener('fluentread-page-translation-font-changed', changed);
+        const state = await message({type: 'getPageTranslationFontState'});
+        expect(state).toMatchObject({status: 'success', browserDefault: false, pageUrl: 'https://example.com/article'});
+        expect(await message({type: 'setPageTranslationFont', browserDefault: true, documentToken: state.documentToken, pageUrl: state.pageUrl})).toMatchObject({status: 'success', browserDefault: true});
+        expect(doc.getElementById('fluent-read-page-translation-font')?.textContent).toContain('font-family: initial');
+        expect(changed).toHaveBeenCalledOnce();
+        expect(await message({type: 'updateSiteExtensionDisabled', isDisabled: true})).toEqual({status: 'success'});
+        expect(doc.getElementById('fluent-read-page-translation-font')).toBeNull(); expect(changed).toHaveBeenCalledTimes(2);
+        expect(await message({type: 'toggleFloatingBall', isEnabled: true})).toEqual({status: 'disabled'});
+        expect(await message({type: 'setPageTranslationFont', browserDefault: true, documentToken: state.documentToken, pageUrl: state.pageUrl})).toEqual({status: 'disabled'});
+    });
+
+    it('真实输入按键发起翻译，配置切换取消旧响应且新目标能写回，停用后不能再发送', async () => {
+        const textarea = doc.querySelector('textarea')!;
+        let complete!: (response: unknown) => void;
+        send.mockImplementation(async (payload: any) => payload.type === 'inputBoxTranslation'
+            ? new Promise(resolve => {complete = resolve;}) : {success: true});
+        const consumed = key(textarea, 'keydown', {key: 'Enter', code: 'Enter', ctrlKey: true}); await settle();
+        const requests = () => send.mock.calls.map(([payload]) => payload).filter(payload => payload.type === 'inputBoxTranslation');
+        expect(consumed.defaultPrevented).toBe(true); expect(requests()).toHaveLength(1); expect(requests()[0]).toMatchObject({text: 'Hello world', targetLang: 'zh'});
+        Object.assign(mocks.config, {inputBoxTranslationTarget: 'ja'});
+        mocks.subscribeConfig.mock.calls[0][0](mocks.config);
+        expect(send).toHaveBeenCalledWith(expect.objectContaining({type: 'fluentReadTranslationCancel', clientRequestId: requests()[0].clientRequestId}));
+        complete({success: true, translatedText: '迟到译文'}); await settle(); expect(textarea.value).toBe('Hello world');
+        key(textarea, 'keydown', {key: 'Enter', code: 'Enter', ctrlKey: true}); await settle();
+        expect(requests()).toHaveLength(2); expect(requests()[1]).toMatchObject({targetLang: 'ja'});
+        complete({success: true, translatedText: 'こんにちは'}); await settle(); expect(textarea.value).toBe('こんにちは');
+        await message({type: 'updateSiteExtensionDisabled', isDisabled: true});
+        key(textarea, 'keydown', {key: 'Enter', code: 'Enter', ctrlKey: true}); await settle(); expect(requests()).toHaveLength(2);
+    });
+
+    it('真实悬浮与高亮快捷键使用当前页面许可，模型评分经 runtime 发出并在停用后清理', async () => {
+        Object.defineProperty(doc, 'activeElement', {configurable: true, value: doc.body});
+        const features = await import('@/src/app/content/features');
+        key(doc.body, 'mouseover', {clientX: 30, clientY: 40});
+        key(page, 'keydown', {key: 'Alt', code: 'AltLeft', altKey: true});
+        key(page, 'keyup', {key: 'Alt', code: 'AltLeft'});
+        expect(features.handleTranslation).toHaveBeenCalledWith(30, 40);
+        const event = key(doc.body, 'keydown', {key: 'h', code: 'KeyH', altKey: true}); expect(event.defaultPrevented).toBe(true);
+        vi.advanceTimersByTime(180); await settle();
+        expect(send).toHaveBeenCalledWith(expect.objectContaining({type: 'SCORE_INFORMATION_HIGHLIGHT', text: 'The extraordinary algorithm preserves original paragraphs and inline links.'}));
+        expect(await message({type: 'GET_INFORMATION_HIGHLIGHT_STATE'})).toMatchObject({success: true, state: {enabled: true, processedParagraphs: 1, highlightedSpans: 1}});
+        const scores = send.mock.calls.filter(([payload]) => payload.type === 'SCORE_INFORMATION_HIGHLIGHT').length;
+        await message({type: 'updateSiteExtensionDisabled', isDisabled: true}); expect([...paints.values()].flatMap(paint => [...paint])).toHaveLength(0);
+        expect(key(doc.body, 'keydown', {key: 'h', code: 'KeyH', altKey: true}).defaultPrevented).toBe(false);
+        key(page, 'keydown', {key: 'Alt', code: 'AltLeft', altKey: true}); key(page, 'keyup', {key: 'Alt', code: 'AltLeft'});
+        vi.advanceTimersByTime(180); await settle();
+        expect(features.handleTranslation).toHaveBeenCalledOnce(); expect(send.mock.calls.filter(([payload]) => payload.type === 'SCORE_INFORMATION_HIGHLIGHT')).toHaveLength(scores);
+        expect(await message({type: 'SET_INFORMATION_HIGHLIGHT_ENABLED', enabled: true})).toMatchObject({success: false, error: 'INFORMATION_HIGHLIGHT_PAGE_DISABLED'});
     });
 });

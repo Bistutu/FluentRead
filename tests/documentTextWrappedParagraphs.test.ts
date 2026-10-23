@@ -14,14 +14,13 @@ describe('hard-wrapped plain-text paragraphs', () => {
     const notes = ['MEETING NOTES FOR THE ORCHARD PROJECT AND ITS PARTNERS', '', 'Attendees: Dana, Luis, Mei', 'Date: 12 March', '', ...wrapped, '',
         '- Design freeze moves to the end of April and', '- Testing starts one week after the freeze has', '', 'Action items for everyone attending the meeting', '* Dana sends the plan', '', '---', 'Next meeting: 26 March'];
 
-    it('translates a wrapped paragraph as one segment and leaves headings, short lines and lists alone', () => {
-        expect(sources(notes.join('\n'))).toEqual([
+    it.each(['\n', '\r\n', '\r'])('translates a wrapped paragraph with %j line endings as one segment and preserves original bytes', ending => {
+        expect(sources(notes.join(ending))).toEqual([
             'MEETING NOTES FOR THE ORCHARD PROJECT AND ITS PARTNERS', 'Attendees: Dana, Luis, Mei', 'Date: 12 March', wrapped.join(' '),
             '- Design freeze moves to the end of April and', '- Testing starts one week after the freeze has', 'Action items for everyone attending the meeting', '* Dana sends the plan', '---', 'Next meeting: 26 March',
         ]);
-        // 没有译文时原样导出；Windows 换行同样合并，换行符留在原处。
-        expect(renderDocument(parseDocument('notes.txt', notes.join('\r\n')), [], 'translated')).toBe(notes.join('\r\n'));
-        expect(sources(notes.join('\r\n'))[3]).toBe(wrapped.join(' '));
+        expect(renderDocument(parseDocument('notes.txt', notes.join(ending)), [], 'translated')).toBe(notes.join(ending));
+        expect(sources(notes.join(ending))[3]).toBe(wrapped.join(' '));
     });
 
     it('writes the translation as one line and keeps the original lines in bilingual output', () => {

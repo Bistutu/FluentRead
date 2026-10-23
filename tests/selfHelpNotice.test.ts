@@ -4,37 +4,23 @@
  * 主要内容：报告按需预览及明确导出、白名单文案、冷却与忙状态、实际定位容器和换行入口的空间复验、切换和卸载清理，以及恢复后重试的整段页面归属。
  * 模块边界：自有 Vue renderer 覆盖实际组件事件与生命周期，下载及浏览器消息使用可控端口；真实浏览器下载和视觉验收另行执行。
  */
-import {createRequire} from 'node:module';
+import * as runtime from 'vue';
+import DiagnosticNotice from '@/src/features/self-help/ui/DiagnosticNotice.vue';
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import * as diagnostics from '@/src/services/diagnostics';
-import {diagnoseFailure, getDiagnosticSummary, getDiagnosticText, getDiagnosticActionLabel, getDiagnosticUiText} from '@/src/services/diagnostics';
+import {diagnoseFailure, getDiagnosticText, getDiagnosticUiText} from '@/src/services/diagnostics';
 import {createPopupPageActions, type PopupPageState} from '@/src/app/popup/pageActions';
 import {Config} from '@/src/core/config/model';
-import {compileVueInlineFixture} from './helpers/compiledVueFixture';
 import * as i18n from '@/src/core/i18n';
 import {UI_LANGUAGE_BUNDLES} from '@/src/core/i18n/bundles';
 import type {UiLanguage, RegisteredUiLanguage} from '@/src/core/i18n';
 
-const runtime = createRequire(import.meta.url)('vue') as typeof import('vue');
 const loadLanguage = async (language: UiLanguage) => {
   if (language !== 'zh-CN') i18n.registerUiLanguageBundle(language, UI_LANGUAGE_BUNDLES[language]);
   return true;
 };
 const ensureUiLanguageBundle = vi.fn(loadLanguage);
 let dispose: (() => void) | undefined;
-function loadNotice() {
-  const compiled = compileVueInlineFixture('src/features/self-help/ui/DiagnosticNotice.vue', {id: 'self-help-notice'});
-  expect(compiled.parseErrors).toEqual([]);
-  const dependencies: Record<string, unknown> = {'vue': runtime, '@/src/services/diagnostics': diagnostics,
-    '@/src/core/i18n': i18n, '@/src/platform/i18n/uiLanguageBundles': {ensureUiLanguageBundle}};
-  const module = {exports: {} as {default: import('vue').Component}};
-  // 只复用编译缓存；每次挂载执行同一真实 SFC 源码，诊断依赖也使用生产模块。
-  new Function('require', 'exports', 'module', compiled.code)((id: string) => {
-    if (!(id in dependencies)) throw new Error(`Unexpected diagnostic fixture dependency: ${id}`);
-    return dependencies[id];
-  }, module.exports, module);
-  return module.exports.default;
-}
+vi.mock('@/src/platform/i18n/uiLanguageBundles', () => ({ensureUiLanguageBundle: (language: UiLanguage) => ensureUiLanguageBundle(language)}));
 afterEach(() => {dispose?.();dispose = undefined;vi.useRealTimers();vi.restoreAllMocks();vi.unstubAllGlobals();ensureUiLanguageBundle.mockReset().mockImplementation(loadLanguage);});
 interface Host {tag: string; text: string; props: Record<string, any>; children: Host[]; parent: Host | null; focus: ReturnType<typeof vi.fn>; contains: (target: Host | null) => boolean; querySelector: (selector: string) => Host | null; scrollHeight: number; getBoundingClientRect?: () => {top: number; bottom: number}; closest?: (selector: string) => {getBoundingClientRect: () => {top: number; bottom: number}} | null; offsetParent?: {getBoundingClientRect: () => {top: number; bottom: number}} | null}
 const node = (tag: string, text = ''): Host => {
@@ -65,7 +51,7 @@ async function mount(diagnostic: unknown, patch: Record<string, unknown> = {}) {
   const documentPort = {...globalThis.document, activeElement: null as Host | null, ...port(documentListeners)};
   const windowPort = {innerHeight: 700, ...port(windowListeners)};
   vi.stubGlobal('document', documentPort);vi.stubGlobal('window', windowPort);
-  const component = loadNotice();
+  const component = DiagnosticNotice;
   const props = runtime.shallowReactive({diagnostic, language: 'zh-CN', busy: false, feature: 'popup', version: '0.0.38', ...patch});
   const emitted = vi.fn();
   const remove = (value: Host) => {if (value.parent) value.parent.children.splice(value.parent.children.indexOf(value), 1);value.parent = null;};
@@ -78,7 +64,7 @@ async function mount(diagnostic: unknown, patch: Record<string, unknown> = {}) {
     setScopeId() {}, insertStaticContent(content, parent, anchor) {const value = node('#static', content);const at = anchor ? parent.children.indexOf(anchor) : -1;parent.children.splice(at < 0 ? parent.children.length : at, 0, value);value.parent = parent;return [value, value];},
   });
   let instance: any;
-  const app = renderer.createApp({setup: () => () => runtime.h(component, {...props, onAction: emitted, ref: (value: any) => {if (value) instance = value;}})});
+  const app = renderer.createApp({setup: () => () => runtime.h(component as runtime.Component, {...props, onAction: emitted, ref: (value: any) => {if (value) instance = value;}})});
   const root = node('root');app.mount(root);dispose = () => app.unmount();await settle();
   expect(instance.$.render).toBeTypeOf('function');
   const buttons = () => all(root, value => value.tag === 'button');
@@ -99,10 +85,10 @@ async function mount(diagnostic: unknown, patch: Record<string, unknown> = {}) {
 describe('actual self help notice', () => {
   it('mounts only a status trigger until requested, and Escape clears the dialog preview without dismissing the error', async () => {
     const diagnostic = diagnoseFailure({kind: 'authentication'}), f = await mount(diagnostic);
-    f.collapsed();expect(contents(f.root)).toContain(getDiagnosticSummary(diagnostic));
+    f.collapsed();expect(contents(f.root)).toContain(i18n.translate(`diagnostics.${(diagnostic).code}.summary`, i18n.resolveUiLanguageFromLocale('zh-CN')));
     const status = all(f.root, value => value.props.role === 'status')[0];
     expect(status.props['aria-live']).toBe('polite');expect(status.props.class).toContain('diagnostic-sr-only');
-    expect(f.trigger().props.title).toBe(getDiagnosticSummary(diagnostic));expect(f.trigger().props['aria-haspopup']).toBe('dialog');
+    expect(f.trigger().props.title).toBe(i18n.translate(`diagnostics.${(diagnostic).code}.summary`, i18n.resolveUiLanguageFromLocale('zh-CN')));expect(f.trigger().props['aria-haspopup']).toBe('dialog');
     expect(contents(f.root)).not.toContain(getDiagnosticText(diagnostic).detail);expect(contents(f.root)).not.toMatch(/预览诊断|导出 JSON|重试/);
     await f.click('查看详情');expect(contents(f.root)).toContain(getDiagnosticText(diagnostic).detail);
     const dialog = all(f.root, value => value.props.role === 'dialog')[0];
@@ -251,7 +237,7 @@ describe('actual self help notice', () => {
 
   it('disables operational actions while busy and uses the same safe English text as its parent', async () => {
     const f = await mount(diagnoseFailure({kind: 'timeout'}), {language: 'en', busy: true});
-    expect(contents(f.root)).toContain(getDiagnosticSummary({code: 'timeout'}, 'en'));
+    expect(contents(f.root)).toContain(i18n.translate(`diagnostics.${({code: 'timeout'}).code}.summary`, i18n.resolveUiLanguageFromLocale('en')));
     await f.click(getDiagnosticUiText('details', 'en'));
     for (const label of ['Retry', 'Check translation service', getDiagnosticUiText('dismiss-notice', 'en')]) {
       expect(f.button(label).props.disabled).toBe(true);await f.click(label);
@@ -356,9 +342,9 @@ describe('actual self help notice', () => {
     const preview = all(f.root, value => value.tag === 'pre')[0], report = contents(preview);
     for (const locale of ['zh-CN', 'en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES', 'pt-BR']) {
       f.props.language = locale;await settle();
-      expect(contents(f.root)).toContain(getDiagnosticSummary(diagnostic, locale));
+      expect(contents(f.root)).toContain(i18n.translate(`diagnostics.${(diagnostic).code}.summary`, i18n.resolveUiLanguageFromLocale(locale)));
       expect(contents(f.root)).toContain(getDiagnosticText(diagnostic, locale).detail);
-      expect(f.button(getDiagnosticActionLabel('retry', locale))).toBeDefined();
+      expect(f.button(i18n.translate(`diagnostics.action.${'retry'}`, i18n.resolveUiLanguageFromLocale(locale)))).toBeDefined();
       expect(f.button(i18n.translate('diagnostics.report.hidePreview', i18n.resolveUiLanguageFromLocale(locale))).props['aria-expanded']).toBe(true);
       expect(contents(f.root)).toContain(getDiagnosticUiText('privacy', locale));
       expect(preview.props['aria-label']).toBe(getDiagnosticUiText('report', locale));

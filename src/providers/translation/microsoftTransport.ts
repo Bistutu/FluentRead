@@ -6,7 +6,7 @@
  */
 import {normalizeChineseLanguageCode} from '@/src/core/language/chinese';
 import {createHttpStatusError} from '@/src/platform/http/errors';
-import {abortErrorFromSignal, type RuntimeFetch} from '@/src/platform/http/runtime';
+import {abortErrorFromSignal, cancelUnreadResponseBody, type RuntimeFetch} from '@/src/platform/http/runtime';
 import {readNativeBatchJson, translateNativeTextBatch} from './native-batch';
 import {NativeBatchResponseError} from '@/src/core/translation/nativeBatch';
 
@@ -101,12 +101,7 @@ export async function translateMicrosoftTextsWithTransport(
                     return decoded;
                 });
             } finally {
-                // 成功 JSON 已完整消费；错误页、验证页和取消后的迟到正文直接终止原始流。
-                // 取消确认本身可能挂起或失败，不能让它继续占用共享槽位或覆盖原始错误分类。
-                if (!response.bodyUsed) {
-                    try {void response.body?.cancel().catch(() => undefined);}
-                    catch { /* 同步取消失败也保留原始 HTTP、取消或响应错误。 */ }
-                }
+                cancelUnreadResponseBody(response);
             }
         })();
         lease?.holdUntil(operation);

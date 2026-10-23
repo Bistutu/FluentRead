@@ -6,22 +6,32 @@
  * Default imports consume repository production; apply the separate candidate
  * handler patch for the after run. No business method or private state is copied.
  */
-import {resolve} from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {parseHTML} from 'linkedom';
-import {compileVueInlineFixture} from './helpers/compiledVueFixture';
 import * as Vue from 'vue';
+import VocabularyBook from '@/src/features/vocabulary/ui/VocabularyBook.vue';
+import CollectionEntry from '@/src/features/vocabulary/ui/CollectionEntry.vue';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {normalizeConfig} from '@/src/core/config/model';
 import * as learning from '@/src/features/vocabulary/learningModel';
-import * as vocabularySource from '@/src/features/vocabulary/source';
-import * as i18n from '@/src/core/i18n';
-import * as result from '@/src/core/translation/result';
-import * as speech from '@/src/features/selection-translation/speech/public';
 import {createSelectionTtsSynthesizer} from '@/src/features/selection-translation/background/selectionTtsSynthesis';
 import {createSelectionTtsBackgroundHandlers, type SelectionTtsContext} from '@/src/features/selection-translation/background/ttsHandler';
 import {createBackgroundMessageRouter, createBackgroundRuntimeMessageListener} from '@/src/services/messaging/backgroundRouter';
 import type {LocalTtsAudio} from '@/src/features/local-tts/protocol';
+
+const ports = vi.hoisted(() => ({browser: {} as any, config: {} as any}));
+vi.mock('webextension-polyfill', () => ({default: {get runtime() {return ports.browser.runtime;}}}));
+vi.mock('@/src/services/config/store', () => ({get config() {return ports.config;}, configReady: Promise.resolve(), requestConfigPatch: vi.fn(), subscribeConfig: () => () => {}}));
+vi.mock('@/src/ui/interfaceAppearance', () => ({applyInterfaceTheme: vi.fn()}));
+vi.mock('@/src/platform/browser/capabilities', () => ({browserCapabilities: {browser: 'chrome'}}));
+vi.mock('@/src/ui/i18n', () => ({useUiI18n: () => ({t: (key: string) => key, translateLegacy: (text: string) => text})}));
+vi.mock('element-plus', () => ({ElOption: {render: () => null}, ElMessageBox: {confirm: vi.fn()}}));
+vi.mock('@/src/ui/components/UiSelect.vue', () => ({default: {inheritAttrs: false, setup: (_: unknown, {attrs, slots}: any) => () => Vue.h('div', attrs, slots.default?.())}}));
+vi.mock('@/src/ui/components/UiIcon.vue', () => ({default: {inheritAttrs: false, setup: (_: unknown, {attrs, slots}: any) => () => Vue.h('div', attrs, slots.default?.())}}));
+vi.mock('@/src/ui/components/FeatureEnableCard.vue', () => ({default: {inheritAttrs: false, setup: (_: unknown, {attrs, slots}: any) => () => Vue.h('div', attrs, slots.default?.())}}));
+vi.mock('@/src/features/vocabulary/ui/VocabularyStudy.vue', () => ({default: {setup() {throw new Error('Unrequested study path mounted');}}}));
+vi.mock('@/src/features/vocabulary/ui/SavedExplanation.vue', () => ({default: {setup() {throw new Error('Unrequested editor path mounted');}}}));
+vi.mock('@/src/features/reading-assistant/ui/answer/public', () => ({ReadingAnswer: {setup() {throw new Error('Unrequested answer path mounted');}}}));
 
 function deferred<T>() {
     let resolve!: (value: T) => void, reject!: (reason: unknown) => void;
@@ -94,33 +104,8 @@ async function mountBook(honorAbort = true) {
         onMessage: {addListener: (fn: unknown) => listeners.add(fn), removeListener: (fn: unknown) => listeners.delete(fn)},
     }};
     const config = normalizeConfig({theme: 'light', uiLanguage: 'zh-CN', vocabularyBookEnabled: true, selectionTtsMode: 'local-only'});
-    const Slot = Vue.defineComponent({inheritAttrs: false, setup: (_, {attrs, slots}) => () => Vue.h('div', attrs, slots.default?.())});
-    const Inactive = Vue.defineComponent({setup() {throw new Error('Unrequested review/study/editor path mounted');}});
-    const modules: Record<string, any> = {
-        vue: Vue, 'webextension-polyfill': {default: browser}, 'element-plus': {ElOption: Slot, ElMessageBox: {confirm: vi.fn()}},
-        '@/src/ui/components/UiIcon.vue': {default: Slot}, '@/src/ui/components/FeatureEnableCard.vue': {default: Slot},
-        '@/src/ui/components/UiSelect.vue': {default: Slot}, '@/src/ui/interfaceAppearance': {applyInterfaceTheme: vi.fn()},
-        './VocabularyStudy.vue': {default: Inactive}, './SavedExplanation.vue': {default: Inactive},
-        '@/src/features/reading-assistant/ui/answer/public': {ReadingAnswer: Inactive}, '@/src/core/i18n': i18n,
-        '@/src/platform/browser/capabilities': {browserCapabilities: {browser: 'chrome'}},
-        '@/src/features/selection-translation/speech/public': speech,
-        '@/src/services/config/store': {config, configReady: Promise.resolve(), requestConfigPatch: vi.fn(), subscribeConfig: () => () => {}},
-        '@/src/features/vocabulary/learningModel': learning, '../learningModel': learning, '../source': vocabularySource, '@/src/core/translation/result': result,
-        '@/src/ui/i18n': {useUiI18n: () => ({t: (key: string) => key, translateLegacy: (text: string) => text})},
-    };
-    function loadClient(relative: string): Vue.Component {
-        const filename = resolve(process.cwd(), relative), compiled = compileVueInlineFixture(filename, {id: relative});
-        expect(compiled.parseErrors).toEqual([]);
-        const module = {exports: {} as {default: Vue.Component}};
-        new Function('require', 'exports', 'module', compiled.code)((id: string) => {
-            if (!Object.hasOwn(modules, id)) throw new Error(`Unconfigured client dependency: ${id}`);
-            return modules[id];
-        }, module.exports, module);
-        return module.exports.default;
-    }
-    modules['./VocabularySource.vue'] = {default: loadClient('src/features/vocabulary/ui/VocabularySource.vue')};
-    modules['./CollectionEntry.vue'] = {default: loadClient('src/features/vocabulary/ui/CollectionEntry.vue')};
-    const component = loadClient('src/features/vocabulary/ui/VocabularyBook.vue');
+    ports.browser = browser; ports.config = config;
+    const component = VocabularyBook;
     const events = new WeakMap<Element, Record<string, any>>();
     const renderer = Vue.createRenderer<any, any>({createElement: tag => Vue.markRaw(document.createElement(tag)), createText: text => document.createTextNode(text),
         createComment: text => document.createComment(text), insert: (node, parent, anchor) => parent.insertBefore(node, anchor || null), remove: node => node.remove(),
@@ -143,7 +128,8 @@ async function mountBook(honorAbort = true) {
         callback({target: button, currentTarget: button, stopPropagation() {}, preventDefault() {}});
     }
     function unmount() {app.unmount(); apps.splice(apps.indexOf(app), 1);}
-    return {...rt, sender, document, listeners, traffic, clickSpeech, unmount, browserSpeech, audioPlay};
+    return {...rt, sender, document, listeners, traffic, clickSpeech, unmount, browserSpeech, audioPlay, entry, renderer,
+        click(target: Element) {const handler = events.get(target)?.onClick; expect(handler).toBeTypeOf('function'); handler({target,currentTarget:target,stopPropagation(){},preventDefault(){}});}};
 }
 
 describe('vocabulary extension-page TTS cancellation through public runtime', () => {
@@ -158,6 +144,15 @@ describe('vocabulary extension-page TTS cancellation through public runtime', ()
         expect(ctx.document.querySelector('.entry-actions button.entry-icon')?.getAttribute('aria-label')).toBe('朗读原文');
         expect(ctx.online).not.toHaveBeenCalled(); expect(ctx.play).not.toHaveBeenCalled(); expect(ctx.stop).not.toHaveBeenCalled();
         expect(ctx.audioPlay).not.toHaveBeenCalled(); expect(ctx.browserSpeech).not.toHaveBeenCalled();
+    });
+    it('keeps a local-only provider failure from falling back to browser speech', async () => {
+        const ctx = await mountBook(); ctx.clickSpeech(); await settle();
+        ctx.jobs[0].task.reject(new Error('Local model unavailable')); await settle();
+        expect(ctx.traffic.find(row => row.message.type === 'selectionTts')?.response).toMatchObject({success: false});
+        expect(ctx.browserSpeech).not.toHaveBeenCalled();
+        expect(ctx.online).not.toHaveBeenCalled();
+        expect(ctx.document.querySelector('.entry-actions button.entry-icon')?.getAttribute('aria-label')).toBe('朗读原文');
+        expect(ctx.document.body.textContent).toContain('本地语音');
     });
     it('aborts on public unmount after hash navigation and rejects delayed adapter success without playback', async () => {
         const ctx = await mountBook(false); ctx.clickSpeech(); await settle();
@@ -199,4 +194,15 @@ describe('vocabulary extension-page TTS cancellation through public runtime', ()
         await settle(); expect(rt.local).not.toHaveBeenCalled();
         expect(await request).toMatchObject({success: false}); expect(rt.online).not.toHaveBeenCalled();
     });
+});
+
+it('renders the direct collection entry and dispatches bilingual copy, learning and mastery from its own controls', async () => {
+    const ctx = await mountBook(); const copy = vi.fn(), study = vi.fn(), mastery = vi.fn();
+    const host = ctx.document.createElement('section'); ctx.document.body.append(host);
+    const app = ctx.renderer.createApp(CollectionEntry, {entry: ctx.entry, translation: '艺术', playing: false, busy: false, status: '新词', review: '现在可以复习', onCopy: copy, onStudy: study, onMastery: mastery});
+    apps.push(app); app.mount(host); await settle();
+    expect(host.querySelector('.entry-open')?.textContent).toBe('art');
+    const byText = (text: string) => {const button = [...host.querySelectorAll('button')].find(node => node.textContent?.trim() === text); expect(button).toBeTruthy(); return button!;};
+    ctx.click(byText('复制双语')); ctx.click(byText('复制原文')); ctx.click(host.querySelector('.entry-open')!); ctx.click(byText('标记掌握'));
+    expect(copy.mock.calls).toEqual([[true],[false]]); expect(study).toHaveBeenCalledOnce(); expect(mastery).toHaveBeenCalledOnce();
 });

@@ -5,6 +5,8 @@ import {createHindiRomanizer} from '@/src/features/video-subtitle/reading/hindi'
 import {romanizeThai} from '@/src/features/video-subtitle/reading/thai';
 import {transliterateWritten} from '@/src/features/video-subtitle/reading/writtenTransliteration';
 
+const nativeWebAssembly = globalThis.WebAssembly;
+
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
@@ -13,6 +15,12 @@ afterEach(() => {
 });
 
 describe('video reading language resolution', () => {
+  it('rejects prototype property names as unknown track languages', () => {
+    for (const language of ['constructor', '__proto__']) {
+      expect(getReadingAnnotationLanguage('こんにちは', language)).toBeNull();
+    }
+  });
+
   it('normalizes the supported track aliases and filters mismatched scripts', () => {
     for (const [text,tag,expected] of [
       ['日本語','jpn','ja'],['한국어','ko_KR','ko'],['漢語','zh-Hant','zh'],['普通话','cmn','zh'],
@@ -161,7 +169,7 @@ describe('Hindi lazy phonetic engine port', () => {
     const instantiate=vi.fn(async () => ({instance: {exports: {}}}));
     vi.stubGlobal('Go', Runtime);
     vi.stubGlobal('gomanizeTranslit', undefined);
-    vi.stubGlobal('WebAssembly', {instantiate});
+    vi.stubGlobal('WebAssembly', Object.assign(Object.create(nativeWebAssembly), {instantiate}));
     return {run, instantiate};
   }
 
@@ -192,10 +200,13 @@ describe('Hindi lazy phonetic engine port', () => {
     vi.stubGlobal('Go',undefined);
     await expect(romanize('नमस्ते','/hi.wasm')).rejects.toThrow('runtime is unavailable');
     stubRuntime();
-    const cancel=vi.fn(async () => {});
-    vi.stubGlobal('fetch',vi.fn(async () => ({ok:false,status:404,body:{cancel}})));
+    let rejectCancel!: (reason: unknown) => void;
+    const cancel=vi.fn(() => new Promise<void>((_resolve, reject) => {rejectCancel = reject;}));
+    vi.stubGlobal('fetch',vi.fn(async () => new Response(new ReadableStream({cancel}), {status:404})));
     await expect(romanize('नमस्ते','/hi.wasm')).rejects.toThrow('(404)');
     expect(cancel).toHaveBeenCalledTimes(1);
+    rejectCancel(new Error('late cleanup failure'));
+    await Promise.resolve();
     vi.stubGlobal('fetch',vi.fn(async () => ({ok:false,status:500,body:null})));
     await expect(romanize('नमस्ते','/hi.wasm')).rejects.toThrow('(500)');
     vi.stubGlobal('fetch',vi.fn(async () => ({ok:true,arrayBuffer:async () => new ArrayBuffer(0)})));

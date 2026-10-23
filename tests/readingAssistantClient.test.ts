@@ -46,6 +46,21 @@ describe('reading assistant client', () => {
     expect(() => streamReading({type: 'fluentReadHarness', action: 'run', requestId: 'r5', selection: {text: 'x', context: '', sentence: ''}, intent: 'meaning', question: ''}, {})).toThrow('connect failed');
     await Promise.resolve();
   });
+  it('keeps cancellation local and idempotent when extension reload makes sendMessage throw synchronously', () => {
+    state.message.mockImplementation(() => {throw new Error('Extension context invalidated');});
+    state.port.onMessage.removeListener = vi.fn(); state.port.onDisconnect.removeListener = vi.fn();
+    const progress = vi.fn(), result = vi.fn(), error = vi.fn();
+    const handle = streamReading({type: 'fluentReadHarness', action: 'run', requestId: 'reload', selection: {text: 'x', context: '', sentence: ''}, intent: 'meaning', question: ''}, {progress, result, error});
+    const late = state.port.onMessage.addListener.mock.calls[0][0];
+    expect(() => handle.cancel()).not.toThrow();
+    expect(() => handle.cancel()).not.toThrow();
+    late({type: 'progress', requestId: 'reload', progress: {kind: 'text', text: 'late'}});
+    expect(state.port.onMessage.removeListener).toHaveBeenCalledOnce();
+    expect(state.port.onDisconnect.removeListener).toHaveBeenCalledOnce();
+    expect(state.port.disconnect).toHaveBeenCalledOnce();
+    expect(state.message).toHaveBeenCalledOnce();
+    expect(progress).not.toHaveBeenCalled(); expect(result).not.toHaveBeenCalled(); expect(error).not.toHaveBeenCalled();
+  });
   it('wraps paged session operations and rejects backend failures', async () => {
     state.message.mockResolvedValueOnce({success: true, sessions: [], hasMore: true}).mockResolvedValueOnce({success: true, session: null}).mockResolvedValueOnce({success: true}).mockResolvedValueOnce({success: true});
     await expect(listHarnessSessions(20)).resolves.toEqual({success: true, sessions: [], hasMore: true});

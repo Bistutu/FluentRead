@@ -10,6 +10,36 @@ const xml = '<d:multistatus xmlns:d="DAV:"><d:response><d:href>/base/</d:href><d
 const response = (body: string | null, status = 200, headers: Record<string, string> = {}) => new Response(body, {status, headers});
 const metadata = (etag = '&quot;one&quot;', href = '/base/FluentRead/fluentread-config.encrypted.json') => `<d:multistatus xmlns:d="DAV:"><d:response><d:href>${href}</d:href><d:propstat><d:prop><d:getetag>${etag}</d:getetag></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response></d:multistatus>`;
 describe('WebDAV 文件协议', () => {
+    it('备份缺失时取消未读响应，不等服务器取消握手且继续正常处理下一次读取', async () => {
+        const cancel = vi.fn(() => new Promise<void>(() => {}));
+        const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(new Response(new ReadableStream({cancel}), {status: 404}))
+            .mockResolvedValueOnce(response(content, 200, {etag: '"current"'}));
+        const api = createWebDavApi(fetcher);
+        await expect(api.read(session)).resolves.toBeNull();
+        expect(cancel).toHaveBeenCalledOnce();
+        await expect(api.read(session)).resolves.toMatchObject({content, file: {etag: '"current"'}});
+        expect(fetcher).toHaveBeenCalledTimes(2);
+    });
+
+    it('超限流立即释放读取锁，取消握手未决不阻断大小错误', async () => {
+        vi.useFakeTimers();
+        try {
+            const cancel = vi.fn(() => new Promise<void>(() => {}));
+            const body = new ReadableStream<Uint8Array>({
+                start(controller) {controller.enqueue(new Uint8Array(9));}, cancel,
+            });
+            const fetcher = vi.fn<typeof fetch>(async () => new Response(body));
+            let settled = false;
+            const result = createWebDavApi(fetcher, {maxBytes: 8}).read(session).catch(error => {settled = true; return error;});
+            await vi.advanceTimersByTimeAsync(0);
+            expect(cancel).toHaveBeenCalledOnce();
+            expect(body.locked).toBe(false);
+            expect(settled).toBe(true);
+            expect(await result).toMatchObject({code: 'tooLarge'});
+            expect(vi.getTimerCount()).toBe(0);
+        } finally {vi.useRealTimers();}
+    });
+
     it('保留无引号 ETag，在内容核验后使用最新原值覆盖和删除，拒绝陈旧内容', async () => {
         let current: string | null = content;
         let etag = 'fixture_version-1';

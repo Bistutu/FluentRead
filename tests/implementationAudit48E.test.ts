@@ -89,6 +89,32 @@ describe('Edge endpoint controlled HTTP boundary', () => {
             expect(ports.fetch).toHaveBeenCalledOnce();
         },
     );
+    it('rejects empty and unsupported requests before touching the network and handles absent DOMException', async () => {
+        vi.resetModules(); ports.fetch.mockReset();
+        const {synthesizeEdgeTts} = await import('@/src/features/selection-translation/services/edgeTts');
+        await expect(synthesizeEdgeTts(' ', 'en-US')).rejects.toThrow('文本为空');
+        await expect(synthesizeEdgeTts('Hello', 'xx-XX')).rejects.toThrow('unavailable for this language');
+        const controller = new AbortController(); controller.abort(); vi.stubGlobal('DOMException', undefined);
+        await expect(synthesizeEdgeTts('Hello', 'en-US', [], controller.signal)).rejects.toMatchObject({name:'AbortError'});
+        expect(ports.fetch).not.toHaveBeenCalled();
+    });
+    it('releases a failed endpoint response and supports signing without randomUUID', async () => {
+        vi.resetModules();
+        vi.stubGlobal('crypto', {subtle:globalThis.crypto.subtle});
+        const cancel = vi.fn(async () => {});
+        ports.fetch.mockReset().mockResolvedValue({ok:false, status:503, body:{cancel}});
+        const {synthesizeEdgeTts} = await import('@/src/features/selection-translation/services/edgeTts');
+        await expect(synthesizeEdgeTts('Hello', 'en-US')).rejects.toThrow('endpoint failed: 503');
+        expect(cancel).toHaveBeenCalledOnce();
+    });
+    it('reports all unavailable voices while allowing non-Error provider failures', async () => {
+        vi.resetModules();
+        ports.fetch.mockReset().mockResolvedValueOnce(new Response(JSON.stringify({t:'token',r:'eastus'})))
+            .mockRejectedValueOnce('connection dropped').mockRejectedValue(new Error('service unavailable'));
+        const {synthesizeEdgeTts} = await import('@/src/features/selection-translation/services/edgeTts');
+        await expect(synthesizeEdgeTts('Hello', 'en-US')).rejects.toThrow('音色均不可用');
+        expect(ports.fetch).toHaveBeenCalledTimes(5);
+    });
     it('keeps a valid token and the controlled audio byte order', async () => {
         vi.resetModules();
         ports.fetch.mockReset().mockImplementation(async (url: string) => url.includes('/apps/endpoint')

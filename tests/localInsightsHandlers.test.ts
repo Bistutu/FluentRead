@@ -15,8 +15,8 @@ const mocks = vi.hoisted(() => ({
     },
 }));
 
-vi.mock('@/src/platform/storage/modelUsageRepository', () => ({modelUsageRepository: mocks.modelUsage}));
-vi.mock('@/src/platform/storage/translationStatsRepository', () => ({translationStatsRepository: mocks.translationStats}));
+vi.mock('@/src/platform/storage/modelUsageRepository', () => ({getModelUsageRepository: () => (mocks.modelUsage)}));
+vi.mock('@/src/platform/storage/translationStatsRepository', () => ({getTranslationStatsRepository: () => (mocks.translationStats)}));
 
 import {createLocalInsightsHandlers} from '@/src/app/background/localInsightsHandlers';
 

@@ -15,7 +15,7 @@ import {createConnectionTestHandler} from './handlers/connectionTest';
 import {createVisionProbeHandlers} from './handlers/visionProbe';
 import {modelVisionProbe} from '@/src/app/translation/visionProbeRuntime';
 import {resolveConfiguredModel, servicesType} from '@/src/core/config/catalog';
-import {modelUsageRepository} from '@/src/platform/storage/modelUsageRepository';
+import {getModelUsageRepository} from '@/src/platform/storage/modelUsageRepository';
 import {translationRequestScheduler} from '@/src/app/translation/runtime';
 import {createTranslationProviderConfigSnapshot} from '@/src/services/translation/requestSnapshot';
 import {resolveTranslationRequestModel} from '@/src/services/translation/broker';
@@ -37,7 +37,7 @@ export function createProviderTestRuntimeHandlers() {
 }
 
 export function runTranslationServiceConnectionTestWithUsage(service: string, keyIndex?: number, keyRevision?: string, freeProviderId?: FreeTranslationProviderId) {
-    const usageGeneration = modelUsageRepository.captureGeneration();
+    const usageGeneration = getModelUsageRepository().captureGeneration();
     const snapshot = createTranslationProviderConfigSnapshot(config);
     return runTranslationServiceConnectionTest(service, {
         configuredModel: resolveConfiguredModel(snapshot.model[service], snapshot.customModel[service]),
@@ -46,7 +46,7 @@ export function runTranslationServiceConnectionTestWithUsage(service: string, ke
         keyRevision,
         freeProviderId,
         recordModelUsage: async (events) => {
-            await modelUsageRepository.recordMany(events, usageGeneration);
+            await getModelUsageRepository().recordMany(events, usageGeneration);
         },
         warn: (message, error) => console.warn(message, error),
         requestScheduler: translationRequestScheduler,

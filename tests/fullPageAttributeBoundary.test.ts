@@ -1,7 +1,7 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {parseHTML} from 'linkedom';
 import {TranslationCandidateCore} from '@/src/core/translation/engine';
-import {createTranslationCore} from '@/src/core/translation/public';
+import {createTranslationCore} from './helpers/translationCore';
 import {createDeclarativeAdapter} from '@/src/core/translation/adapters/declarative';
 import {compileSiteRulePack, getSiteAdapterAttributeFilter} from '@/src/core/site-adaptation/compiler';
 import {createAttributeMutationBatch, type AttributeMutationBatchPorts} from '@/src/features/full-page-translation/content/attributeMutationBatch';

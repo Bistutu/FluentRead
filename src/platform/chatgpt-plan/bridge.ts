@@ -1,10 +1,10 @@
 /**
  * @file src/platform/chatgpt-plan/bridge.ts
  * 文件职责：连接用户本机的 ChatGPT 套餐助手，隔离配对凭证与 OAuth 令牌。
- * 主要内容：仅显式开发构建的请求入口可连接固定 loopback 地址；公共版本不读取配对凭证、不调用本机助手。独立凭据存储与状态/模型校验，有界等待及迟到响应隔离；所有错误只输出稳定代码及安全说明。
+ * 主要内容：仅显式开发构建的请求入口可连接固定 loopback 地址；公共版本不读取配对凭证、不调用本机助手。独立凭据存储与状态/模型校验，配对存储等待共享请求取消和元信息预算，流取消立即释放读取锁，不等待底层清理握手；所有错误只输出稳定代码及安全说明。
  * 模块边界：本模块不处理翻译提示词或设置组件；OAuth 令牌仅由本机助手持有，配对凭证不进入 Config、配置历史、导出或云同步。
  */
-import {abortErrorFromSignal, createRuntimeAbortContext, runtimeFetch, type RuntimeFetch} from '@/src/platform/http/runtime';
+import {cancelResponseReader, cancelUnreadResponseBody, abortErrorFromSignal, createRuntimeAbortContext, runtimeFetch, type RuntimeFetch} from '@/src/platform/http/runtime';
 import {chatGPTPlanDevelopmentEnabled} from './buildMode';
 
 export const CHATGPT_PLAN_BRIDGE_URL = 'http://127.0.0.1:18743';
@@ -136,9 +136,6 @@ export function createChatGPTPlanBridge(options: ChatGPTPlanBridgeOptions) {
     async function request(path: string, body: unknown = {}, signal?: AbortSignal, stream = false, anonymous = false): Promise<Response> {
         if (signal?.aborted) throw abortErrorFromSignal(signal);
         const started = generation;
-        const token = anonymous ? undefined : await readPairing();
-        if (!anonymous && !token) throw new ChatGPTPlanError('not_connected');
-        if (started !== generation) throw new ChatGPTPlanError('session_changed');
         const controller = new AbortController();
         const onAbort = () => controller.abort(signal?.reason);
         signal?.addEventListener('abort', onAbort, {once: true});
@@ -150,13 +147,17 @@ export function createChatGPTPlanBridge(options: ChatGPTPlanBridgeOptions) {
         let result: Response;
         const cleanup = () => {active.delete(controller); signal?.removeEventListener('abort', onAbort); if (streamAbort) controller.signal.removeEventListener('abort', streamAbort); timeout?.cleanup();};
         try {
+            const token = anonymous ? undefined : await waitForBridgeTask(readPairing(), requestSignal);
+            if (requestSignal.aborted) throw abortErrorFromSignal(requestSignal);
+            if (!anonymous && !token) throw new ChatGPTPlanError('not_connected');
+            if (started !== generation) throw new ChatGPTPlanError('session_changed');
             const transport = options.fetch(`${CHATGPT_PLAN_BRIDGE_URL}${path}`, {
                 method: 'POST', headers: {'Content-Type': 'application/json', ...(token ? {Authorization: `Bearer ${token}`} : {})},
                 body: JSON.stringify(body), credentials: 'omit', redirect: 'error', cache: 'no-store', referrerPolicy: 'no-referrer',
                 signal: requestSignal,
             });
             // 非合作 transport 可能在取消后才返回 Response，必须释放它的正文。
-            void transport.then(response => {if (requestSignal.aborted) void response.body?.cancel().catch(() => undefined);}, () => undefined);
+            void transport.then(response => {if (requestSignal.aborted) cancelUnreadResponseBody(response);}, () => undefined);
             const response = await waitForBridgeTask(transport, requestSignal);
             if (started !== generation) throw new ChatGPTPlanError('session_changed');
             if (requestSignal.aborted) throw abortErrorFromSignal(requestSignal);
@@ -175,19 +176,19 @@ export function createChatGPTPlanBridge(options: ChatGPTPlanBridgeOptions) {
                 if (!response.body) throw new ChatGPTPlanError('invalid_response');
                 // 保留控制器直到最后一块数据。注销和重新配对会中断尚在读取的 SSE。
                 const reader = response.body.getReader();
-                streamAbort = () => {void reader.cancel(controller.signal.reason).catch(() => {});};
+                streamAbort = () => cancelResponseReader(reader);
                 controller.signal.addEventListener('abort', streamAbort, {once: true});
                 const bodyStream = new ReadableStream<Uint8Array>({
                     async pull(target) {
                         try {
                             if (controller.signal.aborted || started !== generation) throw abortErrorFromSignal(controller.signal);
-                            const item = await reader.read();
+                            const item = await waitForBridgeTask(reader.read(), controller.signal);
                             if (controller.signal.aborted || started !== generation) throw abortErrorFromSignal(controller.signal);
                             if (item.done) {cleanup(); reader.releaseLock(); target.close();}
                             else target.enqueue(item.value);
-                        } catch (error) {cleanup(); await reader.cancel().catch(() => {}); target.error(error);}
+                        } catch (error) {cleanup(); cancelResponseReader(reader); target.error(error);}
                     },
-                    async cancel(reason) {controller.abort(reason); cleanup(); await reader.cancel(reason).catch(() => {});},
+                    cancel(reason) {controller.abort(reason); cleanup(); cancelResponseReader(reader);},
                 });
                 result = new Response(bodyStream, {status: response.status, headers: response.headers});
             }
@@ -199,9 +200,9 @@ export function createChatGPTPlanBridge(options: ChatGPTPlanBridgeOptions) {
         } finally {if (!stream) cleanup();}
         return result;
     }
-    async function metadata(path: string, body: unknown = {}, anonymous = false): Promise<unknown> {
+    async function metadata(path: string, body: unknown = {}, anonymous = false, signal?: AbortSignal): Promise<unknown> {
         const started = generation;
-        const response = await request(path, body, undefined, false, anonymous);
+        const response = await request(path, body, signal, false, anonymous);
         let value: unknown;
         try {value = await response.json();} catch {throw new ChatGPTPlanError('invalid_response');}
         if (started !== generation) throw new ChatGPTPlanError('session_changed');
@@ -209,11 +210,16 @@ export function createChatGPTPlanBridge(options: ChatGPTPlanBridgeOptions) {
     }
     return {
         async status(): Promise<ChatGPTPlanStatus> {
-            const started = generation;
-            const paired = await readPairing();
-            if (started !== generation) throw new ChatGPTPlanError('session_changed');
-            if (!paired) return {paired: false, connected: false, sharing: false, authPending: false};
-            return {paired: true, ...readChatGPTPlanStatus(await metadata('/status'))};
+            const started = generation, controller = new AbortController();
+            const timeout = createRuntimeAbortContext(15_000, controller.signal);
+            active.add(controller);
+            try {
+                const paired = await waitForBridgeTask(readPairing(), timeout.signal);
+                if (started !== generation) throw new ChatGPTPlanError('session_changed');
+                if (!paired) return {paired: false, connected: false, sharing: false, authPending: false};
+                // 首次凭证检查与随后 HTTP 请求共用这一预算，存储耗时不能重置截止时间。
+                return {paired: true, ...readChatGPTPlanStatus(await metadata('/status', {}, false, timeout.signal))};
+            } finally {active.delete(controller); timeout.cleanup();}
         },
         async pair(code: string): Promise<ChatGPTPlanStatus> {
             if (!/^[a-zA-Z0-9-]{16,160}$/u.test(code.trim())) throw new ChatGPTPlanError('pairing_failed');

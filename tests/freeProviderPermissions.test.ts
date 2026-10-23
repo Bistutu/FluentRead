@@ -44,8 +44,7 @@ describe('Safari 免费池授权端口', () => {
         for (const [file, ids] of groups) {
             const source = readFileSync(resolve(__dirname, `../src/providers/translation/${file}.ts`), 'utf8');
             const hosts = [...source.matchAll(/https:\/\/([a-z0-9.-]+)\//gu)].map(match => match[1]);
-            // Lingva 适配器仍存在，但不在当前免费池目录或 translator map，不能顺带申请该域。
-            const actual = [...new Set(hosts.filter(host => host !== 'lingva.ml'))].sort();
+            const actual = [...new Set(hosts)].sort();
             const expected = [...new Set(ids.flatMap(id => FREE_PROVIDER_ORIGINS[id].map(origin => new URL(origin).hostname)))].sort();
             expect(actual, file).toEqual(expected);
         }

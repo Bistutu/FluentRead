@@ -1,13 +1,11 @@
 import {parseHTML} from 'linkedom';
 import {describe, expect, it, vi} from 'vitest';
 import {
-    describeSectionElement,
     describeSectionScope,
     expandSectionElement,
     isSectionPickerUi,
     resolveSectionElement,
     resolveSectionLabel,
-    sectionSourcePreview,
     type SectionGeometry,
     type SectionLabelSummary,
     type SectionRect,
@@ -70,7 +68,7 @@ describe('局部翻译区域判定', () => {
         expect(resolveSectionElement(byId('para'), geometry)).toBe(byId('para'));
     });
 
-    it('表单命名控件遮蔽 tagName 时仍能预览、描述和扩大选区', () => {
+    it('表单命名控件遮蔽 tagName 时仍能描述和扩大选区', () => {
         const {document, byId, geometry} = setup();
         const form = document.createElement('form');
         form.innerHTML = '<input name="tagName"><p>Readable source in a form</p>';
@@ -78,8 +76,6 @@ describe('局部翻译区域判定', () => {
         Object.defineProperty(form, 'tagName', {value: form.querySelector('input')});
         expect(resolveSectionElement(form, geometry)).toBe(form);
         expect(describeSectionScope(form)).toBe('sectionTranslation.scope.region');
-        expect(describeSectionElement(form)).toBe('form');
-        expect(sectionSourcePreview(form)).toBe('Readable source in a form');
         expect(expandSectionElement(form, geometry)).toBe(byId('readme'));
     });
 
@@ -185,22 +181,10 @@ describe('局部翻译区域判定', () => {
         expect(display.mock.calls.length).toBeLessThanOrEqual(512);
     });
 
-    it('元素简称优先显示 id，其次第一个普通 class，并截断过长名称', () => {
-        const {document, byId} = setup();
-        expect(describeSectionElement(byId('readme'))).toBe('article#readme');
-        const plain = document.createElement('section');
-        expect(describeSectionElement(plain)).toBe('section');
-        plain.className = 'fluent-read-owned md:flex markdown-body';
-        expect(describeSectionElement(plain)).toBe('section.markdown-body');
-        plain.id = 'bad id';
-        expect(describeSectionElement(plain)).toBe('section.markdown-body');
-        plain.className = 'a'.repeat(60);
-        expect(describeSectionElement(plain)).toHaveLength(40);
-        expect(describeSectionElement(plain).endsWith('…')).toBe(true);
-    });
+
 });
 
-describe('局部翻译范围与原文预览', () => {
+describe('局部翻译范围语义', () => {
     it.each([
         ['paragraph', ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'li', 'figcaption', 'dt', 'dd']],
         ['list', ['ul', 'ol', 'dl']],
@@ -217,102 +201,7 @@ describe('局部翻译范围与原文预览', () => {
         }
     });
 
-    it('合并嵌套原文和空白，跳过译文、加载重试、脚本样式、表单控件与 FluentRead 界面子树', () => {
-        const {document} = parseHTML(`<html><body><section id="source">
-            Hello <strong> world </strong><span> this   page </span>
-            <span class="fluent-read-bilingual-content"><b>译文</b></span>
-            <span class="fluent-read-loading">Loading</span>
-            <span class="fluent-read-retry-wrapper"><button>Retry</button></span>
-            <span data-fr-translation-owned="true">Owned translation</span>
-            <script>script source</script><style>style source</style>
-            <input value="input value"><textarea>textarea value</textarea>
-            <select><option>option value</option></select>
-            <div data-fluent-read-ui="notification"><p>Extension UI</p></div>
-        </section></body></html>`);
-        expect(sectionSourcePreview(document.getElementById('source')!)).toBe('Hello world this page');
-        expect(sectionSourcePreview(document.querySelector('.fluent-read-bilingual-content')!)).toBe('');
-        expect(sectionSourcePreview(document.querySelector('script')!)).toBe('');
-    });
 
-    it('锁定网页组件宿主或祖先时预览开放 Shadow DOM 原文，排除扩展界面及译文', () => {
-        const {document} = setup();
-        const region = document.createElement('section');
-        const host = document.createElement('div');
-        const root = host.attachShadow({mode: 'open'});
-        root.innerHTML = '<style>shadow styles</style><p>Source inside shadow <span class="fluent-read-bilingual-content">译文</span></p>';
-        const nestedHost = document.createElement('div');
-        nestedHost.attachShadow({mode: 'open'}).innerHTML = '<p>Nested component source</p>';
-        root.appendChild(nestedHost);
-        const extension = document.createElement('div');
-        extension.id = 'fluent-read-owned-card';
-        extension.attachShadow({mode: 'open'}).innerHTML = '<p>Extension words must be skipped</p>';
-        region.append(host, extension);
-        expect(sectionSourcePreview(host)).toBe('Source inside shadow Nested component source');
-        expect(sectionSourcePreview(region)).toBe('Source inside shadow Nested component source');
-        expect(sectionSourcePreview(extension)).toBe('');
-        const closed = document.createElement('div');
-        closed.attachShadow({mode: 'closed'}).innerHTML = '<p>Inaccessible source</p>';
-        expect(sectionSourcePreview(closed)).toBe('');
-    });
-
-    it('影子根与 light DOM 共用 160 节点预算，不为预览继续访问深处的组件', () => {
-        const {document} = setup();
-        const region = document.createElement('section');
-        const host = document.createElement('div');
-        const root = host.attachShadow({mode: 'open'});
-        for (let index = 0; index < 157; index++) root.appendChild(document.createElement('span'));
-        const lateText = document.createTextNode('Beyond the composed node budget');
-        const read = vi.fn(() => {throw new Error('preview passed composed node budget');});
-        Object.defineProperty(lateText, 'textContent', {get: read});
-        root.appendChild(lateText);
-        region.appendChild(host);
-        expect(sectionSourcePreview(region)).toBe('');
-        expect(read).not.toHaveBeenCalled();
-    });
-
-    it('88 字边界保留完整原文，超长文本截断含省略号，后续节点不再读取', () => {
-        const {document} = setup();
-        const region = document.createElement('section');
-        region.textContent = '文'.repeat(88);
-        expect(sectionSourcePreview(region)).toBe('文'.repeat(88));
-        region.textContent = '文'.repeat(2000);
-        const unread = document.createTextNode('must not read');
-        const read = vi.fn(() => {throw new Error('preview traversed beyond text budget');});
-        Object.defineProperty(unread, 'textContent', {get: read});
-        region.appendChild(unread);
-        expect(sectionSourcePreview(region)).toBe(`${'文'.repeat(87)}…`);
-        expect(sectionSourcePreview(region)).toHaveLength(88);
-        expect(read).not.toHaveBeenCalled();
-    });
-
-    it('含根节点最多检查 160 个节点，空包装层不会让预览扫描整棵大树', () => {
-        const {document} = setup();
-        const region = document.createElement('section');
-        const visits = [];
-        for (let index = 0; index < 300; index += 1) {
-            const wrapper = document.createElement('span');
-            visits.push(vi.spyOn(wrapper, 'matches'));
-            region.appendChild(wrapper);
-        }
-        const lateText = document.createTextNode('Deep source beyond node budget');
-        const read = vi.fn(() => {throw new Error('preview traversed beyond node budget');});
-        Object.defineProperty(lateText, 'textContent', {get: read});
-        region.appendChild(lateText);
-        expect(sectionSourcePreview(region)).toBe('');
-        expect(visits.slice(0, 159).every(visit => visit.mock.calls.length === 1)).toBe(true);
-        expect(visits.slice(159).every(visit => visit.mock.calls.length === 0)).toBe(true);
-        expect(read).not.toHaveBeenCalled();
-    });
-
-    it('空区域、纯注释与只有被排除内容的区域返回空预览', () => {
-        const {document} = setup();
-        const region = document.createElement('section');
-        expect(sectionSourcePreview(region)).toBe('');
-        region.appendChild(document.createComment('comment is not original text'));
-        region.appendChild(document.createTextNode(' \n\t '));
-        region.innerHTML += '<script>code</script><textarea>control</textarea>';
-        expect(sectionSourcePreview(region)).toBe('');
-    });
 });
 
 describe('局部翻译标签文案', () => {

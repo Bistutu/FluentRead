@@ -1,13 +1,13 @@
 /**
  * @file src/providers/translation/doubao-web.ts
  * 文件职责：适配豆包官方网页的匿名文章翻译接口，作为免费翻译池的一条可失败换线的实验线路。
- * 主要内容：在单次调用内初始化并复用匿名访客、最多刷新一次失效访客，严格读取完整 SSE 译文；按 Unicode 码点分块并保护原文本槽、换行、边缘空白、取消和 HTTP 限流信息；未读错误正文与 SSE 取消均等待首次物理取消结算后才结束候选。
+ * 主要内容：在单次调用内初始化并复用匿名访客、最多刷新一次失效访客，严格读取完整 SSE 译文；按 Unicode 码点分块并保护原文本槽、换行、边缘空白、取消和 HTTP 限流信息；未读错误正文立即发起取消，已锁定的 SSE reader 取消仍由其持有者结算后结束候选。
  * 模块边界：只通过 runtimeFetch 访问固定官方端点，不读取个人 Cookie、配置或持久化访客令牌；平台层把受限内部访客头转换为匿名 Cookie，调度、超时和失败换线由上层免费池负责。
  */
 import {parseTranslationSlots, serializeTranslationSlots} from '@/src/core/translation/slotProtocol';
 import {getTranslationGlossarySourceText} from '@/src/services/translation/requestSnapshot';
 import type {TranslationProviderRequest} from '@/src/services/translation/types';
-import {abortErrorFromSignal, runtimeFetch} from '@/src/platform/http/runtime';
+import {abortErrorFromSignal, cancelUnreadResponseBody, runtimeFetch} from '@/src/platform/http/runtime';
 import {createHttpStatusError, createProviderCodeError, readJsonResponse} from '@/src/platform/http/errors';
 import {DOUBAO_GUEST_HEADER} from '@/src/platform/http/doubaoGuest';
 
@@ -37,14 +37,9 @@ function checkAbort(signal?: AbortSignal): void {
     if (signal?.aborted) throw abortErrorFromSignal(signal);
 }
 
-/** 错误响应可能仍保持长连接，主动取消并等待输送结算，不读取无限正文。 */
-async function cancelResponseBody(response: Response): Promise<void> {
-    await response.body?.cancel().catch(() => {});
-}
-
-async function checkResponseAbort(response: Response, signal?: AbortSignal): Promise<void> {
+function checkResponseAbort(response: Response, signal?: AbortSignal): void {
     if (!signal?.aborted) return;
-    await cancelResponseBody(response);
+    cancelUnreadResponseBody(response);
     throw abortErrorFromSignal(signal);
 }
 
@@ -81,10 +76,10 @@ async function responseText(response: Response, signal?: AbortSignal): Promise<s
 async function bootstrapVisitor(signal?: AbortSignal): Promise<GuestVisitor> {
     checkAbort(signal);
     const home = await runtimeFetch(DOUBAO_WEB_HOME, {method: 'GET', credentials: 'omit', signal});
-    await checkResponseAbort(home, signal);
+    checkResponseAbort(home, signal);
     if (!home.ok) {
         const error = createHttpStatusError(home, '豆包网页翻译访客初始化失败');
-        await cancelResponseBody(home);
+        cancelUnreadResponseBody(home);
         throw error;
     }
     const cookie = visitorFromResponse(home);
@@ -208,10 +203,10 @@ async function translateChunk(text: string, target: string, session: GuestSessio
             headers: {'Content-Type': 'application/json', Accept: 'text/event-stream', 'Agw-Js-Conv': 'str', [DOUBAO_GUEST_HEADER]: session.visitor.ttwid},
             body: JSON.stringify({raw_text: [text], target_lang: target, translate_service: '1', frontend_source: 1, scene: 2}),
         });
-        await checkResponseAbort(response, signal);
+        checkResponseAbort(response, signal);
         if (!response.ok) {
             const error = createHttpStatusError(response, '豆包网页翻译请求失败');
-            await cancelResponseBody(response);
+            cancelUnreadResponseBody(response);
             throw error;
         }
         try {return await readTranslationStream(response, signal);} catch (error) {

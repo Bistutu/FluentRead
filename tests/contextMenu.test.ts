@@ -680,7 +680,7 @@ describe('右键消息等待期限', () => {
 
 
 it('右键操作反馈在六种非中文界面中完整本地化', async () => {
-    const {UI_LANGUAGE_BUNDLES, registerAllUiLanguageBundles} = await import('@/src/core/i18n/bundles');
+    const {UI_LANGUAGE_BUNDLES, registerAllUiLanguageBundles} = await import('./helpers/uiLanguageBundles');
     const {translate} = await import('@/src/core/i18n');
     registerAllUiLanguageBundles();
     for (const [language, bundle] of Object.entries(UI_LANGUAGE_BUNDLES)) {

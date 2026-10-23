@@ -9,7 +9,7 @@
 const {guardBrowserClose} = require('./testing/owned-browser-close.cjs');
 const {installControlledProvider} = require('./site-translation/controlled-provider.cjs');
 const {runStabilityProbes, runNativeCommentToggle} = require('./site-translation/stability-probes.cjs');
-const {reportErrorCodes} = require('./testing/site-error-diagnostics.cjs');
+const {reportErrorCodes, siteTestExitCode} = require('./testing/site-error-diagnostics.cjs');
 const fs = require('node:fs');
 const {createHash} = require('node:crypto');
 const os = require('node:os');
@@ -1591,7 +1591,7 @@ async function waitForPageContract(
 }
 
 // One serialized page callback keeps capture/assert projection predicates identical.
-// Only the exact observed LearnOpenGL native empty slot is opaque; no host DOM writes.
+// Only the two observed LearnOpenGL native empty slots are opaque; no host DOM writes.
 function readPageContractStateInPage({
   required, forbidden = [], interactions = [], dynamicForbidden = [], optionalForbidden = [],
   mutableForbidden = [], baselineState, url, captureIdentity = false, navIdentity,
@@ -1603,21 +1603,24 @@ function readPageContractStateInPage({
   ].join(', ');
   const attributes = (node) => [...node.attributes].map(({name, value}) => [name, value])
     .sort(([a], [b]) => a.localeCompare(b));
-  const visit = (current, opaqueSlot) => {
+  const visit = (current, opaqueSlots) => {
     if (current.nodeType === Node.TEXT_NODE) return normalizeText(current.nodeValue) ? '#text' : null;
     if (current.nodeType !== Node.ELEMENT_NODE) return null;
-    return [current.tagName.toLowerCase(), current === opaqueSlot
-      ? ['#native-host-slot'] : [...current.childNodes].map((child) => visit(child, opaqueSlot)).filter(Boolean)];
+    return [current.tagName.toLowerCase(), opaqueSlots?.has(current)
+      ? ['#native-host-slot'] : [...current.childNodes].map((child) => visit(child, opaqueSlots)).filter(Boolean)];
   };
-  const nativeSlotFor = (node, selector) => {
+  const nativeSlotsFor = (node, selector) => {
     if (selector !== '#nav' || node.tagName !== 'DIV' || node.id !== 'nav' || typeof location === 'undefined' ||
         location.href !== 'https://learnopengl.com/Getting-started/Coordinate-Systems' || document.querySelectorAll('#nav').length !== 1 ||
-        document.querySelectorAll('#leftfourthtenthad').length !== 1 || node.children.length !== 10) return null;
-    const slot = document.querySelector('#leftfourthtenthad');
-    if (slot?.tagName !== 'DIV' || slot.parentElement !== node || node.children[6] !== slot ||
-        normalizeText(slot.textContent) || slot.querySelector('a') || slot.matches(ownedSelector) ||
-        slot.querySelector(ownedSelector)) return null;
-    return slot;
+        node.children.length !== 10) return [];
+    return [['leftfourthtenthad', 6], ['lefteighttenthad', 8]].flatMap(([id, index]) => {
+      if (document.querySelectorAll(`#${id}`).length !== 1) return [];
+      const slot = document.querySelector(`#${id}`);
+      if (slot?.tagName !== 'DIV' || slot.parentElement !== node || node.children[index] !== slot ||
+          normalizeText(slot.textContent) || slot.querySelector('a') || slot.matches(ownedSelector) ||
+          slot.querySelector(ownedSelector)) return [];
+      return [slot];
+    });
   };
   const parentsOf = (anchor, nav) => {
     const parents = [];
@@ -1627,12 +1630,13 @@ function readPageContractStateInPage({
     }
     return parents;
   };
-  const makeIdentity = (nav, slot) => ({nav, slot, anchors: [...nav.querySelectorAll('a')].map((node) => ({
+  const makeIdentity = (nav, slots) => ({nav, slots, anchors: [...nav.querySelectorAll('a')].map((node) => ({
     node, parents: parentsOf(node, nav), attributes: attributes(node), text: node.textContent,
     href: node instanceof HTMLAnchorElement ? node.href : '', type: 'type' in node ? String(node.type || '') : '',
   }))});
-  const identityMatches = (nav, slot, identity) => {
-    if (!identity || identity.nav !== nav || identity.slot !== slot || !nav.isConnected || !slot.isConnected) return false;
+  const identityMatches = (nav, slots, identity) => {
+    if (!identity || identity.nav !== nav || !nav.isConnected || identity.slots.length !== slots.length ||
+        slots.some((slot, index) => identity.slots[index] !== slot || !slot.isConnected)) return false;
     const anchors = [...nav.querySelectorAll('a')];
     return anchors.length === identity.anchors.length && identity.anchors.every((initial, index) => {
       const node = anchors[index], parents = parentsOf(node, nav);
@@ -1646,25 +1650,27 @@ function readPageContractStateInPage({
   let identity = null;
   const hostNativeDiagnostics = [];
   const forbiddenSignature = (node, selector) => {
-    const slot = nativeSlotFor(node, selector);
-    const project = Boolean(slot && (captureIdentity || navIdentity?.identity));
+    const slots = nativeSlotsFor(node, selector);
+    const project = Boolean(slots.length && (captureIdentity || navIdentity?.identity));
+    const opaqueSlots = project ? new Set(slots) : null;
     const signature = {
       tagName: node.tagName, id: node.id, role: node.getAttribute('role') || '',
       ariaLabel: node.getAttribute('aria-label') || '', value: 'value' in node ? String(node.value || '') : '',
-      text: normalizeText(node.textContent), structure: JSON.stringify(visit(node, project ? slot : null)),
+      text: normalizeText(node.textContent), structure: JSON.stringify(visit(node, opaqueSlots)),
     };
     if (project) {
-      if (captureIdentity) identity = makeIdentity(node, slot);
-      signature.nativeSlotProjection = {tagName: slot.tagName, id: slot.id, directElementChildIndex: 6,
-        attributes: attributes(slot), navIdentityValid: captureIdentity || identityMatches(node, slot, navIdentity.identity)};
+      if (captureIdentity) identity = makeIdentity(node, slots);
+      signature.nativeSlotProjection = {slots: slots.map(slot => ({tagName: slot.tagName, id: slot.id,
+        directElementChildIndex: [...node.children].indexOf(slot), attributes: attributes(slot)})),
+        navIdentityValid: captureIdentity || identityMatches(node, slots, navIdentity.identity)};
       const protectedAttributes = [];
       const collectProtectedAttributes = (current, position) => {
         protectedAttributes.push({position, tagName: current.tagName, attributes: attributes(current)});
-        if (current !== slot) [...current.children].forEach((child, index) => collectProtectedAttributes(child, [...position, index]));
+        if (!opaqueSlots.has(current)) [...current.children].forEach((child, index) => collectProtectedAttributes(child, [...position, index]));
       };
       collectProtectedAttributes(node, []);
       signature.protectedAttributes = protectedAttributes;
-      hostNativeDiagnostics.push({selector, slotId: slot.id, outerHTML: node.outerHTML,
+      hostNativeDiagnostics.push({selector, slotIds: slots.map(slot => slot.id), outerHTML: node.outerHTML,
         unprojectedStructure: JSON.stringify(visit(node, null))});
     }
     return signature;
@@ -2009,22 +2015,31 @@ async function waitForTranslationIdle(page, timeout, phase, minimumRetryBudget =
 // 全文翻译使用可视区懒加载。回归时主动滚过页面，触发所有长页面内容块，
 // 然后等待插件的进行中任务和 loading 节点都清空，避免只验证到首屏。
 async function scrollAndWaitFullPage(page, timeout, scrollContainerSelector, targetSelector, verifyUnchanged, waitForTarget) {
-  const maxSteps = 320;
+  // Work scales with the observed page geometry; each step still exposes at most 65%
+  // of a viewport. An independent cap bounds infinite feeds, and no-progress detection
+  // catches blocked scrolling without spending the whole finite-page budget.
+  let maxSteps = 320;
+  const absoluteMaxSteps = 2048;
+  const stepSizeFor = state => Math.max(Math.floor(state.viewport * 0.65), 320);
+  const updateStepBudget = state => {
+    maxSteps = Math.min(absoluteMaxSteps, Math.max(maxSteps, Math.ceil(state.maxDistance / stepSizeFor(state)) + 8));
+  };
   const readScrollState = () => page.evaluate((selector) => {
     const container = selector ? document.querySelector(selector) : null;
     if (selector && !(container instanceof HTMLElement)) {
       throw new Error(`找不到滚动容器：${selector}`);
     }
-    const viewport = container instanceof HTMLElement
-      ? Math.max(container.clientHeight, 1)
-      : Math.max(window.innerHeight || 0, 480);
-    const extent = container instanceof HTMLElement
-      ? container.scrollHeight
-      : Math.max(document.body?.scrollHeight || 0, document.documentElement?.scrollHeight || 0);
+    // The body can extend outside a clipped root without enlarging the window's
+    // scroll range. Read the actual scrolling element, including its scrollbar-adjusted
+    // client height, so success and no-progress failures refer to the surface we move.
+    const scrolling = container instanceof HTMLElement ? container : document.scrollingElement || document.documentElement;
+    const viewport = container instanceof HTMLElement ? Math.max(container.clientHeight, 1)
+      : Math.max(scrolling?.clientHeight || window.innerHeight || 0, 1);
+    const extent = scrolling?.scrollHeight || viewport;
     return {
       viewport,
       extent,
-      position: container instanceof HTMLElement ? container.scrollTop : window.scrollY,
+      position: scrolling?.scrollTop ?? window.scrollY,
       maxDistance: Math.max(0, extent - viewport),
     };
   }, scrollContainerSelector || '');
@@ -2044,9 +2059,16 @@ async function scrollAndWaitFullPage(page, timeout, scrollContainerSelector, tar
   let step = 0;
   let bottomStableChecks = 0;
   let lastBottomExtent = -1;
-  while (step < maxSteps && bottomStableChecks < 2) {
+  let previousPosition = -1;
+  let stalledChecks = 0;
+  while (bottomStableChecks < 2) {
     const before = await readScrollState();
+    updateStepBudget(before);
+    if (step >= maxSteps) break;
     const remaining = Math.max(0, before.maxDistance - before.position);
+    stalledChecks = remaining > 4 && before.position <= previousPosition ? stalledChecks + 1 : 0;
+    previousPosition = before.position;
+    if (stalledChecks >= 12) throw new Error(`全文翻译连续 ${stalledChecks} 次没有滚动进展：${JSON.stringify(before)}`);
     if (remaining <= 4) {
       await page.waitForTimeout(400);
       await observeCoverage(page);
@@ -2056,13 +2078,13 @@ async function scrollAndWaitFullPage(page, timeout, scrollContainerSelector, tar
       bottomStableChecks = stillAtBottom && extentStable ? bottomStableChecks + 1 : 0;
       lastBottomExtent = after.extent;
       if (!stillAtBottom) {
-        const stepSize = Math.max(Math.floor(after.viewport * 0.65), 320);
+        const stepSize = stepSizeFor(after);
         await moveTo(Math.min(after.maxDistance, after.position + stepSize));
       }
     } else {
       bottomStableChecks = 0;
       lastBottomExtent = -1;
-      const stepSize = Math.max(Math.floor(before.viewport * 0.65), 320);
+      const stepSize = stepSizeFor(before);
       await moveTo(Math.min(before.maxDistance, before.position + stepSize));
       await page.waitForTimeout(400);
       await observeCoverage(page);
@@ -2087,15 +2109,16 @@ async function scrollAndWaitFullPage(page, timeout, scrollContainerSelector, tar
     let current = await readScrollState();
     if (current.maxDistance - current.position <= 4) break;
     let catchUpSteps = 0;
+    updateStepBudget(current);
     while (catchUpSteps < maxSteps && current.maxDistance - current.position > 4) {
-      const stepSize = Math.max(Math.floor(current.viewport * 0.65), 320);
+      const stepSize = stepSizeFor(current);
       await moveTo(Math.min(current.maxDistance, current.position + stepSize));
       await page.waitForTimeout(400);
       await observeCoverage(page);
       catchUpSteps += 1;
       current = await readScrollState();
     }
-    if (catchUpSteps >= maxSteps) {
+    if (catchUpSteps >= maxSteps && current.maxDistance - current.position > 4) {
       throw new Error('全文翻译后页面持续增长，补扫未能在预算内到达底部');
     }
     await waitForTranslationIdle(page, timeout, `长页补扫第 ${round + 1} 轮后`);
@@ -2721,7 +2744,7 @@ async function captureEvidence(page, outputPath) {
   }
 }
 
-async function runHoverCase(page, hoverTargets, requiredSelectors, pageContract, timeout, artifactsDir, prepareClickText) {
+async function runHoverCase(page, hoverTargets, requiredSelectors, pageContract, timeout, artifactsDir, prepareClickText, controlledProvider) {
   const initialUrl = page.url();
   const results = [];
 
@@ -2754,6 +2777,7 @@ async function runHoverCase(page, hoverTargets, requiredSelectors, pageContract,
         initialUrl,
         `${targetConfig.name} 悬浮第 ${counts.length} 次切换`,
       );
+      if (expected === 1 && controlledProvider) await controlledProvider.assertPage(page, `${targetConfig.name} 悬浮第 ${counts.length} 次切换`);
       if (expected === 0) await assertRequiredRestored(page, pageContract, `${targetConfig.name} 悬浮恢复`);
       if (artifactsDir && expected === 1) {
         const suffix = counts.length === 1 ? 'first' : 'final';
@@ -2792,6 +2816,62 @@ async function runHoverCase(page, hoverTargets, requiredSelectors, pageContract,
   };
 }
 
+// Read-only failure evidence: target geometry/occluders and visible modal candidates distinguish
+// a deferred background page from a missing candidate without changing either completion contract.
+function readFullPageFailureSnapshotInPage(targetSelector) {
+  const targetNode = document.querySelector(targetSelector);
+  const describe = (node, includeHtml = true) => {
+    if (!node) return null;
+    let style;
+    try {style = getComputedStyle(node);} catch {style = null;}
+    const rect = node.getBoundingClientRect();
+    return {tag: node.tagName, id: node.id || '', className: String(node.className || ''),
+      role: node.getAttribute('role'), ariaModal: node.getAttribute('aria-modal'),
+      ariaHidden: node.getAttribute('aria-hidden'), inert: node.hasAttribute('inert'),
+      translate: node.getAttribute('translate'), contenteditable: node.getAttribute('contenteditable'),
+      rect: {left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height},
+      style: style ? {display: style.display, visibility: style.visibility, opacity: style.opacity,
+        position: style.position, zIndex: style.zIndex, overflow: style.overflow, overflowY: style.overflowY,
+        pointerEvents: style.pointerEvents} : null,
+      html: includeHtml ? node.outerHTML.slice(0, 4000) : undefined};
+  };
+  const visible = (node) => {
+    const rect = node.getBoundingClientRect();
+    let style;try {style = getComputedStyle(node);} catch {style = null;}
+    return rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.right > 0 &&
+      rect.left < innerWidth && rect.top < innerHeight && style?.display !== 'none' &&
+      style?.visibility !== 'hidden' && style?.visibility !== 'collapse' && style?.opacity !== '0';
+  };
+  const targetAncestors = [];
+  for (let node = targetNode; node && targetAncestors.length < 12; node = node.parentElement) targetAncestors.push(describe(node, node === targetNode));
+  const modalNodes = [...document.querySelectorAll('[role="dialog"],[role="alertdialog"],dialog,.modal,.ant-modal,.el-dialog')].filter(visible);
+  const maskNodes = [...document.querySelectorAll('[class*="overlay" i],[class*="backdrop" i],[class*="mask" i]')].filter(visible);
+  const targetRect = targetNode?.getBoundingClientRect();
+  const point = targetRect && {x: Math.max(0, Math.min(innerWidth - 1, targetRect.left + targetRect.width / 2)),
+    y: Math.max(0, Math.min(innerHeight - 1, targetRect.top + targetRect.height / 2))};
+  return {
+    status: 'available', capturedAt: Date.now(), snapshotPhase: 'after-readiness-failure',
+    totalBilingual: document.querySelectorAll('.fluent-read-bilingual-content').length,
+    targetText: targetNode?.textContent?.trim() || '',
+    targetBilingual: targetNode?.querySelectorAll('.fluent-read-bilingual-content').length || 0,
+    targetLoading: targetNode?.querySelectorAll('.fluent-read-loading').length || 0,
+    targetRetry: targetNode?.querySelectorAll('.fluent-read-retry-wrapper').length || 0,
+    translatedNodes: [...document.querySelectorAll('.fluent-read-bilingual-content')].slice(0, 32).map((node) => ({
+      text: node.textContent?.trim().slice(0, 2000) || '', parent: node.parentElement?.outerHTML.slice(0, 500) || ''})),
+    bodyText: (document.body?.innerText || '').slice(0, 1000), activeElement: document.activeElement?.outerHTML.slice(0, 500),
+    targetAncestors, viewport: {width: innerWidth, height: innerHeight},
+    targetPoint: point || null,
+    pointStack: point && typeof document.elementsFromPoint === 'function'
+      ? document.elementsFromPoint(point.x, point.y).slice(0, 8).map(node => describe(node)) : [],
+    visibleModals: modalNodes.slice(0, 16).map(node => ({...describe(node), containsTarget: node.contains(targetNode),
+      containsActive: node.contains(document.activeElement), text: node.textContent?.trim().slice(0, 2000)})),
+    visibleMasks: maskNodes.slice(0, 16).map(node => describe(node)),
+    visibleButtons: [...document.querySelectorAll('button,[role="button"]')].filter(visible).slice(0, 32)
+      .map(node => ({...describe(node), text: node.textContent?.trim().slice(0, 100)})),
+    truncated: {modals: modalNodes.length > 16, masks: maskNodes.length > 16},
+  };
+}
+
 async function runFullTranslationPass(context, pass) {
   const {
     page,
@@ -2808,6 +2888,7 @@ async function runFullTranslationPass(context, pass) {
     initialUrl,
     readCompletion,
     previousCompletionSessionId,
+    controlledProvider,
   } = context;
   const first = pass === 'first';
   const phase = first ? '全文首次翻译' : '全文再次翻译';
@@ -2837,27 +2918,8 @@ async function runFullTranslationPass(context, pass) {
   } catch (error) {
     let diagnostics = {status: 'unavailable', reason: 'target-snapshot-unavailable'};
     try {
-      diagnostics = await completionOperation(Date.now() + 2000, () => page.evaluate((targetSelector) => {
-        const targetNode = document.querySelector(targetSelector);
-        return {
-          status: 'available', capturedAt: Date.now(), snapshotPhase: 'after-readiness-failure',
-          totalBilingual: document.querySelectorAll('.fluent-read-bilingual-content').length,
-          targetText: targetNode?.textContent?.trim() || '',
-          targetBilingual: targetNode?.querySelectorAll('.fluent-read-bilingual-content').length || 0,
-          targetLoading: targetNode?.querySelectorAll('.fluent-read-loading').length || 0,
-          targetRetry: targetNode?.querySelectorAll('.fluent-read-retry-wrapper').length || 0,
-          translatedNodes: [...document.querySelectorAll('.fluent-read-bilingual-content')].map((node) => ({
-            text: node.textContent?.trim() || '',
-            parent: node.parentElement?.outerHTML.slice(0, 500) || '',
-          })),
-          bodyText: (document.body?.innerText || '').slice(0, 1000),
-          activeElement: document.activeElement?.outerHTML.slice(0, 500),
-          targetAncestors: (() => {const values = []; let node = targetNode; while (node && values.length < 8) {
-            values.push({tag: node.tagName, className: node.className, translate: node.getAttribute('translate'),
-              contenteditable: node.getAttribute('contenteditable')}); node = node.parentElement;
-          } return values;})(),
-        };
-      }, selector));
+      diagnostics = await completionOperation(Date.now() + 2000, () => page.evaluate(readFullPageFailureSnapshotInPage, selector));
+      if (artifactsDir) fs.writeFileSync(path.join(artifactsDir, `full-${pass}-readiness-failure.json`), JSON.stringify(diagnostics, null, 2));
     } catch { /* 保存原始 deadline 失败；无响应 renderer 不能阻止错误传播。 */ }
     throw new Error(`${error.message}\n全文 case 诊断：${JSON.stringify({phase, completionIdentity,
       readiness: error.readinessDiagnostic || {observationStatus: 'unavailable'}, ...diagnostics})}`, {cause: error});
@@ -2904,7 +2966,8 @@ async function runFullTranslationPass(context, pass) {
     await captureEvidence(page, path.join(artifactsDir,
       first ? 'full-first-translation.png' : 'full-final-translation.png'));
   }
-  return {target, pageState, coverage, interactions, completionIdentity, targetReadiness, finalTargetReadiness};
+  const controlledAttribution = controlledProvider ? await controlledProvider.assertPage(page, phase) : undefined;
+  return {target, pageState, coverage, interactions, completionIdentity, targetReadiness, finalTargetReadiness, controlledAttribution};
 }
 
 async function runFullCase(
@@ -2921,6 +2984,7 @@ async function runFullCase(
   timeout,
   artifactsDir,
   readCompletion,
+  controlledProvider,
 ) {
   const initialUrl = page.url();
   const baselineInteractionScenarios = await runInteractionScenarios(
@@ -2947,6 +3011,7 @@ async function runFullCase(
     artifactsDir,
     initialUrl,
     readCompletion,
+    controlledProvider,
   };
   const firstPass = await runFullTranslationPass(passContext, 'first');
   passContext.previousCompletionSessionId = firstPass.completionIdentity.sessionId;
@@ -2977,6 +3042,7 @@ async function runFullCase(
 
   const secondPass = await runFullTranslationPass(passContext, 'second');
   return {
+    controlledAttribution: [firstPass.controlledAttribution, secondPass.controlledAttribution],
     translated: firstPass.target,
     translatedPage: firstPass.pageState,
     coverage: firstPass.coverage,
@@ -3145,6 +3211,7 @@ async function main() {
         args.timeout,
         artifactsDir,
         args.case === 'roadmap-frontend' ? args.prepareClickText : undefined,
+        controlledProvider,
       )
       : await runFullCase(
         page,
@@ -3160,6 +3227,7 @@ async function main() {
         args.timeout,
         artifactsDir,
         await createUnchangedCompletionReader(context, page, args.timeout),
+        controlledProvider,
       );
     const nativeComments = args.stabilityProbes && args.case === 'hacker-news-8863'
       ? await runNativeCommentToggle({page, timeout: args.timeout, artifactsDir}) : undefined;
@@ -3417,7 +3485,7 @@ if (require.main === module) {
   main().catch((error) => {
     process.stderr.write(`${error.stack || error}\n`);
     reportErrorCodes(error, 'terminal');
-    process.exitCode = 1;
+    process.exitCode = siteTestExitCode(error);
   });
 }
 
@@ -3437,6 +3505,7 @@ module.exports = {
   readCoverageReport,
   readCoverageStatuses,
   readFullTargetReadiness,
+  readFullPageFailureSnapshotInPage,
   waitForFullTargetReadiness,
   runFullCase,
   beginCoverageCompletionPass,
@@ -3455,6 +3524,7 @@ module.exports = {
   waitForHostMathRendering,
   observeTranslationIdleInPage,
   waitForTranslationIdle,
+  scrollAndWaitFullPage,
   waitForStableTarget,
   withMandatoryHeadingCoverage,
 };

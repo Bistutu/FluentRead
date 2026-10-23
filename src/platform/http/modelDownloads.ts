@@ -5,6 +5,7 @@
  * 模块边界：只下载模型数据，不执行远程 JS/WASM、不处理用户文本或凭据；语言仅影响尝试顺序，不推断实际所在地。
  */
 import type {ModelDownloadStatus} from '@/src/core/download/progress';
+import {cancelUnreadResponseBody} from './runtime';
 export type {ModelDownloadStatus} from '@/src/core/download/progress';
 export type ModelSourcePreference = 'auto' | 'official' | 'mirror';
 const OFFICIAL = 'https://huggingface.co';
@@ -76,9 +77,6 @@ export async function withModelDownload<T>(
         });
         // 取消可能早于某一阶段的 race 安装，提前接住拒绝避免未处理异常。
         void interrupted.catch(() => undefined);
-        const cancelBody = (body: ReadableStream<Uint8Array> | null | undefined) => {
-            try {void body?.cancel().catch(() => undefined);} catch { /* 迟到或已锁定的流不能阻塞下一来源。 */ }
-        };
         const origin = new URL(source).origin;
         const sourceId = origin === 'https://modelscope.cn' ? 'modelscope' : origin === OFFICIAL ? 'huggingface'
             : origin === MIRRORS[0] ? 'hf-mirror' : 'other';
@@ -89,7 +87,7 @@ export async function withModelDownload<T>(
             status('connecting');
             active();
             const fetched = fetch(source, {signal: controller.signal, credentials: 'omit', referrerPolicy: 'no-referrer'}).then(response => {
-                if (controller.signal.aborted) {cancelBody(response.body); throw new DOMException('模型下载来源已失效', 'TimeoutError');}
+                if (controller.signal.aborted) {cancelUnreadResponseBody(response); throw new DOMException('模型下载来源已失效', 'TimeoutError');}
                 return response;
             });
             const response = await Promise.race([fetched, interrupted]);
@@ -144,7 +142,7 @@ export async function withModelDownload<T>(
             if (reader) {
                 try {void reader.cancel().catch(() => undefined);} catch { /* 清理失败不拦截回退。 */ }
                 try {reader.releaseLock();} catch { /* 不等待不合作的底层读取。 */ }
-            } else cancelBody(originalBody);
+            } else cancelUnreadResponseBody({body: originalBody});
         }
     }
     throw failure;

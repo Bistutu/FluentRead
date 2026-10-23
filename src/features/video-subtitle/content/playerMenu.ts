@@ -465,8 +465,6 @@ export interface VideoAiMenuState {
     /** 模型下载的真实字节进度；尚未收到或总量未知时菜单保持循环动画。 */
     downloadProgress?: DownloadProgress;
     active: boolean;
-    running: boolean;
-    requested: boolean;
     fullActive: boolean;
     phase: VideoAiFullCapturePhase;
     progress: VideoAiFullCaptureProgress;
@@ -503,8 +501,7 @@ export function renderVideoAiMenu(menu: HTMLElement, state: VideoAiMenuState, la
             detail = translateVideoUi(state.phase === 'transcribing' ? 'video.aiTranscribing' : 'video.aiTranslating', language, {percent});
         } else if (ready) detail = translateVideoUi('video.aiReady', language);
         else detail = translateVideoUi('video.aiPreparing', language);
-    } else if (state.running) detail = translateVideoUi('video.aiGenerating', language);
-    else if (state.requested) detail = translateVideoUi('video.aiWaitingForPlayback', language);
+    }
     if (state.error && !downloading && !state.checking) detail = localizeVideoUiText(state.error, language);
     let title = state.error && !downloading ? localizeVideoUiText(state.error, language) : detail;
     if (downloading && state.downloadProgress) {

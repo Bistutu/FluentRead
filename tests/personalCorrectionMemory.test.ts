@@ -181,6 +181,7 @@ describe('precise reuse and reviewed suggestions', () => {
         expect(lookupPersonalCorrection(state, query('Unrelated')).suggestions).toEqual([]);
         expect(lookupPersonalCorrection(state, query('!!!')).suggestions).toEqual([]);
         expect(lookupPersonalCorrection({...state, entries: [record(1, {source: '???'})]}, query('!!!')).suggestions).toEqual([]);
+        expect(lookupPersonalCorrection({...state, entries: [record(1, {source: '???'})]}, query('Actual words')).suggestions).toEqual([]);
     });
     it('requires explicit project membership and refuses competing confirmed translations', () => {
         const project = {id: uuid(10), label: 'Reading'};
@@ -201,7 +202,9 @@ describe('precise reuse and reviewed suggestions', () => {
             record(3, {source: 'They found the bank beside the quiet river.'}), record(4, {source: 'They found the bank beside the dark river.'}),
             record(5, {source: 'They found the bank beside the green river.'}), record(6, {source: 'They found the bank beside the blue river.'}),
             record(7, {source: 'They found the bank beside the river!'})];
-        const result = lookupPersonalCorrection({...emptyCorrectionState(), revision: 7, entries}, query());
+        // Fill the supported 1,000-record capacity with lower-scoring near matches; query tokens remain shared.
+        for (let id = 8; id <= 1000; id++) entries.push(record(id, {source: `They found the bank beside a distant mountain village number ${id}.`}));
+        const result = lookupPersonalCorrection({...emptyCorrectionState(), revision: 1000, entries}, query());
         expect(result.exact).toBeUndefined(); expect(result.suggestions).toHaveLength(5);
         expect(result.suggestions.map(entry => entry.id)).toEqual([uuid(7), uuid(6), uuid(5), uuid(4), uuid(3)]);
     });
@@ -332,7 +335,7 @@ describe('encrypted personal correction repository', () => {
         const storage = createBackgroundConfigStorage({repository: encrypted, legacy});
         const service = new PersonalCorrectionService(new PersonalCorrectionRepository(storage));
         const saved = await service.save(input());
-        const raw = await encrypted.getRawRecord(PERSONAL_CORRECTION_STORAGE_KEY);
+        const raw = await encrypted.database.records.get(PERSONAL_CORRECTION_STORAGE_KEY);
         expect(JSON.stringify(raw)).not.toContain(input().source); expect(JSON.stringify(raw)).not.toContain(input().translation);
         expect(await encrypted.has('local:config')).toBe(false); expect(await encrypted.has('local:configHistory')).toBe(false);
         const reopened = new PersonalCorrectionService(new PersonalCorrectionRepository(createBackgroundConfigStorage({repository: new EncryptedConfigRepository({database}), legacy})));

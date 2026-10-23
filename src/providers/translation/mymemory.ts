@@ -2,7 +2,7 @@
  * @file src/providers/translation/mymemory.ts
  *
  * 文件职责：适配 MyMemory 官方匿名查询 API，将小额免费额度用于短文翻译和免费服务回退。
- * 主要内容：读取冻结邮箱与语言配置，保守推断自动源语言，保留文本槽标记并按 500 UTF-8 字节拆分，验证协议状态、额度和有效译文，支持调用方取消，取消或错误响应也等待未读正文结算后归还容量。
+ * 主要内容：读取冻结邮箱与语言配置，保守推断自动源语言，保留文本槽标记并按 500 UTF-8 字节拆分，验证协议状态、额度和有效译文，支持调用方取消，取消或错误响应直接取消未读正文，不等待错误页 EOF。
  * 模块边界：本文件属于供应商协议适配层，只调用公开 get 端点，不上传贡献语料、不管理页面 DOM，也不决定跨服务回退顺序和总超时预算。
  */
 
@@ -13,7 +13,7 @@ import {serializeTranslationSlots} from '@/src/core/translation/serialization';
 import {getTranslationGlossarySourceText, requireTranslationProviderConfig} from '@/src/services/translation/requestSnapshot';
 import type {TranslationProviderRequest, TranslationProviderRequestContext} from '@/src/services/translation/types';
 import {createHttpStatusError, createProviderCodeError, readJsonResponse} from '@/src/platform/http/errors';
-import {abortErrorFromSignal, runtimeFetch} from '@/src/platform/http/runtime';
+import {abortErrorFromSignal, cancelUnreadResponseBody, runtimeFetch} from '@/src/platform/http/runtime';
 
 const MY_MEMORY_URL = 'https://api.mymemory.translated.net/get';
 export const MY_MEMORY_MAX_BYTES = 500;
@@ -112,10 +112,7 @@ export async function translateMyMemoryText(text: string, request: MyMemoryReque
                 if (typeof value !== 'string' || !value.trim()) throw new Error('MyMemory 未返回有效译文');
                 translated += prefix + value.trim() + suffix;
             } finally {
-                // 取消或错误 headers 不能让候选 Promise 先于未读正文结束；读取失败保留原错误。
-                if (!response.bodyUsed) {
-                    try { await response.clone().arrayBuffer(); } catch {}
-                }
+                cancelUnreadResponseBody(response);
             }
         }
         return translated;

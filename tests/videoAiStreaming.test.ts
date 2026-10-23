@@ -4,8 +4,6 @@ import {
   VIDEO_AI_SAMPLE_RATE,
   VideoAiStreamingResampler,
   encodeVideoAiPcm16Base64,
-  getVideoAiStreamProfile,
-  getVideoAiAdaptiveSubmitStepMs,
   measureVideoAiSpeechActivity,
 } from '@/src/features/video-subtitle/content/video-ai/audioWindow';
 import {
@@ -60,74 +58,6 @@ function decodePcm16Base64(value: string): Int16Array {
 }
 
 describe('本地 AI 字幕音频窗口', () => {
-  it('为 Tiny 与 Base 使用有界滚动窗口，并让 Base 降低提交频率', () => {
-    const tiny = getVideoAiStreamProfile('tiny');
-    const base = getVideoAiStreamProfile('base');
-
-    for (const profile of [tiny, base]) {
-      expect(profile.initialWindowMs).toBeGreaterThan(0);
-      expect(profile.initialWindowMs).toBeLessThanOrEqual(profile.targetWindowMs);
-      expect(profile.submitStepMs).toBeLessThan(profile.targetWindowMs);
-      expect(profile.targetWindowMs).toBeLessThanOrEqual(profile.maxBufferedMs);
-      expect(profile.maxBufferedMs).toBeLessThanOrEqual(30_000);
-
-      const maxBufferedPcmBytes = VIDEO_AI_SAMPLE_RATE * profile.maxBufferedMs / 1_000 * Float32Array.BYTES_PER_ELEMENT;
-      expect(maxBufferedPcmBytes).toBeLessThanOrEqual(1_920_000);
-    }
-
-    expect(base.initialWindowMs).toBeGreaterThanOrEqual(tiny.initialWindowMs);
-    expect(base.targetWindowMs).toBeGreaterThan(tiny.targetWindowMs);
-    expect(base.submitStepMs).toBeGreaterThan(tiny.submitStepMs);
-    expect(getVideoAiStreamProfile('unsupported')).toEqual(getVideoAiStreamProfile('small'));
-  });
-
-  it('设备推理变慢时自适应降频，同时保留至少 800ms 重叠', () => {
-    const tiny = getVideoAiStreamProfile('tiny');
-    const base = getVideoAiStreamProfile('base');
-    expect(getVideoAiAdaptiveSubmitStepMs('tiny', 1_000, tiny)).toBe(tiny.submitStepMs);
-    expect(getVideoAiAdaptiveSubmitStepMs('tiny', 5_000, tiny)).toBeGreaterThan(tiny.submitStepMs);
-    expect(getVideoAiAdaptiveSubmitStepMs('base', 20_000, base)).toBe(base.maxBufferedMs - 800);
-  });
-
-  it.each([
-    { model: 'tiny', dutyCycleBudget: 0.72 },
-    { model: 'base', dutyCycleBudget: 0.62 },
-  ] as const)('$model 自适应步长覆盖无效值、启调点、线性区和硬上限', ({
-    model,
-    dutyCycleBudget,
-  }) => {
-    const profile = getVideoAiStreamProfile(model);
-    const maximumStepMs = profile.maxBufferedMs - 800;
-    const linearStepMs = profile.submitStepMs + 1_000;
-
-    for (const invalidInferenceMs of [Number.NaN, Number.POSITIVE_INFINITY, 0, -1]) {
-      expect(getVideoAiAdaptiveSubmitStepMs(model, invalidInferenceMs, profile))
-        .toBe(profile.submitStepMs);
-    }
-
-    expect(getVideoAiAdaptiveSubmitStepMs(
-      model,
-      profile.submitStepMs * dutyCycleBudget,
-      profile,
-    )).toBeCloseTo(profile.submitStepMs, 8);
-    expect(getVideoAiAdaptiveSubmitStepMs(
-      model,
-      linearStepMs * dutyCycleBudget,
-      profile,
-    )).toBeCloseTo(linearStepMs, 8);
-    expect(getVideoAiAdaptiveSubmitStepMs(
-      model,
-      maximumStepMs * dutyCycleBudget,
-      profile,
-    )).toBeCloseTo(maximumStepMs, 8);
-    expect(getVideoAiAdaptiveSubmitStepMs(
-      model,
-      (maximumStepMs + 5_000) * dutyCycleBudget,
-      profile,
-    )).toBe(maximumStepMs);
-    expect(profile.maxBufferedMs - maximumStepMs).toBe(800);
-  });
-
   it('把 Float32 PCM 钳位并编码成 little-endian PCM16', () => {
     const encoded = encodeVideoAiPcm16Base64(new Float32Array([
       -2,
@@ -996,9 +926,13 @@ describe('本地 AI 字幕滑窗文本合并', () => {
       .toBe(true);
   });
 
-  it('词面高度相似但语义不同的相邻句不会被当作重复吞掉', () => {
-    const firstText = 'We can release the local model today.';
-    const secondText = 'We cannot release the local model today.';
+  it.each([
+    ['can release', 'cannot release'], ['do support', "don't support"], ['will release', 'won’t release'],
+    ['should release', "shouldn't release"], ['are using', 'aren’t using'],
+  ])('词面高度相似但 %s / %s 的否定差异不会被当作重复吞掉', (affirmative, negative) => {
+    const firstText = `We ${affirmative} the local model today.`;
+    const secondText = `We ${negative} the local model today.`;
+    expect.soft(areVideoAiTranscriptCorrectionVariants(firstText, secondText)).toBe(false);
     const stabilizer = new VideoAiTranscriptStabilizer();
 
     expect(areVideoAiTranscriptTextsRelated(firstText, secondText)).toBe(false);

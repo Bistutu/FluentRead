@@ -1,25 +1,15 @@
-import {createRequire} from 'node:module';
-import {readFileSync} from 'node:fs';
-import {resolve} from 'node:path';
-import {compileScript, parse} from 'vue/compiler-sfc';
-import ts from 'typescript';
+import * as runtime from 'vue';
 import {parseHTML} from 'linkedom';
-import vue from '@vitejs/plugin-vue';
-import {createServer, type Plugin, type ViteDevServer} from 'vite';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import type {TranslationParams, UiLanguage} from '../src/core/i18n';
 
 const TEST_KEY = '__frOptionsNavigationLifecycle';
-const runtime = createRequire(import.meta.url)('vue') as typeof import('vue');
 type ActualUiI18n = {language: import('vue').Ref<UiLanguage>; t: (key: string, params?: TranslationParams) => string; translateLegacy: (text: string) => string};
-type FixtureScope = {active: boolean; server?: ViteDevServer; closing?: Promise<void>; unmount?: () => void};
+type FixtureScope = {active: boolean; unmount?: () => void};
 let current: FixtureScope | undefined;
 let unmount: (() => void) | undefined;
 const owns = (scope: FixtureScope) => scope.active && current === scope;
 const inactive = () => new Error('Options fixture scope is closed');
-function closeOwnedServer(scope: FixtureScope) {
-  return scope.server ? (scope.closing ??= scope.server.close()) : Promise.resolve();
-}
 async function closeFixture(scope: FixtureScope) {
   scope.active = false;
   try {
@@ -31,66 +21,35 @@ async function closeFixture(scope: FixtureScope) {
       vi.unstubAllGlobals();
       delete (globalThis as Record<string, unknown>)[TEST_KEY];
     }
-    await closeOwnedServer(scope);
+
   }
 }
-async function prepareFixture(scope: FixtureScope, factory = createFixtureServer, transformOptions = true) {
-  try {
-    const ownedServer = await factory();
-    scope.server = ownedServer;
-    if (!owns(scope)) throw inactive();
-    // SSR 用例预编译入口但逐例执行模块；客户端用例只用 Vite 加载真实依赖，不重复编译另一个入口。
-    if (transformOptions) await ownedServer.transformRequest('/src/app/options/OptionsApp.vue', {ssr: true});
-    if (!owns(scope)) throw inactive();
-  } catch (error) {
-    try { await closeOwnedServer(scope); } catch { /* Preserve the original bootstrap error. */ }
-    throw error;
-  }
-}
-beforeEach(() => {current = {active: true};});
+beforeEach(() => {current = {active: true};vi.resetModules();vi.stubEnv('BROWSER', 'chrome');});
 afterEach(async () => {
   const scope = current;
-  if (scope) await closeFixture(scope);
+  if (scope) await closeFixture(scope);vi.unstubAllEnvs();
 }, 5000);
 
-function createFixtureServer(browser = 'chrome') {
-  const mocks: Plugin = {
-    name: 'options-navigation-lifecycle-mocks',
-    enforce: 'pre',
-    resolveId(id) {
-      if (id.endsWith('.vue') && !id.endsWith('/OptionsApp.vue')) return '\0options-child-component';
-      if (id.endsWith('/src/ui/i18n')) return '\0options-i18n';
-      if (id.endsWith('/src/services/config/store')) return '\0options-config';
-      if (id.endsWith('/src/ui/interfaceAppearance')) return '\0options-appearance';
-      if (id.endsWith('/src/platform/browser/capabilities')) return '\0options-capabilities';
-      if (id === './assets/wechat-contact.jpg') return '\0options-contact-image';
-      return null;
-    },
-    load(id) {
-      if (id === '\0options-child-component') return 'export default {render: () => null};';
-      if (id === '\0options-i18n') return `export const useUiI18n = () => globalThis.${TEST_KEY}.i18n ?? ({t: key => key === "informationHighlight.title" ? "Smart Highlighting" : key, translateLegacy: text => text});`;
-      if (id === '\0options-config') return `export const {config, configReady, subscribeConfig} = globalThis.${TEST_KEY};`;
-      if (id === '\0options-appearance') return `export const {theme: applyInterfaceTheme, skin: applyInterfaceSkin, font: applyInterfaceFont, registerAppearance: registerInterfaceAppearanceRoot} = globalThis.${TEST_KEY};`;
-      if (id === '\0options-capabilities') return `export const {browserCapabilities} = globalThis.${TEST_KEY};`;
-      if (id === '\0options-contact-image') return 'export default "synthetic-contact-image";';
-      return null;
-    },
-  };
-  return createServer({
-    configFile: false, appType: 'custom', logLevel: 'silent', root: process.cwd(),
-    plugins: [mocks, vue()], resolve: {alias: {'@': resolve(process.cwd())}},
-    define: {'import.meta.env.BROWSER': JSON.stringify(browser)},
-    server: {hmr: false, middlewareMode: true},
-  });
+/** Direct module imports preserve source maps; only external UI/storage ports are replaced. */
+function configureOptionsPorts(data: Record<string, any>) {
+  const display = {render: () => null};
+  vi.doMock('@/src/ui/i18n', () => ({useUiI18n: () => data.i18n ??
+    ({t: (key: string) => key === 'informationHighlight.title' ? 'Smart Highlighting' : key, translateLegacy: (text: string) => text})}));
+  vi.doMock('@/src/services/config/store', () => data);
+  vi.doMock('@/src/ui/interfaceAppearance', () => ({applyInterfaceTheme: data.theme, applyInterfaceSkin: data.skin,
+    applyInterfaceFont: data.font, registerInterfaceAppearanceRoot: data.registerAppearance}));
+  vi.doMock('@/src/platform/browser/capabilities', () => ({browserCapabilities: data.browserCapabilities}));
+  vi.doMock('@/src/app/options/assets/wechat-contact.jpg', () => ({default: 'synthetic-contact-image'}));
+  vi.doUnmock('@/src/app/options/aboutImages');
+  for (const path of ['@/src/ui/components/UiIcon.vue', '@/src/features/settings/ui/SettingsNavigationIcon.vue',
+    '@/src/features/settings/ui/components/SettingsSectionNavigation.vue', '@/src/features/settings/ui/SettingsSections.vue',
+    '@/src/features/settings/ui/LearningCenter.vue']) vi.doMock(path, () => ({__esModule: true, default: display}));
 }
 
 type RecoveryFixture = {href: string; historyState: unknown; props?: {locationRouting?: 'internal'; initialSection?: string}};
-async function mountOptions(hash = '#settings-selection', ready = Promise.resolve(), appearanceRoot?: HTMLElement, load?: (server: ViteDevServer) => Promise<Record<string, any>>, browser = 'chrome', uiLanguage?: UiLanguage, recovery?: RecoveryFixture) {
+async function mountOptions(hash = '#settings-selection', ready = Promise.resolve(), appearanceRoot?: HTMLElement, load?: () => Promise<Record<string, any>>, browser = 'chrome', uiLanguage?: UiLanguage, recovery?: RecoveryFixture) {
   const scope = current;
   if (!scope || !owns(scope)) throw inactive();
-  if (!scope.server) await prepareFixture(scope);
-  if (!owns(scope) || !scope.server) throw inactive();
-  const ownedServer = scope.server;
   const initialUrl = recovery ? new URL(recovery.href) : undefined;
   const location = {hash: initialUrl?.hash ?? hash, search: initialUrl?.search ?? '', href: initialUrl?.href ?? `chrome-extension://fixture/options.html${hash}`, reload: vi.fn()};
   const windowEvents = new EventTarget();
@@ -127,14 +86,15 @@ async function mountOptions(hash = '#settings-selection', ready = Promise.resolv
     theme, skin, font, registerAppearance,
     browserCapabilities: {browser},
   };
+  configureOptionsPorts((globalThis as any)[TEST_KEY]);
   let i18n: ActualUiI18n | undefined;
   let loaded: Record<string, any>;
   try {
     if (uiLanguage) {
       const [core, english, patterns] = await Promise.all([
-        ownedServer.ssrLoadModule('/src/core/i18n/index.ts'),
-        ownedServer.ssrLoadModule('/src/core/i18n/messages/en-US.ts'),
-        ownedServer.ssrLoadModule('/src/core/i18n/messages/legacy-patterns.ts'),
+        import('@/src/core/i18n'),
+        import('@/src/core/i18n/messages/en-US'),
+        import('@/src/core/i18n/messages/legacy-patterns'),
       ]);
       if (!owns(scope)) throw inactive();
       core.registerUiLanguageBundle('en-US', {messages: english.enUSMessages, legacyText: english.enUSLegacyText, legacyPatterns: patterns.createLegacyPatternSet('en-US')});
@@ -142,15 +102,12 @@ async function mountOptions(hash = '#settings-selection', ready = Promise.resolv
       i18n = {language, t: (key, params) => core.translate(key, language.value, params), translateLegacy: text => core.translateLegacyText(text, language.value)};
       ((globalThis as Record<string, unknown>)[TEST_KEY] as {i18n?: ActualUiI18n}).i18n = i18n;
     }
-    loaded = await (load ? load(ownedServer) : ownedServer.ssrLoadModule('/src/app/options/OptionsApp.vue'));
+    loaded = await (load ? load() : import('@/src/app/options/OptionsApp.vue'));
     if (!owns(scope)) throw inactive();
   } catch (error) {
-    try { await closeOwnedServer(scope); } catch { /* Preserve the original loader error. */ }
     throw error;
   }
-  const {default: component} = loaded;
-  component.ssrRender = undefined;
-  component.render = () => null;
+  const component = {...loaded.default, render: () => null};
   const renderer = runtime.createRenderer<Record<string, never>, Record<string, unknown>>({
     patchProp: () => undefined, insert: () => undefined, remove: () => undefined,
     createElement: () => ({}), createText: () => ({}), createComment: () => ({}),
@@ -247,8 +204,8 @@ describe('OptionsApp language recovery search with actual UI messages', () => {
     const language = runtime.ref<UiLanguage>('en-US');
     const bundleRevision = runtime.ref(0);
     let core!: typeof import('../src/core/i18n');
-    const {state} = await mountOptions('#settings-selection', Promise.resolve(), undefined, async ownedServer => {
-      core = await ownedServer.ssrLoadModule('/src/core/i18n/index.ts') as typeof import('../src/core/i18n');
+    const {state} = await mountOptions('#settings-selection', Promise.resolve(), undefined, async () => {
+      core = await import('@/src/core/i18n') as typeof import('../src/core/i18n');
       if (!owns(scope)) throw inactive();
       ((globalThis as Record<string, unknown>)[TEST_KEY] as {i18n: ActualUiI18n}).i18n = {
         language,
@@ -256,15 +213,15 @@ describe('OptionsApp language recovery search with actual UI messages', () => {
         t: (key, params) => {void bundleRevision.value; return core.translate(key, language.value, params);},
         translateLegacy: text => {void bundleRevision.value; return core.translateLegacyText(text, language.value);},
       };
-      return ownedServer.ssrLoadModule('/src/app/options/OptionsApp.vue');
+      return import('@/src/app/options/OptionsApp.vue');
     });
     state.query = 'Language';
     const fallback = state.filteredResults;
     expect(fallback.map(result => result.id)).toEqual(['settings-general']);
     expect(fallback[0].label).toBe('软件语言 / Language');
     const [english, patterns] = await Promise.all([
-      scope.server!.ssrLoadModule('/src/core/i18n/messages/en-US.ts'),
-      scope.server!.ssrLoadModule('/src/core/i18n/messages/legacy-patterns.ts'),
+      import('@/src/core/i18n/messages/en-US'),
+      import('@/src/core/i18n/messages/legacy-patterns'),
     ]);
     if (!owns(scope)) throw inactive();
     core.registerUiLanguageBundle('en-US', {messages: english.enUSMessages, legacyText: english.enUSLegacyText, legacyPatterns: patterns.createLegacyPatternSet('en-US')});
@@ -466,7 +423,7 @@ describe('OptionsApp mounted hash navigation', () => {
   it('keeps userscript builds excluded even when the runtime capability port reports chrome', async () => {
     await closeFixture(current!);
     const scope: FixtureScope = {active: true};current = scope;
-    await prepareFixture(scope, () => createFixtureServer('userscript'));
+    vi.stubEnv('BROWSER', 'userscript');
     const {state} = await mountOptions('#settings-translation');
     expect(state.sectionPanels.map(panel => panel.id)).not.toContain('information-highlight');
     state.query = 'Smart Highlighting';expect(state.filteredResults).toEqual([]);
@@ -490,6 +447,12 @@ describe('OptionsApp mounted hash navigation', () => {
     expect(replaceState).not.toHaveBeenCalled();
     expect(scrollTo).toHaveBeenLastCalledWith({top: 0, left: 0, behavior: 'instant'});
     expect(windowScrollTo).not.toHaveBeenCalled();
+  });
+
+  it('opens the general page when an initial fragment names an Object prototype member', async () => {
+    const {state, location} = await mountOptions('#constructor');
+    expect(state.activeSection).toBe('settings-general');
+    expect(location.hash).toBe('#settings-general');
   });
 
   it('canonicalizes aliases and unknown fragments through the shared navigation resolver', async () => {
@@ -562,72 +525,6 @@ it('keeps model-usage deep links inside the statistics page and preserves the ta
   expect(state.activePanel).toBe('usage');
 });
 
-function deferred<T>() {
-  let resolve!: (value: T) => void, reject!: (error: unknown) => void;
-  const promise = new Promise<T>((yes, no) => {resolve = yes; reject = no;});
-  return {promise, resolve, reject};
-}
-async function nextFixture() {
-  const scope: FixtureScope = {active: true};
-  current = scope;
-  await prepareFixture(scope);
-  return scope;
-}
-
-it('closes a late created server without taking the subsequent fixture ownership', async () => {
-  await closeFixture(current!);
-  const old: FixtureScope = {active: true};
-  current = old;
-  const gate = deferred<ViteDevServer>();
-  const lateServer = await createFixtureServer();
-  const closed = vi.spyOn(lateServer, 'close');
-  const pending = prepareFixture(old, () => gate.promise).catch(error => error);
-  await closeFixture(old);
-  const next = await nextFixture();
-  const mounted = await mountOptions();
-  const ownedUnmount = unmount, ownedGlobal = (globalThis as any)[TEST_KEY];
-  gate.resolve(lateServer);
-  expect(await pending).toEqual(inactive());
-  expect(closed).toHaveBeenCalledTimes(1);
-  expect(current).toBe(next);expect(unmount).toBe(ownedUnmount);
-  expect((globalThis as any)[TEST_KEY]).toBe(ownedGlobal);
-  expect(mounted.addEventListener.mock.calls.filter(([event]) => event === 'hashchange')).toHaveLength(1);
-  expect(mounted.releaseAppearance).not.toHaveBeenCalled();
-  const listener = mounted.addEventListener.mock.calls.find(([event]) => event === 'hashchange')?.[1];
-  unmount?.();unmount = undefined;
-  expect(mounted.removeEventListener).toHaveBeenCalledWith('hashchange', listener);
-  expect(mounted.unsubscribeConfig).toHaveBeenCalledOnce();
-});
-
-it.each(['resolve', 'reject'] as const)('rejects a late SSR loader %s without mounting or replacing the next fixture cleanup', async outcome => {
-  const old = current!;
-  const gate = deferred<Record<string, any>>(), loaded = deferred<Record<string, any>>();
-  const failure = new Error('original delayed loader failure');
-  const pending = mountOptions('#settings-learning-center', Promise.resolve(), undefined, async ownedServer => {
-    loaded.resolve(await ownedServer.ssrLoadModule('/src/app/options/OptionsApp.vue'));
-    return gate.promise;
-  }).catch(error => error);
-  const actualModule = await loaded.promise;
-  const oldGlobals = (globalThis as any)[TEST_KEY];
-  const closed = vi.spyOn(old.server!, 'close');
-  await closeFixture(old);
-  const next = await nextFixture();
-  const mounted = await mountOptions();
-  const ownedUnmount = unmount, ownedGlobal = (globalThis as any)[TEST_KEY];
-  if (outcome === 'resolve') gate.resolve(actualModule);else gate.reject(failure);
-  const error = await pending;
-  if (outcome === 'resolve') expect(error).toEqual(inactive());else expect(error).toBe(failure);
-  expect(closed).toHaveBeenCalledTimes(1);
-  expect(oldGlobals.theme).not.toHaveBeenCalled();expect(oldGlobals.registerAppearance).not.toHaveBeenCalled();
-  expect(current).toBe(next);expect(unmount).toBe(ownedUnmount);
-  expect((globalThis as any)[TEST_KEY]).toBe(ownedGlobal);
-  expect(mounted.addEventListener.mock.calls.filter(([event]) => event === 'hashchange')).toHaveLength(1);
-  const listener = mounted.addEventListener.mock.calls.find(([event]) => event === 'hashchange')?.[1];
-  unmount?.();unmount = undefined;
-  expect(mounted.removeEventListener).toHaveBeenCalledWith('hashchange', listener);
-  expect(mounted.unsubscribeConfig).toHaveBeenCalledOnce();
-});
-
 describe('OptionsApp actual learning-panel reload callback', () => {
   it('reloads the requested panel with the current URL and history state preserved', async () => {
     const historyState = {navigation: {owner: 'host'}, position: 4};
@@ -678,35 +575,17 @@ describe('OptionsApp actual learning-panel reload callback', () => {
 // Optional real-client parent mode: navigation, search, hash resolution and capability gates
 // remain the actual Options template/setup; async feature modules are counted display ports.
 type AboutClientFixture = {supportGlobal?: string};
-type ClientBrowser = 'userscript' | 'chrome' | 'firefox';
-// 仅缓存最多三种平台的不可变代码字符串；每例仍重新执行模块，创建组件、依赖端口和 DOM。
-const clientCompilations = new Map<ClientBrowser, {source: string; code: string}>();
-function compileClientOptions(browser: ClientBrowser): string {
-  const filename = resolve('src/app/options/OptionsApp.vue'), source = readFileSync(filename, 'utf8');
-  const cached = clientCompilations.get(browser);
-  if (cached?.source === source) return cached.code;
-  const {descriptor, errors: parseErrors} = parse(source, {filename});expect(parseErrors).toEqual([]);
-  const script = compileScript(descriptor, {id: 'options-capability-client', inlineTemplate: true});
-  const code = ts.transpileModule(script.content.replaceAll('import.meta.env.BROWSER', JSON.stringify(browser)),
-    {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022}}).outputText;
-  clientCompilations.set(browser, {source, code});
-  return code;
-}
 type ClientRouteFixture = {target: string; internal?: boolean; initialSection?: string};
-async function mountClientOptions(requestedSection: string, browser: 'userscript' | 'chrome' | 'firefox', about?: AboutClientFixture, route?: ClientRouteFixture) {
+async function mountClientOptions(requestedSection: string, browser: 'userscript' | 'chrome' | 'firefox', about?: AboutClientFixture, route?: ClientRouteFixture, client?: {onClose: () => void}) {
   const scope = current!;
   if (!owns(scope)) throw inactive();
-  if (!scope.server) await prepareFixture(scope, createFixtureServer, false);
-  if (!owns(scope) || !scope.server) throw inactive();
-  const server = scope.server;
+  vi.stubEnv('BROWSER', browser);
+  vi.doMock('@/src/app/options/assets/wechat-contact.jpg', () => ({default: 'synthetic-contact-image'}));
   const [navigation, capabilities, core, english, patterns, ordinaryImages] = await Promise.all([
-    server.ssrLoadModule('/src/features/settings/model/navigation.ts'),
-    server.ssrLoadModule('/src/platform/browser/capabilities.ts'),
-    server.ssrLoadModule('/src/core/i18n/index.ts'),
-    server.ssrLoadModule('/src/core/i18n/messages/en-US.ts'),
-    server.ssrLoadModule('/src/core/i18n/messages/legacy-patterns.ts'),
-    // Real ordinary helper with only its JPEG asset URL replaced by the fixture port.
-    server.ssrLoadModule('/src/app/options/aboutImages.ts'),
+    import('@/src/features/settings/model/navigation'),
+    vi.importActual<typeof import('@/src/platform/browser/capabilities')>('@/src/platform/browser/capabilities'),
+    import('@/src/core/i18n'), import('@/src/core/i18n/messages/en-US'), import('@/src/core/i18n/messages/legacy-patterns'),
+    vi.importActual<typeof import('@/src/app/options/aboutImages')>('@/src/app/options/aboutImages'),
   ]);
   if (!owns(scope)) throw inactive();
   core.registerUiLanguageBundle('en-US', {messages: english.enUSMessages, legacyText: english.enUSLegacyText, legacyPatterns: patterns.createLegacyPatternSet('en-US')});
@@ -729,7 +608,18 @@ async function mountClientOptions(requestedSection: string, browser: 'userscript
   const location = {hash: `${prefix}/${requestedSection}`, search: routeSearch, href: `https://fixture.test/article${routeSearch}${prefix}/${requestedSection}`};
   const targetQueries: string[] = [], highlightedPanels: string[] = [];
   const historyPort = {replaceState: vi.fn((_state: unknown, _title: string, target: string | URL) => {location.hash = String(target);location.href = `https://fixture.test/article${location.hash}`;})};
-  Object.assign(window, {location, history: historyPort, matchMedia: () => ({matches: false, addEventListener() {}, removeEventListener() {}}),
+  const media = new Map<string, {matches: boolean; listeners: Set<() => void>; addEventListener: (_type: string, listener: () => void) => void; removeEventListener: (_type: string, listener: () => void) => void}>();
+  const matchMedia = (query: string) => {
+    let port = media.get(query);
+    if (!port) {
+      const listeners = new Set<() => void>();
+      port = {matches: false, listeners, addEventListener: (_type, listener) => {listeners.add(listener);}, removeEventListener: (_type, listener) => {listeners.delete(listener);}};
+      media.set(query, port);
+    }
+    return port;
+  };
+  const emitMedia = (query: string, matches: boolean) => {const port = matchMedia(query);port.matches = matches;for (const listener of [...port.listeners]) listener();};
+  Object.assign(window, {location, history: historyPort, matchMedia,
     setTimeout, clearTimeout, scrollTo: vi.fn()});
   vi.stubGlobal('history', historyPort);
   window.HTMLElement.prototype.scrollTo = vi.fn();window.HTMLElement.prototype.scrollIntoView = vi.fn();
@@ -741,29 +631,27 @@ async function mountClientOptions(requestedSection: string, browser: 'userscript
   vi.stubGlobal('ResizeObserver', class {observe() {} disconnect() {}});
   const language = runtime.ref<UiLanguage>('zh-CN');
   const i18n = {language, t: (key: string, params?: TranslationParams) => core.translate(key, language.value, params), translateLegacy: (text: string) => core.translateLegacyText(text, language.value)};
-  const config = {interfaceSkin: 'default'}, unsubscribe = vi.fn(), loads = {settings: vi.fn(), learning: vi.fn()};
+  const config = {interfaceSkin: 'default', theme: 'auto'}, unsubscribe = vi.fn(), loads = {settings: vi.fn(), learning: vi.fn()};
+  const theme = vi.fn();
   const errors: unknown[] = [];
   const display = runtime.defineComponent({setup: () => () => runtime.h('span')});
-  const anchorPort = runtime.defineComponent({setup(_props, {expose}) {expose({cancelPendingAnchor() {}, highlightAnchor(panel: string) {highlightedPanels.push(panel);}});return () => runtime.h('span');}});
-  const settingsPort = runtime.defineComponent({name: 'SettingsDisplayPort', props: ['activeSection'], setup: props => () => runtime.h('section', {'data-settings-child': 'settings', 'data-active-section': props.activeSection}, route ? (navigation.settingsPagePanels[props.activeSection] || []).map((panel: {id: string; targetIds: string[]}) => runtime.h('div', {class:'settings-page-panel', 'data-settings-panel':panel.id}, panel.targetIds.map(id=>runtime.h('div',{id},id)))) : props.activeSection)});
+  const anchorPort = runtime.defineComponent({emits: ['availability-change', 'navigate'], setup(_props, {expose, emit}) {
+    expose({cancelPendingAnchor() {}, highlightAnchor(panel: string) {highlightedPanels.push(panel);}});
+    return () => runtime.h('span', [runtime.h('button', {'data-anchor-availability': '', onClick: () => emit('availability-change', true)}, 'Show anchors'),
+      runtime.h('button', {'data-anchor-navigate': '', onClick: () => emit('navigate')}, 'Navigate anchor')]);
+  }});
+  const settingsPort = runtime.defineComponent({name: 'SettingsDisplayPort', props: ['activeSection'], setup: props => () => runtime.h('section', {'data-settings-child': 'settings', 'data-active-section': props.activeSection}, route ? (navigation.settingsPagePanels[props.activeSection] || []).map((panel: {id: string; targetIds: readonly string[]}) => runtime.h('div', {class:'settings-page-panel', 'data-settings-panel':panel.id}, panel.targetIds.map(id=>runtime.h('div',{id},id)))) : props.activeSection)});
   const learningPort = runtime.defineComponent({name: 'LearningDisplayPort', setup: () => () => runtime.h('section', {'data-settings-child': 'learning'}, 'Saved display port')});
-  const module = {exports: {} as {default: import('vue').Component}};
-  const code = compileClientOptions(browser);
-  new Function('require', 'exports', 'module', code)((id: string) => {
-    if (id === 'vue') return runtime;
-    if (id === '@/src/features/settings/model/navigation') return navigation;
-    if (id === '@/src/ui/i18n') return {useUiI18n: () => i18n};
-    if (id === '@/src/services/config/store') return {config, configReady: Promise.resolve(), subscribeConfig: () => unsubscribe};
-    if (id === '@/src/platform/browser/capabilities') return {browserCapabilities: capabilities.resolveBrowserCapabilities({browser, manifestVersion: browser === 'chrome' ? 3 : 2})};
-    if (id === '@/src/ui/interfaceAppearance') return {applyInterfaceTheme() {}, applyInterfaceSkin() {}, applyInterfaceFont() {}, registerInterfaceAppearanceRoot: () => () => undefined};
-    if (id === '@/src/features/settings/ui/SettingsSections.vue') {loads.settings();return {__esModule: true, default: settingsPort};}
-    if (id === '@/src/features/settings/ui/LearningCenter.vue') {loads.learning();return {__esModule: true, default: learningPort};}
-    if (id.endsWith('/SettingsSectionNavigation.vue')) return {default: anchorPort};
-    if (id.endsWith('.vue')) return {default: display};
-    if (id === './aboutImages') return {getSupportImageUrl: images.support, getContactImageUrl: images.contact};
-    if (id.endsWith('.jpg')) return {default: 'synthetic-contact-image'};
-    throw new Error(`Unexpected Options client dependency ${id}`);
-  }, module.exports, module);
+  configureOptionsPorts({i18n, config, configReady: Promise.resolve(), subscribeConfig: () => unsubscribe,
+    browserCapabilities: capabilities.resolveBrowserCapabilities({browser, manifestVersion: browser === 'chrome' ? 3 : 2}),
+    theme, skin() {}, font() {}, registerAppearance: () => () => undefined});
+  vi.doMock('@/src/app/options/aboutImages', () => ({getSupportImageUrl: images.support, getContactImageUrl: images.contact}));
+  vi.doMock('@/src/features/settings/ui/SettingsSections.vue', () => {loads.settings();return {__esModule: true, default: settingsPort};});
+  vi.doMock('@/src/features/settings/ui/LearningCenter.vue', () => {loads.learning();return {__esModule: true, default: learningPort};});
+  vi.doMock('@/src/features/settings/ui/components/SettingsSectionNavigation.vue', () => ({default: anchorPort}));
+  vi.doMock('@/src/features/settings/ui/SettingsNavigationIcon.vue', () => ({default: display}));
+  vi.doMock('@/src/ui/components/UiIcon.vue', () => ({default: display}));
+  const {default: component} = await import('@/src/app/options/OptionsApp.vue');
   const renderer = runtime.createRenderer<Node, Element>({
     // Native DOM nodes are non-reactive; preserve that identity for LinkeDOM refs too.
     createElement: tag => {const element=runtime.markRaw(document.createElement(tag));if(route){element.getClientRects=()=>[{}] as unknown as DOMRectList;element.getBoundingClientRect=()=>({top:element.classList.contains('settings-card')?30:530-(element.closest('.settings-card')?.scrollTop||0),height:240} as DOMRect);Object.defineProperty(element,'clientHeight',{configurable:true,value:600});element.scrollTop=0;element.scrollTo=vi.fn((options?: ScrollToOptions | number)=>{element.scrollTop=typeof options==='number'?options:options?.top||0;});const queryAll=element.querySelectorAll.bind(element);element.querySelectorAll=((selector:string)=>{if(element.classList.contains('settings-card'))targetQueries.push(selector);return queryAll(selector);}) as typeof element.querySelectorAll;}return element;}, createText: text => runtime.markRaw(document.createTextNode(text)), createComment: text => runtime.markRaw(document.createComment(text)),
@@ -790,7 +678,7 @@ async function mountClientOptions(requestedSection: string, browser: 'userscript
     },
   });
   const host = document.createElement('div');document.body.appendChild(host);
-  const app = renderer.createApp(module.exports.default, {settingsHashPrefix: browser === 'userscript' ? prefix : undefined,...(route?.internal?{locationRouting:'internal',initialSection:route.initialSection}: {})});
+  const app = renderer.createApp(component, {settingsHashPrefix: browser === 'userscript' ? prefix : undefined, ...client,...(route?.internal?{locationRouting:'internal',initialSection:route.initialSection}: {})});
   if (browser !== 'userscript') location.hash = `#${requestedSection}`;
   app.component('ElDialog', about ? runtime.defineComponent({
     props: {modelValue: Boolean}, emits: ['update:modelValue', 'closed'],
@@ -827,11 +715,54 @@ async function mountClientOptions(requestedSection: string, browser: 'userscript
       width: image.getAttribute('width'), height: image.getAttribute('height')};
   };
   const notifyDialogClosed = () => {if (!dialogNotifications.closed) throw new Error('Dialog display port is not mounted');dialogNotifications.closed();};
-  return {host, loads, errors, language, t: i18n.t, location, prefix, unsubscribe, settle, rail, choose, navigateHash, targetQueries, highlightedPanels,
+  return {host, loads, errors, language, t: i18n.t, location, prefix, unsubscribe, settle, rail, choose, navigateHash, targetQueries, highlightedPanels, media, emitMedia, theme, config,
     images, previewState, notifyDialogClosed, dialogSlotEvaluations: () => dialogSlotRuns,
     hostDocumentState, initialHostDocumentState, dispose: () => scope.unmount?.(),
     search: host.querySelector<HTMLInputElement>('input[type="search"]')!};
 }
+
+describe('OptionsApp actual client navigation controls and system events', () => {
+  it('collapses a navigation group, selects a mobile destination and switches its registered tab', async () => {
+    const h = await mountClientOptions('settings-general', 'chrome');
+    const toggle = h.host.querySelector<HTMLButtonElement>('.nav-group-toggle')!;
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    toggle.click();await h.settle();expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    toggle.click();await h.settle();expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    const mobile = h.host.querySelector<HTMLSelectElement>('.mobile-settings-navigation')!;
+    Object.defineProperty(mobile, 'value', {configurable: true, value: 'settings-sites'});
+    mobile.dispatchEvent(new Event('change'));await h.settle();
+    expect(h.rail('settings-sites').getAttribute('aria-current')).toBe('page');
+    await h.choose('settings-translation-stats');
+    const usage = h.host.querySelector<HTMLButtonElement>('[data-settings-category="usage"]')!;
+    usage.click();await h.settle();expect(usage.getAttribute('aria-current')).toBe('true');
+    expect(h.errors).toEqual([]);
+  });
+
+  it('updates auto theme and mobile navigation through registered media listeners, then releases both', async () => {
+    const h = await mountClientOptions('settings-general', 'chrome');
+    const scroll = vi.spyOn(h.rail('settings-general'), 'scrollIntoView');
+    h.theme.mockClear();h.emitMedia('(prefers-color-scheme: dark)', true);
+    expect(h.theme).toHaveBeenLastCalledWith(true, undefined);
+    h.config.theme = 'light';h.emitMedia('(prefers-color-scheme: dark)', false);
+    expect(h.theme).toHaveBeenLastCalledWith(false, undefined);
+    h.emitMedia('(max-width: 700px)', true);await h.settle();
+    expect(scroll).toHaveBeenLastCalledWith({block: 'nearest', inline: 'center'});
+    expect([...h.media.values()].map(port => port.listeners.size)).toEqual([1, 1]);
+    h.dispose();h.theme.mockClear();scroll.mockClear();
+    expect([...h.media.values()].map(port => port.listeners.size)).toEqual([0, 0]);
+    h.emitMedia('(prefers-color-scheme: dark)', true);h.emitMedia('(max-width: 700px)', false);await h.settle();
+    expect(h.theme).not.toHaveBeenCalled();expect(scroll).not.toHaveBeenCalled();expect(h.errors).toEqual([]);
+  });
+
+  it('handles anchor availability/navigation events and the overlay close control through the template', async () => {
+    const close = vi.fn();
+    const h = await mountClientOptions('settings-general', 'userscript', undefined, undefined, {onClose: close});
+    h.host.querySelector<HTMLButtonElement>('[data-anchor-availability]')!.click();
+    await h.settle();h.host.querySelector<HTMLButtonElement>('[data-anchor-navigate]')!.click();await h.settle();
+    h.host.querySelector<HTMLButtonElement>('.userscript-settings-close')!.click();
+    expect(close).toHaveBeenCalledOnce();expect(h.rail('settings-general').getAttribute('aria-current')).toBe('page');expect(h.errors).toEqual([]);
+  });
+});
 
 describe('OptionsApp actual client URL targets', () => {
   it.each([['settings-sites','adaptation'],['settings-sites','preview'],['settings-interface','font']])('accepts only a registered panel in current section %s/%s',async(section,panel)=>{
@@ -917,11 +848,11 @@ describe('OptionsApp actual client standalone capability navigation', () => {
 });
 
 describe('OptionsApp actual client localized sidebar brand', () => {
-  // 此用例包含每个平台的真实 SFC 冷编译与六语 SSR 资源加载，CI 实测约 5.1 秒。
+  // 每个平台执行真实 SFC 与六语资源，保留完整的响应式品牌恢复断言。
   // 这里只验证响应式品牌恢复，不约定 5 秒初始化性能；局部预算保留有界失败及全部语言断言。
   it.each(['userscript', 'chrome', 'firefox'] as const)('reactively restores the brand through all UI languages in %s without a legacy DOM scanner', async browser => {
     const h = await mountClientOptions('settings-general', browser);
-    const bundles = await current!.server!.ssrLoadModule('/src/core/i18n/bundles.ts');
+    const bundles = await import('./helpers/uiLanguageBundles');
     bundles.registerAllUiLanguageBundles();
     const brand = () => h.host.querySelector<HTMLElement>('.brand-copy strong')!;
     expect(brand().textContent).toBe('流畅阅读');

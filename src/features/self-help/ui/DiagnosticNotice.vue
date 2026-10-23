@@ -15,7 +15,7 @@
         <strong :id="`${detailsId}-title`" data-diagnostic-summary>{{ text(`diagnostics.${safe.code}.summary`) }}</strong>
         <button class="diagnostic-close" data-diagnostic-close type="button" :aria-label="text('diagnostics.ui.close-details')" @click="closeDetails"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8"/></svg></button>
       </div>
-      <p :id="`${detailsId}-description`">{{ copy.detail }}</p>
+      <p :id="`${detailsId}-description`">{{ detail }}</p>
       <div class="diagnostic-actions">
         <button v-if="primaryAction" class="diagnostic-primary" data-diagnostic-primary :data-diagnostic-action="primaryAction" type="button" :disabled="busy || (primaryAction === 'retry' && remaining > 0)" @click="emit('action', primaryAction)">{{ actionLabel(primaryAction) }}<span v-if="primaryAction === 'retry' && remaining > 0"> ({{ text('diagnostics.action.retryCountdown', {seconds: remaining}) }})</span></button>
         <button v-for="action in secondaryActions" :key="action" type="button" :data-diagnostic-action="action" :disabled="busy || (action === 'retry' && remaining > 0)" @click="emit('action', action)">{{ text(`diagnostics.action.${action}`) }}<span v-if="action === 'retry' && remaining > 0"> ({{ text('diagnostics.action.retryCountdown', {seconds: remaining}) }})</span></button>
@@ -55,7 +55,7 @@ function text(key: string, params?: TranslationParams): string {
   void messageRevision.value;
   return translate(key, displayLanguage.value, params);
 }
-const copy = computed(() => safe.value ? {title: text(safe.value.titleKey), detail: text(safe.value.detailKey)} : {title: '', detail: ''});
+const detail = computed(() => safe.value ? text(safe.value.detailKey) : '');
 const primaryAction = computed(() => safe.value?.actions.includes('site-settings') ? 'site-settings' : safe.value?.actions.find(action => action !== 'dismiss'));
 const secondaryActions = computed(() => safe.value?.actions.filter(action => action !== 'dismiss' && action !== primaryAction.value) ?? []);
 const host = ref<HTMLElement>(), panel = ref<HTMLElement>(), placement = ref('above'), maxHeight = ref(240);

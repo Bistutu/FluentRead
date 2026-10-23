@@ -4,19 +4,13 @@
  * 主要内容：真实 Vue/KeepAlive 覆盖开关、源目标切换、外部值同步、关闭、失活、卸载、预加载和外观监听清理；语言选择和首启根验证配对往返缓存恢复、普通退出不可复活及旧回调淘汰；首启根另验证已保存交接续接；触屏语言列表执行真实视口订阅器，验证平移及键盘高度变化不替换选择器、关闭与失活取消队列，旧浮层回调不能写入新会话。
  * 模块边界：Element Plus、引导展示、浏览器 locale、模块加载和外观应用为受控端口；不声称真实浏览器焦点或语言持久化证据。
  */
-import {createRequire} from 'node:module'
-import {readFileSync} from 'node:fs'
-import {resolve} from 'node:path'
+import * as runtime from 'vue'
 import {parseHTML} from 'linkedom'
-import {createServer, type ViteDevServer} from 'vite'
-import {compileScript, compileTemplate, parse} from 'vue/compiler-sfc'
-import ts from 'typescript'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {getMultilingualTargetLanguageLabel, options} from '@/src/core/config/catalog'
 
-const runtime = createRequire(import.meta.url)('vue') as typeof import('vue')
 const selectPath = 'src/app/popup/PopupLanguageSelect.vue', onboardingPath = 'src/app/popup/PopupOnboarding.vue'
-let server: ViteDevServer, app: import('vue').App | undefined, document: Document, win: any
+let app: import('vue').App | undefined, document: Document, win: any
 let shown: import('vue').Ref<boolean>, source: Record<string, any>, state: Record<string, any>, componentProps: Record<string, any>, fixture: Record<string, any>
 let mediaListeners: Set<() => void>, subscribers: Set<() => void>, events: Map<Element, Record<string, any>>, focused: Element | null
 const updates = vi.fn(), appearance = vi.fn(), focus = vi.fn(), reload = vi.fn(), locale = vi.fn()
@@ -50,46 +44,29 @@ beforeEach(async () => {
     label: vi.fn(getMultilingualTargetLanguageLabel), config: runtime.reactive({interfaceSkin: 'default', interfaceFont: 'system', theme: 'auto'}),
     subscribe: (callback: () => void) => {subscribers.add(callback);callback();return () => subscribers.delete(callback)},
     selectBlur: vi.fn(), loadMain: vi.fn(async () => ({render: () => runtime.h('div', {'data-main-app': 'true'}, 'main')}))}
-  fixture.importMain = () => fixture.loadMain().then((component: any) => ({default: component}))
-  ;(globalThis as any).__popupChildFixture = fixture
   for (const [key, value] of Object.entries({document, window: win, HTMLElement: win.HTMLElement, Event: win.Event, Node: win.Node,
     navigator: {languages: ['ja-JP'], language: 'fr-FR'}, matchMedia: () => media, location: {reload}})) vi.stubGlobal(key, value)
-  server = await createServer({root: process.cwd(), configFile: false, appType: 'custom', logLevel: 'silent',
-    resolve: {alias: {'@': process.cwd()}}, optimizeDeps: {noDiscovery: true}, server: {hmr: false, middlewareMode: true}, ssr: {noExternal: ['element-plus', 'webextension-polyfill']}, plugins: [{name: 'popup-child-client', enforce: 'pre', resolveId(id) {
-      if (/(?:\/|^)Popup(?:LanguageSelect|Onboarding)\.vue$/u.test(id)) return resolve('src/app/popup', id.split('/').at(-1)!) + '.child.ts'
-      if (id.endsWith('/UiSelect.vue')) return '\0child-select'
-      if (id.endsWith('/UiLanguageOnboarding.vue')) return '\0child-onboarding'
-      if (id === 'element-plus') return '\0child-options'
-      if (id === 'webextension-polyfill') return '\0child-browser'
-      if (/\/src\/ui\/i18n(?:\.ts)?$/u.test(id)) return '\0child-i18n'
-      if (/\/src\/core\/config\/catalog(?:\.ts)?$/u.test(id)) return '\0child-catalog'
-      if (/\/src\/services\/config\/store(?:\.ts)?$/u.test(id)) return '\0child-config'
-      if (/\/src\/ui\/interfaceAppearance(?:\.ts)?$/u.test(id)) return '\0child-appearance'
-      return null
-    }, load(id) {
-      if (id.endsWith('.vue.child.ts')) {
-        const filename = id.slice(0, -9), {descriptor} = parse(readFileSync(filename, 'utf8'), {filename})
-        const script = compileScript(descriptor, {id: 'popup-child', inlineTemplate: false})
-        const template = compileTemplate({source: descriptor.template!.content, filename, id: 'popup-child', compilerOptions: {bindingMetadata: script.bindings, cacheHandlers: true}})
-        expect(template.errors).toEqual([])
-        const controlledScript = script.content.replace(/import\(['"]\.\/PopupApp\.vue['"]\)/u, 'globalThis.__popupChildFixture.importMain()')
-        return ts.transpileModule(controlledScript.replace('export default', 'const childComponent =') + '\n' + template.code + '\nchildComponent.render = render;export default childComponent;',
-          {compilerOptions: {target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext}}).outputText
-      }
-      if (id === '\0child-browser') return 'export default {i18n: {getUILanguage: globalThis.__popupChildFixture.locale}}'
-      if (id === '\0child-i18n') return "const f = globalThis.__popupChildFixture;export const useUiI18n = () => ({language: f.language, t: key => key, translateLegacy: text => f.language.value === 'en-US' && text === '自动检测' ? 'Detect language' : text})"
-      if (id === '\0child-catalog') return 'const f = globalThis.__popupChildFixture;export const options = f.options, getMultilingualTargetLanguageLabel = f.label'
-      if (id === '\0child-config') return 'const f = globalThis.__popupChildFixture;export const config = f.config, subscribeConfig = f.subscribe'
-      if (id === '\0child-appearance') return "const f = globalThis.__popupChildFixture;export const applyInterfaceSkin = value => f.appearance('skin', value), applyInterfaceFont = value => f.appearance('font', value), applyInterfaceTheme = value => f.appearance('theme', value)"
-      if (id === '\0child-options') return "import {h} from 'vue';export const ElOption = {props: ['value', 'label'], setup: props => () => h('div', {'data-option': props.value}, props.label)}"
-      if (id === '\0child-select') return "import {getCurrentInstance, h, ref} from 'vue';export default {inheritAttrs: false, setup(_, {attrs, slots, expose}) {const instance = getCurrentInstance(), opened = ref(false), show = value => {opened.value = value;instance.vnode.props.onVisibleChange(value)};expose({blur: () => {globalThis.__popupChildFixture.selectBlur();show(false)}});globalThis.__popupChildFixture.selects.push({instance, show});return () => h('section', {...attrs, 'data-select-port': 'true', tabindex: '0'}, [slots.label?.(), opened.value ? slots.default?.() : null, opened.value ? slots.footer?.() : null])}}"
-      if (id === '\0child-onboarding') return "import {getCurrentInstance, h} from 'vue';export default {inheritAttrs: false, setup(_, {attrs}) {globalThis.__popupChildFixture.onboardings.push({instance: getCurrentInstance()});return () => h('section', {...attrs, 'data-onboarding-port': 'true'})}}"
-      return null
-    }}]})
+  vi.resetModules()
+  vi.doMock('webextension-polyfill', () => ({default: {i18n: {getUILanguage: fixture.locale}}}))
+  vi.doMock('@/src/ui/i18n', () => ({useUiI18n: () => ({language: fixture.language, t: (key: string) => key, translateLegacy: (text: string) => fixture.language.value === 'en-US' && text === '自动检测' ? 'Detect language' : text})}))
+  vi.doMock('@/src/core/config/catalog', () => ({options: fixture.options, getMultilingualTargetLanguageLabel: fixture.label}))
+  vi.doMock('@/src/services/config/store', () => ({config: fixture.config, subscribeConfig: fixture.subscribe}))
+  vi.doMock('@/src/ui/interfaceAppearance', () => ({applyInterfaceSkin: (value: string) => fixture.appearance('skin', value), applyInterfaceFont: (value: string) => fixture.appearance('font', value), applyInterfaceTheme: (value: string) => fixture.appearance('theme', value)}))
+  vi.doMock('element-plus', () => ({ElOption: {props: ['value', 'label'], setup: (props: {value: string; label: string}) => () => runtime.h('div', {'data-option': props.value}, props.label)}}))
+  vi.doMock('@/src/ui/components/UiSelect.vue', () => ({default: {inheritAttrs: false, setup(_: unknown, {attrs, slots, expose}: any) {
+    const instance = runtime.getCurrentInstance()!, opened = runtime.ref(false), show = (value: boolean) => {opened.value = value;instance.vnode.props!.onVisibleChange(value)}
+    expose({blur: () => {fixture.selectBlur();show(false)}});fixture.selects.push({instance, show})
+    return () => runtime.h('section', {...attrs, 'data-select-port': 'true', tabindex: '0'}, [slots.label?.(), opened.value ? slots.default?.() : null, opened.value ? slots.footer?.() : null])
+  }}}))
+  vi.doMock('@/src/ui/components/UiLanguageOnboarding.vue', () => ({default: {inheritAttrs: false, setup(_: unknown, {attrs}: any) {
+    fixture.onboardings.push({instance: runtime.getCurrentInstance()});return () => runtime.h('section', {...attrs, 'data-onboarding-port': 'true'})
+  }}}))
+  vi.doMock('@/src/app/popup/PopupApp.vue', async () => ({__esModule: true, default: await fixture.loadMain()}))
 })
-afterEach(async () => {app?.unmount();await settle();await server?.close();delete (globalThis as any).__popupChildFixture;vi.unstubAllGlobals()})
+afterEach(async () => {app?.unmount();await settle();vi.unstubAllGlobals()})
 async function mount(path: string, values: Record<string, any> = {}) {
-  const component = (await server.ssrLoadModule('/' + path)).default;source = runtime.shallowReactive(values);shown = runtime.ref(true)
+  const component = path === selectPath ? (await import('@/src/app/popup/PopupLanguageSelect.vue')).default : (await import('@/src/app/popup/PopupOnboarding.vue')).default
+  source = runtime.shallowReactive(values);shown = runtime.ref(true)
   const renderer = runtime.createRenderer({patchProp(element: any, key: string, _previous: any, next: any) {
     if (/^on[A-Z]/u.test(key)) {const listeners = events.get(element) || {};listeners[key] = next;events.set(element, listeners);return}
     if (key === 'class') {element.className = next ?? '';return}
@@ -102,7 +79,7 @@ async function mount(path: string, values: Record<string, any> = {}) {
     querySelector: value => document.querySelector(value), setScopeId: () => {}, cloneNode: (node: any) => node.cloneNode(true),
     insertStaticContent: (html, parent: any, anchor: any) => {const template = document.createElement('template');template.innerHTML = html;const first = template.content.firstChild!, last = template.content.lastChild!;parent.insertBefore(template.content, anchor);return [first, last]}})
   app = renderer.createApp({setup: () => () => runtime.h(runtime.KeepAlive, null, {default: () => shown.value
-    ? runtime.h(component, {...source, 'onUpdate:modelValue': updates, ref: (vm: any) => {if (vm) {state = vm.$.setupState;componentProps = vm.$.props}}})
+    ? runtime.h(component as runtime.Component, {...source, 'onUpdate:modelValue': updates, ref: (vm: any) => {if (vm) {state = vm.$.setupState;componentProps = vm.$.props}}})
     : runtime.h({render: () => null}, {key: 'other'})})})
   app.config.warnHandler = () => {};app.mount(document.getElementById('app')!);await settle()
 }

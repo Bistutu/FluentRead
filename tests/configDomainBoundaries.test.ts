@@ -133,8 +133,6 @@ describe('配置领域边界与防御分支', () => {
         expect(servicesType.isTencent(services.openai)).toBe(false);
         expect(servicesType.isAzureOpenai(services.azureOpenai)).toBe(true);
         expect(servicesType.isAzureOpenai(services.openai)).toBe(false);
-        expect(servicesType.isUseCustomUrl(services.deeplx)).toBe(true);
-        expect(servicesType.isUseCustomUrl(services.google)).toBe(false);
         expect(firstConfiguredModel([])).toBe('');
         expect(firstConfiguredModel(['model-a'])).toBe('model-a');
     });

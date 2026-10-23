@@ -1,10 +1,11 @@
 /**
  * @file src/features/video-subtitle/reading/hindi.ts
  * 文件职责：在自有读音 Worker 中按需初始化印地语读音引擎，处理印地语固有元音脱落。
- * 主要内容：编译期固定 Go 运行时、随扩展发布的 WASM、共享可重试初始化与结合词典、候选排序的本地罗马字。
+ * 主要内容：编译期固定 Go 运行时、随扩展发布的 WASM、失败响应正文非阻塞回收、共享可重试初始化与结合词典、候选排序的本地罗马字。
  * 模块边界：不使用第三方包中动态 eval 的加载器，不加载远程代码；可信 WASM URL、取消、超时及内存释放由专属 Worker 生命周期控制。
  */
 import '@fluentread/gomanize-go-runtime';
+import {cancelUnreadResponseBody} from '@/src/platform/http/runtime';
 
 type HindiTransliterator = (text: string, options: {lexicon: boolean; rerank: boolean}) => string;
 interface GoRuntime {
@@ -21,7 +22,7 @@ async function initializeHindi(wasmUrl: string): Promise<HindiTransliterator> {
     if (!scope.Go) throw new Error('Hindi reading runtime is unavailable');
     const response = await fetch(wasmUrl);
     if (!response.ok) {
-        await response.body?.cancel();
+        cancelUnreadResponseBody(response);
         throw new Error(`Hindi reading engine failed to load (${response.status})`);
     }
     const runtime = new scope.Go();

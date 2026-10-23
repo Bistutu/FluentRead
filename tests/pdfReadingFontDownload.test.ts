@@ -34,6 +34,20 @@ function harness(overrides: Partial<PdfReadingFontLoaderDependencies> = {}) {
 afterEach(() => {vi.useRealTimers(); vi.unstubAllGlobals();});
 
 describe('PDF reading font data download', () => {
+    it('releases rejected source bodies before fallback and unlocks the verified font stream', async () => {
+        const h = harness();
+        const cancellation = deferred<void>();
+        const cancel = vi.fn(() => cancellation.promise);
+        const rejected = new Response(new ReadableStream({cancel}), {headers: {'Content-Type': 'text/html'}});
+        const verified = response();
+        h.fetch.mockResolvedValueOnce(rejected).mockResolvedValueOnce(verified);
+        expect(hash(await h.load())).toBe(PDF_READING_FONT_SHA256);
+        expect(cancel).toHaveBeenCalledOnce();
+        expect(rejected.body!.locked).toBe(false);
+        expect(verified.body!.locked).toBe(false);
+        cancellation.reject(new Error('Late font cancellation failure'));
+        await Promise.resolve();
+    });
     it('pins an immutable source revision containing the maintained supplemental font', () => {
         expect(PDF_READING_FONT_REVISION).toMatch(/^[a-f0-9]{40}$/u);
         const pinned = execFileSync('git', ['show', `${PDF_READING_FONT_REVISION}:public${PDF_READING_FONT_PATH}`], {cwd: process.cwd(), maxBuffer: 6_000_000});

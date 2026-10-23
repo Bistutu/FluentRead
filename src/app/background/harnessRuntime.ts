@@ -15,7 +15,7 @@ import {createReadingSessionHandler} from '@/src/features/reading-assistant/sess
 import {createLearningMemoryHandler} from '@/src/features/reading-assistant/memoryHandler';
 import {learningMemoryRepository} from '@/src/platform/storage/learningMemoryRepository';
 import {createLearningMemoryRecall} from '@/src/services/harness/memoryRecall';
-import {modelUsageRepository} from '@/src/platform/storage/modelUsageRepository';
+import {getModelUsageRepository} from '@/src/platform/storage/modelUsageRepository';
 import {isExtensionDisabledOnSite} from '@/src/core/site-rules/domain';
 import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 import type {ReadingSender} from '@/src/features/reading-assistant/background';
@@ -25,8 +25,8 @@ import {getHarnessModelInputKey} from '@/src/services/harness/modelGateway';
 
 export function installHarnessBackgroundRuntime(cancelWriting?: () => void): BackgroundMessageHandler<{sender?: ReadingSender}> {
     const runtime = createHarnessRuntime(() => config, () => {
-        const generation = modelUsageRepository.captureGeneration();
-        return event => { void modelUsageRepository.recordMany([event], generation).catch(() => undefined); };
+        const generation = getModelUsageRepository().captureGeneration();
+        return event => { void getModelUsageRepository().recordMany([event], generation).catch(() => undefined); };
     }, {recall: createLearningMemoryRecall(learningMemoryRepository)});
     const eligibility = (sender: ReadingSender) => {
             if (!config.on || !config.harness.enabled) return '阅读理解已停用';

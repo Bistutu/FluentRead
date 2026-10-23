@@ -77,6 +77,11 @@ beforeEach(async () => {
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('Google 批量传输与换线', () => {
+    it.each(['constructor', '__proto__'])('未知语言 %s 原样提交，不能继承 Object 原型值', async language => {
+        fetchMock.mockImplementation(async (url, init) => successfulResponse(url, requestData(url, init).texts.map(() => 'translated')));
+        await expect(flush(api.translateGoogleTexts(['source'], language, language))).resolves.toEqual(['translated']);
+        expect(requestData(...fetchMock.mock.calls[0])).toMatchObject({from: language, to: language});
+    });
     it('关闭合批时显式数组逐条 HTTP，保留空白并跳过 120ms 收集窗', async () => {
         const starts: number[] = [];
         fetchMock.mockImplementation(async (url, init) => {
@@ -201,6 +206,12 @@ describe('Google 批量传输与换线', () => {
         expect(JSON.parse(String(init.body))).toEqual([
             [['<pre>&lt;b&gt;Hello &amp; world&lt;/b&gt;\n  Next line\n\n&amp;lt;</pre>'], 'auto', 'zh-CN'], 'wt_lib',
         ]);
+    });
+    it('还原合法 Unicode 数字实体，保留非法码点与已转义的实体字面量', async () => {
+        fetchMock.mockResolvedValue(response([['<pre>&#65; &#x1F642; &#X1F680; &#0; &#xD800; &#1114112; &amp;#65; &QUOT; &apos; &nbsp;</pre>']]));
+        await expect(flush(api.translateGoogleText('Unicode character references', 'en', 'zh')))
+            .resolves.toBe('A 🙂 🚀 &#0; &#xD800; &#1114112; &#65; " \' \u00a0');
+        expect(hosts()).toEqual([HTML]);
     });
     it('并发段落与显式数组共享一批请求，并按原调用者顺序返回', async () => {
         fetchMock.mockResolvedValue(response([['第一段', '第二段', '第三段']]));
@@ -340,6 +351,33 @@ describe('Google 端点健康与预算', () => {
         expect(failure.message).toContain('响应读取失败');
         expect(failure.message).not.toContain('private');
         expect(hosts()).toEqual([HTML, LIST, RPC, UK]);
+    });
+    it.each([true, false])('成功 headers 后慢正文遵循单次超时，再换线且不采用迟到正文（transport obeys abort=%s）', async obeysAbort => {
+        fetchMock.mockImplementationOnce(async (_url, init) => new Response(new ReadableStream<Uint8Array>({start(stream) {
+            if (obeysAbort) init!.signal!.addEventListener('abort', () => stream.error(init!.signal!.reason), {once: true});
+            else setTimeout(() => {stream.enqueue(new TextEncoder().encode(JSON.stringify([['迟到正文']])));stream.close();}, 2100);
+        }}))).mockResolvedValueOnce(response(['按时后备译文']));
+        const pending = api.translateGoogleOwnerTexts(['Slow body'], 'en', 'zh', new AbortController().signal);
+        await vi.advanceTimersByTimeAsync(1999);
+        expect(hosts()).toEqual([HTML]);
+        await vi.advanceTimersByTimeAsync(201);
+        await expect(pending).resolves.toEqual(['按时后备译文']);
+        expect(hosts()).toEqual([HTML, LIST]);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+    it('正文读取拒绝发生在取消之后时保留调用方原因，并停止后续入口', async () => {
+        const controller = new AbortController(), reason = new Error('left the document');
+        const fetched = new Promise<void>(resolve => fetchMock.mockImplementationOnce(async (_url, init) => {
+            const result = new Response(new ReadableStream({start(stream) {
+                init!.signal!.addEventListener('abort', () => stream.error(init!.signal!.reason), {once: true});
+            }}));
+            resolve();return result;
+        }));
+        const pending = api.translateGoogleOwnerTexts(['Cancelled body'], 'en', 'zh', controller.signal);
+        const rejected = expect(pending).rejects.toBe(reason);
+        await fetched;controller.abort(reason);await rejected;
+        expect(hosts()).toEqual([HTML]);
+        expect(vi.getTimerCount()).toBe(0);
     });
     it('每个接口最多两秒，四个候选共享八秒总预算', async () => {
         const signals: AbortSignal[] = [];

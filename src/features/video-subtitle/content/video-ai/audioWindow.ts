@@ -1,58 +1,12 @@
 /**
  * @file src/features/video-subtitle/content/video-ai/audioWindow.ts
  * 文件职责：维护 16 kHz 音频窗口、流式重采样、语音活动检测与 PCM 编码。
- * 主要内容：保证跨 AudioContext 回调的采样相位连续，并为实时/完整识别提供统一音频契约。
+ * 主要内容：保证跨 AudioContext 回调的采样相位连续，并为完整识别及其隐藏扫描回退提供统一音频契约。
  * 模块边界：只处理音频数值与窗口策略，不创建播放器节点，也不发起识别请求。
  */
-import { normalizeVideoLocalTranscriptionModel, WHISPER_DIGITAL_SILENCE_PEAK } from '@/src/features/video-subtitle/transcription';
+import { WHISPER_DIGITAL_SILENCE_PEAK } from '@/src/features/video-subtitle/transcription';
 
 export const VIDEO_AI_SAMPLE_RATE = 16_000;
-
-export interface VideoAiStreamProfile {
-  initialWindowMs: number;
-  targetWindowMs: number;
-  submitStepMs: number;
-  maxBufferedMs: number;
-}
-
-/**
- * Whisper 的编码器每次都会处理固定长度的声学特征。首窗不能无限等待完整
- * 句子，否则语音已经播完，字幕才刚开始出现。Tiny 首窗只用于快速给出可读
- * 前缀，随后恢复 6 秒重叠窗口做准确校正；Base/Small 保留更长上下文，明确标为
- * 实验模式。
- */
-export function getVideoAiStreamProfile(model: unknown): VideoAiStreamProfile {
-  return normalizeVideoLocalTranscriptionModel(model) !== 'tiny'
-    ? {
-        initialWindowMs: 3_600,
-        targetWindowMs: 8_000,
-        submitStepMs: 3_600,
-        maxBufferedMs: 30_000,
-      }
-    : {
-        initialWindowMs: 1_600,
-        targetWindowMs: 6_000,
-        submitStepMs: 2_600,
-        maxBufferedMs: 30_000,
-      };
-}
-
-/**
- * 根据上一轮真实推理耗时限制 ASR 占空比。设备越慢，提交步长越大，但始终
- * 留至少 800ms 重叠且不越过 PCM 硬上限，避免 Worker 长期 100% 满载。
- */
-export function getVideoAiAdaptiveSubmitStepMs(
-  model: unknown,
-  inferenceMs: number,
-  profile = getVideoAiStreamProfile(model),
-): number {
-  if (!Number.isFinite(inferenceMs) || inferenceMs <= 0) return profile.submitStepMs;
-  const dutyCycleBudget = normalizeVideoLocalTranscriptionModel(model) !== 'tiny' ? 0.62 : 0.72;
-  return Math.min(
-    profile.maxBufferedMs - 800,
-    Math.max(profile.submitStepMs, inferenceMs / dutyCycleBudget),
-  );
-}
 
 export interface VideoAiSpeechActivity {
   active: boolean;

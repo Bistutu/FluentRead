@@ -72,7 +72,7 @@ vi.mock('element-plus', async () => {
     }});
     const Option = defineComponent({props: ['value', 'label'], setup: props => () => h('option', {value: props.value}, props.label)});
     const Slot = defineComponent({setup: (_, {slots}) => () => h('span', slots.default?.())});
-    const Dialog = defineComponent({props: ['modelValue'], emits: ['closed'], setup(props, {slots, emit}) {
+    const Dialog = defineComponent({props: ['modelValue'], emits: ['closed', 'update:modelValue'], setup(props, {slots, emit}) {
         const rendered = ref(Boolean(props.modelValue));
         let closing: (() => void) | undefined;
         watch(() => props.modelValue, value => {
@@ -82,7 +82,8 @@ vi.mock('element-plus', async () => {
             if (ports.delayDialogClosed) {closing = closed; ports.pendingDialogClosed.add(closed);} else closed();
         });
         onUnmounted(() => {if (closing) ports.pendingDialogClosed.delete(closing);});
-        return () => rendered.value ? h('div', {'data-dialog-visible': String(Boolean(props.modelValue)), 'aria-hidden': !props.modelValue}, [...slots.default?.() ?? [], ...slots.footer?.() ?? []]) : null;
+        return () => rendered.value ? h('div', {'data-dialog-visible': String(Boolean(props.modelValue)), 'aria-hidden': !props.modelValue}, [...slots.default?.() ?? [], ...slots.footer?.() ?? [],
+            h('button', {'data-dialog-close': '', onClick: () => emit('update:modelValue', false)}, 'Close')]) : null;
     }});
     const Button = defineComponent({props: ['disabled', 'loading', 'nativeType', 'type'], setup: (props, {attrs, slots}) => () => h('button', {...attrs, disabled: props.disabled || props.loading, type: props.nativeType || 'button'}, slots.default?.())});
     const NumberInput = defineComponent({props: ['modelValue', 'disabled'], emits: ['update:modelValue'], setup: (props, {attrs, emit}) => () => h('input', {...attrs, type: 'number', value: props.modelValue, disabled: props.disabled,
@@ -148,8 +149,10 @@ async function mount(component: Component, props: Record<string, unknown> = {}) 
     const elementPlus = await import('element-plus');
     app.component('el-select', elementPlus.ElSelect); app.component('el-option', elementPlus.ElOption); app.component('el-dialog', elementPlus.ElDialog);
     app.component('el-button', elementPlus.ElButton); app.component('el-input-number', elementPlus.ElInputNumber); app.component('el-switch', elementPlus.ElSwitch);
-    // 本组不操作粘贴输入；文件读取与导出路径只需注册此输入端口，避免解析警告。
-    app.component('el-input', {render: () => null});
+    // 真实 textarea 只实现输入控件公开的 v-model 端口；JSON 解析、预览和归属规则由产品 SFC 执行。
+    app.component('el-input', defineComponent({props: ['modelValue', 'type', 'rows'], emits: ['update:modelValue'], setup: (props, {attrs, emit}) => () => h('textarea', {
+        ...attrs, rows: props.rows, value: props.modelValue, onInput: (event: Event) => emit('update:modelValue', (event.target as HTMLTextAreaElement).value),
+    })}));
     apps.add(app); app.mount(host); await settle();
     return {host, state, stop: () => {app.unmount(); apps.delete(app);}};
 }
@@ -952,6 +955,37 @@ describe('audit49C followup2 restore visibility during the dialog closing transi
 
 describe('audit49C followup1 cache-limit draft and authoritative configuration', () => {
     const stats = {success: true, stats: {bytes: 0, entries: 0, maxBytes: 10 * 1024 * 1024, maxEntries: 10000}};
+    it.each(['success', 'failure', 'unmount'] as const)('keeps cache clearing single-flight and handles its %s receipt', async outcome => {
+        ports.send.mockResolvedValue(stats); const page = await mount(TranslationCacheSettings, {config: normalizeConfig({})});
+        const clear = deferred<any>(); ports.send.mockImplementationOnce(() => clear.promise); ports.send.mockClear();
+        const trigger = namedButton(page.host, 'settings.cache.clear');
+        trigger.click(); await settle();
+        expect(trigger.disabled).toBe(true);
+        trigger.dispatchEvent(new Event('click', {bubbles: true})); await settle();
+        expect(ports.send.mock.calls.map(([message]) => message)).toEqual([{type: 'clearTranslationCache'}]);
+        if (outcome === 'unmount') page.stop();
+        clear.resolve(outcome === 'failure' ? {success: false} : {success: true}); await settle();
+        if (outcome === 'unmount') {
+            expect(ports.send).toHaveBeenCalledOnce(); return;
+        }
+        expect(trigger.disabled).toBe(false);
+        if (outcome === 'failure') {
+            expect(page.host.querySelector('[role="alert"]')!.textContent).toBe('settings.cache.clearFailed');
+            trigger.click(); await settle();
+        }
+        expect(page.host.querySelector('[role="status"]')!.textContent).toBe('settings.cache.cleared');
+        expect(ports.send.mock.calls.map(([message]) => message.type)).toEqual(outcome === 'failure'
+            ? ['clearTranslationCache', 'clearTranslationCache', 'getTranslationCacheStats']
+            : ['clearTranslationCache', 'getTranslationCacheStats']);
+    });
+    it('saves both numeric cache limits from the rendered inputs in one patch', async () => {
+        ports.send.mockResolvedValue(stats); const page = await mount(TranslationCacheSettings, {config: normalizeConfig({})});
+        input(page.host, 'input[aria-label="settings.cache.maxSize"]', '3');
+        input(page.host, 'input[aria-label="settings.cache.maxEntries"]', '500'); await settle();
+        page.host.querySelector('form')!.dispatchEvent(new Event('submit', {bubbles: true, cancelable: true})); await settle();
+        expect(ports.patch.mock.calls.map(([patch]) => patch)).toEqual([{translationCacheMaxBytes: 3 * 1024 * 1024, translationCacheMaxEntries: 500}]);
+        expect(page.host.querySelector('[role="status"]')!.textContent).toBe('settings.cache.saved');
+    });
     it('reconciles limits received from the real parent prop while the cache toggle save is pending', async () => {
         ports.send.mockResolvedValue(stats); const page = await mount(TranslationCacheSettings, {config: normalizeConfig({})});
         const save = deferred<void>(); ports.patch.mockImplementationOnce(() => save.promise);
@@ -1193,6 +1227,86 @@ describe('audit49C local backup confirmation ownership', () => {
     const filePort = (text: () => Promise<string>, size = 100): Pick<File, 'name' | 'size' | 'text'> => ({name: 'controlled-local-import.json', size, text});
     const preview = (host: HTMLElement) => host.querySelector('[data-testid="local-data-import-dialog"]');
 
+    const openPaste = async (f: Awaited<ReturnType<typeof fixture>>, payload: string) => {
+        f.page.host.querySelectorAll<HTMLButtonElement>('.transfer-actions button')[1].click(); await settle();
+        input(f.page.host, '[data-testid="restore-source-dialog"] textarea', payload, false); await settle();
+        return namedButton(f.page.host.querySelector('[data-testid="restore-source-dialog"]') as HTMLElement, '预览恢复内容');
+    };
+
+    it('previews pasted configuration without writing and recovers from invalid JSON in the same source dialog', async () => {
+        const f = await fixture();
+        try {
+            const button = await openPaste(f, '{invalid'); button.click(); await settle();
+            expect(ports.messages).toHaveBeenCalledWith('error', expect.stringContaining('无法读取 JSON'));
+            expect(preview(f.page.host)).toBeNull(); expect(button.disabled).toBe(false);
+            input(f.page.host, '[data-testid="restore-source-dialog"] textarea', fileJson(), false); await settle();
+            button.click(); await settle(); expect(preview(f.page.host)?.textContent).toContain('粘贴的旧版 JSON');
+            expect(preview(f.page.host)?.textContent).toContain('只恢复设置');
+            expect(ports.send).not.toHaveBeenCalled(); expect(ports.patch).not.toHaveBeenCalled();
+            preview(f.page.host)?.querySelector<HTMLButtonElement>('[data-dialog-close]')!.click(); await settle();
+            expect(preview(f.page.host)).toBeNull(); expect(f.restoreFocus).toHaveBeenCalledOnce();
+        } finally {await f.close();}
+    });
+
+    it.each(['inactive', 'reopen', 'keepalive', 'unmount'] as const)('rejects a queued pasted-preview action after its view becomes %s', async kind => {
+        const f = await fixture();
+        try {
+            const button = await openPaste(f, fileJson());
+            const event = ports.renderedEvents.findLast(item => typeof item.props.onClick === 'function'
+                && item.node.children?.default?.().some((child: any) => child.children === '预览恢复内容'))!;
+            expect(event).toBeDefined(); const queued = event.props.onClick;
+            await f.leave(kind); await queued({currentTarget: button}); await settle();
+            expect(preview(f.page.host)).toBeNull(); expect(ports.messages).not.toHaveBeenCalled();
+            expect(ports.send).not.toHaveBeenCalled(); expect(ports.patch).not.toHaveBeenCalled();
+            if (kind !== 'unmount') {
+                await f.reactivate();
+                const fresh = await openPaste(f, fileJson()); fresh.click(); await settle();
+                expect(preview(f.page.host)?.textContent).toContain('粘贴的旧版 JSON');
+            }
+        } finally {await f.close();}
+    });
+
+    it('ignores old textarea, file, close and preview receipts after the restore dialog reopens', async () => {
+        const f = await fixture(); const fileClick = vi.spyOn(window.HTMLInputElement.prototype, 'click').mockImplementation(() => undefined);
+        try {
+            const oldButton = await openPaste(f, fileJson());
+            const source = ports.renderedEvents.findLast(item => item.props['data-testid'] === 'restore-source-dialog')!.props;
+            const oldInput = ports.renderedEvents.findLast(item => item.props.type === 'textarea')!.props['onUpdate:modelValue'];
+            const action = (label: string) => ports.renderedEvents.findLast(item => typeof item.props.onClick === 'function'
+                && item.node.children?.default?.().some((child: any) => child.children === label))!.props.onClick;
+            const oldChoose = action('选择文件'), oldPreview = action('预览恢复内容');
+            f.page.host.querySelector<HTMLButtonElement>('[data-testid="restore-source-dialog"] [data-dialog-close]')!.click(); await settle();
+            const payload = fileJson(), fresh = await openPaste(f, payload);
+            oldInput('{stale-invalid'); source['onUpdate:modelValue'](false);
+            oldChoose({currentTarget: oldButton}); await oldPreview({currentTarget: oldButton}); await settle();
+            expect(f.page.host.querySelector<HTMLTextAreaElement>('[data-testid="restore-source-dialog"] textarea')?.value).toBe(payload);
+            expect(preview(f.page.host)).toBeNull(); expect(fileClick).not.toHaveBeenCalled(); expect(ports.messages).not.toHaveBeenCalled();
+            fresh.click(); await settle(); expect(preview(f.page.host)?.textContent).toContain('粘贴的旧版 JSON');
+        } finally {fileClick.mockRestore(); await f.close();}
+    });
+
+    it.each(['source', 'preview'] as const)('does not read a file from an old chooser after a new %s opens', async boundary => {
+        const f = await fixture();
+        try {
+            await openPaste(f, fileJson());
+            const oldInput = f.page.host.querySelector<HTMLInputElement>('input[type="file"]')!;
+            const oldChange = ports.renderedEvents.findLast(item => item.tag === 'input' && item.props.type === 'file')!.props.onChange;
+            f.page.host.querySelector<HTMLButtonElement>('[data-testid="restore-source-dialog"] [data-dialog-close]')!.click(); await settle();
+            const payload = fileJson(), currentPreview = await openPaste(f, payload);
+            if (boundary === 'preview') {currentPreview.click(); await settle();}
+            const text = vi.fn(async () => fileJson());
+            Object.defineProperty(oldInput, 'files', {configurable: true, value: [filePort(text)]});
+            await oldChange({target: oldInput}); oldInput.dispatchEvent(new Event('change', {bubbles: true})); await settle();
+            expect(text).not.toHaveBeenCalled(); expect(ports.send).not.toHaveBeenCalled(); expect(ports.messages).not.toHaveBeenCalled();
+            expect(oldInput.isConnected).toBe(false);
+            if (boundary === 'source') {
+                expect(f.page.host.querySelector<HTMLTextAreaElement>('[data-testid="restore-source-dialog"] textarea')?.value).toBe(payload);
+                expect(preview(f.page.host)).toBeNull(); currentPreview.click(); await settle();
+            }
+            expect(preview(f.page.host)?.textContent).toContain('粘贴的旧版 JSON');
+        } finally {await f.close();}
+    });
+
     it('continues a confirmed large file in its current view and previews it before any imported write', async () => {
         const f = await fixture(); const confirmation = deferred<void>(); const payload = fileJson();
         const text = vi.fn(async () => payload); const parse = vi.spyOn(JSON, 'parse');
@@ -1316,8 +1430,12 @@ describe('audit49C local backup confirmation ownership', () => {
         const f = await fixture(); const text = vi.fn(async () => fileJson());
         try {
             f.page.state.active = false; await settle();
-            const selected = await f.chooseFile(filePort(text, 20 * 1024 * 1024 + 1));
-            expect(selected.input.value).toBe(''); expect(ports.confirm).not.toHaveBeenCalled(); expect(text).not.toHaveBeenCalled();
+            f.page.host.querySelectorAll<HTMLButtonElement>('.transfer-actions button')[1].click(); await settle();
+            expect(f.page.host.querySelector('[data-testid="restore-source-dialog"]')).toBeNull();
+            const input = f.page.host.querySelector<HTMLInputElement>('input[type="file"]')!;
+            Object.defineProperty(input, 'files', {configurable: true, value: [filePort(text, 20 * 1024 * 1024 + 1)]});
+            input.dispatchEvent(new Event('change', {bubbles: true})); await settle();
+            expect(input.value).toBe(''); expect(ports.confirm).not.toHaveBeenCalled(); expect(text).not.toHaveBeenCalled();
             expect(f.button().disabled).toBe(false); await f.reactivate();
             await f.chooseFile(filePort(text)); expect(text).toHaveBeenCalledOnce(); expect(preview(f.page.host)).not.toBeNull();
         } finally {await f.close();}
@@ -1328,6 +1446,28 @@ describe('audit49C local backup confirmation ownership', () => {
     const vocabularyReceipt = {success: true, data: {inserted: 0, updated: 0, skipped: 0}};
     type ImportOutcome = 'success' | 'model-failure' | 'vocabulary-failure' | 'config-failure';
     let completionRevision = 1000;
+    it.each(['config', 'model-usage', 'vocabulary'] as const)('applies an accepted standalone legacy %s import through only its owned domain', async kind => {
+        const f = await fixture();
+        const document = kind === 'config' ? JSON.parse(fileJson()) : kind === 'model-usage'
+            ? {format: 'fluentread-model-usage', version: 1, exportedAt: 1, events: []}
+            : {format: 'fluentread-vocabulary-book', version: 1, exportedAt: 1, includesPrivateContext: false, entries: [], reviewLogs: []};
+        ports.send.mockImplementation(async (message: {type: string; action?: string}) => {
+            if (message.type === 'persistConfig') return {success: true, revision: ++completionRevision};
+            if (message.type === 'modelUsage' && message.action === 'import') return modelReceipt;
+            if (message.type === VOCABULARY_BOOK_MESSAGE && message.action === 'importData') return vocabularyReceipt;
+            throw new Error('Unexpected standalone import IO port');
+        });
+        try {
+            await f.chooseFile(filePort(async () => JSON.stringify(document)));
+            expect(ports.send).not.toHaveBeenCalled();
+            namedButton(preview(f.page.host) as HTMLElement, '确认导入').click(); await settle();
+            expect(ports.send).toHaveBeenCalledOnce();
+            expect(ports.send.mock.calls[0][0].type).toBe(kind === 'config' ? 'persistConfig' : kind === 'model-usage' ? 'modelUsage' : VOCABULARY_BOOK_MESSAGE);
+            expect(ports.messages).toHaveBeenCalledWith('success', expect.stringContaining('导入完成'));
+            expect(preview(f.page.host)).toBeNull(); expect(f.restoreFocus).toHaveBeenCalledOnce();
+        } finally {await f.close();}
+    });
+
     async function completionFixture(outcome: ImportOutcome = 'success', delaySourceClosed = false) {
         const f = await fixture(); const model = deferred<unknown>(); const vocabulary = deferred<unknown>();
         const importedConfig = prepareConfigForExport(normalizeConfig({...ports.config, to: 'ja',
@@ -1470,6 +1610,35 @@ describe('audit49C local backup confirmation ownership', () => {
             expect(preview(f.page.host)).toBeNull(); expect(f.restoreFocus).toHaveBeenCalledOnce(); expect(ports.send).not.toHaveBeenCalled();
             await f.chooseFile({...filePort(async () => fileJson()), name: 'fresh-after-cancel.json'});
             expect(preview(f.page.host)?.textContent).toContain('fresh-after-cancel.json'); expect(f.confirm().disabled).toBe(false);
+        } finally {await f.close();}
+    });
+
+    it.each((['replace', 'reactivate', 'keepalive'] as const).flatMap(boundary =>
+        (['confirm', 'cancel', 'visibility'] as const).map(action => ({boundary, action})),
+    ))('rejects old preview $action after $boundary while keeping the current preview usable', async ({boundary, action}) => {
+        const f = await fixture();
+        ports.send.mockResolvedValue({success: true, revision: ++completionRevision});
+        try {
+            await f.chooseFile(filePort(async () => fileJson()));
+            const dialog = ports.renderedEvents.findLast(item => item.props['data-testid'] === 'local-data-import-dialog')!.props;
+            const label = action === 'confirm' ? '确认导入' : '取消';
+            const oldAction = action === 'visibility' ? dialog['onUpdate:modelValue']
+                : ports.renderedEvents.findLast(item => typeof item.props.onClick === 'function'
+                    && item.node.children?.default?.().some((child: any) => child.children === label))!.props.onClick;
+            if (boundary === 'replace') {
+                namedButton(preview(f.page.host) as HTMLElement, '取消').click(); await settle();
+                await f.chooseFile({...filePort(async () => fileJson()), name: 'current-preview.json'});
+            } else {
+                await f.leave(boundary === 'reactivate' ? 'reopen' : 'keepalive'); await f.reactivate();
+            }
+            const currentText = preview(f.page.host)!.textContent, focusCount = f.restoreFocus.mock.calls.length;
+            await oldAction(false); await settle();
+            expect(ports.send).not.toHaveBeenCalled(); expect(ports.messages).not.toHaveBeenCalled();
+            expect(preview(f.page.host)?.textContent).toBe(currentText);
+            expect(f.restoreFocus.mock.calls.length).toBe(focusCount);
+            namedButton(preview(f.page.host) as HTMLElement, '确认导入').click(); await settle();
+            expect(ports.send).toHaveBeenCalledOnce(); expect(ports.send.mock.calls[0][0].type).toBe('persistConfig');
+            expect(preview(f.page.host)).toBeNull();
         } finally {await f.close();}
     });
 

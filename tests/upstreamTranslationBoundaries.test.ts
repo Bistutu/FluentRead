@@ -2,9 +2,9 @@ import {parseHTML} from 'linkedom';
 import {describe, expect, it} from 'vitest';
 import {
     createDeclarativeAdapter,
-    createTranslationCore,
     createTranslationSourceSnapshot,
 } from '@/src/core/translation/public';
+import {createTranslationCore} from './helpers/translationCore';
 
 describe('upstream message metadata regressions', () => {
     it('只省略显式 metadata，keepOriginal 内容仍留在双语原文骨架', () => {

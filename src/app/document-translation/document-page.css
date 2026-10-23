@@ -193,7 +193,6 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, [role="butto
 .reader-block:first-child { border-top: 0; }
 .reader-context { display: inline-flex; margin-bottom: 9px; padding: 4px 8px; border-radius: 999px; color: var(--brand-strong); background: var(--brand-soft); font-size: 10px; font-weight: 800; }
 .reader-source { color: var(--ink); font-size: 17px; font-weight: 520; line-height: 1.75; white-space: pre-wrap; overflow-wrap: anywhere; }
-.reader-source.reader-heading { margin-top: 3px; font-size: 23px; font-weight: 820; letter-spacing: -.03em; line-height: 1.35; }
 .reader-translation { display: block; width: 100%; min-height: 34px; margin-top: 7px; padding: 0; resize: vertical; border: 0; color: var(--ink); background: transparent; font-size: 17px; font-weight: 720; line-height: 1.75; outline: none; white-space: pre-wrap; overflow-wrap: anywhere; }
 .reader-translation:not(:disabled):focus { padding: 7px 10px; border-radius: 9px; background: var(--brand-soft); }
 .reader-translation::placeholder { color: #aeb5c5; font-size: 14px; font-weight: 500; }

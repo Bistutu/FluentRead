@@ -104,6 +104,27 @@ afterEach(async () => {
 });
 
 describe('image OCR preparation status cancellation at the client public entry', () => {
+    it.each(['resolve', 'reject'] as const)('starts the bounded download after stalled status and ignores its late %s', async late => {
+        const control = controller();
+        const progress = vi.fn();
+        const result = observe(prepare('ja', control.signal, progress));
+        await vi.advanceTimersByTimeAsync(4_999);
+        expect(send).toHaveBeenCalledTimes(1);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(send.mock.calls[1][0]).toMatchObject({type: 'fluentReadImageOcrDownload', languages: ['jpn', 'eng'], timeoutMs: 300_000});
+        expect(storageListeners.size).toBe(1);
+        if (late === 'resolve') status.resolve({success: true, languages: ['eng']});
+        else status.reject(new Error('Late status failure'));
+        await flush();
+        emit({[progressKey('jpn')]: {newValue: {loaded: 1, total: 2}}});
+        expect(progress).toHaveBeenLastCalledWith(25);
+        expect(send).toHaveBeenCalledTimes(2);
+        download.resolve({success: true});
+        await flush();
+        expect(result.value).toEqual({state: 'resolved'});
+        expect(signalListeners[0].size).toBe(0);
+        expect(vi.getTimerCount()).toBe(0);
+    });
     it('rejects an already-aborted signal without starting a never-returning status query', async () => {
         const control = controller();
         control.abort();

@@ -128,6 +128,20 @@ afterEach(() => {
 });
 
 describe('synthetic 双语片段 source-only 重挂', () => {
+    it('行内来源换代保留已提交的译文前置顺序，恢复后仍保留新来源节点', () => {
+        const scenario = createCommittedSyntheticScenario();
+        scenario.owner.prepend(scenario.wrapper);
+        setBilingualContent(scenario.owner, scenario.wrapper);
+        const {record, firstText, strong, block} = replaceWithEquivalentSource(scenario);
+        const result = transferEquivalentSyntheticBilingualSegments([record], () => true);
+        expect(result.transfers).toHaveLength(1);
+        expect(Array.from(scenario.owner.childNodes)).toEqual([scenario.wrapper, firstText, strong]);
+        expect(scenario.state.bilingualBeforeSource).toBe(true);
+        restoreAllTranslations();
+        expect(Array.from(scenario.host.childNodes)).toEqual([firstText, strong, block]);
+        expect(scenario.host.textContent).toBe('Inline source.Independent block.');
+    });
+
     it('只允许完整段落的自动外壳授权不能迁移为没有对应授权的行内片段', () => {
         const scenario = createCommittedSyntheticScenario();
         scenario.state.applicationShellPolicyId = 'mastodon';

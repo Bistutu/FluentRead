@@ -1,7 +1,7 @@
 /**
  * @file src/features/quick-translation/content/index.ts
  * 文件职责：识别额外快捷翻译方案的可信键鼠手势，并把命中的完整方案转交给注入的悬停、全文或局部容器选择执行器。
- * 主要内容：监听 capture 阶段的 keydown/keyup，维护单次悬停手势与可信鼠标坐标，并处理划词优先、额外按键以及路由切换、页面隐藏、失焦和指针离开时的生命周期清理。
+ * 主要内容：监听 capture 阶段的 keydown/keyup，冻结单次悬停方案并在执行前复验，按绘制帧合并可信鼠标坐标；处理划词优先、额外按键以及路由切换、页面隐藏、失焦和指针离开时的生命周期清理。
  * 模块边界：本模块不读取配置 store、不解析服务模型、不发起翻译；配置快照、站点资格和翻译执行器都由 content composition root 注入。
  */
 import type {QuickTranslationProfile} from '@/src/core/config/quickTranslation';
@@ -43,6 +43,8 @@ export interface QuickTranslationContentDependencies {
 
 interface ActiveHoverGesture {
     profile: QuickTranslationProfile;
+    identity: string;
+    keys: ReadonlySet<string>;
     moved: boolean;
     conflictsWithSelectionShortcut: boolean;
 }
@@ -108,15 +110,13 @@ function configuredSelectionPrimaryKey(
     return parsed.isValid ? parsed.key : '';
 }
 
-function enabledProfiles(config: QuickTranslationContentConfig): readonly QuickTranslationProfile[] {
-    return config.quickTranslationProfiles.filter((profile) => profile.enabled && Boolean(profile.hotkey));
+function profileIdentity(profile: QuickTranslationProfile): string {
+    return JSON.stringify([profile.id, profile.enabled, profile.action, profile.hotkey,
+        profile.service, profile.model, profile.targetLanguage, profile.displayMode, profile.fullPageMode, profile.glossaryIds]);
 }
 
-function releasedKeyBelongsToHotkey(releasedKey: string, hotkey: string): boolean {
-    const parsed = parseHotkey(hotkey);
-    if (!parsed.isValid) return false;
-
-    return [...parsed.modifiers, parsed.key].includes(releasedKey);
+function enabledProfiles(config: QuickTranslationContentConfig): readonly QuickTranslationProfile[] {
+    return config.quickTranslationProfiles.filter((profile) => profile.enabled && Boolean(profile.hotkey));
 }
 
 function claimKeyboardEvent(event: KeyboardEvent): void {
@@ -142,11 +142,49 @@ export function mountQuickTranslationContentFeature(
     let pointerPositionKnown = false;
     const pressedKeys = new Set<string>();
     const pressedKeyByCode = new Map<string, string>();
+    let hoverFrame: number | undefined;
+    let hoverPointDirty = false;
+    let hoverFrameGeneration = 0;
+    let lastHoverX: number | undefined;
+    let lastHoverY: number | undefined;
+    const cancelHoverFrame = () => {
+        if (hoverFrame !== undefined) deps.window.cancelAnimationFrame(hoverFrame);
+        hoverFrame = undefined;
+        hoverPointDirty = false;
+        hoverFrameGeneration += 1;
+    };
 
     const isAvailable = () => deps.config.on !== false && !deps.isSiteDisabled();
     const clearActiveHover = (cancelPending: boolean) => {
+        cancelHoverFrame();
+        lastHoverX = lastHoverY = undefined;
         activeHover = null;
         if (cancelPending) deps.cancelPendingHoverTranslation();
+    };
+
+    const hoverIsCurrent = (gesture: ActiveHoverGesture): boolean => {
+        const current = deps.config.quickTranslationProfiles.find(profile => profile.id === gesture.profile.id);
+        return Boolean(current && current.enabled && deps.isProfileAvailable(current)
+            && profileIdentity(current) === gesture.identity);
+    };
+    const dispatchContinuousHover = (gesture: ActiveHoverGesture) => {
+        if (!isAvailable() || !hoverIsCurrent(gesture)
+            || (gesture.conflictsWithSelectionShortcut && deps.hasActiveSelectionTranslationCandidate())) {
+            clearActiveHover(true);
+            return;
+        }
+        hoverPointDirty = false;
+        lastHoverX = mouseX;
+        lastHoverY = mouseY;
+        const generation = hoverFrameGeneration;
+        void deps.runHover(gesture.profile, mouseX, mouseY,
+            {delayMs: deps.config.mouseHoverTranslationDelay, continuous: true});
+        if (generation !== hoverFrameGeneration) return;
+        hoverFrame = deps.window.requestAnimationFrame(() => {
+            if (generation !== hoverFrameGeneration) return;
+            hoverFrame = undefined;
+            if (hoverPointDirty) dispatchContinuousHover(gesture);
+        });
     };
 
     const onKeydown = (event: KeyboardEvent) => {
@@ -219,7 +257,9 @@ export function mountQuickTranslationContentFeature(
         }
 
         activeHover = {
-            profile,
+            profile: {...profile, ...(Array.isArray(profile.glossaryIds) ? {glossaryIds: [...profile.glossaryIds]} : {})},
+            identity: profileIdentity(profile),
+            keys: new Set(pressedKeys),
             moved: false,
             conflictsWithSelectionShortcut: matchesConfiguredHotkey(
                 event,
@@ -265,9 +305,12 @@ export function mountQuickTranslationContentFeature(
             }
             return;
         }
-        if (activeHover && releasedKeyBelongsToHotkey(releasedKey, activeHover.profile.hotkey)) {
+        if (activeHover && !hoverIsCurrent(activeHover)) clearActiveHover(true);
+        if (activeHover && activeHover.keys.has(releasedKey)) {
             const gesture = activeHover;
-            activeHover = null;
+            // 松键时提交本帧尚未采样的末点，并留下已派发的候选停留计时。
+            if (gesture.moved && hoverPointDirty) dispatchContinuousHover(gesture);
+            clearActiveHover(false);
             if (!gesture.moved) {
                 if (gesture.conflictsWithSelectionShortcut
                     && deps.hasActiveSelectionTranslationCandidate()) {
@@ -289,7 +332,7 @@ export function mountQuickTranslationContentFeature(
         mouseY = event.clientY;
         pointerPositionKnown = true;
         if (!activeHover) return;
-        if (!isAvailable()) {
+        if (!isAvailable() || !hoverIsCurrent(activeHover)) {
             clearActiveHover(true);
             return;
         }
@@ -300,12 +343,8 @@ export function mountQuickTranslationContentFeature(
         }
 
         activeHover.moved = true;
-        void deps.runHover(
-            activeHover.profile,
-            mouseX,
-            mouseY,
-            {delayMs: deps.config.mouseHoverTranslationDelay, continuous: true},
-        );
+        hoverPointDirty = mouseX !== lastHoverX || mouseY !== lastHoverY;
+        if (hoverPointDirty && hoverFrame === undefined) dispatchContinuousHover(activeHover);
     };
 
     const cancelGesture = () => clearActiveHover(true);

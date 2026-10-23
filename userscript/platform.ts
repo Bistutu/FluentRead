@@ -26,8 +26,9 @@ import {
 import {lookupWord} from '@/src/features/selection-translation/services/wordDictionary';
 import {createInputBoxTranslationHandler} from '@/src/features/input-translation/background';
 import {UNHANDLED_RUNTIME_MESSAGE} from './browser';
-import {attachTranslationGlossaryContext, createTranslationProviderConfigSnapshot} from '@/src/services/translation/requestSnapshot';
-import {createTranslationRequestRegistry} from '@/src/app/background/handlers/translation';
+import {createUserscriptReadingRuntime} from './readingRuntime';
+import {attachTranslationGlossaryContext, attachTranslationRequestControl, createTranslationProviderConfigSnapshot} from '@/src/services/translation/requestSnapshot';
+import {createTranslationRequestRegistry, parseTranslationRequest} from '@/src/app/background/handlers/translation';
 import {TRANSLATION_CANCEL_MESSAGE_TYPE} from '@/src/services/translation/types';
 
 const UNSUPPORTED_CAPABILITY_MESSAGE = '该功能依赖浏览器扩展权限，userscript 版本暂不支持';
@@ -38,17 +39,22 @@ const UNSUPPORTED_CAPABILITY_MESSAGE = '该功能依赖浏览器扩展权限，u
  */
 export function createPlatformMessageHandler(openSettings: () => void) {
     const visionHandlers = createVisionProbeHandlers({ready: configReady, getConfig: () => config, isSettingsUrl: () => true, resolve: modelVisionProbe.resolve});
-    const inputRequestRegistry = createTranslationRequestRegistry();
-    const inputRequestContext = {sender: {url: globalThis.location?.href}};
+    const requestRegistry = createTranslationRequestRegistry();
+    let reading: ReturnType<typeof createUserscriptReadingRuntime> | undefined;
+    const getReading = () => reading ??= createUserscriptReadingRuntime();
+    let disposed = false;
+    const requestContext = {sender: {url: globalThis.location?.href}};
 
     const inputBoxTranslationHandler = createInputBoxTranslationHandler({
         ready: configReady,
         getConfig: () => config,
         translate: translateWithCache,
-        requestRegistry: inputRequestRegistry,
+        requestRegistry: requestRegistry,
     });
 
-    return async (message: any): Promise<any> => {
+    const handle = async (message: any): Promise<any> => {
+        if (disposed) return UNHANDLED_RUNTIME_MESSAGE;
+        if (message?.type === 'fluentReadHarness') return getReading().handle(message);
         if (!message || typeof message !== 'object') return UNHANDLED_RUNTIME_MESSAGE;
         const visionHandler = visionHandlers.find(handler => handler.type === message.type);
         if (visionHandler) {
@@ -119,14 +125,14 @@ export function createPlatformMessageHandler(openSettings: () => void) {
 
         if (message.type === 'inputBoxTranslation') {
             try {
-                return await inputBoxTranslationHandler.handle(message, inputRequestContext);
+                return await inputBoxTranslationHandler.handle(message, requestContext);
             } catch (error) {
                 return {success: false, error: error instanceof Error ? error.message : String(error)};
             }
         }
 
         if (message.type === TRANSLATION_CANCEL_MESSAGE_TYPE) {
-            try {return inputRequestRegistry.cancel(message.clientRequestId, inputRequestContext);}
+            try {return requestRegistry.cancel(message.clientRequestId, requestContext);}
             catch (error) {return {success: false, error: error instanceof Error ? error.message : String(error)};}
         }
 
@@ -163,13 +169,26 @@ export function createPlatformMessageHandler(openSettings: () => void) {
             return {success: false, error: UNSUPPORTED_CAPABILITY_MESSAGE};
         }
 
-        if (typeof message.origin === 'string' || Array.isArray(message.origin)) {
-            return translateWithCache(attachTranslationGlossaryContext({...message}, {
+        // 普通翻译沿用无 type 协议；未知 typed 消息不能因携带 origin 而进入 provider。
+        if (!Array.isArray(message) && !Object.hasOwn(message, 'type') && Object.hasOwn(message, 'origin')
+            && (typeof message.origin === 'string' || Array.isArray(message.origin))) {
+            const request = attachTranslationGlossaryContext(parseTranslationRequest(message), {
                 pageUrl: globalThis.location?.href,
                 context: message.glossaryContext === 'video' ? 'video' : 'page',
-            }));
+            });
+            if (!message.clientRequestId) return translateWithCache(request);
+            return requestRegistry.run(message.clientRequestId, requestContext, (signal, ownershipKey) => (
+                translateWithCache(attachTranslationRequestControl(request, {signal, ownershipKey}))
+            ));
         }
 
         return UNHANDLED_RUNTIME_MESSAGE;
     };
+    return Object.assign(handle, {connect: (port: import('./browser').UserscriptRuntimePort) => {
+        if (disposed) port.disconnect(); else getReading().connect(port);
+    }, dispose() {
+        if (disposed) return;
+        disposed = true;
+        reading?.dispose();
+    }});
 }

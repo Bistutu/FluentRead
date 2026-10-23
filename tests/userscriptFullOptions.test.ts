@@ -211,6 +211,32 @@ describe('full userscript Options entry', () => {
         await vi.waitFor(() => expect(mocks.createVueShadowUi).toHaveBeenCalledOnce());
     });
 
+    it.each(['legacy', 'modern'] as const)('does not resurrect closed settings after a late %s tab failure', async manager => {
+        let rejectTab!: (reason: unknown) => void;
+        const pending = new Promise((_resolve, reject) => {rejectTab = reject;});
+        vi.stubGlobal('window', {location: {href: 'https://example.test/article', hash: ''}});
+        vi.stubGlobal('GM_openInTab', manager === 'legacy' ? () => pending : undefined);
+        vi.stubGlobal('GM', manager === 'modern' ? {openInTab: () => pending} : undefined);
+        await openUserscriptSettings({id: 'context'});
+        closeUserscriptSettings();
+        rejectTab(new Error('late manager failure'));
+        await new Promise(resolve => setTimeout(resolve, 0));
+        expect(mocks.createVueShadowUi).not.toHaveBeenCalled();
+    });
+
+    it('ignores the first tab failure after a later settings request opens successfully', async () => {
+        let rejectTab!: (reason: unknown) => void;
+        const first = new Promise((_resolve, reject) => {rejectTab = reject;});
+        vi.stubGlobal('window', {location: {href: 'https://example.test/article', hash: ''}});
+        vi.stubGlobal('GM_openInTab', undefined);
+        vi.stubGlobal('GM', {openInTab: vi.fn().mockReturnValueOnce(first).mockResolvedValue(undefined)});
+        await openUserscriptSettings({id: 'context'}, 'settings-general');
+        await openUserscriptSettings({id: 'context'}, 'settings-services');
+        rejectTab(new Error('old request failed'));
+        await new Promise(resolve => setTimeout(resolve, 0));
+        expect(mocks.createVueShadowUi).not.toHaveBeenCalled();
+    });
+
     it('removes a pending settings mount after the page closes', async () => {
         let resolveMount!: (value: {remove: typeof mocks.remove}) => void;
         mocks.createVueShadowUi.mockReturnValue(new Promise((resolve) => { resolveMount = resolve; }));

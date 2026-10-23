@@ -1,9 +1,10 @@
 /**
  * @file src/services/interfaceFonts.ts
  * 文件职责：在扩展自有页面按需下载、验证并缓存已选择的界面字体。
- * 主要内容：有界流式下载与校验、备用源重试、去重首屏缓存和字体注册；按字体排队清除共享资源，等待此前仍在写入的任务，切换取消不阻塞于失效的网络或流清理。
+ * 主要内容：有界流式下载与校验、备用源重试、去重首屏缓存和字体注册；按字体排队清除共享资源，等待此前仍在写入的任务，切换取消不阻塞于失效的网络或流清理，取消未读和迟到响应，正常 EOF 只释放读取锁。
  * 模块边界：不读取业务配置或凭据，不注入宿主网页；DOM 字体注册由调用方提供。
  */
+import {cancelResponseReader, cancelUnreadResponseBody} from '@/src/platform/http/runtime'
 import {interfaceFontOptions, type InterfaceFont} from '@/src/core/config/interfaceAppearance'
 import {
   getClearableInterfaceFontAssets, getInterfaceFontAssets, getInterfaceFontUrl, interfaceFontSources,
@@ -83,24 +84,33 @@ export function createInterfaceFontLoader(deps: Dependencies) {
       const interrupted = new Promise<never>((_resolve, reject) => {rejectInterrupted = reject})
       const cancel = () => {controller.abort();rejectInterrupted(aborted())}
       // fetch、流读取或摘要端口即使忽略取消，也不能让选择和备用源无限等待。
-      const step = <T>(operation: () => Promise<T>): Promise<T> => Promise.race([Promise.resolve().then(operation), interrupted])
+      const step = <T>(operation: () => Promise<T>): Promise<T> => Promise.race([Promise.resolve().then(() => {
+        if (controller.signal.aborted) throw aborted()
+        return operation()
+      }), interrupted])
       signal.addEventListener('abort', cancel, {once: true})
       const timer = setTimeout(cancel, deps.timeoutMs ?? 25000)
       let reader: ReadableStreamDefaultReader<Uint8Array> | undefined
+      let response: Response | undefined
+      let finished = false
       try {
         progress(0, source.id)
-        const response = await step(() => deps.fetch(getInterfaceFontUrl(source.id, asset.file), {
+        const downloaded = await step<Response>(() => deps.fetch(getInterfaceFontUrl(source.id, asset.file), {
           signal: controller.signal, credentials: 'omit', referrerPolicy: 'no-referrer', cache: 'no-store',
+        }).then(value => {
+          if (controller.signal.aborted) {cancelUnreadResponseBody(value); throw aborted()}
+          return value
         }))
-        if (!response.ok || !response.body) throw new Error('Font source unavailable')
-        const length = response.headers.get('content-length')
+        response = downloaded
+        if (!downloaded.ok || !downloaded.body) throw new Error('Font source unavailable')
+        const length = downloaded.headers.get('content-length')
         if (length && Number(length) > asset.bytes) throw new Error('Font response too large')
-        reader = response.body.getReader()
+        reader = downloaded.body.getReader()
         const data = new Uint8Array(asset.bytes)
         let offset = 0
         while (true) {
           const chunk = await step(() => reader!.read())
-          if (chunk.done) break
+          if (chunk.done) {finished = true; break}
           if (offset + chunk.value.byteLength > asset.bytes) throw new Error('Font response too large')
           data.set(chunk.value, offset)
           offset += chunk.value.byteLength
@@ -114,8 +124,10 @@ export function createInterfaceFontLoader(deps: Dependencies) {
       } finally {
         clearTimeout(timer)
         signal.removeEventListener('abort', cancel)
-        // 原生 abort 会释放流；不等待可能永远不返回的取消端口。
-        try {void reader?.cancel().catch(() => {})} catch { /* 关闭失败不阻塞下一来源。 */ }
+        if (reader) {
+          if (finished) reader.releaseLock()
+          else cancelResponseReader(reader)
+        } else if (response) cancelUnreadResponseBody(response)
         controller.abort()
       }
     }

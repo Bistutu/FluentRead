@@ -4,7 +4,8 @@
  * 主要内容：导出支持页面判断、字幕挂载，以及 Tiny/Base/Small 模型选项、默认推荐模型、缓存状态键与查询消息、配置归一化函数和字幕缓存管理消息常量。
  * 模块边界：该 barrel 不执行自动挂载或模型下载，也不暴露内部 DOM 常量；应用层决定启停，桥、识别与 UI 各自管理资源清理。
  */
-export {isSupportedVideoPage, mountVideoSubtitleTranslation} from './content/runtime';
+export {mountVideoSubtitleTranslation} from './content/runtime';
+export {isSupportedVideoPage} from './content/ui';
 
 export {
     VIDEO_LOCAL_TRANSCRIPTION_MODELS,

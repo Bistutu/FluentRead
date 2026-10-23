@@ -2,6 +2,7 @@
  * @file src/features/document-translation/core/pdfLayoutAnalysis.ts
  * 文件职责：从 PDF 原始字形和绘图操作推导阅读顺序、段落与必须保留的公式、表格、插图区域。
  * 主要内容：在未旋转内容坐标中追踪绘图矩阵；按相邻行共同让出的竖带识别栏间距，松散的两端对齐行不被拆散；页眉页脚、数字/罗马数字/字母编号的标题、中英文题注与公式碎片分别归类，分栏由并排的正文段落确定、同栏内缩进不同的块按稳定基线组织阅读，字体顶边修正不打乱相邻栏的行序；图形在题注处断开，幻灯片内容框、段落底色和标题色带这类装文字的容器不算插图，原位重复描画的文字只读一次，表格碎横边先连接、按真实单元格及合并行边界切分并逐行阅读，含词语的单元格可以翻译；先按局部字形端点及父链关联上下标、避免跨表头基线吸附，以赋值、紧邻左花括号、多行值及同基线数学条件共同确认分段公式，保留其右侧条件和有几何/近邻证据的 TeX 大算符，已关联根号的下伸矩形覆盖相邻被开方字符，以同基线的冒号和纯符号箭头类型、或细线两端的数学节点及直接由数学节点支撑的正交短边确认独立数学标签，两端不复用支撑节点，有限 U 形返回箭头还须匹配同页已确认的类型函数名，先识别图表和独立公式，再按列与段落边界组织正文，仅对同段相邻行中以斜杠结束的 HTTP(S) 地址和含斜杠及数字的路径首词省去人工行间空格；重排保留列表符号并清理排版软连字符，保留逐行字形几何供阅读和导出使用。
+ * 开放表格与数学边界：只有表头线的表格由相接表头框、重复数值列与独立表题共同确认；精确数学字框不改变导出字号，横向排版字号及相邻锚点决定伸展分隔符归行，分式单位由横线两侧字形与数学上下文确认。
  * 拼接边界：用 Unicode 锚定规则判断行尾与下一行首字，补充平面的汉字与常见汉字遵守相同规则，拉丁文折行仍保留必要的词间空格。
  * 模块边界：纯几何分析，不加载 PDF.js、不访问 Canvas、网络或 DOM，不修改来源文字或文件。
  */
@@ -9,7 +10,7 @@ import type {PdfDocumentBlock, PdfDocumentLine, PdfDocumentRun, PdfPreservedRegi
 
 type Rectangle = Pick<PdfDocumentRun, 'x' | 'y' | 'width' | 'height'>;
 type Matrix = readonly number[];
-export interface PdfLayoutAtom extends PdfDocumentRun {fontSize: number; baseline: number; fontFamily: string}
+export interface PdfLayoutAtom extends PdfDocumentRun {fontSize: number; baseline: number; fontFamily: string; layoutFontSize?: number}
 export interface PdfGraphicsShape extends Rectangle {kind: 'image' | 'form' | 'path'}
 export interface PdfGraphicsOperators {fnArray: readonly number[]; argsArray: readonly unknown[]}
 export interface PdfLayoutBlock extends Omit<PdfDocumentBlock, 'segmentIndex'> {source: string}
@@ -76,6 +77,7 @@ function joinRuns(runs: readonly PdfLayoutAtom[]): string {
 /** 基线而非字形顶边决定同一行，上下标仍保留自己的矩形和文字。 */
 export function pdfLayoutLines(atoms: readonly PdfLayoutAtom[], verticalDividers: readonly Rectangle[] = []): LayoutLine[] {
     const rows: Array<{runs: PdfLayoutAtom[]; font: number; baseline: number; samples: number; first: number}> = [];
+    const rowMembership = new Map<PdfLayoutAtom, (typeof rows)[number]>();
     // 幻灯片常把同一段文字在原位再画一遍来加粗或做阴影；同一位置的同一段文字只算一次，否则译文会收到重复的原文。
     const drawn = new Map<string, PdfLayoutAtom[]>();
     const unique = atoms.filter(atom => {
@@ -93,6 +95,14 @@ export function pdfLayoutLines(atoms: readonly PdfLayoutAtom[], verticalDividers
     });
     // TeX 根号字形的基线可能抬高到上一行；被开方字形紧贴根号右端，按它的基线归行。
     const associated = unique.map(atom => {
+        // 向量箭头、单位向量帽号与主字形重叠且位于其上方，先归到主字形基线。
+        // 否则一排重音符会成为稀疏的独立行，并被误用作正文中的栏间留白证据。
+        if (/^[→^]$/u.test(atom.text)) {
+            const base = unique.find(other => /^[\p{L}]$/u.test(other.text) && other.fontSize >= atom.fontSize * 0.85 && other.fontSize <= atom.fontSize * 1.2
+                && other.baseline - atom.baseline >= atom.fontSize * 0.4 && other.baseline - atom.baseline <= atom.fontSize
+                && Math.abs(other.x + other.width / 2 - atom.x - atom.width / 2) <= atom.fontSize * 0.25);
+            if (base) return {...atom, baseline: base.baseline};
+        }
         if (atom.text !== '√') return atom;
         const next = unique.filter(other => other !== atom && /^[\p{L}\d(]/u.test(other.text)
             && Math.abs(other.x - right(atom)) <= atom.fontSize * 0.35 && other.fontSize >= atom.fontSize * 0.8
@@ -103,60 +113,97 @@ export function pdfLayoutLines(atoms: readonly PdfLayoutAtom[], verticalDividers
     });
     // 上下标先按物理相邻且字号更大的局部字形归行，再参与全页基线分组。
     // 不能借用其它表格列的居中基线，把“×10”的上标归到上一行表头。
+    const layoutFont = (atom: PdfLayoutAtom) => atom.layoutFontSize ?? atom.fontSize;
     const groupingBases = new Map<PdfLayoutAtom, PdfLayoutAtom>();
-    const largestFont = associated.reduce((size, atom) => Math.max(size, atom.fontSize), 0);
+    const largestFont = associated.reduce((size, atom) => Math.max(size, layoutFont(atom)), 0);
     const endpoints = new Map<string, PdfLayoutAtom[]>();
+    const proseStarts = new Map<string, PdfLayoutAtom[]>();
     const scale = Math.max(1, largestFont);
     for (const atom of associated) {
         const key = `${Math.floor(right(atom) / scale)}:${Math.floor(atom.baseline / scale)}`;
         const bucket = endpoints.get(key);
         if (bucket) bucket.push(atom); else endpoints.set(key, [atom]);
+        if (atom.text.length > 5) {
+            const key = `${Math.floor(atom.x / scale)}:${Math.floor(atom.baseline / scale)}`, bucket = proseStarts.get(key);
+            if (bucket) bucket.push(atom); else proseStarts.set(key, [atom]);
+        }
     }
-    const localBases = (atom: PdfLayoutAtom) => {
-        const column = Math.floor(atom.x / scale), row = Math.floor(atom.baseline / scale);
+    const localBases = (atom: PdfLayoutAtom, x = atom.x, buckets = endpoints) => {
+        const column = Math.floor(x / scale), row = Math.floor(atom.baseline / scale);
         const candidates: PdfLayoutAtom[] = [];
-        for (let dx = -1; dx <= 1; dx += 1) for (let dy = -1; dy <= 1; dy += 1) candidates.push(...endpoints.get(`${column + dx}:${row + dy}`) || []);
+        for (let dx = -1; dx <= 1; dx += 1) for (let dy = -1; dy <= 1; dy += 1) candidates.push(...buckets.get(`${column + dx}:${row + dy}`) || []);
         return candidates;
     };
-    for (const atom of [...associated].sort((a, b) => b.fontSize - a.fontSize)) {
-        if (atom.fontSize > largestFont * 0.8 || atom.text.length > 5) continue;
-        const bases = localBases(atom).filter(other => other.x < atom.x && atom.fontSize <= other.fontSize * 0.8
-            && atom.width <= other.fontSize * 2 && Math.abs(atom.x - right(other)) <= other.fontSize * 0.5
-            && Math.abs(atom.baseline - other.baseline) <= other.fontSize * 0.8);
-        const base = bases.sort((a, b) => Math.abs(atom.baseline - a.baseline) - Math.abs(atom.baseline - b.baseline))[0];
+    // 仅在已经找到脚标候选时检查正文邻居；普通短词不必额外分配和扫描第二组空间桶。
+    const inlineProse = (atom: PdfLayoutAtom, nearby: readonly PdfLayoutAtom[]) => {
+        const sameProse = (other: PdfLayoutAtom) => other.text.length > 5 && Math.abs(layoutFont(other) - layoutFont(atom)) <= layoutFont(atom) * 0.15
+            && Math.abs(other.baseline - atom.baseline) <= Math.max(1, layoutFont(atom) * 0.15)
+            && (atom.x >= right(other) && atom.x - right(other) <= layoutFont(atom) * 0.6 || other.x >= right(atom) && other.x - right(atom) <= layoutFont(atom) * 0.6);
+        return nearby.some(sameProse) || localBases(atom, right(atom), proseStarts).some(sameProse);
+    };
+    // 拉伸分隔符的绘制基线偏移不代表另一行；以实际字框中心和同横向字号的紧邻字形定位正文基线。
+    for (const atom of associated) {
+        if (!atom.layoutFontSize) continue;
+        const center = atom.y + atom.height / 2;
+        const base = localBases(atom).filter(other => other !== atom && !other.layoutFontSize
+            && Math.abs(layoutFont(other) - layoutFont(atom)) <= layoutFont(atom) * .15
+            && Math.max(other.x - right(atom), atom.x - right(other)) <= layoutFont(atom) * 1.5
+            && Math.abs(other.y + other.height / 2 - center) <= layoutFont(atom) * .5)
+            .sort((a, b) => Math.abs(a.y + a.height / 2 - center) - Math.abs(b.y + b.height / 2 - center))[0];
         if (base) groupingBases.set(atom, base);
     }
+    for (const atom of [...associated].sort((a, b) => layoutFont(b) - layoutFont(a))) {
+        if (groupingBases.has(atom) || layoutFont(atom) > largestFont * 0.8 || atom.text.length > 24) continue;
+        const nearby = localBases(atom);
+        const bases = nearby.filter(other => other.x < atom.x && layoutFont(atom) <= layoutFont(other) * 0.8
+            && (atom.text.length <= 5 && atom.width <= layoutFont(other) * 2
+                || /^[\p{L}\d]$/u.test(other.text) && atom.width <= layoutFont(other) * 6 && Math.abs(atom.baseline - other.baseline) <= layoutFont(other) * .5)
+            && Math.abs(atom.x - right(other)) <= layoutFont(other) * 0.5
+            && Math.abs(atom.baseline - other.baseline) <= layoutFont(other) * 0.8);
+        const base = bases.sort((a, b) => Math.abs(atom.baseline - a.baseline) - Math.abs(atom.baseline - b.baseline))[0];
+        // 拉伸数学括号可能比下一行正文大得多；紧贴同字号、同基线长正文的短词不能吸成上一行下标。
+        if (base && !inlineProse(atom, nearby)) groupingBases.set(atom, base);
+    }
+    const groupingRoot = (atom: PdfLayoutAtom) => {
+        while (groupingBases.has(atom)) atom = groupingBases.get(atom)!;
+        return atom;
+    };
     // 同一上标可由多个字形及其嵌套下标组成；已确认的局部基行沿紧邻脚标延续，不能留下半个脚标成为另一行。
     for (const atom of [...associated].sort((a, b) => a.x - b.x)) {
-        if (groupingBases.has(atom) || atom.fontSize > largestFont * 0.8 || atom.text.length > 5) continue;
-        const peer = localBases(atom).find(other => other.x < atom.x && groupingBases.has(other) && other.fontSize <= largestFont * 0.8
-            && Math.abs(atom.x - right(other)) <= Math.max(atom.fontSize, other.fontSize) * 0.5
-            && Math.abs(atom.baseline - other.baseline) <= Math.max(atom.fontSize, other.fontSize) * 0.35);
-        if (peer) groupingBases.set(atom, peer);
+        if (groupingBases.has(atom) || layoutFont(atom) > largestFont * 0.8 || atom.text.length > 5) continue;
+        const nearby = localBases(atom);
+        const peer = nearby.find(other => other.x < atom.x && groupingBases.has(other) && layoutFont(atom) <= layoutFont(groupingRoot(other)) * 0.8
+            && Math.abs(atom.x - right(other)) <= Math.max(layoutFont(atom), layoutFont(other)) * 0.5
+            && Math.abs(atom.baseline - other.baseline) <= Math.max(layoutFont(atom), layoutFont(other)) * 0.35);
+        if (peer && !inlineProse(atom, nearby)) groupingBases.set(atom, peer);
     }
-    const groupingBaseline = (atom: PdfLayoutAtom) => {
-        while (groupingBases.has(atom)) atom = groupingBases.get(atom)!;
-        return atom.baseline;
-    };
+    const groupingBaseline = (atom: PdfLayoutAtom) => groupingRoot(atom).baseline;
     for (const atom of associated.sort((a, b) => groupingBaseline(a) - groupingBaseline(b) || a.x - b.x)) {
         const row = rows.at(-1);
         const baseline = groupingBaseline(atom);
-        const tolerance = row ? Math.max(2, Math.max(row.font, atom.fontSize) * 0.5) : 0;
+        const tolerance = row ? Math.max(2, Math.max(row.font, layoutFont(atom)) * 0.5) : 0;
         // 同一行同时含抬高的上标与降低的下标时，二者跨度稍大；下标仍须贴近主行基线，不能单凭早来的上标将它切成下一行。
-        const firstTolerance = row && atom.fontSize <= row.font * 0.8 ? Math.max(tolerance, row.font * 0.8) : tolerance;
+        const firstTolerance = row && layoutFont(atom) <= row.font * 0.8 ? Math.max(tolerance, row.font * 0.8) : tolerance;
+        // 另一栏较高的公式不应切断本栏相邻的正文；只在越过首基线时查已入行的局部正文端点，避免全行扫描。
+        const localContinuation = row && baseline - row.first > firstTolerance
+            && localBases(atom, right(atom), proseStarts).some(other => rowMembership.get(other) === row
+                && Math.abs(groupingBaseline(other) - baseline) <= layoutFont(atom) * .25
+                && Math.abs(other.x - right(atom)) <= layoutFont(atom) * 2);
         // 双栏行距不同时，一栏的基线会落在另一栏两行之间；只与行首基线比较，避免它把上下两行接力串成一行。
-        if (!row || Math.abs(baseline - row.baseline) > tolerance || baseline - row.first > firstTolerance) rows.push({runs: [atom], font: atom.fontSize, baseline, samples: 1, first: baseline});
+        if (!row || Math.abs(baseline - row.baseline) > tolerance || baseline - row.first > firstTolerance && !localContinuation) rows.push({runs: [atom], font: layoutFont(atom), baseline, samples: 1, first: baseline});
         else {
             row.runs.push(atom);
-            if (atom.fontSize > row.font * 1.15) {row.font = atom.fontSize; row.baseline = baseline; row.samples = 1;}
-            else if (atom.fontSize >= row.font * 0.85) {row.baseline = (row.baseline * row.samples + baseline) / (row.samples + 1); row.samples += 1;}
+            if (layoutFont(atom) > row.font * 1.15) {row.font = layoutFont(atom); row.baseline = baseline; row.samples = 1;}
+            else if (layoutFont(atom) >= row.font * 0.85) {row.baseline = (row.baseline * row.samples + baseline) / (row.samples + 1); row.samples += 1;}
         }
+        if (atom.text.length > 5) rowMembership.set(atom, rows.at(-1)!);
     }
     const result: LayoutLine[] = [];
     const ordered = rows.map(row => [...row.runs].sort((a, b) => a.x - b.x));
     const clearAt = (row: readonly PdfLayoutAtom[], x: number) => !row.some(run => run.x < x + 1.5 && right(run) > x - 1.5);
     const adjacent = (at: number, from: number, font: number) => Boolean(rows[at]) && Math.abs(rows[at].baseline - rows[from].baseline) <= font * 2.2;
-    const divided = (start: number, end: number, baseline: number) => verticalDividers.some(divider => divider.x >= start - 0.5 && right(divider) <= end + 0.5
+    // 行内根号等细笔画不覆盖整行高度，不能当作单元格分隔线。
+    const divided = (start: number, end: number, baseline: number, font: number) => verticalDividers.some(divider => divider.height >= font && divider.x >= start - 0.5 && right(divider) <= end + 0.5
         && baseline >= divider.y - 2 && baseline <= bottom(divider) + 2);
     /**
      * 真实栏间距会被相邻行在同一竖带上共同让出：1 表示某一侧连续两行（或该侧仅有的一行）留白，0 表示上下邻行都占用，-1 表示至少一侧没有邻行可供比较。
@@ -171,8 +218,31 @@ export function pdfLayoutLines(atoms: readonly PdfLayoutAtom[], verticalDividers
         }
         return adjacent(rowIndex - 1, rowIndex, font) && adjacent(rowIndex + 1, rowIndex, font) ? 0 : -1;
     };
+    // 两侧排版基线不一致时，数学项的词距可能接近窄栏间距；另外两排独立
+    // 的长正文在相同左右端点停靠，才允许绕过单排词距比例，不能凭一条空白拆行。
+    const alignedGutter = (rowIndex: number, start: number, end: number, font: number): boolean => {
+        let support = 0;
+        for (const direction of [-1, 1]) for (let distance = 1; distance <= 32; distance++) {
+            const index = rowIndex + direction * distance;
+            if (index < 0 || index >= rows.length) break;
+            const row = ordered[index];
+            // 栏内段落行距可不同；在连续留白带内找边界，遇到跨栏正文即停止，每侧最多检查32行。
+            if (!clearAt(row, (start + end) / 2)) break;
+            const left = row.filter(run => right(run) <= start + Math.max(1.5, font * .3));
+            if (!left.length || start - right(left.at(-1)!) > font * 2 || right(left.at(-1)!) - left[0].x < font * 6) continue;
+            const rightIndex = row.findIndex(run => Math.abs(run.x - end) <= Math.max(1.5, font * .3));
+            if (rightIndex < 0) continue;
+            let rightEdge = right(row[rightIndex]), hasProse = /\p{L}{3}/u.test(row[rightIndex].text);
+            // 三栏索引的数字、逗号是同一栏的连续片段；不能借用再下一栏的宽度作证据。
+            for (let index = rightIndex + 1; index < row.length && row[index].x - rightEdge <= font * 1.2; index++) {
+                rightEdge = Math.max(rightEdge, right(row[index])); hasProse ||= /\p{L}{3}/u.test(row[index].text);
+            }
+            if (hasProse && rightEdge - end >= font * (start - right(left.at(-1)!) > 1.5 ? 8 : 6) && ++support >= 2) return true;
+        }
+        return false;
+    };
     for (const [rowIndex, row] of ordered.entries()) {
-        const bodyFont = median(row.map(run => run.fontSize));
+        const bodyFont = median(row.map(run => layoutFont(run)));
         const groups: PdfLayoutAtom[][] = [];
         // 两端对齐的松散行会把每个词间距都拉到接近一个字宽；只有明显大于本行词距、且被邻行让出的空白才是栏间距。
         const gaps: number[] = [];
@@ -182,13 +252,18 @@ export function pdfLayoutLines(atoms: readonly PdfLayoutAtom[], verticalDividers
             end = Math.max(end, right(run));
         }
         end = -Infinity;
-        for (const run of row) {
+        for (const [runIndex, run] of row.entries()) {
             const gap = run.x - end;
-            let split = !groups.length || divided(end, run.x, rows[rowIndex].baseline);
-            if (!split && gap > Math.max(6, bodyFont * 0.9)) {
+            let split = !groups.length || divided(end, run.x, rows[rowIndex].baseline, bodyFont);
+            if (!split && (gap > Math.max(6, bodyFont * 0.9) || gap > bodyFont * .4 && run.width >= bodyFont * 10 && end - groups.at(-1)![0].x >= bodyFont * 10 && alignedGutter(rowIndex, end, run.x, bodyFont))) {
                 const others = [...gaps]; others.splice(others.indexOf(gap), 1);
                 const support = gutterSupport(rowIndex, end, run.x, bodyFont);
-                split = (support < 0 ? gap >= bodyFont * 2.5 : support === 1) && (!others.length || gap >= bodyFont * 2.5 || gap >= median(others) * 1.8);
+                const next = row[runIndex + 1], previous = groups.at(-1)!.at(-1)!;
+                const inlineOperator = /^[=<>≤≥≠∝≈±×÷]$/u.test(run.text) && next && /\p{L}{3}/u.test(previous.text)
+                    && /\p{L}{3}/u.test(next.text) && next.x - right(run) <= bodyFont * 1.2;
+                if (gap < bodyFont * 1.2 && (inlineOperator || run.text.length >= 6 && /[a-z]{3}|[\p{Script=Han}]{3}/iu.test(run.text))
+                    && !alignedGutter(rowIndex, end, run.x, bodyFont)) {groups.at(-1)!.push(run); end = Math.max(end, right(run)); continue;}
+                split = (support < 0 ? gap >= bodyFont * 2.5 : support === 1) && (!others.length || gap >= bodyFont * 2.5 || gap >= median(others) * 1.8 || alignedGutter(rowIndex, end, run.x, bodyFont));
             }
             if (split) groups.push([run]);
             else groups.at(-1)!.push(run);
@@ -199,13 +274,13 @@ export function pdfLayoutLines(atoms: readonly PdfLayoutAtom[], verticalDividers
             // Word 的显式项目符号常被稳定窄空白带拆成一列；它与同基线文字是一个条目，不能把全部符号留作一栏公式。
             const marker = previous.length === 1 && /^[•◦▪■□◆◇●○▶►➢➤❖·§Ø\uE000-\uF8FF]$/u.test(previous[0].text.trim());
             if ((marker || /^\d+(?:\.\d+)*$/u.test(joinRuns(previous)) && /^[A-Z]/u.test(joinRuns(next))) && next[0].x - right(previous.at(-1)!) <= bodyFont * 2.5
-                && !divided(right(previous.at(-1)!), next[0].x, rows[rowIndex].baseline)) {previous.push(...next); groups.splice(index + 1, 1);}
+                && !divided(right(previous.at(-1)!), next[0].x, rows[rowIndex].baseline, bodyFont)) {previous.push(...next); groups.splice(index + 1, 1);}
         }
         for (const runs of groups) {
             const bounds = runs.reduce<Rectangle>((box, run) => union(box, run), runs[0]);
             const dominant = [...runs].sort((a, b) => b.width - a.width)[0];
-            const fontSize = median(runs.filter(run => run.fontSize >= dominant.fontSize * 0.85).map(run => run.fontSize));
-            result.push({...bounds, text: joinRuns(runs), baseline: median(runs.filter(run => run.fontSize >= fontSize * 0.85).map(run => run.baseline)), fontSize, fontFamily: dominant.fontFamily, runs: runs.map(run => ({...run}))});
+            const fontSize = median(runs.filter(run => layoutFont(run) >= layoutFont(dominant) * 0.85).map(run => layoutFont(run)));
+            result.push({...bounds, text: joinRuns(runs), baseline: median(runs.filter(run => layoutFont(run) >= fontSize * 0.85).map(run => run.baseline)), fontSize, fontFamily: dominant.fontFamily, runs: runs.map(run => ({...run}))});
         }
     }
     return result.sort((a, b) => a.baseline - b.baseline || a.x - b.x);
@@ -231,7 +306,8 @@ function mergedFigures(shapes: readonly PdfGraphicsShape[], width: number, heigh
     const figures: Rectangle[] = [];
     for (const shape of shapes.filter(shape => shape.width >= 24 && shape.height >= 24 && (shape.kind !== 'path' || shape.width * shape.height >= 900))) {
         if (shape.width * shape.height >= width * height * 0.94 || container(shape)) continue;
-        let merged: Rectangle = shape;
+        // 后续图注切分会裁剪此框；不能修改调用方保留的原始图形。
+        let merged: Rectangle = {...shape};
         for (let index = figures.length - 1; index >= 0; index -= 1) {
             if (overlaps(merged, figures[index], 2)) {merged = union(merged, figures[index]); figures.splice(index, 1);}
         }
@@ -263,7 +339,15 @@ function tableRegions(shapes: readonly PdfGraphicsShape[], width: number, figure
         if (group) group.push(row); else groups.push([row]);
     }
     return groups.filter(group => group.length >= 2).map(group => {
-        const box = group.reduce(union); return {...box, y: Math.max(0, box.y - 1), height: box.height + 2};
+        const box = group.reduce(union);
+        // 有些网格省略最后一行的底横线；两条分列竖边在同一高度结束，仍能确定完整末行。
+        // 竖边必须穿过最后两条横线，单条装饰线和远处图形不能延伸表格。
+        const endings = shapes.filter(shape => shape.kind === 'path' && shape.width <= 2 && shape.height >= 4
+            && shape.x >= box.x - 2 && right(shape) <= right(box) + 2 && shape.y <= group.at(-2)!.y + 2
+            && bottom(shape) > bottom(box) + 2 && bottom(shape) <= bottom(box) + 150);
+        let end = bottom(box);
+        for (const edge of endings) if (endings.some(other => Math.abs(other.x - edge.x) >= 6 && Math.abs(bottom(other) - bottom(edge)) <= 1.5)) end = Math.max(end, bottom(edge));
+        return {...box, y: Math.max(0, box.y - 1), height: end - box.y + 2};
     });
 }
 /** 相接且同宽的填色行，里面反复出现对齐的多个文字单元格，是表格底色而非插图。 */
@@ -291,12 +375,14 @@ function shadedTableRegions(shapes: readonly PdfGraphicsShape[], lines: readonly
 const coversLine = (region: Rectangle, line: LayoutLine) => overlaps(region, line) && line.x + line.width / 2 >= region.x && line.x + line.width / 2 <= right(region) && line.baseline >= region.y && line.baseline <= bottom(region) + 2
     && Math.min(bottom(line), bottom(region) + 2) - Math.max(line.y, region.y) >= line.height * 0.6;
 function formulaLine(line: LayoutLine, pageWidth: number, lines: readonly LayoutLine[], font: number): boolean {
-    // 与上下行同栏等宽、行距正常的行是两端对齐的正文，即使含有等号也不是独立公式。
-    if (lines.some(near => near !== line && near.text.split(/\s+/u).length >= 5 && Math.abs(near.x - line.x) <= 1 && Math.abs(near.width - line.width) <= 2 && Math.abs(near.baseline - line.baseline) <= font * 1.6)) return false;
+    // 先排除非数学文字，再检查几何相邻正文；否则每一行都会对全页正文重复分词。
     return line.text.length < 150 && line.width < pageWidth * 0.75 && /[=≔∑∫√∈≃≅≈≡≤≥≠¼]|ð[^Þ]*Þ|(?:softmax|Concat|FFN|MultiHead)\s*\(/u.test(line.text)
         && (Math.abs(line.x + line.width / 2 - pageWidth / 2) < pageWidth * 0.23 || /^[A-Za-z][\w (){},.]*\s*=/u.test(line.text) || /¼|ð[^Þ]*Þ/u.test(line.text))
         && !/^(?:Figure|Table)\s+\d/iu.test(line.text)
-        && !/\b(?:the|we|our|of|to|and|is|in|this|with|for|that|use|each|are|from|used)\b/iu.test(line.text);
+        && !/\b(?:the|we|our|of|to|and|is|in|this|with|for|that|use|each|are|from|used)\b/iu.test(line.text)
+        // 与上下行同栏等宽、行距正常的行是两端对齐的正文，即使含有等号也不是独立公式。
+        && !lines.some(near => near !== line && Math.abs(near.x - line.x) <= 1 && Math.abs(near.width - line.width) <= 2
+            && Math.abs(near.baseline - line.baseline) <= font * 1.6 && near.text.split(/\s+/u).length >= 5);
 }
 
 /**
@@ -416,11 +502,73 @@ function isolatedMathLabels(lines: readonly LayoutLine[], graphics: readonly Pdf
     return labels;
 }
 
+/** 只有表头横线的开放表格：相接表头框、连续数字列与下方独立表题共同给出边界。 */
+function captionedTableGeometry(atoms: readonly PdfLayoutAtom[], shapes: readonly PdfGraphicsShape[], width: number): Array<{bounds: Rectangle; dividers: Rectangle[]}> {
+    const captions = atoms.filter(atom => /^Table\s+\d+[.．]\d+\s+\p{Lu}/u.test(atom.text));
+    if (!captions.length) return [];
+    const font = median(atoms.map(atom => atom.layoutFontSize ?? atom.fontSize));
+    const headers = shapes.filter(shape => shape.kind === 'path' && shape.width >= font * 4 && shape.height >= font && shape.height <= font * 5);
+    const groups: PdfGraphicsShape[][] = [];
+    for (const header of headers.sort((a, b) => a.y - b.y || a.x - b.x)) {
+        const group = groups.find(group => Math.abs(group[0].y - header.y) <= 1 && Math.abs(group[0].height - header.height) <= 1 && Math.abs(right(group.at(-1)!) - header.x) <= 1);
+        if (group) group.push(header); else groups.push([header]);
+    }
+    const result: Array<{bounds: Rectangle; dividers: Rectangle[]}> = [];
+    for (const group of groups) {
+        if (group.length < 2) continue;
+        const header = group.reduce<Rectangle>(union, group[0]);
+        if (header.width < width * .2 || !group.every(cell => shapes.some(rule => rule.kind === 'path' && rule.height <= 2
+            && Math.abs(bottom(rule) - bottom(cell)) <= 2 && rule.x <= cell.x + 1 && right(rule) >= right(cell) - 1))) continue;
+        const caption = captions.filter(atom => atom.y > bottom(header) && Math.abs(atom.x - header.x) <= font).sort((a, b) => a.y - b.y)[0];
+        if (!caption) continue;
+        const body = atoms.filter(atom => atom.baseline > bottom(header) && bottom(atom) < caption.y
+            && atom.x >= header.x - 1 && right(atom) <= right(header) + 1);
+        const numbers = body.filter(atom => /^\d/u.test(atom.text) && atom.width >= font * .5);
+        if (new Set(numbers.map(atom => Math.round(atom.baseline / (font * .5)))).size < 3
+            || body.filter(atom => /\p{L}{3}/u.test(atom.text)).length < 3) continue;
+        const bounds = {x: header.x, y: header.y, width: header.width, height: Math.max(...body.map(bottom)) - header.y};
+        const dividers = group.slice(1).map(cell => ({x: cell.x, y: bounds.y, width: 0, height: bounds.height}));
+        const anchors = new Map<number, number>();
+        for (const number of numbers) {const x = Math.round(number.x); anchors.set(x, (anchors.get(x) ?? 0) + 1);}
+        for (const [x, count] of anchors) if (count >= 3) dividers.push({x: x - font * .5, y: bottom(header), width: 0, height: bottom(bounds) - bottom(header)});
+        result.push({bounds, dividers});
+    }
+    return result;
+}
+
 export function analyzePdfPageLayout(input: {atoms: readonly PdfLayoutAtom[]; graphics: readonly PdfGraphicsShape[]; width: number; height: number}): {blocks: PdfLayoutBlock[]; preservedRegions: PdfPreservedRegion[]} {
     // 项目符号是单独的一个字形：符号字体里的圆点方块常被读成 n、u、l 这样的字母。它留在原页上不参与翻译，
     // 所在的行从符号之后算起，并且总是另起一段。
     // 可见竖线比词距推断更可靠；紧挨分隔线的两格文字也不能串成一个段落。
-    const verticalDividers = input.graphics.filter(shape => shape.kind === 'path' && shape.width <= 2 && shape.height >= 4);
+    const captionedTables = captionedTableGeometry(input.atoms, input.graphics, input.width);
+    const tableDividers = captionedTables.flatMap(table => table.dividers);
+    const dividerCandidates = input.graphics.filter(shape => shape.kind === 'path' && shape.width <= 2 && shape.height >= 4);
+    // 只索引细笔画的连接端点；无关路径或重复描边不参与逐项全表扫描。
+    const pathEnds = new Map<string, Rectangle[]>(), pathStarts = new Map<string, Rectangle[]>(), seenPaths = new Set<string>();
+    for (const shape of dividerCandidates.some(shape => shape.width > 0) ? input.graphics : []) {
+        if (shape.kind !== 'path') continue;
+        const {x, y, width, height} = shape;
+        const index = height <= 1 ? pathStarts : width > 0 && width <= 5 && height >= 4 ? pathEnds : undefined;
+        if (!index) continue;
+        const key = `${x}:${y}:${width}:${height}`;
+        if (seenPaths.has(key)) continue;
+        seenPaths.add(key);
+        const bucketKey = `${Math.floor(x)}:${Math.floor(index === pathStarts ? y : y + height)}`, bucket = index.get(bucketKey);
+        const value = {x, y, width, height};
+        if (bucket) bucket.push(value); else index.set(bucketKey, [value]);
+    }
+    const nearPaths = (index: Map<string, Rectangle[]>, x: number, y: number) => {
+        const nearby: Rectangle[] = [];
+        for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) nearby.push(...index.get(`${Math.floor(x) + dx}:${Math.floor(y) + dy}`) ?? []);
+        return nearby;
+    };
+    const verticalDividers = [...dividerCandidates.filter(shape =>
+        // 长根号也会有超过一字号的竖笔；相接的上升斜笔与上横线共同确认它，不借单条短边猜测。
+        !(shape.width > 0 && nearPaths(pathEnds, right(shape), bottom(shape)).some(diagonal => diagonal.width >= shape.width * 1.4 && diagonal.width <= shape.width * 2.5
+            && diagonal.height >= shape.height * 1.2 && diagonal.height <= shape.height * 1.6
+            && Math.abs(diagonal.x - right(shape)) <= .5 && Math.abs(bottom(diagonal) - bottom(shape)) <= .5
+            && nearPaths(pathStarts, right(diagonal), diagonal.y).some(top => top.width >= diagonal.width * 2
+                && Math.abs(top.x - right(diagonal)) <= .5 && Math.abs(top.y - diagonal.y) <= .5)))), ...tableDividers];
     const rawLines = pdfLayoutLines(input.atoms, verticalDividers);
     const bulletGlyph = (line: LayoutLine) => line.runs.length > 1 ? line.runs[0].text.trim() : '';
     const letterBullet = (line: LayoutLine) => {
@@ -490,7 +638,7 @@ export function analyzePdfPageLayout(input: {atoms: readonly PdfLayoutAtom[]; gr
         if (!inside.length) return false;
         const area = box.width * box.height;
         // 插图的包围盒也会圈入旁边的正文；图内若有成批小于正文字号的短标注，它仍是插图。
-        const labels = inside.filter(line => textUnits(line.text) < 4 && line.fontSize < Math.min(font * 0.9, 11)).length;
+        const labels = inside.filter(line => line.fontSize < Math.min(font * 0.9, 11) && textUnits(line.text) < 4).length;
         if (labels > Math.max(3, inside.length * 0.15)) return false;
         if (inside.some(line => textUnits(line.text) >= 4) && inside.reduce((sum, line) => sum + line.width * line.height, 0) >= area * 0.3) return true;
         // 摘要/提示的浅底框常保留较大内边距，文字面积不足三成，但框内仍有接近整行的完整句子。
@@ -500,7 +648,8 @@ export function analyzePdfPageLayout(input: {atoms: readonly PdfLayoutAtom[]; gr
         return area >= input.width * input.height * 0.35 && (inside.length >= 3 && median(inside.map(line => line.fontSize)) >= 12 || inside.filter(line => textUnits(line.text) >= 6).length >= inside.length / 2);
     };
     const shadedTables = shadedTableRegions(input.graphics, lines, input.width, font);
-    const figures = mergedFigures(input.graphics.filter(shape => !shadedTables.some(table => shape.kind === 'path'
+    const tableBackgrounds = [...shadedTables, ...captionedTables.map(table => table.bounds)];
+    const figures = mergedFigures(input.graphics.filter(shape => !tableBackgrounds.some(table => shape.kind === 'path'
         && shape.x >= table.x - 1 && right(shape) <= right(table) + 1 && shape.y >= table.y - 1 && bottom(shape) <= bottom(table) + 1)), input.width, input.height, container);
     // 图形对象的包围盒常把题注一并圈入，上下相邻的两张图还会连同中间的题注并成一个区域；题注是需要翻译的正文，图形在题注处断开。
     for (let index = 0; index < figures.length; index += 1) {
@@ -529,26 +678,54 @@ export function analyzePdfPageLayout(input: {atoms: readonly PdfLayoutAtom[]; gr
         labels.sort((a, b) => b.baseline - a.baseline);
         if (labels.length) figures[index] = union(figure, labels[0]);
     }
-    const tables = [...tableRegions(input.graphics, input.width, figures), ...shadedTables];
+    const tables = [...tableRegions(input.graphics, input.width, figures), ...shadedTables, ...captionedTables.map(table => table.bounds)];
     const regions: PdfPreservedRegion[] = [...figures.map((box, index) => ({...box, id: `figure-${index + 1}`, kind: 'figure' as const})), ...tables.map((box, index) => ({...box, id: `table-${index + 1}`, kind: 'table' as const}))];
     // 图形包围盒可能跨栏并圈入下方的正文：图内只有小字短标签属于图形，题注、成句的行、紧随成句行的续行以及幻灯片这类大字号页面上 12 磅以上的图内文字（流程图里的文字）仍是正文；论文页眉图里的期刊名等大字仍属于图。
     const prose = new Set<LayoutLine>();
     for (const line of lines) {
         if (captionStart.test(line.text) || textUnits(line.text) >= 7) prose.add(line);
-        else if (lines.some(near => textUnits(near.text) >= 7 && near.baseline < line.baseline && line.baseline - near.baseline <= near.fontSize * 1.5 && Math.abs(near.fontSize - line.fontSize) <= 0.6 && line.x >= near.x - 1 && line.x - near.x <= font * 2.2 && right(line) <= right(near) + 2)) prose.add(line);
+        else if (lines.some(near => near.baseline < line.baseline && line.baseline - near.baseline <= near.fontSize * 1.5 && Math.abs(near.fontSize - line.fontSize) <= 0.6 && line.x >= near.x - 1 && line.x - near.x <= font * 2.2 && right(line) <= right(near) + 2 && textUnits(near.text) >= 7)) prose.add(line);
     }
     const inRegion = (region: PdfPreservedRegion, line: LayoutLine) => coversLine(region, line) && !(region.kind === 'figure' && (prose.has(line) || (font >= 14 && line.fontSize >= 12 && readable(line.text))));
     const ordinary = lines.filter(line => !regions.some(region => inRegion(region, line)));
     const mathLabels = isolatedMathLabels(ordinary, input.graphics, font, input.width, input.height);
-    const formulas = ordinary.filter(line => formulaLine(line, input.width, ordinary, font));
+    // 行内分式的分子/分母可能是可读单位或多字母变量；真实横分数线、上下两侧字形及紧邻数学符号共同确认它们。
+    const fractionFragments = new Set<LayoutLine>();
+    const fractionAtoms = ordinary.flatMap(line => line.runs);
+    const fractionRuns = new Set<PdfLayoutAtom>();
+    for (const rule of input.graphics) {
+        if (rule.kind !== 'path' || rule.height > 1 || rule.width < font * .5 || rule.width > font * 12) continue;
+        const local = fractionAtoms.filter(run => run.x + run.width / 2 >= rule.x - 1 && run.x + run.width / 2 <= right(rule) + 1
+            && Math.abs(run.baseline - rule.y) <= font * 1.4);
+        if (!local.some(run => run.baseline < rule.y - .5) || !local.some(run => run.baseline > rule.y + .5)) continue;
+        const math = local.some(run => /[\d\p{Script=Greek}\p{Sm}·]|\p{Ll}\p{Lu}/u.test(run.text))
+            || fractionAtoms.some(run => /[=∑∫√]/u.test(run.text) && Math.abs(run.baseline - rule.y) <= font
+                && Math.max(run.x - right(rule), rule.x - right(run)) <= font * 2);
+        if (!math) continue;
+        local.forEach(run => fractionRuns.add(run));
+        for (const line of ordinary) if (line.text.length <= 45 && textUnits(line.text) <= 5
+            && line.x >= rule.x - font && right(line) <= right(rule) + font
+            && line.runs.some(run => local.includes(run))) fractionFragments.add(line);
+    }
+    // 相邻的多个分母可能共用一条提取行；括号组件留在分式周围，不能把它们当成新的可读段落。
+    for (const line of ordinary) if (line.text.length <= 45 && textUnits(line.text) <= 5 && line.runs.some(run => fractionRuns.has(run))
+        && line.runs.every(run => fractionRuns.has(run) || /^[()[\]{}⎛⎜⎝⎞⎟⎠⎡⎢⎣⎤⎥⎦⎧⎨⎩⎫⎬⎭\s]+$/u.test(run.text))) fractionFragments.add(line);
+    const formulas = ordinary.filter(line => fractionFragments.has(line) || formulaLine(line, input.width, ordinary, font));
     for (const line of formulas) {
         let bounds: Rectangle = piecewiseFormulaBounds(line, ordinary, font) ?? line;
+        const fractionRules = input.graphics.filter(rule => rule.kind === 'path' && rule.height <= 1 && rule.width >= font * 0.5
+            && rule.x <= right(line) + font && right(rule) >= line.x - font && Math.abs(rule.y - line.baseline) <= font);
         // 独立公式的小上下标、分式和式号与公式一起保留；不能把下一行正文并入遮盖区域。
         for (const near of ordinary) {
             if (near === line || near.text.length > 45 || near.width > input.width * 0.5) continue;
             // 教材的短提问紧接着上一题的答案公式；独立列表条目和成句文字不是该公式的上下标。
             if (bulleted.has(near) || readable(near.text) && textUnits(near.text) >= 4
-                && !/(?:(?:^|\s)(?:if|when|for)\b.*\p{Sm}|^otherwise\b)/iu.test(near.text)) continue;
+                && !/(?:(?:^|\s)(?:if|when|for)\b.*\p{Sm}|^otherwise\b)/iu.test(near.text)
+                // 单位换算分式常包含多个可读词；只有横分数线两侧有对齐字形，才允许按公式保留。
+                && !fractionRules.some(rule => Math.abs(near.baseline - rule.y) <= font * 1.2
+                    && near.runs.some(run => run.x + run.width / 2 >= rule.x && run.x + run.width / 2 <= right(rule))
+                    && ordinary.some(peer => (peer.baseline - rule.y) * (near.baseline - rule.y) < 0 && Math.abs(peer.baseline - rule.y) <= font * 1.2
+                        && peer.runs.some(run => run.x + run.width / 2 >= rule.x && run.x + run.width / 2 <= right(rule))))) continue;
             if (Math.abs(near.baseline - line.baseline) <= font * 1.65 && (overlaps({...line, x: line.x - font, width: line.width + font * 2, y: line.y - font, height: line.height + font * 2}, near) || /^\(\d+\)$/u.test(near.text))) bounds = union(bounds, near);
         }
         const existing = regions.find(region => region.kind === 'formula' && overlaps(region, bounds));
@@ -631,7 +808,8 @@ export function analyzePdfPageLayout(input: {atoms: readonly PdfLayoutAtom[]; gr
             && (shape.width >= region.width * 0.7 && (shape.height <= 2 || shaded) || shape.width <= 2 && shape.height <= line.fontSize * 1.5)
             && [shape.y, bottom(shape)].some(y => y > last.baseline + 1 && y < line.baseline - 1))) return true;
         // 无逐行表线的表格以数值列基线分记录；数值可紧接单个单位表达（°、斜杠、乘点及上标），字母前缀编号和多词描述不能借此拆行。
-        return lines.some(other => coversLine(region, other) && Math.abs(other.baseline - line.baseline) <= 1
+        const baselineSlack = captionedTables.some(table => Math.abs(table.bounds.x - region.x) < 1 && Math.abs(table.bounds.y - region.y) < 1) ? font * .35 : 1;
+        return lines.some(other => coversLine(region, other) && Math.abs(other.baseline - line.baseline) <= baselineSlack
             && !readable(other.text) && /\d/u.test(other.text)
             && (!/\p{L}/u.test(other.text.replace(/(\d)[eE]([+\-−]?\d)/gu, '$1$2'))
                 || /^[+\-−]?(?:\d+(?:[.,]\d+)?|[.,]\d+)(?:[eE][+\-−]?\d+)?\s*°?\p{L}+\p{N}*(?:[\/·⋅*]°?\p{L}+\p{N}*)*$/u.test(other.text.trim())));
@@ -649,7 +827,7 @@ export function analyzePdfPageLayout(input: {atoms: readonly PdfLayoutAtom[]; gr
         if (draft.region?.kind !== 'table') return;
         const region = draft.region;
         if (!tableEdges.has(region)) {
-            const rules = input.graphics.filter(shape => shape.kind === 'path' && shape.x >= region.x - 2 && right(shape) <= right(region) + 2
+            const rules = [...input.graphics, ...tableDividers.map(divider => ({...divider, kind: 'path'}))].filter(shape => shape.kind === 'path' && shape.x >= region.x - 2 && right(shape) <= right(region) + 2
                 && shape.y >= region.y - 2 && bottom(shape) <= bottom(region) + 2);
             const vertical = rules.filter(shape => shape.width <= 2 && shape.height >= 4);
             let xs = uniqueEdges([region.x, ...vertical.map(shape => shape.x), right(region)]);
@@ -684,7 +862,21 @@ export function analyzePdfPageLayout(input: {atoms: readonly PdfLayoutAtom[]; gr
         return !!first && !!next && tableEdges.get(region)!.rules.some(shape => shape.width <= 2 && shape.height >= 4)
             && first.x === next.x && first.y === next.y && first.width === next.width && first.height === next.height;
     };
-    for (const line of lines) {
+    const lineIndexes = new Map(lines.map((line, index) => [line, index]));
+    // 通栏正文与其下方双栏可能同字号、左对齐；只比相邻两行会把通栏的宽框拖进整列。
+    // 用同基线旁栏的实际文字约束合并边界，双向检查也覆盖双栏回到通栏的变化。
+    const crossesColumnPeer = (index: number, bounds: Rectangle): boolean => {
+        const line = lines[index];
+        if (bounds.x >= line.x - font && right(bounds) <= right(line) + font) return false;
+        for (const direction of [-1, 1]) for (let peerIndex = index + direction; peerIndex >= 0 && peerIndex < lines.length; peerIndex += direction) {
+            const peer = lines[peerIndex];
+            if (Math.abs(peer.baseline - line.baseline) > 1) break;
+            if (peer.x >= right(line) + font && peer.x < right(bounds) - font
+                || right(peer) <= line.x - font && right(peer) > bounds.x + font) return true;
+        }
+        return false;
+    };
+    for (const [lineIndex, line] of lines.entries()) {
         active = active.filter(draft => line.baseline - draft.lines.at(-1)!.baseline <= Math.max(font, draft.lines.at(-1)!.fontSize) * 1.7 * loose);
         const region = regions.find(region => inRegion(region, line));
         const kind = region ? region.kind === 'figure' ? 'figure-label' : region.kind : classify(line);
@@ -694,9 +886,11 @@ export function analyzePdfPageLayout(input: {atoms: readonly PdfLayoutAtom[]; gr
                 const last = draft.lines.at(-1)!;
                 if (tocEntries.has(last)) continue;
                 const gap = line.baseline - last.baseline;
-                // 折行的标题与首行同字号、左对齐且更短；紧随其后的正文首行通常占满栏宽，不能并入标题。
-                const wrappedHeading = draft.kind === 'heading' && (kind === 'text' || kind === 'heading') && draft.lines.length < 3 && gap <= last.fontSize * 1.45 * loose
-                    && ((Math.abs(line.x - last.x) <= 1 && line.width < last.width * 0.9) || (kind === 'heading' && Math.abs(line.fontSize - last.fontSize) <= 0.2 && Math.abs(line.x + line.width / 2 - last.x - last.width / 2) <= 2))
+                // 紧排大标题即使各行长短不同也属于同一标题；普通正文或另起编号仍不能借此并入。
+                const tightHeading = kind === 'heading' && Math.abs(line.fontSize - last.fontSize) <= 0.2
+                    && Math.abs(line.x - last.x) <= 1 && gap <= last.fontSize * 1.05;
+                const wrappedHeading = draft.kind === 'heading' && (kind === 'text' || kind === 'heading') && (draft.lines.length < 3 || tightHeading) && gap <= last.fontSize * 1.45 * loose
+                    && (tightHeading || (Math.abs(line.x - last.x) <= 1 && line.width < last.width * 0.9) || (kind === 'heading' && Math.abs(line.fontSize - last.fontSize) <= 0.2 && Math.abs(line.x + line.width / 2 - last.x - last.width / 2) <= 2))
                     && !/[.!?。！？]$/u.test(last.text) && !/^\d+(?:\.\d+)*\.?\s/u.test(line.text);
                 if (draft.region !== region || (kind === 'heading' ? !wrappedHeading : draft.kind !== kind && !(draft.kind === 'caption' && kind === 'text') && !wrappedHeading)) continue;
                 // 悬挂缩进的条目（参考文献、编号列表）以回到左边界的新行开头。
@@ -708,6 +902,7 @@ export function analyzePdfPageLayout(input: {atoms: readonly PdfLayoutAtom[]; gr
                 const overlap = Math.min(right(line), right(last)) - Math.max(line.x, last.x);
                 const sameColumn = Math.abs(line.x - last.x) <= font * 2.2 || (overlap >= Math.min(line.width, last.width) * 0.72 && Math.abs(line.x + line.width / 2 - last.x - last.width / 2) <= font * 2);
                 if (gap <= 0 || !sameColumn) continue;
+                if (!region && (crossesColumnPeer(lineIndex, draft.bounds) || crossesColumnPeer(lineIndexes.get(last)!, line))) continue;
                 // 悬挂缩进条目的首行占满栏宽，其后缩进的续行仍属于同一条目。
                 const hangingContinuation = draft.lines.length === 1 && right(last) >= right(line) - 2 && line.x - last.x <= font * 3 && gap <= font * 1.32 * loose;
                 if (/[.!?。！？]["')\]}]*$/u.test(last.text) && !hangingContinuation && (line.x - last.x > font * 0.8 || gap > font * 1.32 * loose)) continue;

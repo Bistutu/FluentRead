@@ -2,9 +2,11 @@
  * @file src/features/video-subtitle/content/downloads.ts
  * 文件职责：协调原文、译文与双语字幕导出，避免播放器运行时继续承载下载与人工轨回退细节。
  * 主要内容：选择 X 原生或完整 AI、YouTube 捕获或初始化轨道，拒绝把识别中的预览导出为完整字幕，优先人工目标时间轴和当前缓存，预览缺失范围与去重请求量，确认后补译或导出明确标记的已有条目；以媒体与配置身份隔离迟到结果，集中管理反馈计时器，结束时由当前状态恢复按钮，销毁后拒绝迟到恢复。
+ * 读取约束：未捕获的 YouTube 轨道复用字幕传输总时限与字节预算，取消及时释放请求等待。
  * 模块边界：网络、配置、界面文案、状态提示和文件下载由注入端口提供，不直接访问全局页面或存储。
  */
 import type {Config} from '@/src/core/config/model';
+import {readVideoCaptionText} from './subtitleTransport';
 import {buildYoutubeTimedTextUrl, chooseYoutubeCaptionTrackForLocation, finalizeVideoSubtitleCues, parseYoutubeTimedTextResponse, type VideoSubtitleCue} from './youtubeSubtitleData';
 import {createVideoSubtitleAbortError, mergeBilingualVideoSubtitleCues, normalizeVideoCaptionText, translateVideoSubtitleCues, getVideoTranslationConfigFingerprint} from './subtitleLogic';
 
@@ -123,9 +125,8 @@ export function createVideoSubtitleDownloads(ports: VideoDownloadPorts) {
         const youtube = chooseYoutubeCaptionTrackForLocation(ports.document, ports.location, ports.config.from);
         if (!youtube) throw new Error('当前视频没有可用的 YouTube 字幕轨道');
         const url = buildYoutubeTimedTextUrl(youtube);
-        const response = await ports.request(url, {credentials: 'include', signal: requestController?.signal});
-        if (!response.ok) throw new Error(`字幕轨道请求失败（${response.status}）`);
-        const cues = finalizeVideoSubtitleCues(parseYoutubeTimedTextResponse(await response.text()));
+        const text = await readVideoCaptionText(url, ports.request, {credentials: 'include', signal: requestController?.signal});
+        const cues = finalizeVideoSubtitleCues(parseYoutubeTimedTextResponse(text));
         if (isDisposed() || requestController?.signal.aborted || controller !== requestController
             || ports.location.href !== href || ports.contextKey?.() !== context) throw createVideoSubtitleAbortError();
         if (!cues.length) throw new Error('YouTube 未返回完整字幕数据，请先打开原生字幕后重试');

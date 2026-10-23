@@ -224,7 +224,7 @@ describe('translation provider architecture', () => {
 
         expect(violations).toEqual([]);
         const microsoftAdapter = readProjectFile('src/providers/translation/microsoft.ts');
-        expect(microsoftAdapter).toContain('translateMicrosoftTextsWithTransport(runtimeFetch, texts, fromLang, toLang, abortSignal, enableNativeBatch)');
+        expect(microsoftAdapter).toContain('translateMicrosoftTextsWithTransport(runtimeFetch, texts, fromLang, toLang, abortSignal, enableNativeBatch, lease)');
         const microsoftTransportCalls = runtimeFetchCalls('microsoftTransport.ts', 'transport');
         expect(microsoftTransportCalls).toHaveLength(1);
         expect(microsoftTransportCalls.every((call) => objectLiteralHasSignal(call.arguments[1]))).toBe(true);

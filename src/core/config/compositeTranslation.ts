@@ -83,10 +83,6 @@ export function isConfiguredCompositeTranslationProvider(providers: readonly Com
     return getCompositeTranslationProvider(providers, serviceId) !== undefined;
 }
 
-export function getCompositeTranslationProviderLabel(providers: readonly CompositeTranslationProvider[] | undefined, serviceId: string): string {
-    return getCompositeTranslationProvider(providers, serviceId)?.name || serviceId;
-}
-
 export function getCompositeTranslationServiceOptions(providers: readonly CompositeTranslationProvider[] | undefined): CustomOpenAIServiceOption[] {
     return (providers || []).map(provider => ({value: provider.id, label: provider.name,
         description: `${({random: '随机', sequential: '轮流', smart: '智能'} as const)[provider.strategy]} · ${provider.services.length} 个翻译服务`,

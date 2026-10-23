@@ -306,7 +306,8 @@ export const settingsPagePanels: Readonly<Record<string, readonly SettingsPagePa
 
 /** 控件深链优先打开其所属分类；缺失或过期分类回落到第一页。 */
 export function resolveSettingsPanel(sectionId: string, panelOrTargetId?: string): string {
-  const panels = settingsPagePanels[NAVIGATION_SECTION_ALIASES.get(sectionId) ?? sectionId] ?? []
+  const resolvedSection = NAVIGATION_SECTION_ALIASES.get(sectionId) ?? sectionId
+  const panels = Object.hasOwn(settingsPagePanels, resolvedSection) ? settingsPagePanels[resolvedSection] : []
   if (sectionId === 'settings-model-usage') return 'usage'
   if (sectionId === 'settings-translation' && panelOrTargetId === 'tools') return 'floating-ball'
   return (panels.find(panel => panel.id === panelOrTargetId || panel.targetIds.includes(panelOrTargetId ?? '')) ?? panels[0])?.id ?? ''

@@ -1,7 +1,8 @@
 import {parseHTML} from 'linkedom';
 import {describe, expect, it} from 'vitest';
 
-import {createTranslationCore, createTranslationSourceSnapshot} from '@/src/core/translation/public';
+import {createTranslationSourceSnapshot} from '@/src/core/translation/public';
+import {createTranslationCore} from './helpers/translationCore';
 import {builtinSiteRulePack} from '@/src/core/site-adaptation/catalog';
 import {composeSiteAdapters} from '@/src/core/site-adaptation/compiler';
 

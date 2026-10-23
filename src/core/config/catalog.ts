@@ -281,14 +281,6 @@ export const servicesType = {
         services.grok,
         ...referenceAiPlatformServices,
     ]),
-    // 支持自定义 URL 的服务
-    useCustomUrl: new Set([
-        services.custom,
-        services.deeplx,
-        services.newapi,
-        services.azureOpenai,
-    ]),
-
     isMachine: (service: string) => servicesType.machine.has(service),
     isCloudVendor: (service: string) => servicesType.cloudVendor.has(service),
     isUseSecret: (service: string) => servicesType.useSecret.has(service),
@@ -308,12 +300,9 @@ export const servicesType = {
     isUseCustomBody: (service: string) => service !== services.chatgptPlan && servicesType.isAI(service),
     isCustom: (service: string) => isCustomOpenAIProviderId(service),
     isNewApi: (service: string) => service === services.newapi,
-    // 文心一言已迁移到千帆 v2 的 Bearer Token 鉴权；保留方法供 UI 兼容。
-    isUseAkSk: (_service: string) => false,
     isYoudao: (service: string) => service === services.youdao,
     isTencent: (service: string) => service === services.tencent || service === services.huanYuanTranslation,
     isAzureOpenai: (service: string) => service === services.azureOpenai,
-    isUseCustomUrl: (service: string) => servicesType.useCustomUrl.has(service) || isCustomOpenAIProviderId(service),
 };
 
 export const customModelString = CUSTOM_OPENAI_RESERVED_MODEL_ID;

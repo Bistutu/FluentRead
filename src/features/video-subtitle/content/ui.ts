@@ -541,15 +541,18 @@ export function getVideoSubtitleViewport(player: HTMLElement, layer: HTMLElement
     width = video.videoWidth * fit * scaleX;
     height = video.videoHeight * fit * scaleY;
   }
-  const positions = (style.objectPosition || '50% 50%').split(/\s+/);
+  // 浏览器把 right 10px bottom 5px 序列化为两个 calc，表达式内部空格不能拆成坐标。
+  const positions = (style.objectPosition || '50% 50%').match(/calc\([^)]*\)|\S+/g) || [];
   const positionOffset = (value: string, space: number, scale: number) => {
     if (value === 'left' || value === 'top') return 0;
     if (value === 'right' || value === 'bottom') return space;
     if (/^-?[\d.]+%$/.test(value)) return space * Number.parseFloat(value) / 100;
     if (/^-?[\d.]+px$/.test(value)) return Number.parseFloat(value) * scale;
+    const calculated = /^calc\(\s*(-?[\d.]+)%\s*([+-])\s*([\d.]+)px\s*\)$/.exec(value);
+    if (calculated) return space * Number(calculated[1]) / 100 + (calculated[2] === '-' ? -1 : 1) * Number(calculated[3]) * scale;
     return space / 2;
   };
-  const x = videoRect.left + positionOffset(positions[0], videoRect.width - width, video.offsetWidth > 0 ? videoRect.width / video.offsetWidth : 1);
+  const x = videoRect.left + positionOffset(positions[0] || '50%', videoRect.width - width, video.offsetWidth > 0 ? videoRect.width / video.offsetWidth : 1);
   const y = videoRect.top + positionOffset(positions[1] || '50%', videoRect.height - height, video.offsetHeight > 0 ? videoRect.height / video.offsetHeight : 1);
   const left = Math.max(x, videoRect.left, playerRect.left, layerRect.left);
   const top = Math.max(y, videoRect.top, playerRect.top, layerRect.top);
@@ -568,9 +571,6 @@ export function getVideoSubtitleViewport(player: HTMLElement, layer: HTMLElement
       : getYoutubeSubtitleBottomInset(player, {left, right, top, bottom, height: Math.max(0, bottom - top)})) / scaleY,
   };
 }
-
-/** 保留旧的专项测试/public helper 名称；几何算法由两个平台共用。 */
-export const getXVideoSubtitleViewport = getVideoSubtitleViewport;
 
 /** 只避开真实可见的底部控件；移动视频高度不足时不能保留桌面的 52px 起步底距。 */
 function getYoutubeSubtitleBottomInset(player: HTMLElement, viewport: Pick<DOMRect, 'left' | 'right' | 'top' | 'bottom' | 'height'>): number {

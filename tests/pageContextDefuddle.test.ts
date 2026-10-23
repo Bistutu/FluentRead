@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {parseHTML} from 'linkedom';
 import {readFileSync} from 'node:fs';
+import {installFilteredTreeWalker} from './helpers/filteredTreeWalker';
 
 const { parse, constructor } = vi.hoisted(() => ({
     parse: vi.fn(),
@@ -46,6 +47,9 @@ function installFixturePage(name: string) {
     const html = readFileSync(new URL(`./fixtures/page-context/${name}.html`, import.meta.url), 'utf8');
     const {document: liveDocument} = parseHTML(html);
     const {document: snapshot} = parseHTML('<!doctype html><html><head></head><body></body></html>');
+    // LinkeDOM retains the outer <html> when assigned to html.innerHTML; resolve the
+    // parsed body instead of its synthetic empty direct-child body fallback.
+    Object.defineProperty(snapshot, 'body', {get: () => snapshot.querySelector('body')});
     Object.defineProperty(liveDocument, 'implementation', {
         configurable: true,
         value: {createHTMLDocument: () => snapshot},
@@ -278,6 +282,37 @@ describe('Defuddle page snapshot adapter', () => {
         expect(parse).not.toHaveBeenCalled();
     });
 
+    it.each(['document', 'body'] as const)('snapshot %s failure preserves available metadata and never mutates the live page', async failure => {
+        const {document} = parseHTML('<html><head><title>Fallback title</title></head><body><p>Visible fallback</p><form>PRIVATE_DRAFT</form></body></html>');
+        const before = document.documentElement.outerHTML;
+        Object.defineProperty(document, 'implementation', {configurable: true, value: {createHTMLDocument() {throw new Error('snapshot unavailable');}}});
+        if (failure === 'body') vi.spyOn(document.body, 'cloneNode').mockImplementation(() => {throw new Error('clone unavailable');});
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        Object.defineProperty(globalThis, 'document', {value: document, configurable: true});
+        Object.defineProperty(globalThis, 'location', {value: {href: 'https://example.com/snapshot-failure'}, configurable: true});
+        try {
+            const context = await getPageTranslationContext();
+            expect(context).toContain('Fallback title');expect(context).not.toContain('PRIVATE_DRAFT');
+            if (failure === 'document') expect(context).toContain('Visible fallback');
+            else expect(context).not.toContain('Visible fallback');
+            expect(document.documentElement.outerHTML).toBe(before);expect(warn).toHaveBeenCalled();
+        } finally {vi.restoreAllMocks();}
+    });
+
+    it('parser failure uses the sanitized snapshot and a later extraction retries parsing', async () => {
+        const {liveDocument} = installFixturePage('mixed-language-and-sanitizer');
+        const before = liveDocument.documentElement.outerHTML;
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        parse.mockRejectedValueOnce(new Error('parser failed')).mockResolvedValueOnce({content: '<p>Recovered parser output</p>'});
+        try {
+            const fallback = await getPageTranslationContext();
+            expect(fallback).toContain('English phrases');expect(fallback).not.toContain('SYNTHETIC-SECRET');
+            resetPageTranslationContextCache();
+            expect(await getPageTranslationContext()).toContain('Recovered parser output');
+            expect(parse).toHaveBeenCalledTimes(2);expect(liveDocument.documentElement.outerHTML).toBe(before);
+        } finally {warn.mockRestore();}
+    });
+
     it('uses an isolated full-document snapshot and caches metadata by URL', async () => {
         const snapshot = {
             documentElement: { innerHTML: '' },
@@ -357,6 +392,7 @@ describe('Defuddle page snapshot adapter', () => {
             value: {href: 'https://example.com/large'},
             configurable: true,
         });
+        installFilteredTreeWalker(document as unknown as Document);
         Object.defineProperty(globalThis, 'document', {value: document, configurable: true});
 
         const context = await getPageTranslationContext();
@@ -367,6 +403,23 @@ describe('Defuddle page snapshot adapter', () => {
         expect(parse).not.toHaveBeenCalled();
     });
 
+    it('bounded capture prunes hidden, editor and extension subtrees through the real predicate', async () => {
+        const {document} = parseHTML(`<html><body data-payload="${'x'.repeat(300_000)}"><main>
+            <p>Readable article text</p><section hidden><p>HIDDEN_SECRET</p></section>
+            <form><div>FORM_SECRET</div></form><div contenteditable="true">EDITOR_SECRET</div>
+            <div data-fr-translation-owned="true"><p>TRANSLATION_SECRET</p></div><aside>ASIDE_SECRET</aside>
+            <p>More useful context</p></main></body></html>`);
+        installFilteredTreeWalker(document as unknown as Document);
+        Object.defineProperty(globalThis, 'document', {value: document, configurable: true});
+        Object.defineProperty(globalThis, 'location', {value: {href: 'https://example.com/bounded-private'}, configurable: true});
+        Object.defineProperty(document, 'defaultView', {value: {NodeFilter: {SHOW_ELEMENT: 1, SHOW_TEXT: 4, FILTER_ACCEPT: 1, FILTER_REJECT: 2}}});
+        document.querySelector('main')!.appendChild(document.createTextNode(''));
+        const context = await getPageTranslationContext();
+        expect(context).toContain('Readable article text');expect(context).toContain('More useful context');
+        expect(context).not.toMatch(/HIDDEN_SECRET|FORM_SECRET|EDITOR_SECRET|TRANSLATION_SECRET|ASIDE_SECRET/u);
+        expect(parse).not.toHaveBeenCalled();expect(constructor).not.toHaveBeenCalled();
+    });
+
     it.each([
         ['main root', '<main contenteditable="true"><p>private draft</p></main>'],
         ['excluded ancestor', '<form><main><p>private draft</p></main></form>'],
@@ -375,6 +428,7 @@ describe('Defuddle page snapshot adapter', () => {
     ])('does not capture a bounded article inside an excluded %s', async (_, markup) => {
         const {document} = parseHTML(`<html><body data-payload="${'x'.repeat(300_000)}">${markup}</body></html>`);
         Object.defineProperty(globalThis, 'location', {value: {href: 'https://example.com/excluded-root'}, configurable: true});
+        installFilteredTreeWalker(document as unknown as Document);
         Object.defineProperty(globalThis, 'document', {value: document, configurable: true});
 
         const context = await getPageTranslationContext();
@@ -392,6 +446,7 @@ describe('Defuddle page snapshot adapter', () => {
             value: {href: 'https://example.com/large-attribute'},
             configurable: true,
         });
+        installFilteredTreeWalker(document as unknown as Document);
         Object.defineProperty(globalThis, 'document', {value: document, configurable: true});
 
         const context = await getPageTranslationContext();

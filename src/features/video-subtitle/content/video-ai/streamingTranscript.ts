@@ -280,7 +280,9 @@ function longestCommonTokenSubsequenceLength(left: string[], right: string[]): n
 
 function hasTranscriptNegation(value: string): boolean {
   const folded = foldTranscriptText(value);
-  return /(^|\s)(?:no|not|never|cannot|neither|nor)(?:\s|$)|(^|\s)can\s+t(?:\s|$)|[不没無无未非勿莫]/u.test(folded);
+  // don't / won't / isn't 等缩约形式同样改变极性；在去标点前辨认直/弯撇号。
+  return /\b[a-z]+n['’]t\b/iu.test(value)
+    || /(^|\s)(?:no|not|never|cannot|neither|nor)(?:\s|$)|(^|\s)can\s+t(?:\s|$)|[不没無无未非勿莫]/u.test(folded);
 }
 
 /**

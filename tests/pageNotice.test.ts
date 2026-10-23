@@ -4,7 +4,7 @@ import {parseHTML} from 'linkedom';
 
 import {sendErrorMessage, showPageNotice, dismissPageNotice} from '@/src/features/page-notice/public';
 import {config} from '@/src/services/config/store';
-import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
+import {registerAllUiLanguageBundles} from './helpers/uiLanguageBundles';
 
 const originalDocument = globalThis.document;
 const originalWindow = globalThis.window;

@@ -1,7 +1,7 @@
 import {createHash} from 'node:crypto';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {VideoAiFullCaptureController, type VideoAiFullCaptureProgress} from '@/src/features/video-subtitle/content/video-ai/fullCapture';
-import type {VideoAiAudioChunk} from '@/src/features/video-subtitle/content/video-ai/capture';
+import type {VideoAiAudioChunk} from '@/src/features/video-subtitle/content/video-ai/fullCapture';
 import type {VideoAiStabilizedCue} from '@/src/features/video-subtitle/content/video-ai/streamingTranscript';
 
 class FakeNode {
@@ -222,6 +222,53 @@ afterEach(() => {
 });
 
 describe('完整 AI 字幕失败与取消边界', () => {
+  it.each(['injected', 'decoded'] as const)('enforces the complete-audio duration limit when %s media metadata is absent', async source => {
+    installScanDom(new FakeVideo());
+    const video = new FakeVideo(); video.duration = Number.NaN;
+    const overlong = new Float32Array(20 * 60 * 16_000 + 1);
+    const getChannelData = vi.fn(() => overlong);
+    FakeAudioContext.decodeResult = {numberOfChannels: 1, sampleRate: 16_000, getChannelData};
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(new Uint8Array(4))));
+    const transcribe = vi.fn(async () => ({text: 'must not transcribe oversized audio'}));
+    const errors = vi.fn();
+    const controller = new VideoAiFullCaptureController({getVideo: () => video as unknown as HTMLVideoElement,
+      ...(source === 'injected' ? {getAudio: async () => overlong} : {}), getModel: () => 'tiny', isSupported: () => true,
+      transcribe, onTranscriptionComplete: vi.fn(async () => undefined), onError: errors, onStateChange: vi.fn()});
+    controller.start(); await tick(70);
+    expect(controller.getPhase()).toBe('error');
+    expect(errors.mock.calls[0]?.[0].message).toContain('20 分钟');
+    expect(transcribe).not.toHaveBeenCalled();
+    expect(video.playCalls).toBe(0);
+    controller.destroy();
+  });
+
+  it.each(['success', 'decode-failure', 'decode-timeout'] as const)('does not let pending AudioContext closure block %s recovery', async outcome => {
+    vi.useFakeTimers();
+    const scan = new FakeVideo();
+    installScanDom(scan);
+    const visible = new FakeVideo(); visible.duration = 1;
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(new Uint8Array(4))));
+    if (outcome === 'decode-failure') FakeAudioContext.throwDecode = true;
+    if (outcome === 'decode-timeout') FakeAudioContext.decodeResults = [new Promise<AudioBuffer>(() => undefined)];
+    let rejectClosure!: (reason: Error) => void;
+    const close = vi.spyOn(FakeAudioContext.prototype, 'close').mockImplementationOnce(() => new Promise<void>((_resolve, reject) => {rejectClosure = reject;}));
+    const completed = vi.fn(async () => undefined);
+    const controller = new VideoAiFullCaptureController({getVideo: () => visible as unknown as HTMLVideoElement,
+      getModel: () => 'tiny', isSupported: () => true,
+      transcribe: async () => ({text: 'A complete decoded sentence.', segments: [{startMs: 0, endMs: 900, text: 'A complete decoded sentence.'}]}),
+      onTranscriptionComplete: completed, onError: vi.fn(), onStateChange: vi.fn()});
+    controller.start(); await tick(50);
+    if (outcome === 'decode-timeout') await vi.advanceTimersByTimeAsync(8_000);
+    await tick(50);
+    expect(close).toHaveBeenCalled();
+    if (outcome === 'success') {expect(completed).toHaveBeenCalledOnce(); expect(controller.getPhase()).toBe('ready');}
+    else expect(scan.playCalls).toBe(1);
+    expect(visible.playCalls).toBe(0);
+    rejectClosure(new Error('late cleanup failure')); await tick();
+    controller.destroy();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it('后续窗口仍识别时先发布稳定字幕，回调修改不污染最终结果', async () => {
     installCustomAudioWindow();
     let resolveNext!: (value: Record<string, unknown>) => void;

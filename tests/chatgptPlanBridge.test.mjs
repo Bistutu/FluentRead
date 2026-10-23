@@ -10,8 +10,9 @@ import { generateKeyPairSync, sign } from 'node:crypto';
 import { mkdtemp, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { spawnSync } from 'node:child_process';
-import { createChatGPTPlanBridge, validateResponseRequest } from '../integrations/chatgpt-plan/bridge.mjs';
+import { spawn, spawnSync } from 'node:child_process';
+import { once } from 'node:events';
+import { createChatGPTPlanBridge, validateResponseRequest, BRIDGE_PORT } from '../integrations/chatgpt-plan/bridge.mjs';
 
 const ORIGIN = `chrome-extension://${'a'.repeat(32)}`;
 const OTHER_ORIGIN = `chrome-extension://${'b'.repeat(32)}`;
@@ -90,6 +91,8 @@ async function fixture(t, options = {}) {
     const parsed = new URL(url);
     assert.ok(['auth.openai.com', 'api.openai.com'].includes(parsed.hostname));
     assert.equal(init.redirect, 'error');
+    const injected = state.apiResponse?.(parsed.pathname);
+    if (injected) return Promise.resolve(injected);
     const ignoreAbort = state.ignoreTokenAbort && parsed.pathname === '/api/accounts/oauth/token'
       || state.ignoreDiscoveryAbort && parsed.pathname === '/.well-known/openid-configuration';
     return fetch(`${remoteUrl}${parsed.pathname}${parsed.search}`, { ...init, ...(ignoreAbort ? { signal: undefined } : {}) });
@@ -338,6 +341,42 @@ test('client cancellation and logout terminate upstream inference streams', asyn
   const text = await streaming.text(); assert.ok(!text.includes('response.completed')); assert.equal((await f.status(token)).connected, false);
 });
 
+test('completed inference closes the HTTP response without waiting for upstream cancel acknowledgement', {timeout: 2000}, async (t) => {
+  const f = await fixture(t); const token = await f.pair(); await f.signIn(token);
+  let cancelled = 0;
+  f.state.apiResponse = path => path === '/v1/responses' ? new Response(new ReadableStream({
+    start(controller) {controller.enqueue(new TextEncoder().encode('data: {"type":"response.completed","response":{"status":"completed"}}\n\n'));},
+    cancel() {cancelled++;return new Promise(() => {});},
+  }), {headers: {'Content-Type': 'text/event-stream'}}) : undefined;
+  const response = await f.request('/responses', {model: 'account-model', input: [{role: 'user', content: 'x'}]}, token);
+  assert.match(await response.text(), /response.completed/);
+  assert.equal(cancelled, 1);
+});
+
+test('invalid inference content type cancels its unread response body before returning an error', {timeout: 2000}, async (t) => {
+  const f = await fixture(t); const token = await f.pair(); await f.signIn(token);
+  let cancelled = 0;
+  f.state.apiResponse = path => path === '/v1/responses' ? new Response(new ReadableStream({
+    cancel() {cancelled++;return Promise.reject(new Error('cancel acknowledgement failed'));},
+  }), {headers: {'Content-Type': 'text/html'}}) : undefined;
+  const response = await f.request('/responses', {model: 'account-model', input: [{role: 'user', content: 'x'}]}, token);
+  assert.equal(response.status, 502);
+  assert.equal((await response.json()).error.code, 'invalid_stream');
+  assert.equal(cancelled, 1);
+});
+
+test('401 credential refresh proceeds while the discarded response cancel remains pending', {timeout: 2000}, async (t) => {
+  const f = await fixture(t); const token = await f.pair(); await f.signIn(token);
+  let cancelled = 0, attempts = 0;
+  f.state.apiResponse = path => path === '/v1/models' && attempts++ === 0 ? new Response(new ReadableStream({
+    cancel() {cancelled++;return new Promise(() => {});},
+  }), {status: 401}) : undefined;
+  const response = await f.request('/models', {}, token);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {models: [{slug: 'account-model', display_name: 'Account Model'}]});
+  assert.equal(cancelled, 1);assert.equal(f.state.refreshCount, 1);
+});
+
 test('storage excludes duplicate processes, symlink credentials and unsafe existing permissions', async (t) => {
   const f = await fixture(t);
   await assert.rejects(createChatGPTPlanBridge({ directory: f.directory, port: 0 }), /BRIDGE_ALREADY_RUNNING/);
@@ -370,4 +409,60 @@ test('production CLI fixes the extension bridge port and rejects port overrides 
   assert.equal(help.status, 0); assert.ok(help.stdout.includes('127.0.0.1:18743')); assert.ok(!help.stdout.includes('--port'));
   const override = spawnSync(process.execPath, [cli.pathname, '--port', '19877'], { encoding: 'utf8' });
   assert.equal(override.status, 1); assert.ok(override.stderr.includes('参数无效'));
+});
+
+test('production CLI keeps directory and occupied-port startup failures actionable without exposing stored content', async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), 'fluentread-cli-failure-'));
+  t.after(() => rm(directory, {recursive: true, force: true}));
+  const cli = new URL('../integrations/chatgpt-plan/cli.mjs', import.meta.url);
+  const run = (path) => spawnSync(process.execPath, [cli.pathname, '--data-dir', path], {encoding: 'utf8', timeout: 5_000});
+  await writeFile(join(directory, 'not-directory'), 'private fixture content');
+  const invalid = run(join(directory, 'not-directory'));
+  assert.equal(invalid.status, 1);assert.match(invalid.stderr, /检查目录权限/);assert.equal(invalid.stdout, '');
+  const holder = await createChatGPTPlanBridge({directory: join(directory, 'locked'), port: 0});
+  try {const locked = run(join(directory, 'locked'));assert.equal(locked.status, 1);assert.match(locked.stderr, /目录已有助手运行/);assert.equal(locked.stdout, '');}
+  finally {await holder.close();}
+  const blocker = createServer();
+  try {await new Promise((resolve, reject) => {blocker.once('error', reject);blocker.listen(BRIDGE_PORT, '127.0.0.1', resolve);});}
+  catch (failure) {if (failure.code !== 'EADDRINUSE') throw failure;}
+  try {
+    const occupied = run(join(directory, 'occupied'));
+    assert.equal(occupied.status, 1);assert.match(occupied.stderr, /18743 已被占用/);assert.equal(occupied.stdout, '');
+    await assert.rejects(stat(join(directory, 'occupied', 'bridge.lock')), {code: 'ENOENT'});
+  } finally {if (blocker.listening) await new Promise(resolve => blocker.close(resolve));}
+});
+
+test('production CLI issues fresh local pair codes and both termination signals release its port and process lock', async (t) => {
+  const probe = createServer();
+  try {await new Promise((resolve, reject) => {probe.once('error', reject);probe.listen(BRIDGE_PORT, '127.0.0.1', resolve);});}
+  catch (failure) {if (failure.code === 'EADDRINUSE') {t.skip('The fixed application port is already used; do not disturb another bridge.');return;}throw failure;}
+  await new Promise(resolve => probe.close(resolve));
+  const directory = await mkdtemp(join(tmpdir(), 'fluentread-cli-lifecycle-'));
+  t.after(() => rm(directory, {recursive: true, force: true}));
+  const cli = new URL('../integrations/chatgpt-plan/cli.mjs', import.meta.url);
+  for (const signal of ['SIGINT', 'SIGTERM']) {
+    const child = spawn(process.execPath, [cli.pathname, '--data-dir', directory], {stdio: ['pipe', 'pipe', 'pipe']});
+    const exited = once(child, 'exit', {signal: AbortSignal.timeout(5_000)});void exited.catch(() => {});let output = '', failureOutput = '';
+    child.stdout.on('data', chunk => {output += chunk;});child.stderr.on('data', chunk => {failureOutput += chunk;});
+    const waitForCodes = async count => {
+      for (let attempt = 0; attempt < 500; attempt++) {
+        if ((output.match(/一次性配对码（5 分钟内有效）：/gu) || []).length >= count) return;
+        if (child.exitCode !== null) throw new Error('CLI exited before pairing readiness');
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+      throw new Error('CLI pairing readiness timed out');
+    };
+    try {
+      await waitForCodes(1);
+      child.stdin.write('ignored\n pair \n');await waitForCodes(2);
+      const codes = [...output.matchAll(/一次性配对码（5 分钟内有效）：([^\n]+)/gu)].map(match => match[1]);
+      assert.equal(new Set(codes).size, 2);assert.ok(output.includes(`127.0.0.1:${BRIDGE_PORT}`));
+      child.kill(signal);assert.deepEqual(await exited, [0, null]);assert.equal(failureOutput, '');
+      await assert.rejects(stat(join(directory, 'bridge.lock')), {code: 'ENOENT'});
+    } finally {
+      if (child.exitCode === null && child.signalCode === null) {child.kill('SIGKILL');await exited.catch(() => {});}
+      // 配对码只供本例内比较，绝不写入测试证据或日志。
+      output = '';
+    }
+  }
 });

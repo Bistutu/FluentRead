@@ -7,6 +7,8 @@
 import type {TranslationBroker, TranslationRequestMessage} from './types';
 import {attachTranslationRequestControl, createTranslationRequestSnapshot, getTranslationRequestControl} from './requestSnapshot';
 import {TRANSLATION_REQUEST_CONTROL} from './types';
+import {DEFAULT_PROVIDER_TIMEOUT_MS, getExplicitTranslationBudget, startTranslationRequest,
+    TranslationProviderDeadlineError} from './requestDeadline';
 
 interface AvailabilityDependencies {
     ready: Promise<unknown>;
@@ -42,39 +44,55 @@ export function createTranslationAvailability(deps: AvailabilityDependencies) {
 
     async function translateWithCache(message: TranslationRequestMessage): Promise<string | string[]> {
         message = createTranslationRequestSnapshot(message);
-        await ready;
-        apply(deps.getConfig());
-        if (epoch.signal.aborted) throw new TranslationDisabledError();
-        const globalSignal = epoch.signal;
+        const startedAt = startTranslationRequest(message, Date.now);
+        const hydrationDeadline = startedAt + (getExplicitTranslationBudget(message) ?? DEFAULT_PROVIDER_TIMEOUT_MS);
         const owner = getTranslationRequestControl(message);
         const controller = new AbortController();
+        let globalSignal: AbortSignal | undefined;
+        let deadlineError: TranslationProviderDeadlineError | undefined;
         const abort = () => controller.abort();
-        const failure = () => globalSignal.aborted
+        const failure = () => deadlineError ?? (globalSignal?.aborted
             ? new TranslationDisabledError()
-            : new DOMException('翻译已取消', 'AbortError');
+            : new DOMException('翻译已取消', 'AbortError'));
         if (owner?.signal.aborted) throw failure();
-        globalSignal.addEventListener('abort', abort, {once: true});
         owner?.signal.addEventListener('abort', abort, {once: true});
-
-        // 展开运算符会丢失不可枚举的预算/快照 symbol；复制描述符并只替换取消控制。
-        const descriptors = Object.getOwnPropertyDescriptors(message);
-        Reflect.deleteProperty(descriptors, TRANSLATION_REQUEST_CONTROL);
-        const request = attachTranslationRequestControl(Object.defineProperties({}, descriptors) as TranslationRequestMessage, {
-            signal: controller.signal,
-            ownershipKey: `${owner?.ownershipKey ?? 'shared'}|global:${generation}`,
-        });
         let onAbort!: () => void;
         const cancelled = new Promise<never>((_, reject) => {
             onAbort = () => reject(failure());
             controller.signal.addEventListener('abort', onAbort, {once: true});
         });
+        const timer = setTimeout(() => {
+            deadlineError = new TranslationProviderDeadlineError();
+            controller.abort();
+        }, Math.max(0, hydrationDeadline - Date.now()));
         try {
-            return await Promise.race([Promise.resolve().then(() => {
+            // 配置水合也是请求等待的一部分；取消不应等存储完成，迟到水合不能重新派发。
+            const work = (async () => {
+                await ready;
+                clearTimeout(timer);
                 if (controller.signal.aborted) throw failure();
-                return deps.translate(request);
-            }), cancelled]);
+                if (Date.now() >= hydrationDeadline) throw new TranslationProviderDeadlineError();
+                apply(deps.getConfig());
+                globalSignal = epoch.signal;
+                if (globalSignal.aborted) throw new TranslationDisabledError();
+                globalSignal.addEventListener('abort', abort, {once: true});
+
+                // 展开运算符会丢失不可枚举的预算/快照 symbol；复制描述符并只替换取消控制。
+                const descriptors = Object.getOwnPropertyDescriptors(message);
+                Reflect.deleteProperty(descriptors, TRANSLATION_REQUEST_CONTROL);
+                const request = attachTranslationRequestControl(Object.defineProperties({}, descriptors) as TranslationRequestMessage, {
+                    signal: controller.signal,
+                    ownershipKey: `${owner?.ownershipKey ?? 'shared'}|global:${generation}`,
+                });
+                return Promise.resolve().then(() => {
+                    if (controller.signal.aborted) throw failure();
+                    return deps.translate(request);
+                });
+            })();
+            return await Promise.race([work, cancelled]);
         } finally {
-            globalSignal.removeEventListener('abort', abort);
+            clearTimeout(timer);
+            globalSignal?.removeEventListener('abort', abort);
             owner?.signal.removeEventListener('abort', abort);
             controller.signal.removeEventListener('abort', onAbort);
         }

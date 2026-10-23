@@ -4,6 +4,7 @@
  * 主要内容：单项 Drive 授权、Drive 账号识别、短期令牌刷新与账号切换保护。
  * 模块边界：不保存令牌、不读取配置；账号和令牌只在后台请求期间使用。
  */
+import {cancelUnreadResponseBody} from '@/src/platform/http/runtime';
 import {GOOGLE_DRIVE_DEFAULT_CLIENT_ID, GOOGLE_DRIVE_EXTENSION_ID, GOOGLE_DRIVE_SCOPES} from './constants';
 
 // 邮箱仅用于预览展示；账号绑定始终使用 Drive permissionId，不依赖邮箱或额外身份授权。
@@ -59,7 +60,7 @@ export function createDriveAuth(ports: DriveAuthPorts) {
                 // 与旧 OAuth 身份 ID 分开命名，旧基线回到明确选方向的首次同步，不能按邮箱冒认同一账号。
                 return {id: `drive:${user.permissionId}`, email: 'emailAddress' in user && typeof user.emailAddress === 'string' ? user.emailAddress : ''};
             } finally {
-                if (response?.body && !response.body.locked) await response.body.cancel().catch(() => undefined);
+                if (response) cancelUnreadResponseBody(response);
             }
         })();
         return operation.catch(error => {

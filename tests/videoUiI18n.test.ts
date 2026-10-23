@@ -18,7 +18,7 @@ import {
   revealVideoMenuBodyControl,
   type VideoAiMenuState,
 } from '@/src/features/video-subtitle/content/playerMenu';
-import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
+import {registerAllUiLanguageBundles} from './helpers/uiLanguageBundles';
 import {refreshVideoUiAccessibility, refreshVideoUiText, clearRenderedVideoTranslation, deactivateNormalizedVideoCaption, readVideoPlaybackTimeMs} from '@/src/features/video-subtitle/content/ui';
 import {VIDEO_LOCAL_TRANSCRIPTION_MODELS} from '@/src/features/video-subtitle/transcription';
 import {confirmVideoSubtitleExport} from '@/src/features/video-subtitle/content/exportPrompt';
@@ -95,8 +95,6 @@ function state(overrides: Partial<VideoAiMenuState> = {}): VideoAiMenuState {
     available: true,
     checking: false,
     active: false,
-    running: false,
-    requested: false,
     fullActive: false,
     phase: 'idle',
     progress: progress(0),
@@ -856,7 +854,7 @@ describe('video player menu composition', () => {
     expect(closeFocus).toHaveBeenCalledTimes(1);
   });
 
-  it('renders idle, checking, running, waiting, error, and unsupported states accessibly', () => {
+  it('renders idle, checking, error, and unsupported states accessibly', () => {
     const {document} = parseHTML('<!doctype html><body></body>');
     vi.stubGlobal('document', document);
     const menu = createVideoPlayerMenu('zh-CN', true);
@@ -872,15 +870,6 @@ describe('video player menu composition', () => {
     expect(button.disabled).toBe(true);
     expect(button.textContent).toContain('检查模型中');
     expect(button.dataset.processing).toBe('true');
-
-    renderVideoAiMenu(menu, state({active: true, running: true}), 'zh-CN');
-    expect(button.textContent).toContain('停止生成');
-    expect(button.querySelector('[data-state]')?.textContent).toBe('生成中…');
-    expect(button.getAttribute('aria-checked')).toBe('true');
-
-    renderVideoAiMenu(menu, state({requested: true}), 'zh-CN');
-    expect(button.textContent).toContain('生成 AI 字幕');
-    expect(button.querySelector('[data-state]')?.textContent).toBe('等待播放');
 
     renderVideoAiMenu(menu, state({error: '模型下载失败'}), 'zh-CN');
     expect(button.textContent).toContain('重试生成 AI 字幕');

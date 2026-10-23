@@ -349,6 +349,7 @@ import {
     handleBilingualTranslation,
     handleTranslation,
     isFullPageTranslationActive,
+    invalidateFullPageTranslationSessionCache,
     resetFullPageTranslationRouteState,
     restoreOriginalContent,
     restoreTranslationOwner,
@@ -611,6 +612,82 @@ describe("全文翻译可见性锚点", () => {
             else Reflect.deleteProperty(globalThis, name);
         }
         replacedGlobals.clear();
+    });
+
+    it('公开 ShadowRoot 挂载事件翻译迟到正文，恢复后事件不会重启已结束会话', async () => {
+        runtime.config.display = 1;
+        runtime.config.fullPageTranslationMode = 'all';
+        runtime.realTextExtraction = true;
+        runtime.realSourceSnapshots = true;
+        runtime.realCore = new TranslationCandidateCore({url: new URL('https://example.com')});
+        document.body.innerHTML = '<main><div id="host"></div><div id="after-restore"></div></main>';
+        const host = document.querySelector<HTMLElement>('#host')!;
+        autoTranslateEnglishPage();
+        await finishScheduledWork();
+        expect(runtime.requests).not.toHaveBeenCalled();
+
+        const shadow = host.attachShadow({mode: 'open'});
+        shadow.innerHTML = '<p>This paragraph arrives in a shadow component after translation starts.</p>';
+        const paragraph = shadow.querySelector<HTMLElement>('p')!;
+        setLayoutBox(paragraph, 600, 80);
+        host.dispatchEvent(new window.CustomEvent('fluentread-open-shadow-root', {bubbles: true, composed: true}));
+        await finishScheduledWork();
+        expect(runtime.requests).toHaveBeenCalledTimes(1);
+        expect(runtime.requests).toHaveBeenCalledWith([
+            'This paragraph arrives in a shadow component after translation starts.',
+        ]);
+        expect(paragraph.querySelector('.fluent-read-bilingual-content')?.textContent)
+            .toBe('译:This paragraph arrives in a shadow component after translation starts.');
+        expect(TestMutationObserver.instances.some(observer => observer.observed.has(shadow))).toBe(true);
+
+        restoreOriginalContent();
+        expect(paragraph.textContent).toBe('This paragraph arrives in a shadow component after translation starts.');
+        expect(paragraph.querySelector('[data-fr-translation-owned="true"]')).toBeNull();
+        const nextHost = document.querySelector<HTMLElement>('#after-restore')!;
+        const nextShadow = nextHost.attachShadow({mode: 'open'});
+        nextShadow.innerHTML = '<p>This later shadow paragraph must stay original after restore.</p>';
+        const nextParagraph = nextShadow.querySelector<HTMLElement>('p')!;
+        setLayoutBox(nextParagraph, 600, 80);
+        nextHost.dispatchEvent(new window.CustomEvent('fluentread-open-shadow-root', {bubbles: true, composed: true}));
+        await finishScheduledWork();
+        expect(runtime.requests).toHaveBeenCalledTimes(1);
+        expect(nextParagraph.textContent).toBe('This later shadow paragraph must stay original after restore.');
+        expect(nextParagraph.querySelector('[data-fr-translation-owned="true"]')).toBeNull();
+    });
+
+    it('公开清理会话缓存后新可见段落请求新译文，并保留已展示的译文', async () => {
+        runtime.config.display = 1;
+        runtime.realTextExtraction = true;
+        runtime.realSourceSnapshots = true;
+        runtime.realCore = new TranslationCandidateCore({url: new URL('https://example.com')});
+        const source = 'The same paragraph appears again as the reader scrolls down.';
+        document.body.innerHTML = `<main><p>${source}</p><p>${source}</p><p>${source}</p></main>`;
+        const [first, second, third] = Array.from(document.querySelectorAll<HTMLElement>('p'));
+        [first!, second!, third!].forEach((paragraph, index) => {
+            setLayoutBox(paragraph, 600, 80);
+            setViewportRect(paragraph, index * 4000);
+        });
+        runtime.requests.mockResolvedValueOnce(['清理前的已缓存译文']).mockResolvedValueOnce(['清理后重新取得的译文']);
+        autoTranslateEnglishPage();
+        await finishScheduledWork();
+        const observer = TestIntersectionObserver.instances[0]!;
+        observer.emit(first!, true);
+        await finishScheduledWork();
+        expect(first!.querySelector('.fluent-read-bilingual-content')?.textContent).toBe('清理前的已缓存译文');
+        observer.emit(second!, true);
+        await finishScheduledWork();
+        expect(second!.querySelector('.fluent-read-bilingual-content')?.textContent).toBe('清理前的已缓存译文');
+        expect(runtime.requests).toHaveBeenCalledTimes(1);
+        expect(runtime.requests).toHaveBeenCalledWith([source]);
+
+        invalidateFullPageTranslationSessionCache();
+        observer.emit(third!, true);
+        await finishScheduledWork();
+        expect(runtime.requests).toHaveBeenCalledTimes(2);
+        expect(runtime.requests).toHaveBeenLastCalledWith([source]);
+        expect(third!.querySelector('.fluent-read-bilingual-content')?.textContent).toBe('清理后重新取得的译文');
+        expect(first!.querySelector('.fluent-read-bilingual-content')?.textContent).toBe('清理前的已缓存译文');
+        expect(second!.querySelector('.fluent-read-bilingual-content')?.textContent).toBe('清理前的已缓存译文');
     });
 
     describe('按钮属性变化与独立重扫就绪顺序', () => {

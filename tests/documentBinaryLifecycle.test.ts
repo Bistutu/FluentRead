@@ -1,3 +1,4 @@
+import openstaxMathGlyphs from './fixtures/pdf-openstax-math-glyphs.json';
 import {createHash} from 'node:crypto';
 import {createRequire} from 'node:module';
 import {resolve} from 'node:path';
@@ -13,7 +14,7 @@ import {createPdfPagePreview, rasterizePdfTranslationPage, releasePdfDocument} f
 import * as documentPublic from '@/src/features/document-translation/public';
 
 const port = vi.hoisted(() => ({getDocument: vi.fn()}));
-vi.mock('pdfjs-dist/legacy/build/pdf.mjs', () => ({GlobalWorkerOptions: {}, getDocument: port.getDocument}));
+vi.mock('pdfjs-dist/legacy/build/pdf.mjs', () => ({GlobalWorkerOptions: {}, getDocument: port.getDocument, OPS: {setFont: 1, showText: 2, save: 3, restore: 4, paintFormXObjectBegin: 5, paintFormXObjectEnd: 6}}));
 const pendingCompletions: Array<() => void> = [];
 const deferred = <T,>() => {let resolve!: (value: T) => void; let reject!: (error: unknown) => void; const promise = new Promise<T>((yes, no) => {resolve = yes; reject = no;}); pendingCompletions.push(() => resolve({numPages: 0, getPage: async () => page} as unknown as T)); return {promise, resolve, reject};};
 const sourceBytes = () => new TextEncoder().encode('%PDF-fixture');
@@ -57,6 +58,120 @@ async function epub(): Promise<Uint8Array> {
 }
 
 describe('documentbinaryAudit actual import and package boundaries', () => {
+    it.each(['direct', 'restored', 'form'] as const)('uses the already loaded glyph outline for a vertically stretched delimiter with %s font state', async fontState => {
+        // OpenStax Physics Vol. 1 p56 的实际竖线及 PDF.js SVG path；不缩小普通 p/g 的下降部。
+        page.getViewport = () => ({width: 612, height: 792, transform: [1, 0, 0, -1, 0, 792]});
+        page.getTextContent.mockResolvedValue({items: [
+            {str: 'A mathematical expression uses', transform: [10, 0, 0, 10, 72, 412.472], width: 140, height: 10, fontName: 'body'},
+            {str: '|', transform: [10, 0, 0, 25.66, 484.6383, 406.552], width: 2, height: 25.66, fontName: 'math'},
+            {str: '|', transform: [10, 0, 0, 25.66, 520, 406.552], width: 2, height: 25.66, fontName: 'other'},
+            {str: 'Next paragraph with p/g descenders.', transform: [10, 0, 0, 10, 72, 392.704], width: 180, height: 10, fontName: 'body'},
+        ], styles: {body: {ascent: 1.023, descent: -.443}, math: {ascent: 1.023, descent: -.443}, other: {ascent: 1.023, descent: -.443}}});
+        page.getOperatorList = async () => fontState === 'direct'
+            ? {fnArray: [1, 4, 2, 1, 2], argsArray: [['math', 10], [], [[{unicode: '|', fontChar: '\ue04e'}]], ['other', 10], [[{unicode: '|', fontChar: '\ue04f'}]]]}
+            : {fnArray: [1, fontState === 'restored' ? 3 : 5, 1, 2, fontState === 'restored' ? 4 : 6, 2], argsArray: [['math', 10], [], ['other', 10], [[{unicode: '|', fontChar: '\ue04f'}]], [], [[{unicode: '|', fontChar: '\ue04e'}]]]};
+        const objects = new Map<string, unknown>([['math', {loadedName: 'math'}], ['math_path_\ue04e', 'M0.133 -0.014L0.133 0.676L0.067 0.676L0.067 -0.014Z'], ['other_path_\ue04f', 'M0 0L0 .4L.1 .4Z']]);
+        page.commonObjs = {has: (key: string) => objects.has(key), get: (key: string) => objects.get(key)};
+        const parsed = await parseBinaryDocument('actual-stretched-glyph.pdf', sourceBytes());
+        const runs = parsed.binary?.kind === 'pdf' ? parsed.binary.pages[0].blocks.flatMap(block => block.lines?.flatMap(line => line.runs ?? []) ?? []) : [];
+        expect(runs.find(run => run.text === '|')).toMatchObject({x: 484.6383, width: 2, fontSize: 25.66, layoutFontSize: 10});
+        expect(runs.find(run => run.text === '|')?.y).toBeCloseTo(368.10184, 5);
+        expect(runs.find(run => run.text === '|')?.height).toBeCloseTo(17.7054, 5);
+        expect(runs.find(run => run.text.includes('p/g'))?.height).toBeCloseTo(14.66, 5);
+        expect(runs.find(run => run.x === 520)?.height).toBeCloseTo(10.264, 5);
+    });
+
+    it.each(openstaxMathGlyphs.parts)('uses the actual OpenStax $text outline without shrinking the original export font size', async ({text, item, style, path}) => {
+        page.getViewport = () => ({width: 612, height: 792, transform: [1, 0, 0, -1, 0, 792]});
+        page.getTextContent.mockResolvedValue({items: [item], styles: {[item.fontName]: style}});
+        page.getOperatorList = async () => ({fnArray: [1, 2], argsArray: [[item.fontName, item.height], [[{unicode: text, fontChar: 'actual'}]]]});
+        page.commonObjs = {has: () => true, get: () => path};
+        const parsed = await parseBinaryDocument('actual-math-parts.pdf', sourceBytes());
+        if (parsed.binary?.kind !== 'pdf') throw new Error('Expected PDF import');
+        const run = parsed.binary.pages[0].blocks.flatMap(block => block.lines?.flatMap(line => line.runs ?? []) ?? []).find(run => run.text === text);
+        expect(run?.fontSize).toBe(item.height);
+        expect(run?.height).toBeCloseTo(item.height * (text === '→' ? .396 : 1.005), 5);
+    });
+
+    it.each(openstaxMathGlyphs.tokens)('retains actual $text ink and its descender while replacing whole-font extrema', async ({text, item, style, path, low, high}) => {
+        page.getViewport = () => ({width: 612, height: 792, transform: [1, 0, 0, -1, 0, 792]});
+        page.getTextContent.mockResolvedValue({items: [item], styles: {[item.fontName]: style}});
+        page.getOperatorList = async () => ({fnArray: [1, 2], argsArray: [[item.fontName, item.height], [[{unicode: text, fontChar: 'actual'}]]]});
+        page.commonObjs = {has: () => true, get: () => path};
+        const parsed = await parseBinaryDocument('actual-math-token.pdf', sourceBytes());
+        if (parsed.binary?.kind !== 'pdf') throw new Error('Expected PDF import');
+        const run = parsed.binary.pages[0].blocks.flatMap(block => block.lines?.flatMap(line => line.runs ?? []) ?? []).find(run => run.text === text);
+        expect(run?.fontSize).toBe(item.height);
+        expect(run?.height).toBeCloseTo(item.height * (high - low), 5);
+        expect(run?.y).toBeCloseTo(792 - item.transform[5] - item.height * high, 5);
+        if (text === 'p' || text === 'g') expect(run!.y + run!.height).toBeGreaterThan(run!.baseline!);
+    });
+
+    it.each(['ligature', 'accent', 'vertical metric', 'vertical font', 'sheared transform'] as const)('falls back to full font metrics for unsupported %s glyph placement', async mode => {
+        const source = openstaxMathGlyphs.tokens.find(glyph => glyph.text === 'p')!;
+        const item = {...source.item, str: mode === 'ligature' ? 'pp' : 'p', transform: [...source.item.transform]};
+        if (mode === 'sheared transform') item.transform[2] = .2;
+        page.getViewport = () => ({width: 612, height: 792, transform: [1, 0, 0, -1, 0, 792]});
+        page.getTextContent.mockResolvedValue({items: [item], styles: {[item.fontName]: {...source.style, vertical: mode === 'vertical font'}}});
+        const glyph = {unicode: mode === 'ligature' ? 'pp' : 'p', fontChar: 'offset', ...(mode === 'accent' ? {accent: {offset: {x: 0, y: 5}}} : {}), ...(mode === 'vertical metric' ? {vmetric: [0, 1, 2]} : {})};
+        page.getOperatorList = async () => ({fnArray: [1, 2], argsArray: [[item.fontName, 10], [[{unicode: 'p', fontChar: 'ordinary'}, glyph]]]});
+        page.commonObjs = {has: () => true, get: () => source.path};
+        const parsed = await parseBinaryDocument('unsupported-glyph-placement.pdf', sourceBytes());
+        if (parsed.binary?.kind !== 'pdf') throw new Error('Expected PDF import');
+        const run = parsed.binary.pages[0].blocks.flatMap(block => block.lines?.flatMap(line => line.runs ?? []) ?? []).find(run => run.text === item.str);
+        expect(run?.height).toBeCloseTo(Math.hypot(item.transform[2], item.transform[3]) * (source.style.ascent - source.style.descent), 5);
+    });
+
+    it.each([
+        ['missing', undefined], ['unreadable', new Error('path unavailable')], ['wrong type', {}],
+        ['oversized', `M0 0${'L0 1'.repeat(1100)}`], ['unsupported command', 'M0 0A1 1 0 0 0 1 1'],
+        ['empty', 'MZ'], ['unpaired', 'M0 0L1'], ['infinite', 'M0 0L1 1e999'],
+        ['outside lower bounds', 'M0 -5L1 1'], ['outside upper bounds', 'M0 0L1 5'], ['flat', 'M0 1L1 1'],
+    ])('imports stretched symbols conservatively when their outline is %s', async (_name, outline) => {
+        page.getTextContent.mockResolvedValue({items: [
+            {str: '|', transform: [10, 0, 0, 25.66, 20, 40], width: 2, height: 25.66, fontName: 'math'},
+        ], styles: {math: {ascent: 1.023, descent: -.443}}});
+        page.getOperatorList = async () => ({fnArray: [1, 2], argsArray: [['math', 10], [[0, {unicode: 'unrequested', fontChar: 'x'}, {unicode: '|', fontChar: 'bar'}, {unicode: '|', fontChar: 'bar'}]]]});
+        const get = vi.fn(() => {if (outline instanceof Error) throw outline; return outline;});
+        page.commonObjs = {has: () => outline !== undefined, get};
+        const parsed = await parseBinaryDocument('unreadable-glyph.pdf', sourceBytes());
+        expect(parsed.binary?.kind).toBe('pdf');
+        if (parsed.binary?.kind !== 'pdf') throw new Error('Expected PDF import');
+        const symbol = parsed.binary.pages[0].blocks.flatMap(block => block.lines?.flatMap(line => line.runs ?? []) ?? []).find(run => run.text === '|');
+        expect(symbol?.height).toBeCloseTo(37.61756, 5);
+        expect(get).toHaveBeenCalledTimes(outline === undefined ? 0 : 1);
+        expect(page.cleanup).toHaveBeenCalledOnce(); expect(destroy).toHaveBeenCalledOnce();
+    });
+
+    it('unions alternate glyph outlines for one Unicode without cropping the taller variant', async () => {
+        page.getTextContent.mockResolvedValue({items: [
+            {str: '|', transform: [10, 0, 0, 20, 20, 40], width: 2, height: 20, fontName: 'math'},
+        ], styles: {math: {ascent: 1, descent: -.4}}});
+        page.getOperatorList = async () => ({fnArray: [1, 2], argsArray: [['math', 10], [[{unicode: '|', fontChar: 'short'}, {unicode: '|', fontChar: 'tall'}]]]});
+        page.commonObjs = {has: () => true, get: (id: string) => id.endsWith('short') ? 'M0 0L1 .5Z' : 'M0 -.1Q.2 .5 1 .9Z'};
+        const parsed = await parseBinaryDocument('alternate-glyphs.pdf', sourceBytes());
+        if (parsed.binary?.kind !== 'pdf') throw new Error('Expected PDF import');
+        expect(parsed.binary.pages[0].blocks[0].height).toBeCloseTo(20, 5);
+    });
+
+    it.each(['missing objects', 'missing ascent', 'missing descent', 'missing font style', 'ordinary transform'] as const)('retains conservative text bounds with %s', async mode => {
+        const item = {str: '|', transform: [10, 0, 0, mode === 'ordinary transform' ? 10 : 25, 20, 40], width: 3, height: 25, fontName: 'math'};
+        const style: Record<string, unknown> = {ascent: 1, descent: -.4};
+        if (mode === 'missing ascent') delete style.ascent;
+        if (mode === 'missing descent') delete style.descent;
+        page.getTextContent.mockResolvedValue({items: [item], styles: mode === 'missing font style' ? {} : {math: style}});
+        page.getOperatorList = async () => ({fnArray: [1, 2], argsArray: [['math', 10], [[{unicode: '|', fontChar: 'bar'}]]]});
+        const get = vi.fn(() => 'M0 0L1 .5Z');
+        if (mode !== 'missing objects') page.commonObjs = {has: () => true, get};
+        const parsed = await parseBinaryDocument('partial-font-data.pdf', sourceBytes());
+        if (parsed.binary?.kind !== 'pdf') throw new Error('Expected PDF import');
+        const run = parsed.binary.pages[0].blocks.flatMap(block => block.lines?.flatMap(line => line.runs ?? []) ?? []).find(run => run.text === '|');
+        expect(run).toMatchObject({text: '|', fontSize: item.transform[3]});
+        expect(Number.isFinite(run?.height)).toBe(true); expect(run!.height).toBeGreaterThan(0);
+        if (mode === 'missing objects') expect(get).not.toHaveBeenCalled();
+        else if (mode !== 'ordinary transform') expect(get).toHaveBeenCalledOnce();
+    });
+
     it('uses actual bytes even when the file size port lies, and validates metadata before reading', async () => {
         const read = vi.fn(async () => new ArrayBuffer(DOCUMENT_MAX_BYTES + 1));
         await expect(parseDocumentFile({name: 'fake.docx', size: 1, arrayBuffer: read, text: async () => ''})).rejects.toThrow('文件大小超过');

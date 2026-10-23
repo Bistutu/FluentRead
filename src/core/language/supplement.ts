@@ -56,20 +56,19 @@ function evaluateSupplementalCandidate(value: string): string | undefined {
     const statisticalScript = script as StatisticalScript;
     if (!STATISTICAL_SCRIPT_LANGUAGES[statisticalScript].includes(language)) return undefined;
 
-    const conflicts = (tokens: readonly string[]): boolean => {
-        const assessment = assessStatisticalLanguage(statisticalScript, tokens);
+    const conflicts = (assessment: ReturnType<typeof assessStatisticalLanguage>): boolean => {
         const evidence = assessment.language ?? assessment.functionWordLeader;
         return evidence !== undefined && evidence !== language;
     };
     // 不把已被正字法或功能词反证否决的猜测重新提升为可信。
     const whole = assessStatisticalLanguage(statisticalScript, words.map(word => word.text));
-    if (whole.reason === 'orthography' || conflicts(words.map(word => word.text))) return undefined;
+    if (whole.reason === 'orthography' || conflicts(whole)) return undefined;
     for (const clause of copy.text.split(CLAUSE_BOUNDARY)) {
-        if (conflicts(segmentScriptWords(clause).map(word => word.text))) return undefined;
+        if (conflicts(assessStatisticalLanguage(statisticalScript, segmentScriptWords(clause).map(word => word.text)))) return undefined;
     }
     // 同一长句里的外语也有否决机会，不依赖网页是否用了句号或正确语言标签。
     for (let start = 0; start < words.length; start += WINDOW_STEP) {
-        if (conflicts(words.slice(start, start + WINDOW_WORDS).map(word => word.text))) return undefined;
+        if (conflicts(assessStatisticalLanguage(statisticalScript, words.slice(start, start + WINDOW_WORDS).map(word => word.text)))) return undefined;
     }
     return language;
 }

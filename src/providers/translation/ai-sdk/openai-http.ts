@@ -1,6 +1,6 @@
 /**
  * @file src/providers/translation/ai-sdk/openai-http.ts
- * 文件职责：执行 FluentRead 已准备的非流式 OpenAI 兼容 HTTP 请求，供 standalone 构建使用。
+ * 文件职责：执行 FluentRead 已准备的非流式 OpenAI 兼容 HTTP 请求，供普通与 standalone 脚本使用。
  * 主要内容：保持锁定 SDK 的请求头、响应文本校验、有限读取和重试等待合同，保留取消信号及最后一次 HTTP 错误；具体 payload、并发租约和用量仍经共享 transport 处理。
  * 模块边界：不是通用 SDK 替代，不提供工具、流式或结构化生成 API，不执行宿主页注入的 SDK telemetry 钩子；不持有配置、缓存或凭据，不直接调用全局 fetch。
  * 协议依据：Vercel AI SDK 6.0.264、openai-compatible 2.0.70 与 provider-utils 4.0.46（Apache-2.0）；产物保留上游版权和许可来源。

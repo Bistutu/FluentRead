@@ -19,7 +19,7 @@ vi.mock('@/src/services/harness/memoryRecall', () => ({createLearningMemoryRecal
 vi.mock('@/src/platform/storage/learningMemoryRepository', () => ({learningMemoryRepository: mocks.memoryRepository}));
 vi.mock('@/src/features/reading-assistant/streamPort', () => ({attachReadingStreamPort: mocks.attachPort}));
 vi.mock('@/src/platform/storage/harnessSessionRepository', () => ({harnessSessionRepository: mocks.repository}));
-vi.mock('@/src/platform/storage/modelUsageRepository', () => ({modelUsageRepository: {recordMany: mocks.record, captureGeneration: mocks.generation}}));
+vi.mock('@/src/platform/storage/modelUsageRepository', () => ({getModelUsageRepository: () => ({recordMany: mocks.record, captureGeneration: mocks.generation})}));
 import {installHarnessBackgroundRuntime} from '@/src/app/background/harnessRuntime';
 import {Config} from '@/src/core/config/model';
 const tick = async () => {for (let i=0; i<5; i++) await Promise.resolve();};

@@ -5,7 +5,7 @@ import {
   VideoAiFullCaptureController,
 } from '@/src/features/video-subtitle/content/video-ai/fullCapture';
 import {normalizeCompletedVideoAiSubtitleCues} from '@/src/features/video-subtitle/transcriptionCache';
-import type { VideoAiAudioChunk } from '@/src/features/video-subtitle/content/video-ai/capture';
+import type { VideoAiAudioChunk } from '@/src/features/video-subtitle/content/video-ai/fullCapture';
 
 afterEach(() => {
   vi.unstubAllGlobals();

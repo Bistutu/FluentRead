@@ -12,6 +12,18 @@ import {
 } from '@/src/features/video-subtitle/content/youtubeSubtitleData';
 
 describe('YouTube 字幕轨道数据', () => {
+  it('跳过响应中的空轨道、空事件和空片段，保留相邻有效字幕', () => {
+    const validTrack = {baseUrl: 'https://www.youtube.com/api/timedtext?v=current&lang=en', languageCode: 'en'};
+    const root = {querySelectorAll: () => [{textContent: `var ytInitialPlayerResponse = ${JSON.stringify({
+      captions: {playerCaptionsTracklistRenderer: {captionTracks: [null, false, 3, validTrack]}},
+    })};`}]} as unknown as ParentNode;
+    expect.soft(extractYoutubeCaptionTracks(root, 'current')).toEqual([expect.objectContaining(validTrack)]);
+    expect(parseYoutubeTimedTextResponse(JSON.stringify({events: [null, false, 3,
+      {tStartMs: 0, dDurationMs: 1000, segs: [null, false, 3, {utf8: 'First '}, {utf8: 'cue'}]},
+      {tStartMs: 2000, dDurationMs: 1000, segs: [{utf8: 'Second cue'}]},
+    ]}))).toEqual([{startMs: 0, durationMs: 1000, text: 'First cue'}, {startMs: 2000, durationMs: 1000, text: 'Second cue'}]);
+  });
+
   it('从初始化脚本提取字幕轨道并优先选择指定语言的人工作品', () => {
     const playerResponse = {
       captions: {

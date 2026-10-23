@@ -12,7 +12,7 @@ import {
     validateNativeBatchResults,
     NativeBatchResponseError,
 } from '@/src/core/translation/nativeBatch';
-import {abortErrorFromSignal} from '@/src/platform/http/runtime';
+import {abortErrorFromSignal, cancelUnreadResponseBody} from '@/src/platform/http/runtime';
 import {hasTranslationContent} from '@/src/core/translation/result';
 
 interface NativeBatchEntry {
@@ -22,20 +22,24 @@ interface NativeBatchEntry {
 
 /** JSON 语法损坏可拆批；读取中断、网络与取消不能冒充结构错误放大请求。 */
 export async function readNativeBatchJson<T>(
-    response: Pick<Response, 'json'> & Partial<Pick<Response, 'headers'>>,
+    response: Pick<Response, 'json'> & Partial<Pick<Response, 'headers' | 'body' | 'bodyUsed'>>,
     invalidResponseMessage: string,
     signal?: AbortSignal,
 ): Promise<T> {
-    throwIfNativeBatchAborted(signal);
-    if (/\b(?:html|xml)\b/iu.test(response.headers?.get('content-type') ?? '')) {
-        throw new Error('翻译服务返回网页或验证页，请稍后重试');
-    }
     try {
-        return await response.json() as T;
-    } catch (error) {
         throwIfNativeBatchAborted(signal);
-        if (error instanceof SyntaxError) throw new NativeBatchResponseError(invalidResponseMessage);
-        throw new Error('翻译响应读取失败');
+        if (/\b(?:html|xml)\b/iu.test(response.headers?.get('content-type') ?? '')) {
+            throw new Error('翻译服务返回网页或验证页，请稍后重试');
+        }
+        try {
+            return await response.json() as T;
+        } catch (error) {
+            throwIfNativeBatchAborted(signal);
+            if (error instanceof SyntaxError) throw new NativeBatchResponseError(invalidResponseMessage);
+            throw new Error('翻译响应读取失败');
+        }
+    } finally {
+        cancelUnreadResponseBody(response);
     }
 }
 

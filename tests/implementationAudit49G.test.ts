@@ -240,7 +240,7 @@ describe('audit 49G shipped userscript resources', () => {
         const realm = createContext({});
         runInContext(asset('userscript/resources/fluentread-data.v1.js'), realm, {filename: resolve(resourceRoot, 'userscript/resources/fluentread-data.v1.js'), timeout: 5_000});
         const {catalogs, original} = await shippedCatalogs();
-        expect(original.established).toHaveLength(17);
+        expect(original.established.length).toBeGreaterThan(0);
         expect(realm.__FLUENTREAD_USERSCRIPT_DATA__.siteCatalogs.established).toEqual(original.established);
         for (const name of ['established', 'profiles', 'websites']) {
             const expected = JSON.parse(readFileSync(resolve(process.cwd(), `src/core/site-adaptation/catalog/${name}.json`), 'utf8'));

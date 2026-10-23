@@ -200,33 +200,4 @@ export class EncryptedConfigRepository {
             return true;
         });
     }
-
-    /**
-     * 旧存储迁移先在事务外完成全部加密，再用一个 Dexie 事务只补齐缺失键。
-     * 任一加密或写入失败都不会留下半套迁移结果，已有 IndexedDB 数据永远优先。
-     */
-    async importMissing(entries: ReadonlyMap<string, unknown>): Promise<string[]> {
-        const encryptedEntries = await Promise.all([...entries].map(async ([key, value]) => ({
-            key,
-            payload: await this.encrypt(
-                value,
-                await this.keyMaterial(key),
-                this.additionalData(key),
-            ),
-            updatedAt: this.now(),
-        })));
-        const imported: string[] = [];
-        await this.database.transaction('rw', this.database.records, async () => {
-            for (const record of encryptedEntries) {
-                if (await this.database.records.get(record.key) !== undefined) continue;
-                await this.database.records.add(record);
-                imported.push(record.key);
-            }
-        });
-        return imported;
-    }
-
-    async getRawRecord(key: string): Promise<EncryptedConfigRecord | undefined> {
-        return this.database.records.get(key);
-    }
 }

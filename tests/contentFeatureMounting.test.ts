@@ -374,7 +374,7 @@ describe('圈选翻译按需挂载生命周期', () => {
         const beginSelection = vi.fn().mockReturnValue(true);
         mocks.createVueShadowUi.mockResolvedValue(ui({beginSelection}));
         const addEventListener = vi.spyOn(document, 'addEventListener');
-        const runtime = await import('@/src/features/area-translation/content/runtime');
+        const runtime = await import('@/src/features/area-translation/public');
         runtime.mountAreaTranslator({} as never);
         const onKeydown = addEventListener.mock.calls.find(([type]) => type === 'keydown')?.[1] as (event: KeyboardEvent) => void;
         const event = {preventDefault: vi.fn()} as unknown as KeyboardEvent;
@@ -392,7 +392,7 @@ describe('圈选翻译按需挂载生命周期', () => {
         expect(mocks.createVueShadowUi).toHaveBeenCalledOnce();
     });
     it('空闲页面只注册入口，不创建 Shadow DOM；卸载时清除入口', async () => {
-        const runtime = await import('@/src/features/area-translation/content/runtime');
+        const runtime = await import('@/src/features/area-translation/public');
         const {startAreaTranslationFromContextMenu} = await import('@/src/features/area-translation/content/contextMenuBridge');
 
         expect(runtime.isAreaTranslatorMounted()).toBe(false);
@@ -405,7 +405,7 @@ describe('圈选翻译按需挂载生命周期', () => {
     });
 
     it('没有上下文、总开关关闭或圈选关闭时不注册入口', async () => {
-        const runtime = await import('@/src/features/area-translation/content/runtime');
+        const runtime = await import('@/src/features/area-translation/public');
 
         expect(runtime.mountAreaTranslator()).toBeUndefined();
         expect(runtime.isAreaTranslatorMounted()).toBe(false);
@@ -423,7 +423,7 @@ describe('圈选翻译按需挂载生命周期', () => {
         const beginSelection = vi.fn().mockReturnValue(true);
         const mountedUi = ui({beginSelection});
         mocks.createVueShadowUi.mockResolvedValue(mountedUi);
-        const runtime = await import('@/src/features/area-translation/content/runtime');
+        const runtime = await import('@/src/features/area-translation/public');
         const {startAreaTranslationFromContextMenu} = await import('@/src/features/area-translation/content/contextMenuBridge');
         const context = {name: 'content'} as never;
 
@@ -452,7 +452,7 @@ describe('圈选翻译按需挂载生命周期', () => {
         const nextBegin = vi.fn().mockReturnValue(true);
         const nextUi = ui({beginSelection: nextBegin});
         mocks.createVueShadowUi.mockReturnValueOnce(pending.promise).mockResolvedValueOnce(nextUi);
-        const runtime = await import('@/src/features/area-translation/content/runtime');
+        const runtime = await import('@/src/features/area-translation/public');
         const {startAreaTranslationFromContextMenu} = await import('@/src/features/area-translation/content/contextMenuBridge');
 
         runtime.mountAreaTranslator({} as never);
@@ -473,7 +473,7 @@ describe('圈选翻译按需挂载生命周期', () => {
         const pending = pendingUi();
         const mountedUi = ui({beginSelection: vi.fn().mockReturnValue(true)});
         mocks.createVueShadowUi.mockReturnValue(pending.promise);
-        const runtime = await import('@/src/features/area-translation/content/runtime');
+        const runtime = await import('@/src/features/area-translation/public');
         const {startAreaTranslationFromContextMenu} = await import('@/src/features/area-translation/content/contextMenuBridge');
 
         runtime.mountAreaTranslator({} as never);
@@ -490,7 +490,7 @@ describe('圈选翻译按需挂载生命周期', () => {
     it('挂载器返回没有可启动实例时清除空 UI', async () => {
         const mountedUi = {remove: vi.fn()};
         mocks.createVueShadowUi.mockResolvedValue(mountedUi);
-        const runtime = await import('@/src/features/area-translation/content/runtime');
+        const runtime = await import('@/src/features/area-translation/public');
         const {startAreaTranslationFromContextMenu} = await import('@/src/features/area-translation/content/contextMenuBridge');
 
         runtime.mountAreaTranslator({} as never);

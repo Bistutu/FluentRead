@@ -17,6 +17,7 @@ import {createHttpStatusError, createProviderCodeError} from '@/src/platform/htt
 import {
     abortErrorFromSignal,
     createRuntimeAbortContext,
+    cancelUnreadResponseBody,
     runtimeFetch,
 } from '@/src/platform/http/runtime';
 import {requireTranslationProviderConfig} from '@/src/services/translation/requestSnapshot';
@@ -89,9 +90,9 @@ async function fetchDeepLX(
     callerSignal?: AbortSignal,
 ): Promise<{response: Response; responseBody: string}> {
     const abortContext = createRuntimeAbortContext(timeoutMs, callerSignal);
+    let response: Response | undefined;
 
     try {
-        let response: Response;
         try {
             response = await runtimeFetch(url, {...requestInit, signal: abortContext.signal});
         } catch {
@@ -114,6 +115,7 @@ async function fetchDeepLX(
             throw new Error('响应读取失败');
         }
     } finally {
+        if (response) cancelUnreadResponseBody(response);
         abortContext.cleanup();
     }
 }

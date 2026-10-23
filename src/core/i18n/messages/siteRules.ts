@@ -6,7 +6,7 @@
  */
 import type {RegisteredUiLanguage} from '../types';
 type Row = readonly [string, string, string, string, string, string, string];
-const rows: readonly Row[] = [
+export const siteRuleTextRows: readonly Row[] = [
   ['自动翻译已暂停', 'Automatic translation paused', '自動翻訳は一時停止中', '자동 번역 일시 중지', 'Traduction automatique suspendue', 'Автоперевод приостановлен', 'Traducción automática pausada'],
   ['应用于此网站及其子域名，跳转后按新网站规则执行', 'Applies to this site and its subdomains. After navigation, the destination site’s rules apply.', 'このサイトとサブドメインに適用します。移動後は移動先のルールに従います。', '이 사이트와 하위 도메인에 적용됩니다. 이동 후에는 새 사이트의 규칙이 적용됩니다.', 'S’applique à ce site et à ses sous-domaines. Après navigation, les règles du site de destination s’appliquent.', 'Действует на этот сайт и его поддомены. После перехода применяются правила нового сайта.', 'Se aplica a este sitio y sus subdominios. Al navegar se aplican las reglas del sitio de destino.'],
   ['禁用会停止此网站的翻译，保留始终翻译偏好', 'Disabling stops translation on this site and keeps your always-translate preference.', '無効化するとこのサイトの翻訳を停止し、常時翻訳の設定は保持します。', '사용 중지하면 이 사이트의 번역이 멈추며 항상 번역 설정은 유지됩니다.', 'La désactivation arrête la traduction sur ce site et conserve votre préférence de traduction systématique.', 'Отключение останавливает перевод на сайте и сохраняет настройку постоянного перевода.', 'Desactivar detiene la traducción en este sitio y conserva la preferencia de traducir siempre.'],
@@ -163,7 +163,6 @@ const rows: readonly Row[] = [
   ["已从草稿移除；保存后生效，同 ID 内置规则将恢复", 'Removed from draft. Saving restores the built-in rule with the same ID.', '下書きから削除しました。保存すると同じ ID の内蔵ルールが復帰します。', '초안에서 제거했습니다. 저장하면 같은 ID의 내장 규칙이 복원됩니다.', 'Retiré du brouillon. Enregistrer restaure la règle intégrée de même ID.', 'Удалено из черновика. Сохранение восстановит встроенное правило с тем же ID.', 'Quitado del borrador. Guardar restaura la regla integrada con el mismo ID.'],
 ];
 const columns = {'en-US': 1, 'ja-JP': 2, 'ko-KR': 3, 'fr-FR': 4, 'ru-RU': 5, 'es-ES': 6} as const;
-export function getSiteRuleTextSources(): string[] {return rows.map(row => row[0]);}
 export function createSiteRuleText(language: RegisteredUiLanguage): Readonly<Record<string, string>> {
-  return Object.fromEntries(rows.map(row => [row[0], row[columns[language]]]));
+  return Object.fromEntries(siteRuleTextRows.map(row => [row[0], row[columns[language]]]));
 }

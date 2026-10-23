@@ -119,6 +119,7 @@ import InterfaceSkinPreview from '@/src/features/settings/ui/components/Interfac
 import PopupLayoutPreview from '@/src/features/settings/ui/components/PopupLayoutPreview.vue';
 import PopupLayoutPreviewItem from '@/src/features/settings/ui/components/PopupLayoutPreviewItem.vue';
 import SettingsGroup from '@/src/features/settings/ui/components/SettingsGroup.vue';
+import SettingsDisclosure from '@/src/features/settings/ui/components/SettingsDisclosure.vue';
 import SettingsItem from '@/src/features/settings/ui/components/SettingsItem.vue';
 import TranslationColorField from '@/src/features/settings/ui/components/TranslationColorField.vue';
 import TranslationStylePreview from '@/src/features/settings/ui/components/TranslationStylePreview.vue';
@@ -141,10 +142,10 @@ import French from 'element-plus/es/locale/lang/fr';
 import Russian from 'element-plus/es/locale/lang/ru';
 import Spanish from 'element-plus/es/locale/lang/es';
 import {translate, registerUiLanguageBundle, type UiLanguage, type TranslationParams} from '@/src/core/i18n';
-import {registerAllUiLanguageBundles, UI_LANGUAGE_BUNDLES} from '@/src/core/i18n/bundles';
+import {registerAllUiLanguageBundles, UI_LANGUAGE_BUNDLES} from './helpers/uiLanguageBundles';
 import {FOCUS_AFTER_TRAPPED, FOCUS_AFTER_TRAPPED_OPTS, FOCUS_AFTER_RELEASED} from 'element-plus/es/components/focus-trap/index';
 
-import {DEFAULT_SENTENCE_HIGHLIGHT_APPEARANCE} from '@/src/core/config/sentenceHighlight';
+import {DEFAULT_SENTENCE_HIGHLIGHT_APPEARANCE, MAX_SENTENCE_HIGHLIGHT_PROFILES} from '@/src/core/config/sentenceHighlight';
 
 const apps = new Set<App>();
 async function settle() {await nextTick(); await nextTick();}
@@ -205,11 +206,42 @@ beforeEach(() => {dom.document.body.replaceChildren(); dom.frames.clear(); ports
 afterEach(async () => {for (const app of apps) app.unmount(); apps.clear(); await settle(); dom.frames.clear(); vi.restoreAllMocks();});
 
 describe('shared UI actual client SFC lifecycle', () => {
-  it('loads all sixteen actual SFC client render functions without any server render replacement', () => {
+  it('loads all seventeen actual SFC client render functions without any server render replacement', () => {
     for (const component of [UiSelect, GlossaryLibrarySelect, ServiceIcon, TranslationLoadingPreview, UiIcon, FeatureEnableCard, FieldHelp,
-      InterfaceSkinPreview, PopupLayoutPreview, PopupLayoutPreviewItem, SettingsGroup, SettingsItem, TranslationColorField, TranslationStylePreview, WritingStylePreview, SegmentedControl]) {
+      InterfaceSkinPreview, PopupLayoutPreview, PopupLayoutPreviewItem, SettingsGroup, SettingsDisclosure, SettingsItem, TranslationColorField, TranslationStylePreview, WritingStylePreview, SegmentedControl]) {
       expect((component as any).render).toBeTypeOf('function');expect((component as any).ssrRender).toBeUndefined();
     }
+  });
+  it('preserves an edited disclosure form and native open state across summary updates', async () => {
+    // Linkedom lacks HTMLDetailsElement.open; supply its native boolean reflection
+    // so runtime-dom writes false as a property rather than an open="false" attribute.
+    const createElement = dom.document.createElement.bind(dom.document);
+    vi.spyOn(dom.document, 'createElement').mockImplementation((tagName: string, options?: ElementCreationOptions) => {
+      const element = createElement(tagName, options);
+      if (tagName === 'details') Object.defineProperty(element, 'open', {configurable: true,
+        get: () => element.hasAttribute('open'), set: (value: boolean) => element.toggleAttribute('open', value)});
+      return element;
+    });
+    const toggled = vi.fn((value: Event) => (value.currentTarget as HTMLElement).hasAttribute('open'));
+    const editorSetup = vi.fn(() => () => h('input', {'aria-label': 'Draft', value: 'original'}));
+    const Editor = defineComponent({setup: editorSetup});
+    const mounted = await mount(SettingsDisclosure, {title: 'Request limits', status: 'Inherited', defaultOpen: false},
+      {listeners: {onToggle: toggled}, slots: {default: () => h(Editor)}});
+    const details = mounted.root.querySelector('details')!, input = mounted.root.querySelector<HTMLInputElement>('input')!;
+    expect(details.hasAttribute('open')).toBe(false);expect(input).not.toBeNull();
+    // Linkedom does not implement native summary activation; the DOM port supplies
+    // that browser-owned attribute transition before dispatching the real event.
+    details.setAttribute('open', '');event(details, 'toggle');input.value = 'unsaved draft';event(input, 'input');
+    mounted.props.status = 'Customized';mounted.props.statusTone = 'warning';await settle();
+    expect(details.hasAttribute('open')).toBe(true);
+    expect(mounted.root.querySelector('.settings-disclosure-status.is-warning')!.textContent).toBe('Customized');
+    expect(mounted.root.querySelector('input')).toBe(input);expect(input.value).toBe('unsaved draft');
+    details.removeAttribute('open');event(details, 'toggle');
+    mounted.props.title = 'Updated limits';mounted.props.defaultOpen = true;await settle();
+    expect(details.hasAttribute('open')).toBe(false);expect(mounted.root.querySelector('summary strong')!.textContent).toBe('Updated limits');
+    expect(mounted.root.querySelector('input')).toBe(input);expect(input.value).toBe('unsaved draft');
+    expect(editorSetup).toHaveBeenCalledOnce();expect(toggled.mock.results.map(result => result.value)).toEqual([true, false]);
+    mounted.unmount();expect(input.isConnected).toBe(false);
   });
   it('preserves segmented arrow, Home and End semantics, disabled-option skipping and string or number values', async () => {
     let mounted: Awaited<ReturnType<typeof mount>>;
@@ -682,6 +714,80 @@ describe('shared UI actual client SFC lifecycle', () => {
     mounted.unmount();expect(media.removeEventListener).toHaveBeenCalledOnce();
     Reflect.deleteProperty(dom.window, 'matchMedia');
   });
+  it('edits sentence-highlight colors, ranges, line style and CSS through the real controls, then resets only the draft', async () => {
+    Object.defineProperty(dom.window, 'matchMedia', {configurable: true, value: () => ({matches: false, addEventListener() {}, removeEventListener() {}})});
+    const mounted = await mount(SentenceHighlightStyleSettings, {config: {theme: 'light', translationBeforeOriginal: false,
+      bilingualSentenceHighlightEnabled: true, bilingualSentenceHighlightStyle: 'rose',
+      bilingualSentenceHighlightAppearance: {...DEFAULT_SENTENCE_HIGHLIGHT_APPEARANCE}, activeSentenceHighlightProfileId: '', bilingualSentenceHighlightProfiles: []}});
+    expect(mounted.root.querySelector('#sentence-highlight-custom-content')).toBeNull();
+    event(mounted.root.querySelector('.sentence-highlight-custom-disclosure')!, 'click');await settle();
+    const config = mounted.props.config, appearance = config.bilingualSentenceHighlightAppearance;
+    const fill = mounted.root.querySelector<HTMLInputElement>('[data-color-field="sentence-highlight-background"] input')!;
+    fill.value = 'red';event(fill, 'input');event(fill, 'blur');await settle();expect(appearance.backgroundColor).toBe('#ff0000');
+    ports.pickers[1].emit('update:modelValue', '#123456');await settle();expect(appearance.lineColor).toBe('#123456');
+    for (const [index, field, value] of [[0, 'backgroundOpacity', 65], [1, 'lineOpacity', 45], [2, 'lineThickness', 4]] as const) {
+      const range = mounted.root.querySelectorAll<HTMLInputElement>('input[type="range"]')[index];range.value = String(value);event(range, 'input');await settle();
+      expect(appearance[field]).toBe(value);expect(range.closest('label')!.textContent).toContain(String(value));
+    }
+    ports.selects[0].emit('update:modelValue', 'wavy');await settle();expect(appearance.lineStyle).toBe('wavy');
+    const css = mounted.root.querySelector<HTMLTextAreaElement>('#sentence-highlight-custom-css')!;
+    css.value = 'position: fixed; color: red;';event(css, 'input');await settle();expect(css.getAttribute('aria-invalid')).toBe('true');expect(mounted.root.querySelector('.sentence-highlight-css-error')).not.toBeNull();
+    css.value = 'text-shadow: 0 0 1px red;';event(css, 'input');await settle();expect(css.getAttribute('aria-invalid')).toBe('false');expect(appearance.customCss).toBe(css.value);
+    event(mounted.root.querySelector('.sentence-highlight-custom-heading button')!, 'click');await settle();
+    expect(config.bilingualSentenceHighlightAppearance).toEqual(DEFAULT_SENTENCE_HIGHLIGHT_APPEARANCE);expect(config.bilingualSentenceHighlightAppearance).not.toBe(appearance);
+    expect(mounted.root.querySelector('.sentence-highlight-custom-heading button')!.hasAttribute('disabled')).toBe(true);
+    event(mounted.root.querySelector('.sentence-highlight-custom-disclosure')!, 'click');await settle();expect(mounted.root.querySelector('#sentence-highlight-custom-content')).toBeNull();
+    Reflect.deleteProperty(dom.window, 'matchMedia');
+  });
+  it('saves independent sentence-highlight snapshots, updates only the active saved style, and deletes it without discarding the draft', async () => {
+    Object.defineProperty(dom.window, 'matchMedia', {configurable: true, value: () => ({matches: false, addEventListener() {}, removeEventListener() {}})});
+    const firstId = '11111111-1111-4111-8111-111111111111', nextId = '22222222-2222-4222-8222-222222222222';
+    const uuid = vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValueOnce(firstId).mockReturnValueOnce(nextId);
+    const original = {id: `sentence-${firstId}`, name: 'First', style: 'mint', appearance: {...DEFAULT_SENTENCE_HIGHLIGHT_APPEARANCE, backgroundColor: '#123456'}};
+    const mounted = await mount(SentenceHighlightStyleSettings, {config: {theme: 'light', translationBeforeOriginal: false,
+      bilingualSentenceHighlightEnabled: true, bilingualSentenceHighlightStyle: 'rose', bilingualSentenceHighlightAppearance: {...DEFAULT_SENTENCE_HIGHLIGHT_APPEARANCE, lineThickness: 3},
+      activeSentenceHighlightProfileId: '', bilingualSentenceHighlightProfiles: [original]}});
+    const config = mounted.props.config;
+    event(mounted.root.querySelector('.sentence-highlight-custom-disclosure')!, 'click');await settle();
+    const name = mounted.root.querySelector<HTMLInputElement>('#sentence-highlight-profile-name')!;
+    const save = mounted.root.querySelector<HTMLButtonElement>('.sentence-highlight-profile-row button')!;
+    expect(save.disabled).toBe(true);name.value = '  Second  ';event(name, 'input');await settle();event(save, 'click');await settle();
+    expect(uuid).toHaveBeenCalledTimes(2);expect(config.bilingualSentenceHighlightProfiles).toHaveLength(2);
+    expect(config.activeSentenceHighlightProfileId).toBe(`sentence-${nextId}`);expect(config.bilingualSentenceHighlightProfiles[1]).toMatchObject({name: 'Second', style: 'rose', appearance: {lineThickness: 3}});
+    expect(config.bilingualSentenceHighlightProfiles[1].appearance).not.toBe(config.bilingualSentenceHighlightAppearance);
+    const update = () => mounted.root.querySelector<HTMLButtonElement>('.sentence-highlight-profile-actions button')!;
+    expect(update().disabled).toBe(true);
+    const thickness = mounted.root.querySelectorAll<HTMLInputElement>('input[type="range"]')[2];thickness.value = '4';event(thickness, 'input');
+    name.value = 'Renamed';event(name, 'input');await settle();expect(update().disabled).toBe(false);expect(mounted.root.querySelector('[role="status"]')?.textContent).toContain('unsavedChanges');
+    event(update(), 'click');await settle();expect(config.bilingualSentenceHighlightProfiles[0]).toEqual(original);
+    expect(config.bilingualSentenceHighlightProfiles[1]).toMatchObject({name: 'Renamed', appearance: {lineThickness: 4}});expect(update().disabled).toBe(true);
+    event(mounted.root.querySelector(`[data-profile-id="sentence-${firstId}"]`)!, 'click');await settle();
+    expect(config.bilingualSentenceHighlightStyle).toBe('mint');expect(config.bilingualSentenceHighlightAppearance).toEqual(original.appearance);
+    expect(config.bilingualSentenceHighlightAppearance).not.toBe(config.bilingualSentenceHighlightProfiles[0].appearance);expect(name.value).toBe('First');
+    const draft = config.bilingualSentenceHighlightAppearance;event(mounted.root.querySelector('.sentence-highlight-profile-delete')!, 'click');await settle();
+    expect(config.bilingualSentenceHighlightProfiles.map((profile: any) => profile.name)).toEqual(['Renamed']);expect(config.activeSentenceHighlightProfileId).toBe('');
+    expect(config.bilingualSentenceHighlightAppearance).toBe(draft);expect(name.value).toBe('');expect(mounted.root.querySelector('.sentence-highlight-profile-actions')).toBeNull();
+    Reflect.deleteProperty(dom.window, 'matchMedia');
+  });
+  it('enforces the saved-highlight limit and follows actual theme changes while preserving a manual preview choice', async () => {
+    const listeners = new Set<() => void>();const media = {matches: false, addEventListener: vi.fn((_type: string, callback: () => void) => listeners.add(callback)), removeEventListener: vi.fn((_type: string, callback: () => void) => listeners.delete(callback))};
+    Object.defineProperty(dom.window, 'matchMedia', {configurable: true, value: () => media});
+    const mounted = await mount(SentenceHighlightStyleSettings, {config: {theme: 'auto', translationBeforeOriginal: false,
+      bilingualSentenceHighlightEnabled: true, bilingualSentenceHighlightStyle: 'rose', bilingualSentenceHighlightAppearance: {...DEFAULT_SENTENCE_HIGHLIGHT_APPEARANCE},
+      activeSentenceHighlightProfileId: '', bilingualSentenceHighlightProfiles: Array.from({length: MAX_SENTENCE_HIGHLIGHT_PROFILES}, (_, index) => ({id: `saved-${index}`, name: `Saved ${index}`, style: 'rose', appearance: {...DEFAULT_SENTENCE_HIGHLIGHT_APPEARANCE}}))}});
+    const theme = () => mounted.root.querySelector('.sentence-highlight-swatch')!.getAttribute('data-page-theme');expect(theme()).toBe('light');
+    event(mounted.root.querySelectorAll('.translation-style-preview [role="radio"]')[1], 'click');await settle();expect(theme()).toBe('dark');
+    mounted.props.config.theme = 'light';await settle();expect(theme()).toBe('dark'); // 实际明暗未变，手动网页预览不应被主题选项同值刷新重置。
+    mounted.props.config.theme = 'dark';await settle();mounted.props.config.theme = 'auto';await settle();expect(theme()).toBe('light');
+    media.matches = true;listeners.forEach(callback => callback());await settle();expect(theme()).toBe('dark');
+    event(mounted.root.querySelector('.sentence-highlight-custom-disclosure')!, 'click');await settle();
+    const name = mounted.root.querySelector<HTMLInputElement>('#sentence-highlight-profile-name')!;name.value = 'One more';event(name, 'input');await settle();
+    expect(mounted.root.querySelector<HTMLButtonElement>('.sentence-highlight-profile-row button')!.disabled).toBe(true);expect(mounted.root.textContent).toContain('profileLimit');
+    event(mounted.root.querySelector('[data-profile-id="saved-0"]')!, 'click');await settle();event(mounted.root.querySelector('.sentence-highlight-profile-delete')!, 'click');await settle();
+    name.value = 'Now fits';event(name, 'input');await settle();expect(mounted.root.querySelector<HTMLButtonElement>('.sentence-highlight-profile-row button')!.disabled).toBe(false);
+    mounted.unmount();expect(listeners.size).toBe(0);expect(media.removeEventListener).toHaveBeenCalledWith('change', media.addEventListener.mock.calls[0][1]);
+    Reflect.deleteProperty(dom.window, 'matchMedia');
+  });
   it('renders service brands, builtin fallbacks, custom IDs and reactive tones as decoration', async () => {
     const mounted = await mount(ServiceIcon, {service: 'openai'});
     const cases = [...Object.keys(brandPaths), 'azureOpenai', 'newapi', 'deepL', 'microsoft', 'freeTranslation', 'yandexFree', 'volcengineFree', 'youdaoFree', 'myMemory', 'google', 'deeplx', 'xiaoniu', 'youdao', 'transmart', 'chromeTranslator', 'localTranslation', 'azureTranslator', 'mistral', 'constructor', 'unknown', 'custom:test'];
@@ -705,16 +811,19 @@ describe('shared UI actual client SFC lifecycle', () => {
     expect(icon.getAttribute('title')).toBe('unknown');
     expect(icon.getAttribute('aria-hidden')).toBe('true');
   });
-  it('shares Doubao brand geometry with its free web service in the actual reactive client', async () => {
-    const mounted = await mount(ServiceIcon, {service: 'doubao', label: 'Doubao'});
+  it.each([
+    ['doubao', 'doubaoWeb', 'Free Doubao'],
+    ['openai', 'chatgptPlan', 'ChatGPT plan'],
+  ] as const)('shares %s brand geometry with alias %s in the actual reactive client', async (brand, alias, label) => {
+    const mounted = await mount(ServiceIcon, {service: brand, label: brand});
     const paths = [...mounted.root.querySelectorAll('svg path')].map(path => path.outerHTML);
-    expect(paths).toHaveLength(brandPaths.doubao.length);
-    mounted.props.service = 'doubaoWeb'; mounted.props.label = 'Free Doubao'; await settle();
+    expect(paths).toHaveLength(brandPaths[brand].length);
+    mounted.props.service = alias; mounted.props.label = label; await settle();
     expect([...mounted.root.querySelectorAll('svg path')].map(path => path.outerHTML)).toEqual(paths);
     expect(mounted.root.querySelector('[data-brand-icon]')).not.toBeNull();
     expect(mounted.root.querySelector('[data-service-icon-fallback]')).toBeNull();
-    expect(mounted.root.querySelector('.service-brand-icon')!.getAttribute('data-service')).toBe('doubaoWeb');
-    expect(mounted.root.querySelector('.service-brand-icon')!.getAttribute('title')).toBe('Free Doubao');
+    expect(mounted.root.querySelector('.service-brand-icon')!.getAttribute('data-service')).toBe(alias);
+    expect(mounted.root.querySelector('.service-brand-icon')!.getAttribute('title')).toBe(label);
     mounted.props.service = 'unknown'; await settle();
     expect(mounted.root.querySelector('[data-brand-icon]')).toBeNull();
     expect(mounted.root.querySelector('[data-service-icon-fallback]')).not.toBeNull();
@@ -751,7 +860,7 @@ describe('shared UI actual client SFC lifecycle', () => {
     expect(mounted.root.querySelector('input')).toBe(input); expect(input.value).toBe('unsaved draft');
   });
   it('projects skin previews and updates their accessible labels and tokens across every registry entry', async () => {
-    const mounted = await mount(InterfaceSkinPreview, {skin: skin(), skinLabel: 'Default', previewLabel: 'Preview'});
+    const mounted = await mount(InterfaceSkinPreview, {skin: skin(), previewLabel: 'Preview'});
     for (const chosen of interfaceSkinOptions) {mounted.props.skin = chosen;mounted.props.previewLabel = chosen.label;await settle();const section = mounted.root.querySelector('section')!;expect(section.getAttribute('data-preview-skin')).toBe(chosen.value);expect(section.getAttribute('aria-label')).toBe(chosen.label);expect(section.style.getPropertyValue('--interface-popup-width')).toBe(`${chosen.popupWidth}px`);expect(section.querySelector('.preview-popup')!.getAttribute('data-preview-skin')).toBe(chosen.value);expect(mounted.root.querySelectorAll('button,input')).toHaveLength(0);}
   });
   it('updates writing examples and all custom fallback notes using the actual pure preview module', async () => {

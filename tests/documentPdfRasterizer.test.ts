@@ -1,5 +1,5 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
-import {createPdfPagePreview, paintPdfTranslation, rasterizePdfReadingPages, rasterizePdfTranslationPage, renderPdfReadingPages} from '@/src/features/document-translation/ui/pdfPreview';
+import {createPdfPagePreview, paintPdfTranslation, rasterizePdfReadingPages, rasterizePdfTranslationPage, renderPdfReadingPages, renderPdfPageImage} from '@/src/features/document-translation/ui/pdfPreview';
 import type {ParsedDocument} from '@/src/features/document-translation/core/document';
 
 const pdf = vi.hoisted(() => ({width: 600, height: 800, render: vi.fn(), cleanup: vi.fn()}));
@@ -41,6 +41,11 @@ beforeEach(() => {
     vi.stubGlobal('document', {createElement: () => {
         const canvas = {width: 0, height: 0,
             getContext: (): object => context,
+            toDataURL: vi.fn((type: string) => {
+                sizes.push([canvas.width, canvas.height]);
+                if (failEncoding) throw new Error('fixture canvas encoding failure');
+                return `data:${type};base64,AQID`;
+            }),
             toBlob: (done: (value: Blob | null) => void, type?: string, quality?: number) => {
                 encodings.push({type, quality});
                 sizes.push([canvas.width, canvas.height]);
@@ -259,6 +264,27 @@ describe('PDF readable export complete content and resource lifecycle', () => {
 });
 
 describe('PDF rasterizer resource lifecycle', () => {
+    it('does not encode a PDF OCR image when cancellation arrives after rendering resolves', async () => {
+        let rendered!: () => void;
+        pdf.render.mockReturnValue({promise: new Promise<void>(resolve => {rendered = resolve;}), cancel: vi.fn()});
+        const controller = new AbortController(), reason = new Error('document changed after page rendering');
+        const work = renderPdfPageImage(new Uint8Array([1]), 1, 300, controller.signal);
+        await vi.waitFor(() => expect(pdf.render).toHaveBeenCalledOnce());
+        rendered(); queueMicrotask(() => controller.abort(reason));
+        await expect(work).rejects.toBe(reason);
+        expect(canvases[0].toDataURL).not.toHaveBeenCalled();
+        expect(canvases[0]).toMatchObject({width: 0, height: 0});
+        expect(pdf.cleanup).toHaveBeenCalledOnce();
+    });
+    it.each([false, true])('encodes an OCR page at its rendered dimensions and releases its canvas when encoding fails=%s', async fails => {
+        failEncoding = fails;
+        const work = renderPdfPageImage(new Uint8Array([1]), 1, 300);
+        if (fails) await expect(work).rejects.toThrow('fixture canvas encoding failure');
+        else await expect(work).resolves.toMatchObject({image: 'data:image/png;base64,AQID', width: 1440, height: 1920});
+        expect(canvases[0].toDataURL).toHaveBeenCalledWith('image/png');
+        expect(sizes).toEqual([[1440, 1920]]); expect(canvases[0]).toMatchObject({width: 0, height: 0});
+        expect(pdf.cleanup).toHaveBeenCalledOnce();
+    });
     it.each(['短译文\n', '\n短译文\r\n \t\r\n'])('does not add a continuation note for boundary blank lines: %j', async text => {
         const model = previewDocument();
         if (model.binary?.kind !== 'pdf') throw new Error('PDF expected');

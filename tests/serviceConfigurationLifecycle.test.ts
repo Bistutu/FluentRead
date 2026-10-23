@@ -1,10 +1,8 @@
-import {createRequire} from 'node:module'
+import * as runtime from 'vue'
+import ServiceConfiguration from '@/src/features/settings/ui/services/ServiceConfiguration.vue'
 import {readFileSync} from 'node:fs'
 import {parseHTML} from 'linkedom'
-import {dirname, resolve} from 'node:path'
-import vue from '@vitejs/plugin-vue'
-import {compileVueInlineFixture} from './helpers/compiledVueFixture'
-import {createServer, type Plugin, type ViteDevServer} from 'vite'
+import {resolve} from 'node:path'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {Config} from '@/src/core/config/model'
 import {FREE_TRANSLATION_PROVIDERS} from '@/src/core/config/freeTranslation'
@@ -12,9 +10,38 @@ import {defaultOption, options} from '@/src/core/config/catalog'
 import {diagnoseFailure, getDiagnosticText} from '@/src/services/diagnostics'
 import {translate} from '@/src/core/i18n'
 
-const runtime = createRequire(import.meta.url)('vue') as typeof import('vue')
+// 使用实际客户端 SFC 的 setup；只替换与原 SSR 夹具相同的外部端口。
+vi.mock('@/src/platform/browser/freeProviderPermissions', () => ({readFreePoolAccess: (...args: unknown[]) => readAccess(...args)}))
+vi.mock('webextension-polyfill', () => ({default: {runtime: {sendMessage: (...args: unknown[]) => send(...args)}}}))
+vi.mock('@/src/services/config/store', () => ({waitForConfigPersistenceQueue: () => queue(), requestConfigSave: (...args: unknown[]) => save(...args)}))
+vi.mock('@/src/ui/i18n', () => ({useUiI18n: () => (globalThis as any)[key].uiI18n}))
+vi.mock('@/src/platform/chatgpt-plan/buildMode', () => ({chatGPTPlanDevelopmentEnabled: false}))
+vi.mock('element-plus', () => ({ElMessage: {success: (...args: unknown[]) => feedback(...args)}, ElTabs: {}, ElTabPane: {}}))
+vi.mock('element-plus/es/components/tabs/style/css', () => ({}))
+vi.mock('@/src/platform/browser/chromeTranslationPreparationRequest', () => ({chromeTranslationPreparationStore: {
+  get: (...args: unknown[]) => read(...args), clear: (...args: unknown[]) => clear(...args), subscribe: (callback: (value: unknown) => void) => {
+    const item = {callback, stopped: false}; subscriptions.push(item); return () => {item.stopped = true}
+  },
+}}))
+vi.mock('@/src/features/settings/model/chromeTranslationPreparation', () => ({
+  ChromeTranslationPreparationError: class extends Error {code: unknown; params: unknown; constructor(code: unknown, message: string, params: unknown) {super(message); this.code = code; this.params = params}},
+  prepareChromeTranslationInPage: (...args: unknown[]) => prepare(...args),
+  resolveChromeTranslationPreparationPair: (from: string, to: string) => ({sourceLanguage: from === 'auto' ? 'en' : from, targetLanguage: to}),
+  getChromeTranslationPreparationLanguageLabel: (language: string) => language,
+}))
+vi.mock('@/src/features/settings/ui/components/FieldHelp.vue', () => ({default: {render: () => null}}))
+vi.mock('@/src/features/settings/ui/components/SegmentedControl.vue', () => ({default: {render: () => null}}))
+vi.mock('@/src/ui/components/DownloadProgress.vue', () => ({default: {render: () => null}}))
+vi.mock('@/src/features/settings/ui/services/PromptTemplateEditor.vue', () => ({default: {render: () => null}}))
+vi.mock('@/src/features/settings/ui/services/FreeTranslationSettings.vue', () => ({default: {render: () => null}}))
+vi.mock('@/src/features/settings/ui/services/ApiKeyList.vue', () => ({default: {render: () => null}}))
+vi.mock('@/src/features/settings/ui/services/ModelVisionSettings.vue', () => ({default: {render: () => null}}))
+vi.mock('@/src/features/settings/ui/services/RequestLimitSettings.vue', () => ({default: {render: () => null}}))
+vi.mock('@/src/features/settings/ui/services/RequestHeaderSettings.vue', () => ({default: {render: () => null}}))
+vi.mock('@/src/features/settings/ui/services/CompositeTranslationSettings.vue', () => ({default: {render: () => null}}))
+vi.mock('@/src/features/settings/ui/services/ServiceRepairReturn.vue', () => ({default: {render: () => null}}))
 const key = '__frServiceConfigurationLifecycle'
-let server: ViteDevServer, app: import('vue').App, state: Record<string, any>
+let app: import('vue').App, state: Record<string, any>
 let props: {config: Config; service: string; active: boolean; selectedModelThinking: boolean; compute: Record<string, any>;
   options: typeof options; isValidAzureEndpoint: (value: string) => boolean; customProvider?: {id: string; name: string; endpoint: string; models: string[]}}
 let visible: import('vue').Ref<boolean>
@@ -57,40 +84,7 @@ beforeEach(async () => {
       return template.replace(/\{([a-zA-Z0-9_]+)\}/g, (placeholder, field) => params?.[field] === undefined ? placeholder : String(params[field]))
     }}
   Object.assign(globalThis, {[key]: {readAccess, send, save, queue, read, clear, prepare, confirm, feedback, subscriptions, uiI18n}})
-  const mocks: Plugin = {name: 'service-configuration-ports', enforce: 'pre', resolveId(id) {
-    if (id.endsWith('.vue') && !id.endsWith('ServiceConfiguration.vue')) return '\0service-child'
-    if (/\/src\/platform\/browser\/freeProviderPermissions(?:\.ts)?$/u.test(id)) return '\0service-free-permissions'
-    if (id === 'webextension-polyfill') return '\0service-browser'
-    if (id === 'element-plus') return '\0service-element'
-    if (/\/src\/ui\/i18n(?:\.ts)?$/u.test(id)) return '\0service-i18n'
-    if (/\/src\/platform\/chatgpt-plan\/buildMode(?:\.ts)?$/u.test(id)) return '\0service-build-mode'
-    if (/\/src\/services\/config\/store(?:\.ts)?$/u.test(id)) return '\0service-config'
-    if (/\/src\/platform\/browser\/chromeTranslationPreparationRequest(?:\.ts)?$/u.test(id)) return '\0service-chrome-store'
-    if (/\/src\/features\/settings\/model\/chromeTranslationPreparation(?:\.ts)?$/u.test(id)) return '\0service-chrome-preparation'
-    return null
-  }, load(id) {
-    if (id === '\0service-free-permissions') return `export const readFreePoolAccess=globalThis.${key}.readAccess`
-    if (id === '\0service-child') return 'export default {render: () => null}'
-    if (id === '\0service-build-mode') return 'export const chatGPTPlanDevelopmentEnabled = false'
-    if (id === '\0service-browser') return `export default {runtime: {sendMessage: globalThis.${key}.send}}`
-    if (id === '\0service-config') return `export const {queue: waitForConfigPersistenceQueue, save: requestConfigSave} = globalThis.${key}`
-    if (id === '\0service-element') return `export const ElMessage = {success: globalThis.${key}.feedback};export const ElMessageBox = {confirm: globalThis.${key}.confirm};export const ElTabs = {}, ElTabPane = {}`
-    if (id === '\0service-i18n') return `export const useUiI18n = () => globalThis.${key}.uiI18n`
-    if (id === '\0service-chrome-store') return `export const chromeTranslationPreparationStore = {get: globalThis.${key}.read, clear: globalThis.${key}.clear, subscribe: callback => {
-      const item = {callback, stopped: false};globalThis.${key}.subscriptions.push(item);return () => {item.stopped = true}}}`
-    if (id === '\0service-chrome-preparation') return `export class ChromeTranslationPreparationError extends Error {constructor(code, message, params) {super(message);this.code = code;this.params = params}}
-      export const prepareChromeTranslationInPage = globalThis.${key}.prepare;
-      export const resolveChromeTranslationPreparationPair = (from, to) => ({sourceLanguage: from === 'auto' ? 'en' : from, targetLanguage: to});
-      export const getChromeTranslationPreparationLanguageLabel = language => language;`
-    return null
-  }}
-  server = await createServer({root: process.cwd(), configFile: false, appType: 'custom', logLevel: 'silent',
-    plugins: [mocks, vue()], resolve: {alias: {'@': resolve(process.cwd())}}, ssr: {noExternal: ['webextension-polyfill', 'element-plus']},
-    // 本夹具只加载实际 SFC，不测试文件变化；hmr:false 仍会启动 Chokidar。
-    // 禁用观察，避免 Node fs.watch 的异步节流进入组件的 fake clock 清理断言。
-    server: {hmr: false, middlewareMode: true, watch: null}})
-  const component = (await server.ssrLoadModule('/src/features/settings/ui/services/ServiceConfiguration.vue')).default
-  component.ssrRender = undefined;component.render = () => null
+  const component = {...ServiceConfiguration, render: () => null}
   const renderer = runtime.createRenderer<Record<string, never>, Record<string, unknown>>({patchProp: () => {}, insert: () => {},
     remove: () => {}, createElement: () => ({}), createText: () => ({}), createComment: () => ({}), setText: () => {},
     setElementText: () => {}, parentNode: () => null, nextSibling: () => null, querySelector: () => null,
@@ -99,14 +93,14 @@ beforeEach(async () => {
   props = runtime.reactive({config, service: 'deepseek', active: true, selectedModelThinking: false, options, isValidAzureEndpoint: () => true,
     compute: {showAI: true, showModel: true, showToken: true, requireApiKey: true, showServiceSecret: false}, customProvider: undefined})
   visible = runtime.ref(true);app = renderer.createApp({setup: () => () => runtime.h(runtime.KeepAlive, null, {default: () => visible.value
-    ? runtime.h(component, {...props, 'onDelete:custom-provider': emitDelete, 'onUpdate:custom-provider': emitProvider,
+    ? runtime.h(component as runtime.Component, {...props, 'onDelete:custom-provider': emitDelete, 'onUpdate:custom-provider': emitProvider,
       ref: (vm: any) => {if (vm) state = vm.$.setupState}}) : runtime.h({render: () => null}, {key: 'other'})})})
   app.provide(runtime.ssrContextKey, {modules: new Set<string>()});app.config.warnHandler = () => {};app.mount({});await settle()
   vi.stubGlobal('window', {setTimeout, clearTimeout})
 })
 afterEach(async () => {
   app?.unmount();for (const release of releases) release();await settle();await Promise.allSettled(jobs)
-  await server?.close();delete (globalThis as any)[key];vi.unstubAllGlobals();vi.useRealTimers()
+  delete (globalThis as any)[key];vi.unstubAllGlobals();vi.useRealTimers()
 })
 
 describe('实际服务连接配置的活跃生命周期与确认归属', () => {
@@ -452,8 +446,7 @@ it('直接传入普通配置与 provider 对象时仍保留确认身份，不要
 
 
 // 独立客户端夹具执行同一个父 SFC 的完整模板；仅子模块的加载与生命周期为受控端口。
-// require 在模块求值阶段返回同步 child，在实际动态 import 时返回 deferred；因此旧静态
-// import 会立即计入加载，不用挂起整个 beforeEach 来伪造懒加载 RED。
+// 实际 Vite 动态 import 受控返回 deferred；模块求值阶段若变为静态加载，仍立即计入加载断言。
 type ServiceClientNode = {tag: string; props: Record<string, unknown>; parent?: ServiceClientNode; children: ServiceClientNode[];
   style: Record<string, unknown>; value?: unknown; addEventListener: () => void; removeEventListener: () => void}
 type LocalModule = {__esModule: true; default: import('vue').Component}
@@ -462,9 +455,6 @@ type RepairFixture = {href?: string; disabled?: boolean; initialNavigation?: boo
   beforeSettle?: (fixture: {source: any; shown: import('vue').Ref<boolean>; stop: () => void; document: Document}) => void}
 async function mountServiceClient(initialService = 'freeTranslation', development = false, repair?: RepairFixture) {
   vi.useFakeTimers()
-  const filename = resolve('src/features/settings/ui/services/ServiceConfiguration.vue')
-  const compiled = compileVueInlineFixture(filename, {id: 'service-configuration-client'})
-  expect(compiled.parseErrors).toEqual([])
   const snapshots: LocalPropsSnapshot[] = [], childProps: LocalPropsSnapshot[] = []
   const mounted = vi.fn(), unmounted = vi.fn(), clientErrors: unknown[] = []
   const localPort = runtime.defineComponent({
@@ -493,31 +483,19 @@ async function mountServiceClient(initialService = 'freeTranslation', developmen
   const display = runtime.defineComponent({setup: (_, {slots}) => () => runtime.h('div', slots.default?.())})
   const chatGPTPort = runtime.defineComponent({setup: () => () => runtime.h('section', {'data-chatgpt-plan-port': ''})})
   const requestChatGPT = vi.fn(() => ({__esModule: true, default: chatGPTPort}))
-  const dependencies = new Map<string, unknown>([['vue', runtime], ['element-plus/es/components/tabs/style/css', {}]])
-  for (const id of compiled.runtimeImports) {
-    if (dependencies.has(id) || id === '../LocalTranslationModelSettings.vue' || id === './ChatGPTPlanSettings.vue') continue
-    if (id === '@/src/platform/chatgpt-plan/buildMode') {dependencies.set(id, {chatGPTPlanDevelopmentEnabled: development});continue}
-    if (id.endsWith('.vue')) {dependencies.set(id, {default: display});continue}
-    if (id === 'element-plus') {
-      dependencies.set(id, {ElMessage: {success: feedback}, ElTabs: display, ElTabPane: display});continue
-    }
-    const resolved = id.startsWith('.') ? resolve(dirname(filename), id) : id
-    dependencies.set(id, await server.ssrLoadModule(resolved))
-  }
-  // 请求限制保留真实父子组合，校验折叠后仍挂载及旧控件事件的配置归属。
-  for (const id of ['../components/SettingsDisclosure.vue', './RequestLimitSettings.vue']) {
-    const childFile = resolve(dirname(filename), id), child = compileVueInlineFixture(childFile, {id: `service-${id}`})
-    expect(child.parseErrors).toEqual([])
-    const childDependencies = new Map<string, unknown>([['vue', runtime]])
-    for (const dependency of child.runtimeImports) {
-      if (childDependencies.has(dependency)) continue
-      if (dependency.endsWith('.vue')) {childDependencies.set(dependency, {default: display});continue}
-      childDependencies.set(dependency, await server.ssrLoadModule(dependency.startsWith('.') ? resolve(dirname(childFile), dependency) : dependency))
-    }
-    const childModule = {exports: {} as {default: import('vue').Component}}
-    new Function('require', 'exports', 'module', child.code)((dependency: string) => childDependencies.get(dependency), childModule.exports, childModule)
-    dependencies.set(id, {default: childModule.exports.default})
-  }
+  vi.resetModules()
+  vi.doMock('@/src/platform/chatgpt-plan/buildMode', () => ({chatGPTPlanDevelopmentEnabled: development}))
+  vi.doMock('@/src/features/settings/ui/LocalTranslationModelSettings.vue', () => requestLocal())
+  const inputPort = (tag: string) => runtime.defineComponent({inheritAttrs:false,setup:(_, {attrs,slots})=>()=>runtime.h(tag,attrs,[slots.default?.(),slots.tools?.(),slots.help?.(),slots.content?.()])})
+  vi.doMock('@/src/features/settings/ui/services/ApiKeyList.vue', () => ({default:inputPort('api-key-list-port')}))
+  vi.doMock('@/src/features/settings/ui/services/PromptTemplateEditor.vue', () => ({default:inputPort('prompt-editor-port')}))
+  vi.doMock('@/src/features/settings/ui/components/SegmentedControl.vue', () => ({default:inputPort('segmented-control-port')}))
+  vi.doMock('@/src/features/settings/ui/components/FieldHelp.vue', () => ({default:inputPort('field-help-port')}))
+  // 保留真实请求限制父子组件和折叠容器；叶子数值控件提供公开输入端口。
+  vi.doMock('@/src/features/settings/ui/services/RequestLimitSettings.vue', () => vi.importActual('@/src/features/settings/ui/services/RequestLimitSettings.vue'))
+  vi.doMock('@/src/features/settings/ui/services/RequestLimitFields.vue', () => ({default: inputPort('request-limit-fields-port')}))
+  vi.doMock('@/src/features/settings/ui/services/ChatGPTPlanSettings.vue', () => requestChatGPT())
+  vi.doMock('element-plus', () => ({ElMessage: {success: feedback}, ElTabs: display, ElTabPane: display}))
   let repairDocument: Document | undefined, focusElement: Element | ServiceClientNode | null, fallbackHeading: HTMLElement | undefined
   if (repair) {
     const parsed = parseHTML('<html><body><button data-section="settings-services" aria-current="page">Services</button><input><h4 tabindex="-1">Current service</h4></body></html>')
@@ -530,23 +508,10 @@ async function mountServiceClient(initialService = 'freeTranslation', developmen
     // 真实返回组件监听 Window 的页面生命周期；使用同一文档的事件目标，定时器仍由全局 fake clock 提供。
     vi.stubGlobal('window', parsed.window)
     vi.stubGlobal('document', repairDocument);vi.stubGlobal('location', {href: repair.href || 'chrome-extension://fixture/options.html?returnTabId=7&service=freeTranslation'})
-    const returned = compileVueInlineFixture('src/features/settings/ui/services/ServiceRepairReturn.vue', {id: 'service-return-parent-focus'})
-    const childModule = {exports: {} as {default: import('vue').Component}}
-    const childDependencies: Record<string, unknown> = {'vue': runtime,
-      'webextension-polyfill': await server.ssrLoadModule('\0service-browser'), '@/src/ui/i18n': await server.ssrLoadModule('\0service-i18n'),
-      '@/src/services/diagnostics': await server.ssrLoadModule(resolve('src/services/diagnostics/index.ts')),
-      '../../model/useSettingsActionContext': await server.ssrLoadModule(resolve('src/features/settings/model/useSettingsActionContext.ts')),
-      './serviceRepairFocus': await server.ssrLoadModule(resolve('src/features/settings/ui/services/serviceRepairFocus.ts'))}
-    new Function('require', 'exports', 'module', returned.code)((id: string) => childDependencies[id], childModule.exports, childModule)
-    dependencies.set('./ServiceRepairReturn.vue', {default: childModule.exports.default})
   }
-  const module = {exports: {} as {default: import('vue').Component}}
-  new Function('require', 'exports', 'module', compiled.code)((id: string) => {
-    if (id === '../LocalTranslationModelSettings.vue') return requestLocal()
-    if (id === './ChatGPTPlanSettings.vue') return requestChatGPT()
-    if (!dependencies.has(id)) throw new Error(`Unexpected service client dependency: ${id}`)
-    return dependencies.get(id)
-  }, module.exports, module)
+  vi.doMock('@/src/features/settings/ui/services/ServiceRepairReturn.vue', () => repair
+    ? vi.importActual('@/src/features/settings/ui/services/ServiceRepairReturn.vue') : {default: display})
+  const component = (await import('@/src/features/settings/ui/services/ServiceConfiguration.vue')).default
   evaluating = false
   function node(tag: string): ServiceClientNode {
     const result = {tag, props: {}, children: [], style: {}, addEventListener: () => {}, removeEventListener: () => {}} as ServiceClientNode
@@ -576,12 +541,13 @@ async function mountServiceClient(initialService = 'freeTranslation', developmen
     },
   })
   const connectionTarget = node('section')
+  const emitted = {thinking:vi.fn(),provider:vi.fn(),remove:vi.fn()}
   const source = runtime.shallowReactive({...props, config: runtime.reactive(new Config()), service: initialService, connectionActionTarget: connectionTarget,
-    active: true, compute: {showAI: false, showModel: false, showToken: false, requireApiKey: false, showServiceSecret: false}})
+    active: true, 'onUpdate:model-thinking':emitted.thinking, 'onUpdate:custom-provider':emitted.provider, 'onRemove:service':emitted.remove, compute: {showAI: false, showModel: false, showToken: false, requireApiKey: false, showServiceSecret: false} as Record<string,any>})
   if (repair?.disabled) source.compute = {showAI: true, showModel: true, showToken: true, requireApiKey: true, showServiceSecret: false}
   const shown = runtime.ref(true), host = node('#host')
   const clientApp = renderer.createApp({setup: () => () => runtime.h(runtime.KeepAlive, null, {default: () => shown.value
-    ? runtime.h(module.exports.default, source) : runtime.h({render: () => null}, {key: 'other-client'})})})
+    ? runtime.h(component as runtime.Component, source) : runtime.h({render: () => null}, {key: 'other-client'})})})
   clientApp.config.errorHandler = error => {clientErrors.push(error)}
   clientApp.config.warnHandler = () => {}
   let stopped = false
@@ -595,7 +561,7 @@ async function mountServiceClient(initialService = 'freeTranslation', developmen
   ])}
   function descendants(n: ServiceClientNode): ServiceClientNode[] {return [n, ...n.children.flatMap(descendants)]}
   const allNodes = () => [...descendants(host), ...descendants(connectionTarget)]
-  return {source, shown, host, requestLocal, requestChatGPT, gates, snapshots, childProps, mounted, unmounted, clientErrors, resolveLocal, localNodes, allNodes, stop, finish, repairDocument, fallbackHeading}
+  return {source, shown, host, emitted, requestLocal, requestChatGPT, gates, snapshots, childProps, mounted, unmounted, clientErrors, resolveLocal, localNodes, allNodes, stop, finish, repairDocument, fallbackHeading}
 }
 
 describe('实际服务父模板的本地子模块按需加载', () => {
@@ -754,7 +720,9 @@ describe('实际服务父模板的本地子模块按需加载', () => {
     process.on('unhandledRejection', onUnhandled)
     try {
       expect(h.mounted).not.toHaveBeenCalled();const failure = new Error('controlled local UI chunk rejection')
-      h.gates[0].reject(failure);await settle();expect(h.clientErrors).toEqual([failure]);expect(h.mounted).not.toHaveBeenCalled()
+      h.gates[0].reject(failure);await settle();
+      // Vitest 的真实 import mock 为工厂失败保留 cause；仍要求 Vue 只观察同一个原始拒绝。
+      expect(h.clientErrors).toHaveLength(1);expect((h.clientErrors[0] as Error & {cause?: unknown}).cause ?? h.clientErrors[0]).toBe(failure);expect(h.mounted).not.toHaveBeenCalled()
       h.source.service = 'google';await settle();h.source.service = 'localTranslation';await settle()
       expect(h.requestLocal).toHaveBeenCalledTimes(2);expect(h.gates).toHaveLength(2)
       h.resolveLocal(1);await settle();expect(h.mounted).toHaveBeenCalledOnce();expect(h.localNodes()).toHaveLength(1)
@@ -815,4 +783,125 @@ describe('连接限流修复的七语按钮', () => {
       expect(text(retry())).toBe(uiCatalogs.get('es-ES')!['diagnostics.action.retry']);expect(messages()).toHaveLength(1);expect(h.clientErrors).toEqual([])
     } finally {await h.finish()}
   })
+})
+
+describe('actual service field callback ownership', () => {
+  it.each(['service','config','hidden','cached','unmount'] as const)('does not let an old proxy input update another configuration after %s', async boundary => {
+    const h=await mountServiceClient('deepseek');
+    try {
+      h.source.compute={...h.source.compute,showAI:true,showProxy:true};await settle();
+      const field=h.allNodes().find(node=>node.props['aria-label']==='代理地址');expect(field).toBeDefined();
+      const oldUpdate=field!.props['onUpdate:modelValue'] as (value:string)=>void;
+      if(boundary==='service')h.source.service='openai';
+      else if(boundary==='config')h.source.config=runtime.reactive(new Config());
+      else if(boundary==='hidden')h.source.active=false;
+      else if(boundary==='cached')h.shown.value=false;
+      else h.stop();
+      await settle();const before={...h.source.config.proxy};oldUpdate('https://obsolete.example.test/');await settle();
+      expect(h.source.config.proxy).toEqual(before);expect(h.clientErrors).toEqual([]);
+    } finally {await h.finish()}
+  })
+})
+
+
+function clientField(h: Awaited<ReturnType<typeof mountServiceClient>>, label:string) {
+  const field=h.allNodes().find(node=>node.props['aria-label']===label);expect(field, label).toBeDefined();return field!;
+}
+async function updateClientField(h: Awaited<ReturnType<typeof mountServiceClient>>, label:string, value:unknown) {
+  const field=clientField(h,label);expect(typeof field.props['onUpdate:modelValue']).toBe('function');(field.props['onUpdate:modelValue'] as (value:unknown)=>void)(value);await settle();
+}
+describe('actual service connection form fields',()=>{
+  it.each([
+    ['deepL','settings.services.deepl.plan','pro','deeplApiPlan',{}],
+    ['minimax','MiniMax 计费方式','token-plan','minimaxBillingPlan',{showMiniMaxRegion:true}],
+    ['minimax','MiniMax API 区域','global','minimaxRegion',{showMiniMaxRegion:true}],
+    ['mimo','小米 MiMo 计费方式','token-plan','mimoBillingPlan',{showMiMoRegion:true}],
+    ['mimo','小米 MiMo API 集群','sg','mimoRegion',{showMiMoRegion:true}],
+    ['azureOpenai','settings.services.azure.endpoint','https://fixture.services.ai.azure.com/openai/v1/','azureOpenaiEndpoint',{showAzureOpenaiEndpoint:true}],
+    ['deeplx','settings.services.deeplx.endpoint','https://fixture.example.test/translate','deeplx',{showDeepLX:true}],
+    ['youdao','App Key','fixture-key','youdaoAppKey',{showYoudao:true}],
+    ['youdao','App Secret','fixture-secret','youdaoAppSecret',{showYoudao:true}],
+    ['tencent','Secret ID','fixture-id','tencentSecretId',{showTencent:true}],
+    ['tencent','Secret Key','fixture-secret','tencentSecretKey',{showTencent:true}],
+    ['newapi','接口地址','https://fixture.example.test/v1','newApiUrl',{showNewAPI:true}],
+    ['deepseek','API 格式','responses','deepseekApiType',{showDeepseekApiType:true}],
+  ] as const)('updates %s %s through its rendered widget and rejects its old field after external replacement',async(service,label,value,key,compute)=>{
+    const h=await mountServiceClient(service);try{
+      h.source.compute={...h.source.compute,...compute};await settle();const old=clientField(h,label).props['onUpdate:modelValue'] as (value:unknown)=>void;
+      await updateClientField(h,label,value);expect(h.source.config[key]).toBe(value);
+      const saved=h.source.config[key];old('obsolete');await settle();expect(h.source.config[key]).toBe(saved);
+      const stale=clientField(h,label).props['onUpdate:modelValue'] as (value:unknown)=>void, external=new Config()[key];Object.assign(h.source.config,{[key]:external});await settle();stale(value);expect(h.source.config[key]).toBe(external);expect(h.clientErrors).toEqual([]);
+    }finally{await h.finish()}
+  })
+  it('keeps service-map fields scoped and ignores a callback after either its value or record is replaced',async()=>{
+    const h=await mountServiceClient('ollama');try{
+      h.source.compute={...h.source.compute,showOllamaEndpoint:true};await settle();const old=clientField(h,'Ollama 服务地址').props['onUpdate:modelValue'] as (value:string)=>void;
+      h.source.config.proxy.ollama='https://external.example.test/v1';await settle();old('https://obsolete.example.test/v1');expect(h.source.config.proxy.ollama).toBe('https://external.example.test/v1');
+      const next=clientField(h,'Ollama 服务地址').props['onUpdate:modelValue'] as (value:string)=>void;h.source.config.proxy={...h.source.config.proxy};await settle();next('https://obsolete.example.test/v1');expect(h.source.config.proxy.ollama).toBe('https://external.example.test/v1');
+      await updateClientField(h,'Ollama 服务地址','http://localhost:11434/v1/chat/completions');expect(h.source.config.proxy.ollama).toBe('http://localhost:11434/v1/chat/completions');expect(h.source.config.proxy.deepseek).toBeUndefined();
+    }finally{await h.finish()}
+  })
+  it('validates and commits MyMemory contact email only after valid widget changes',async()=>{
+    const h=await mountServiceClient('myMemory');try{
+      await updateClientField(h,'MyMemory 联系邮箱','not-an-email');(clientField(h,'MyMemory 联系邮箱').props.onChange as ()=>void)();await settle();expect(h.source.config.myMemoryEmail).toBe('');expect(clientField(h,'MyMemory 联系邮箱').props['aria-invalid']).toBe(true);
+      await updateClientField(h,'MyMemory 联系邮箱',' fixture@example.test ');(clientField(h,'MyMemory 联系邮箱').props.onChange as ()=>void)();await settle();expect(h.source.config.myMemoryEmail).toBe('fixture@example.test');expect(clientField(h,'MyMemory 联系邮箱').props['aria-invalid']).toBe(false);
+      await updateClientField(h,'MyMemory 联系邮箱','');(clientField(h,'MyMemory 联系邮箱').props.onChange as ()=>void)();await settle();expect(h.source.config.myMemoryEmail).toBe('');
+    }finally{await h.finish()}
+  })
+  it('updates paired cloud credentials and region without touching another service',async()=>{
+    const h=await mountServiceClient('aliyunTranslation');try{
+      h.source.compute={...h.source.compute,showToken:true,showServiceSecret:true,showServiceRegion:true,showCloudVendor:true,cloudCredentialLabels:{token:'Access Key ID',secret:'Access Key Secret'},defaultCloudRegion:'cn-hangzhou',cloudRegionOptions:[{value:'cn-hangzhou',label:'Hangzhou'},{value:'cn-shanghai',label:'Shanghai'}]};await settle();
+      await updateClientField(h,'Access Key ID','fixture-id');await updateClientField(h,'Access Key Secret','fixture-secret');await updateClientField(h,'云服务区域','cn-shanghai');
+      expect(h.source.config.token.aliyunTranslation).toBe('fixture-id');expect(h.source.config.apiKeys.aliyunTranslation).toEqual(['fixture-id']);expect(h.source.config.secret.aliyunTranslation).toBe('fixture-secret');expect(h.source.config.serviceRegion.aliyunTranslation).toBe('cn-shanghai');expect(h.source.config.token.openai).toBeUndefined();
+    }finally{await h.finish()}
+  })
+  it('emits custom profile edits and Thinking for the current model, and preserves per-service JSON editors',async()=>{
+    const h=await mountServiceClient('custom:fixture');try{
+      h.source.customProvider={id:'custom:fixture',name:'Fixture',endpoint:'https://fixture.example.test',models:['model-a']};h.source.config.model['custom:fixture']='model-a';h.source.compute={...h.source.compute,showAI:true,showModel:true,showCustomOpenAI:true,showCustomBody:true};await settle();
+      await updateClientField(h,'自定义服务名称','Renamed');await updateClientField(h,'自定义服务接口地址','https://renamed.example.test/v1');expect(h.emitted.provider.mock.calls).toEqual([[{name:'Renamed'}],[{endpoint:'https://renamed.example.test/v1'}]]);
+      const thinking=clientField(h,'当前模型是否启用 Thinking').props['onUpdate:modelValue'] as (value:boolean)=>void;thinking(true);await settle();expect(h.emitted.thinking).toHaveBeenLastCalledWith(true);h.source.config.model['custom:fixture']='model-b';await settle();thinking(false);expect(h.emitted.thinking).toHaveBeenCalledOnce();
+      await updateClientField(h,'自定义请求头','{"x-fixture":"yes"}');await updateClientField(h,'自定义请求体','{"temperature":0.2}');expect(h.source.config.customHeaders['custom:fixture']).toBe('{"x-fixture":"yes"}');expect(h.source.config.customBody['custom:fixture']).toBe('{"temperature":0.2}');
+      await updateClientField(h,'自定义请求体','[]');expect(h.allNodes().some(node=>String(node.value).includes('请输入合法的 JSON 对象'))).toBe(true);
+    }finally{await h.finish()}
+  })
+})
+
+
+async function selectServiceTab(h: Awaited<ReturnType<typeof mountServiceClient>>, value:string) {
+  const tabs=h.allNodes().find(node=>Object.hasOwn(node.props,'data-service-settings-tabs'));expect(tabs).toBeDefined();(tabs!.props['onUpdate:modelValue'] as (value:string)=>void)(value);await settle();
+}
+it('commits prompt edits through the current tab and leaves old prompt callbacks inactive after switching service',async()=>{
+  const h=await mountServiceClient('deepseek');try{
+    h.source.compute={...h.source.compute,showAI:true,showModel:true};await settle();await selectServiceTab(h,'prompts');
+    const field=(role:string)=>h.allNodes().find(node=>node.tag==='prompt-editor-port'&&node.props.role===role)!;
+    (field('system').props['onUpdate:modelValue'] as (value:string)=>void)('System fixture');await settle();(field('user').props['onUpdate:modelValue'] as (value:string)=>void)('User fixture');await settle();
+    expect(h.source.config.system_role.deepseek).toBe('System fixture');expect(h.source.config.user_role.deepseek).toBe('User fixture');const stale=field('system').props['onUpdate:modelValue'] as (value:string)=>void;
+    h.source.service='openai';await settle();const before=h.source.config.system_role.openai;stale('Wrong service');expect(h.source.config.system_role.openai).toBe(before);expect(h.source.config.system_role.deepseek).toBe('System fixture');
+  }finally{await h.finish()}
+})
+it('updates API-key rotation and model authentication policies through their actual parent controls',async()=>{
+  const h=await mountServiceClient('deepseek');try{
+    h.source.compute={...h.source.compute,showAI:true,showToken:true,requireApiKey:true};h.source.config.apiKeys.deepseek=['fixture-first','fixture-second'];await settle();
+    const radio=(value:string)=>h.allNodes().find(node=>node.tag==='input'&&node.props.value===value)!;
+    (radio('single').props.onChange as ()=>void)();await settle();expect(h.source.config.apiKeyRotationEnabled.deepseek).toBe(false);
+    (radio('rotation').props.onChange as ()=>void)();await settle();expect(h.source.config.apiKeyRotationEnabled.deepseek).toBe(true);
+    await selectServiceTab(h,'custom-request');const policy=()=>h.allNodes().find(node=>Object.hasOwn(node.props,'data-api-key-auth-policy'))!;
+    (policy().props['onUpdate:modelValue'] as (value:string)=>void)('optional');await settle();expect(h.source.compute.requireApiKey).toBe(false);
+    (policy().props['onUpdate:modelValue'] as (value:string)=>void)('required');await settle();expect(h.source.compute.requireApiKey).toBe(true);
+    h.source.compute={...h.source.compute,showServiceSecret:true,cloudCredentialLabels:{secret:'Service secret'}};await settle();await updateClientField(h,'当前模型是否需要 API Key',false);expect(h.source.compute.requireApiKey).toBe(false);expect(h.source.config.apiKeys.deepseek).toEqual(['fixture-first','fixture-second']);
+  }finally{await h.finish()}
+})
+
+it('shows real Chrome model preparation phases on the current connection button and ignores late download updates',async()=>{
+  const h=await mountServiceClient('chromeTranslator');try{
+    const waiting=pending();prepare.mockReturnValueOnce(waiting.promise);
+    uiCatalogs.set('zh-CN',{'settings.services.chromePreparation.statusDownloadingProgress':'{model} {percentage}%','settings.services.chromePreparation.statusDownloading':'Downloading {model}','settings.services.chromePreparation.statusInitializing':'Initializing','settings.services.chromePreparation.statusVerifying':'Verifying'});uiBundleRevision.value++;
+    const button=h.allNodes().find(node=>Object.hasOwn(node.props,'data-connection-test-button'))!;const job=(button.props.onClick as ()=>Promise<void>)();await settle();expect(prepare).toHaveBeenCalledOnce();
+    const input=prepare.mock.calls[0][0], text=()=>h.allNodes().map(node=>String(node.value??'')).join(' ');
+    input.onStatus({phase:'initializing',sourceLanguage:'en',targetLanguage:'zh'});await settle();expect(text()).toContain('Initializing');
+    input.onStatus({phase:'downloading',sourceLanguage:'en',targetLanguage:'zh',model:'language-detector'});await settle();expect(text()).toContain('Downloading');expect(text()).toContain('settings.services.chromePreparation.modelDetector');
+    input.onStatus({phase:'downloading',sourceLanguage:'en',targetLanguage:'zh',model:'translator',loaded:.25});await settle();expect(text()).toContain('25%');expect(text()).toContain('settings.services.chromePreparation.modelTranslator');
+    input.onStatus({phase:'verifying',sourceLanguage:'en',targetLanguage:'zh'});await settle();expect(text()).toContain('Verifying');
+    waiting.resolve({sourceLanguage:'en',targetLanguage:'zh'});await job;await settle();const completed=text();expect(completed).toContain('settings.services.chromePreparation.titleReady');input.onStatus({phase:'downloading',sourceLanguage:'en',targetLanguage:'zh',model:'translator',loaded:.8});await settle();expect(text()).toBe(completed);expect(h.clientErrors).toEqual([]);
+  }finally{await h.finish()}
 })

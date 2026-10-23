@@ -1,9 +1,6 @@
-import {createRequire} from 'node:module'
-import {dirname, resolve} from 'node:path'
-import {compileVueInlineFixture} from './helpers/compiledVueFixture'
 import {parseHTML} from 'linkedom'
-import {createServer, type Plugin} from 'vite'
 import {afterEach, describe, expect, it, vi} from 'vitest'
+import * as runtime from 'vue'
 import type {Component, App} from 'vue'
 
 type Tab = 'history' | 'memory'
@@ -18,11 +15,9 @@ afterEach(async () => {
   vi.useRealTimers()
   for (const stop of disposers.splice(0).reverse()) await stop()
   vi.restoreAllMocks();vi.unstubAllGlobals();vi.useRealTimers()
-  delete (globalThis as Record<string, unknown>).__frLearningClient
 })
 
-// Local client compilation keeps the parent and child templates real without changing Vitest's
-// global SFC transform. Only module loading and browser/config/presentation boundaries are ports.
+// 直接导入实际客户端 SFC，覆盖率归因到生产源码；只替换浏览器、配置、展示与异步模块边界。
 async function mountLearning(initialTab?: string, options: {listGate?: Tab; browser?: string} = {}) {
   const {window, document} = parseHTML('<html><body></body></html>')
   for (const key of ['window', 'document', 'Node', 'Element', 'HTMLElement', 'SVGElement', 'Event'])
@@ -34,11 +29,10 @@ async function mountLearning(initialTab?: string, options: {listGate?: Tab; brow
   const frames = new Map<number, FrameRequestCallback>();let frame = 0
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {frames.set(++frame, callback);return frame})
   vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id))
-  const runtime = createRequire(import.meta.url)('vue') as typeof import('vue')
   const language = runtime.ref('zh-CN'), shown = runtime.ref(true), props = runtime.reactive({initialTab})
   const configListeners = new Set<(value: any) => void>(), clientErrors: unknown[] = [], navigations: string[] = [], reloads: string[] = []
   const listGate = deferred<Record<string, unknown>>(), writeGate = deferred<Record<string, unknown>>()
-  let pendingWrite = false, stopped = false, evaluating = true, heldList = options.listGate
+  let pendingWrite = false, stopped = false, heldList = options.listGate
   const memory = {id: '12345678-1234-4234-8234-123456789abc', kind: 'note', content: 'Synthetic retained note', createdAt: 1, updatedAt: 1}
   const session = {id: 'synthetic-session', text: 'Synthetic retained reading', intent: 'meaning', updatedAt: 1, turnCount: 1}
   const memories = [memory], sessions = [session]
@@ -56,69 +50,57 @@ async function mountLearning(initialTab?: string, options: {listGate?: Tab; brow
       const saved = {...memory, ...input};memories.splice(0, memories.length, saved)
       return pendingWrite ? writeGate.promise : {success: true, memory: saved}
     }
+    if (message.action === 'memory-delete') {memories.splice(0, memories.length, ...memories.filter(item => item.id !== message.id));return {success: true}}
+    if (message.action === 'memory-clear') {memories.length = 0;return {success: true}}
     if (message.action === 'sessions-delete') {sessions.length = 0;return pendingWrite ? writeGate.promise : {success: true}}
+    if (message.action === 'sessions-clear') {sessions.length = 0;return {success: true}}
+    if (message.action === 'sessions-get') return {success: true, session: {...session, turns: [{id: 'turn', intent: 'meaning', question: '', answer: '', status: 'completed', createdAt: 1}]}}
     throw new Error(`Unexpected learning action ${String(message.action)}`)
   })
-  ;(globalThis as Record<string, unknown>).__frLearningClient = {send}
-  const mocks: Plugin = {name: 'learning-client-browser-port', enforce: 'pre', resolveId(id) {
-    return id === 'webextension-polyfill' ? '\0learning-client-browser' : null
-  }, load(id) {
-    return id === '\0learning-client-browser' ? 'export default {runtime:{sendMessage:(...args)=>globalThis.__frLearningClient.send(...args)}};' : null
-  }}
-  const server = await createServer({root: process.cwd(), configFile: false, appType: 'custom', logLevel: 'silent',
-    // 测试只加载模块并驱动 Vue 延迟，server 在 fake clock 期间无需观察文件。
-    plugins: [mocks], resolve: {alias: {'@': resolve(process.cwd())}}, server: {middlewareMode: true, hmr: false, watch: null},
-    ssr: {noExternal: ['webextension-polyfill']}})
-  disposers.push(async () => {await server.close()})
-  const {normalizeConfig} = await server.ssrLoadModule('/src/core/config/model.ts')
+  vi.resetModules()
+  vi.doUnmock('../src/features/settings/ui/LearningMemoryManager.vue')
+  vi.doUnmock('../src/features/reading-assistant/ui/public')
+  vi.doMock('webextension-polyfill', () => ({default: {runtime: {sendMessage: send}}}))
+  const {normalizeConfig} = await import('../src/core/config/model')
   const config = normalizeConfig({harness: {memoryEnabled: true}})
   const store = {config, configReady: Promise.resolve(), subscribeConfig: (listener: (value: typeof config) => void) => {
     configListeners.add(listener);return () => configListeners.delete(listener)
   }}
-  const client = await server.ssrLoadModule('/src/features/reading-assistant/client.ts')
-  const date = await server.ssrLoadModule('/src/ui/dateFormat.ts')
+  const client = await import('../src/features/reading-assistant/client')
   const i18n = {useUiI18n: () => ({language, t: (key: string) => `${language.value}:${key}`, translateLegacy: (text: string) => text})}
   const display = runtime.defineComponent({setup: (_, {slots}) => () => runtime.h('span', slots.default?.())})
   const saved = runtime.defineComponent({setup: (_, {emit}) => () => runtime.h('section', {class: 'saved-display-port'},
     runtime.h('button', {onClick: () => emit('navigate', 'settings-data')}, 'Saved navigate'))})
   const materialMount = vi.fn()
-  const material = runtime.defineComponent({setup: () => {materialMount();return () => runtime.h('section', {class: 'material-display-port'})}})
-  const cache = new Map<string, Component>()
+  const material = runtime.defineComponent({setup: (_, {emit}) => {materialMount();return () => runtime.h('section', {class: 'material-display-port'}, [
+    runtime.h('button', {onClick: () => emit('navigate', 'settings-data')}, 'Material navigate'),
+    runtime.h('button', {onClick: () => emit('open-tab', 'memory')}, 'Open notes'),
+  ])}})
   const loads = {history: vi.fn(), memory: vi.fn()}
   const gates: Record<Tab, Array<ReturnType<typeof deferred<Namespace>>>> = {history: [], memory: []}
   const namespaces = {} as Record<Tab, Namespace>
-  function load(tab: Tab): Namespace | Promise<Namespace> {
+  function load(tab: Tab): Promise<Namespace> {
     loads[tab]()
-    // Static old imports resolve immediately, so RED never hangs module evaluation.
-    if (evaluating) return namespaces[tab]
     const gate = deferred<Namespace>();gates[tab].push(gate);return gate.promise
   }
-  function compileClient(relative: string): Component {
-    const filename = resolve(relative);if (cache.has(filename)) return cache.get(filename)!
-    const compiled = compileVueInlineFixture(filename, {id: `learning-client-${cache.size}`});expect(compiled.parseErrors).toEqual([])
-    const module = {exports: {} as {default: Component}}
-    new Function('require', 'exports', 'module', compiled.code)((id: string) => {
-      if (id === 'vue') return runtime
-      if (id === '@/src/ui/i18n') return i18n
-      if (id === '@/src/ui/dateFormat') return date
-      if (id === '@/src/services/config/store') return store
-      if (id === '@/src/platform/browser/capabilities') return {browserCapabilities: {browser: options.browser ?? 'chrome'}}
-      if (id === '@/src/features/vocabulary/ui/public') return {VocabularyBook: saved, MaterialWorkspace: material}
-      if (id === '@/src/features/reading-assistant/ui/public') return load('history')
-      if (id === './LearningMemoryManager.vue') return load('memory')
-      if (id === '@/src/features/reading-assistant/public' || id === '../client') return client
-      if (id === './components/SegmentedControl.vue') return {default: compileClient(resolve(dirname(filename), id))}
-      if (id === 'element-plus') return {ElMessageBox: {confirm: async () => undefined}, ElOption: display}
-      if (id.includes('/style/')) return {}
-      if (id.endsWith('.vue')) return {default: display}
-      throw new Error(`Unexpected learning client dependency ${id}`)
-    }, module.exports, module)
-    cache.set(filename, module.exports.default);return module.exports.default
-  }
-  namespaces.memory = {__esModule: true, default: compileClient('src/features/settings/ui/LearningMemoryManager.vue')}
-  namespaces.history = {__esModule: true, HarnessReadingHistory: compileClient('src/features/reading-assistant/ui/HarnessReadingHistory.vue')}
-  const parent = compileClient('src/features/settings/ui/LearningCenter.vue');evaluating = false
-  // Vite initializes/cleans up with real timers; only Vue's mounted async delay is controlled.
+  vi.doMock('../src/ui/i18n', () => i18n)
+  vi.doMock('../src/services/config/store', () => store)
+  vi.doMock('../src/platform/browser/capabilities', () => ({browserCapabilities: {browser: options.browser ?? 'chrome'}}))
+  vi.doMock('../src/features/vocabulary/ui/public', () => ({VocabularyBook: saved, MaterialWorkspace: material}))
+  vi.doMock('../src/features/reading-assistant/public', () => client)
+  vi.doMock('element-plus/es/components/message-box/style/css', () => ({}))
+  vi.doMock('element-plus', () => ({ElMessageBox: {confirm: async () => undefined}, ElOption: display}))
+  vi.doMock('../src/ui/components/UiIcon.vue', () => ({default: display}))
+  vi.doMock('../src/ui/components/UiSelect.vue', () => ({default: runtime.defineComponent({props: ['modelValue'], emits: ['update:modelValue'],
+    setup: (props, {emit, attrs, slots}) => () => runtime.h('span', [runtime.h('input', {...attrs, value: props.modelValue,
+      onInput: (event: Event) => emit('update:modelValue', (event.target as HTMLInputElement).value)}), slots.default?.()])})}))
+  vi.doMock('../src/features/reading-assistant/ui/ReadingAnswer.vue', () => ({default: display}))
+  namespaces.memory = {__esModule: true, default: (await vi.importActual<typeof import('../src/features/settings/ui/LearningMemoryManager.vue')>('../src/features/settings/ui/LearningMemoryManager.vue')).default}
+  namespaces.history = {__esModule: true, HarnessReadingHistory: (await import('../src/features/reading-assistant/ui/HarnessReadingHistory.vue')).default}
+  vi.doMock('../src/features/reading-assistant/ui/public', () => load('history'))
+  vi.doMock('../src/features/settings/ui/LearningMemoryManager.vue', () => load('memory'))
+  const parent = (await import('../src/features/settings/ui/LearningCenter.vue')).default
+  // 模块加载完成后只控制 Vue 的异步组件等待时间。
   vi.useFakeTimers()
   const renderer = runtime.createRenderer<Node, Element>({
     createElement: tag => document.createElement(tag), createText: text => document.createTextNode(text), createComment: text => document.createComment(text),
@@ -313,11 +295,133 @@ describe('LearningCenter actual client pane loading and lifetime', () => {
     h.host.querySelector<HTMLButtonElement>('.fr-learning-load[role="alert"] button')!.click()
     expect(h.reloads).toEqual([tab])
     // Document routing/reload and the browser's ESM failure cache are parent/native boundaries.
-    expect(h.clientErrors).toEqual([failure]);await h.choose('saved');expect(h.host.querySelector('.fr-learning-load')).toBeNull()
+    expect(h.clientErrors).toHaveLength(1)
+    // Vitest 的异步模块 mock 给原始加载失败加一层 cause，仍核对同一个失败对象。
+    expect((h.clientErrors[0] as Error & {cause?: unknown}).cause).toBe(failure);await h.choose('saved');expect(h.host.querySelector('.fr-learning-load')).toBeNull()
   })
   it('keeps public header/footer navigation available and releases its config subscription on unmount', async () => {
     const h = await mountLearning();expect(h.configListeners.size).toBe(1)
     h.host.querySelector<HTMLButtonElement>('.fr-learning-local > button')!.click();expect(h.navigations).toEqual(['settings-data'])
     h.stop();expect(h.configListeners.size).toBe(0)
+  })
+
+  it('forwards material and note settings navigation and closes storage disclosure with Escape', async () => {
+    const h = await mountLearning('materials')
+    h.host.querySelector<HTMLButtonElement>('.material-display-port button')!.click()
+    h.host.querySelector<HTMLButtonElement>('.material-display-port button:last-child')!.click();await h.settle();await h.resolvePanel('memory')
+    h.host.querySelector<HTMLButtonElement>('.fr-memory-options button')!.click()
+    expect(h.navigations).toEqual(['settings-data', 'settings-selection'])
+    for (const selector of ['.fr-learning-storage', '.fr-memory-options']) {
+      const details = h.host.querySelector<HTMLDetailsElement>(selector)!;details.open = true
+      h.key(details, 'Escape');await h.settle();expect(details.open).toBe(false)
+    }
+  })
+
+  it('filters, edits, cancels and deletes existing notes through their actual controls', async () => {
+    const h = await mountLearning('memory');await h.resolvePanel('memory')
+    const search = h.host.querySelector<HTMLInputElement>('input[type="search"]')!
+    search.value = 'does not match';search.dispatchEvent(new Event('input'));await h.settle()
+    expect(h.host.textContent).toContain('learning.memoryNoMatches');expect(h.host.querySelector('.fr-memory-item')).toBeNull()
+    search.value = 'synthetic';search.dispatchEvent(new Event('input'));await h.settle()
+    h.host.querySelector<HTMLButtonElement>('.fr-memory-item footer button')!.click();await h.settle()
+    expect(h.host.querySelector<HTMLTextAreaElement>('textarea')!.value).toBe('Synthetic retained note')
+    h.host.querySelector<HTMLButtonElement>('.fr-memory-editor-actions button:last-child')!.click();await h.settle()
+    expect(h.actions('memory-save')).toHaveLength(0)
+    h.host.querySelector<HTMLButtonElement>('.fr-memory-item footer button:last-child')!.click();await h.settle()
+    expect(h.actions('memory-delete')).toHaveLength(1);expect(h.host.textContent).toContain('learning.memoryDeleted')
+    expect(h.host.querySelector('.fr-memory-item')).toBeNull();expect(h.clientErrors).toEqual([])
+  })
+
+  it('sorts tied note timestamps by id, searches by kind, and saves the selected kind without losing the id', async () => {
+    const h = await mountLearning('memory')
+    h.memories.push({...h.memory, id: '00000000-1234-4234-8234-123456789abc', content: 'Earlier identifier'})
+    await h.resolvePanel('memory')
+    expect(h.host.querySelector('.fr-memory-item p')!.textContent).toBe('Earlier identifier')
+    const search = h.host.querySelector<HTMLInputElement>('input[type="search"]')!;search.value = 'memoryNote'
+    search.dispatchEvent(new Event('input'));await h.settle();expect(h.host.querySelectorAll('.fr-memory-item')).toHaveLength(2)
+    h.host.querySelector<HTMLButtonElement>('.fr-memory-item footer button')!.click();await h.settle()
+    const kind = h.host.querySelector<HTMLInputElement>('.fr-memory-editor input')!;kind.value = 'lesson';kind.dispatchEvent(new Event('input'));await h.settle()
+    h.host.querySelector('form')!.dispatchEvent(new Event('submit', {cancelable: true}));await h.settle()
+    expect(h.actions('memory-save').at(-1)![0].input).toEqual({id: '00000000-1234-4234-8234-123456789abc', kind: 'lesson', content: 'Earlier identifier'})
+    expect(h.host.querySelector('.fr-memory-item header')!.textContent).toContain('learning.memoryLesson')
+  })
+
+  it('reports non-Error note failures with the translated fallback and disables adding at capacity', async () => {
+    const h = await mountLearning('memory');h.send.mockRejectedValueOnce('offline');await h.resolvePanel('memory')
+    expect(h.host.querySelector('[role="alert"]')!.textContent).toContain('learning.memoryError')
+    h.memories.splice(0, 1, ...Array.from({length: 200}, (_, index) => ({...h.memory, id: `note-${index}`, updatedAt: index})))
+    h.host.querySelector<HTMLButtonElement>('[role="alert"] button')!.click();await h.settle()
+    expect(h.host.querySelectorAll('.fr-memory-item')).toHaveLength(200)
+    expect(h.host.querySelector<HTMLButtonElement>('.fr-memory-heading button')!.hasAttribute('disabled')).toBe(true)
+    expect(h.host.querySelector('.fr-memory-bottom')!.textContent).toContain('learning.memoryLimit')
+  })
+
+  it.each(['read', 'save', 'delete', 'clear'] as const)('shows note %s failure and permits a successful retry', async operation => {
+    const h = await mountLearning('memory')
+    if (operation === 'read') h.send.mockResolvedValueOnce({success: false, error: 'controlled read failure'})
+    await h.resolvePanel('memory')
+    const perform = async () => {
+      if (operation === 'read') h.host.querySelector<HTMLButtonElement>('[role="alert"] button')!.click()
+      else if (operation === 'save') {
+        if (!h.host.querySelector('textarea')) {h.host.querySelector<HTMLButtonElement>('.fr-memory-item footer button')!.click();await h.settle()}
+        const textarea = h.host.querySelector<HTMLTextAreaElement>('textarea')!;textarea.value = 'Edited note';textarea.dispatchEvent(new Event('input'));await h.settle()
+        h.host.querySelector('form')!.dispatchEvent(new Event('submit', {cancelable: true}))
+      } else h.host.querySelector<HTMLButtonElement>(operation === 'delete' ? '.fr-memory-item footer button:last-child' : '.fr-memory-bottom button')!.click()
+      await h.settle()
+    }
+    if (operation !== 'read') {h.send.mockResolvedValueOnce({success: false, error: `controlled ${operation} failure`});await perform()}
+    expect(h.host.querySelector('[role="alert"]')!.textContent).toContain(`controlled ${operation} failure`)
+    await perform();expect(h.host.querySelector('[role="alert"]')).toBeNull()
+    if (operation === 'save') expect(h.host.textContent).toContain('Edited note')
+    else if (operation !== 'read') expect(h.host.querySelector('.fr-memory-item')).toBeNull()
+    expect(h.clientErrors).toEqual([])
+  })
+
+  it('opens history detail with all turn states, returns to the list and removes the selected record', async () => {
+    const h = await mountLearning('history');await h.resolvePanel('history')
+    h.send.mockResolvedValueOnce({success: true, session: {...h.session, turns: ['meaning', 'grammar', 'usage', 'practice', 'unknown'].map((intent, index) => ({
+      id: `turn-${index}`, intent, question: index === 0 ? 'Explicit question' : '', answer: index === 0 ? 'Saved answer' : '',
+      status: ['completed', 'streaming', 'stopped', 'error', 'unknown'][index], createdAt: index + 1,
+    }))}})
+    h.host.querySelector<HTMLButtonElement>('.harness-history-open')!.click();await h.settle()
+    expect(h.host.querySelectorAll('.harness-history-turn')).toHaveLength(5)
+    for (const text of ['Explicit question', '拆句', '用法', '练习', '学习', '生成中', '已停止', '未完成']) expect(h.host.textContent).toContain(text)
+    h.host.querySelector<HTMLButtonElement>('.harness-history-toolbar button')!.click();await h.settle()
+    expect(h.host.querySelector('.harness-history-list')).not.toBeNull()
+    h.host.querySelector<HTMLButtonElement>('.harness-history-open')!.click();await h.settle()
+    h.host.querySelector<HTMLButtonElement>('.harness-history-toolbar button:last-child')!.click();await h.settle()
+    expect(h.actions('sessions-delete')).toHaveLength(1);expect(h.host.querySelector('.harness-history-detail')).toBeNull()
+    expect(h.host.querySelector('.harness-history-empty')).not.toBeNull()
+  })
+
+  it.each(['list', 'detail', 'delete', 'clear'] as const)('shows history %s failure and recovers without losing retained records', async operation => {
+    const h = await mountLearning('history')
+    if (operation === 'list') h.send.mockRejectedValueOnce(new Error('controlled list failure'))
+    await h.resolvePanel('history')
+    const perform = async () => {
+      const selector = operation === 'list' ? '.harness-history-heading button' : operation === 'detail' ? '.harness-history-open'
+        : operation === 'delete' ? '.harness-history-row > button:last-child' : '.harness-history-toolbar button:last-child'
+      h.host.querySelector<HTMLButtonElement>(selector)!.click();await h.settle()
+    }
+    if (operation !== 'list') {h.send.mockRejectedValueOnce(new Error(`controlled ${operation} failure`));await perform()}
+    expect(h.host.querySelector('[role="alert"]')).not.toBeNull()
+    await perform();expect(h.host.querySelector('[role="alert"]')).toBeNull()
+    if (operation === 'detail') expect(h.host.querySelector('.harness-history-detail')).not.toBeNull()
+    if (operation === 'delete' || operation === 'clear') expect(h.host.querySelector('.harness-history-row')).toBeNull()
+    expect(h.clientErrors).toEqual([])
+  })
+
+  it('removes an expired history detail and ignores an old detail response after returning to the list', async () => {
+    const h = await mountLearning('history');await h.resolvePanel('history')
+    h.send.mockResolvedValueOnce({success: true, session: null})
+    h.host.querySelector<HTMLButtonElement>('.harness-history-open')!.click();await h.settle()
+    expect(h.host.querySelector('[role="alert"]')!.textContent).toContain('已过期或已被删除')
+    expect(h.host.querySelector('.harness-history-row')).toBeNull()
+    h.host.querySelector<HTMLButtonElement>('.harness-history-heading button')!.click();await h.settle()
+    const pending = deferred<any>();h.send.mockImplementationOnce(() => pending.promise)
+    h.host.querySelector<HTMLButtonElement>('.harness-history-open')!.click();await h.settle()
+    h.host.querySelector<HTMLButtonElement>('.harness-history-heading button')!.click();await h.settle()
+    pending.resolve({success: true, session: {...h.session, turns: []}});await h.settle()
+    expect(h.host.querySelector('.harness-history-detail')).toBeNull();expect(h.host.querySelector('.harness-history-row')).not.toBeNull()
   })
 })

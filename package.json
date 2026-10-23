@@ -2,8 +2,8 @@
   "name": "FluentRead-流畅阅读",
   "description": "Closer languages. A bigger world. 让语言更近，让世界更大。",
   "private": true,
-  "version": "0.0.39",
-  "userscriptVersion": "2.0.1",
+  "version": "0.0.40",
+  "userscriptVersion": "2.0.2",
   "type": "module",
   "engines": {
     "node": ">=20"
@@ -127,7 +127,6 @@
     "storybook": "8.6.18",
     "typescript": "^5.7.3",
     "vite": "^5.4.19",
-    "vite-plugin-imagemin": "^0.6.1",
     "vitepress": "^1.6.3",
     "vitest": "^2.1.9",
     "vue": "^3.5.13",

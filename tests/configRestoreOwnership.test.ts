@@ -3,14 +3,7 @@
  * 不读取 setupState，不保存离页 DOM handler；焦点 fixture 只提供 DOM focus 与公开 auto-focus hook，
  * 可暂停真实组件的 nextTick 验证归属；Element Plus 原生焦点/路由仍由 settings-center runner 验证。
  */
-import {createRequire} from 'node:module';
-import {readFileSync} from 'node:fs';
-import {dirname, resolve} from 'node:path';
-import vue from '@vitejs/plugin-vue';
-import {createServer, type ViteDevServer} from 'vite';
-import {compileScript, compileTemplate, parse} from 'vue/compiler-sfc';
-import ts from 'typescript';
-import {afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi} from 'vitest';
+import {afterAll, afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {normalizeConfig} from '@/src/core/config/model';
 import {appendConfigHistorySnapshot, restoreRestorableConfig, toRestorableConfig, type ConfigHistoryState} from '@/src/services/config/history';
 import type {ConfigAutoBackupState} from '@/src/services/config/autoBackup';
@@ -40,9 +33,7 @@ const dom = await vi.hoisted(async () => {
   }
   return {window, document, originals};
 });
-const runtime = createRequire(import.meta.url)('vue') as typeof import('vue');
-const root = process.cwd();
-const ports = {
+const ports = vi.hoisted(() => ({
   history: {} as ConfigHistoryState, backups: {} as ConfigAutoBackupState,
   historyListeners: new Set<(value: ConfigHistoryState) => void>(), backupListeners: new Set<(value: ConfigAutoBackupState) => void>(),
   send: vi.fn(), messages: vi.fn(), globalConfirm: vi.fn(), globalClose: vi.fn(),
@@ -51,11 +42,34 @@ const ports = {
   installedHistory: null as ConfigHistoryState | null,
   focusTick: null as {promise: Promise<void>;resolve: (value: void) => void} | null,
   defaultFocus: false,
-};
-let server: ViteDevServer | undefined, component: import('vue').Component;
+}));
+vi.mock('vue', async importOriginal => {
+  const actual = await importOriginal<typeof import('vue')>();
+  return {...actual, nextTick: () => ports.focusTick?.promise ?? actual.nextTick()};
+});
+vi.mock('webextension-polyfill', () => ({default:{runtime:{sendMessage:(...args:unknown[])=>ports.send(...args)}}}));
+vi.mock('@/src/ui/i18n', async () => {
+  const {ref}=await import('vue');
+  return {useUiI18n:()=>({language:ref('zh-CN'),t:(key:string)=>key,translateLegacy:(text:string)=>text})};
+});
+vi.mock('@/src/platform/storage/configStorageRuntime', () => ({configStorage:{writeOwner:false,getItem:async()=>null,setItem:async()=>undefined,removeItem:async()=>undefined,watch:()=>()=>{}}}));
+vi.mock('element-plus', () => ({ElMessage:{success:(...args:unknown[])=>ports.messages('success',...args),error:(...args:unknown[])=>ports.messages('error',...args)},ElMessageBox:{confirm:(...args:unknown[])=>ports.globalConfirm(...args),close:(...args:unknown[])=>ports.globalClose(...args)}}));
+vi.mock('@/src/features/settings/ui/CloudConfigBackup.vue', () => ({default:{render:()=>null}}));
+vi.mock('@/src/features/settings/ui/LocalDataManagement.vue', () => ({default:{render:()=>null}}));
+vi.mock('@/src/services/config', async () => {
+  const {requestConfigHistoryAction}=await import('@/src/services/config/store');
+  const {requestConfigAutoBackupRestore}=await import('@/src/services/config/autoBackupStore');
+  return {requestConfigHistoryAction,requestConfigAutoBackupRestore,
+    configHistoryReady:Promise.resolve(),configAutoBackupsReady:Promise.resolve(),
+    getConfigHistorySnapshot:()=>structuredClone(ports.history),getConfigAutoBackupsSnapshot:()=>structuredClone(ports.backups),
+    subscribeConfigHistory:(fn:(value:ConfigHistoryState)=>void)=>{ports.historyListeners.add(fn);return()=>ports.historyListeners.delete(fn)},
+    subscribeConfigAutoBackups:(fn:(value:ConfigAutoBackupState)=>void)=>{ports.backupListeners.add(fn);return()=>ports.backupListeners.delete(fn)},
+  };
+});
+import component from '@/src/features/settings/ui/ConfigManagement.vue';
+// Test and Dialog scheduling use real Vue; only the SFC's imported nextTick is a controlled external scheduling port.
+const runtime = await vi.importActual<typeof import('vue')>('vue');
 const apps = new Set<import('vue').App>();
-const legacyConfirmations = new Set<() => void>();
-const clientModules = new Map<string, string>(), clientIds = new Map<string, string>();
 async function settle() {for (let i = 0; i < 6; i++) {await Promise.resolve();await runtime.nextTick();}}
 function deferred<T>() {let resolve!: (value: T) => void, reject!: (error: unknown) => void;const promise = new Promise<T>((yes, no) => {resolve = yes;reject = no;});return {promise, resolve, reject};}
 
@@ -88,76 +102,6 @@ const Dialog = runtime.defineComponent({props: ['modelValue', 'title'], emits: [
 const Button = runtime.defineComponent({props: ['disabled', 'loading', 'type'], setup: (props, {attrs, slots}) => () => runtime.h('button', {...attrs,
   type: 'button', disabled: props.disabled || props.loading}, slots.default?.())});
 
-beforeAll(async () => {
-  vi.stubGlobal('__fluentreadRestorePorts', ports);
-  for (const file of ['src/features/settings/ui/ConfigManagement.vue', 'src/features/settings/ui/components/SettingsPanel.vue']) {
-    const filename = resolve(root, file), {descriptor} = parse(readFileSync(filename, 'utf8'), {filename});
-    const script = compileScript(descriptor, {id: 'restore-client'});
-    const clientId = `${filename}.restore-client.ts`;
-    clientIds.set(filename, clientId);
-    // Control only this compiled SFC's nextTick; external Vue resolution can bypass resolveId.
-    let nextTickPortInstalled = false;
-    const content = filename.endsWith('/ConfigManagement.vue')
-      ? script.content.replace(/import \{([^}]+)\} from ['"]vue['"];?/gu, (declaration, imports: string) => {
-        const names = imports.split(',').map(name => name.trim());
-        if (!names.includes('nextTick')) return declaration;
-        nextTickPortInstalled = true;
-        return "import {" + names.filter(name => name !== 'nextTick').join(', ') + "} from 'vue';\nimport {nextTick} from 'restore-component-next-tick';";
-      }) : script.content;
-    if (filename.endsWith('/ConfigManagement.vue')) expect(nextTickPortInstalled).toBe(true);
-    clientModules.set(clientId, content);
-  }
-  server = await createServer({root, configFile: false, appType: 'custom', logLevel: 'silent',
-    resolve: {alias: {'@': root}}, server: {hmr: false, middlewareMode: true},
-    ssr: {noExternal: ['webextension-polyfill', 'element-plus']},
-    plugins: [{name: 'restore-controlled-ports', enforce: 'pre', resolveId(id, importer) {
-      if (clientModules.has(id)) return id;
-      const rootRelativeClient = id.startsWith('/') ? resolve(root, id.slice(1)) : '';
-      if (clientModules.has(rootRelativeClient)) return rootRelativeClient;
-      const path = id.startsWith('@/') ? resolve(root, id.slice(2)) : id.startsWith('.') && importer ? resolve(dirname(importer), id) : id;
-      if (clientIds.has(path)) return clientIds.get(path);
-      if (id === 'restore-component-next-tick') return '\0restore-component-next-tick';
-      if (/\/src\/services\/config(?:\/index(?:\.ts)?)?$/u.test(path)) return '\0restore-config';
-      if (/\/src\/platform\/storage\/configStorageRuntime(?:\.ts)?$/u.test(path)) return '\0restore-storage';
-      if (/\/src\/ui\/i18n(?:\.ts)?$/u.test(path)) return '\0restore-i18n';
-      if (id === 'webextension-polyfill') return '\0restore-browser';
-      if (id === 'element-plus') return '\0restore-messages';
-      if (id.endsWith('.vue')) return '\0restore-sibling';
-      return null;
-    }, load(id) {
-      if (clientModules.has(id)) return clientModules.get(id);
-      if (id === '\0restore-component-next-tick') return `
-        import {nextTick as runtimeNextTick} from 'vue';
-        export const nextTick=()=>globalThis.__fluentreadRestorePorts.focusTick?.promise ?? runtimeNextTick();
-      `;
-      if (id === '\0restore-browser') return 'export default {runtime:{sendMessage:(...args)=>globalThis.__fluentreadRestorePorts.send(...args)}}';
-      if (id === '\0restore-i18n') return "import {ref} from 'vue';export const useUiI18n=()=>({language:ref('zh-CN'),t:key=>key,translateLegacy:text=>text})";
-      if (id === '\0restore-storage') return 'export const configStorage={writeOwner:false,getItem:async()=>null,setItem:async()=>undefined,removeItem:async()=>undefined,watch:()=>()=>{}}';
-      if (id === '\0restore-messages') return `const p=globalThis.__fluentreadRestorePorts;export const ElMessage={success:(...args)=>p.messages('success',...args),error:(...args)=>p.messages('error',...args)};export const ElMessageBox={confirm:(...args)=>p.globalConfirm(...args),close:(...args)=>p.globalClose(...args)}`;
-      if (id === '\0restore-sibling') return 'export default {render:()=>null}';
-      if (id === '\0restore-config') return `
-        export {requestConfigHistoryAction} from ${JSON.stringify(resolve(root, 'src/services/config/store.ts'))};
-        export {requestConfigAutoBackupRestore} from ${JSON.stringify(resolve(root, 'src/services/config/autoBackupStore.ts'))};
-        const p=globalThis.__fluentreadRestorePorts;
-        export const configHistoryReady=Promise.resolve(),configAutoBackupsReady=Promise.resolve();
-        export const getConfigHistorySnapshot=()=>structuredClone(p.history),getConfigAutoBackupsSnapshot=()=>structuredClone(p.backups);
-        export const subscribeConfigHistory=fn=>{p.historyListeners.add(fn);return()=>p.historyListeners.delete(fn)};
-        export const subscribeConfigAutoBackups=fn=>{p.backupListeners.add(fn);return()=>p.backupListeners.delete(fn)};
-      `;
-      return null;
-    }}, vue()]});
-  // 模块加载器只解析真实 setup 的导入；所有 render 都来自客户端缓存模板，非 ssrRender。
-  for (const [filename, clientId] of clientIds) {
-    const {descriptor} = parse(readFileSync(filename, 'utf8'), {filename});
-    const script = compileScript(descriptor, {id: 'restore-client'});
-    const actual = (await server.ssrLoadModule(clientId)).default;
-    const template = compileTemplate({source: descriptor.template!.content, filename, id: 'restore-client',
-      compilerOptions: {mode: 'function', cacheHandlers: true, bindingMetadata: script.bindings, expressionPlugins: ['typescript']}});
-    expect(template.errors).toEqual([]);
-    actual.render = new Function('Vue', ts.transpileModule(template.code, {compilerOptions: {target: ts.ScriptTarget.ES2022}}).outputText)(runtime);
-    if (filename.endsWith('/ConfigManagement.vue')) component = actual;
-  }
-});
 beforeEach(() => {
   ports.send.mockReset();ports.messages.mockReset();ports.globalConfirm.mockReset();ports.globalClose.mockReset();
   ports.delayClosed = false;ports.installedConfig = null;ports.installedHistory = null;
@@ -166,7 +110,6 @@ beforeEach(() => {
   const snapshots = [{on: false}, {on: true, to: 'en'}, {on: true}].map(value => toRestorableConfig(normalizeConfig(value)));
   ports.history = {schemaVersion: 1, cursor: 2, nextVersion: 4, entries: snapshots.map((config, index) => ({version: index + 1, savedAt: '2026-10-07T00:00:00Z', config}))};
   ports.backups = {schemaVersion: 1, nextVersion: 3, entries: snapshots.slice(0, 2).map((config, index) => ({version: index + 1, savedAt: '2026-10-07T00:00:00Z', config}))};
-  ports.globalConfirm.mockImplementation(() => new Promise(() => {}));
   ports.send.mockImplementation(async (message: {type: string}) => message.type === 'configHistoryAction'
     ? {success: true, history: structuredClone(ports.history)} : {success: true, result: {history: structuredClone(ports.history), backups: structuredClone(ports.backups)}});
 });
@@ -174,17 +117,13 @@ afterEach(async () => {
   try {
     ports.focusTick?.resolve();ports.focusTick = null;await settle();
     for (const app of apps) app.unmount();apps.clear();
-    for (const cancel of [...legacyConfirmations]) cancel();await settle();
+    await settle();
   }
   finally {dom.document.body.replaceChildren();}
-  expect(ports.historyListeners.size).toBe(0);expect(ports.backupListeners.size).toBe(0);expect(ports.closing.size).toBe(0);expect(legacyConfirmations.size).toBe(0);
+  expect(ports.historyListeners.size).toBe(0);expect(ports.backupListeners.size).toBe(0);expect(ports.closing.size).toBe(0);
 });
-afterAll(async () => {
-  try {await server?.close();}
-  finally {
-    clientModules.clear();clientIds.clear();vi.unstubAllGlobals();
-    for (const [key, descriptor] of dom.originals) {if (descriptor) Object.defineProperty(globalThis, key, descriptor);else Reflect.deleteProperty(globalThis, key);}
-  }
+afterAll(() => {
+  for (const [key, descriptor] of dom.originals) {if (descriptor) Object.defineProperty(globalThis, key, descriptor);else Reflect.deleteProperty(globalThis, key);}
 });
 
 async function mount() {
@@ -230,7 +169,7 @@ async function open(host: Element, kind: Kind, version = 1) {
   expect(badge).toBeDefined();(badge!.closest('button') as HTMLButtonElement).click();await settle();
   expect(preview(host).querySelector('.preview-summary')!.textContent).toContain(label);
 }
-async function begin(host: Element) {const restore = button(preview(host), '恢复此版本');expect(restore.disabled).toBe(false);restore.click();await settle();confirmation(host);}
+async function begin(host: Element) {const restore = button(preview(host), '恢复此版本');expect(restore.disabled).toBe(false);restore.click();await settle();return confirmation(host);}
 async function confirm(host: Element) {button(confirmation(host), '恢复').click();await settle();}
 function cancelWithDomEvent(host: Element, action: 'cancel' | 'escape') {
   button(confirmation(host), '取消').focus();
@@ -258,25 +197,6 @@ function lateResult(kind: Kind, failure: boolean) {
 }
 function versionLabels(host: Element) {return Array.from(host.querySelectorAll('.version-badge')).map(node => node.textContent);}
 
-// 新成功链也能在原 source 的真实 MessageBox 调用边界运行；外部确认由挂载按钮触发。
-// 原 78 个 owned Dialog 归属用例仍保持原断言，不因兼容此基线端口而放宽。
-function prepareLegacyPublicConfirmation() {
-  ports.globalConfirm.mockImplementation((_message: string, title: string, options: {confirmButtonText: string;cancelButtonText: string}) => {
-    const pending = deferred<void>(), node = dom.document.createElement('div');
-    node.className = 'fixture-message-box';node.setAttribute('role', 'dialog');node.setAttribute('aria-label', title);
-    const remove = () => {node.remove();legacyConfirmations.delete(cancel);};
-    const cancel = () => {remove();pending.reject(new Error('fixture confirmation cancelled'));};
-    const yes = dom.document.createElement('button');yes.textContent = options.confirmButtonText;
-    yes.addEventListener('click', () => {remove();pending.resolve();});
-    const no = dom.document.createElement('button');no.textContent = options.cancelButtonText;no.addEventListener('click', cancel);
-    node.append(no, yes);dom.document.body.append(node);legacyConfirmations.add(cancel);return pending.promise;
-  });
-}
-async function beginThroughPublicConfirmation(host: Element) {
-  prepareLegacyPublicConfirmation();button(preview(host), '恢复此版本').click();await settle();
-  const dialog = host.querySelector('.config-restore-confirm-dialog') || dom.document.querySelector('.fixture-message-box');
-  expect(dialog).not.toBeNull();return dialog!;
-}
 function queuedRealHandlerReceipt(kind: Kind) {
   const pending = deferred<any>();
   const handler = kind === 'history' ? createConfigHistoryHandler(async () => pending.promise)
@@ -463,7 +383,7 @@ describe.each(kinds)('%s 恢复的公开组件归属', kind => {
     const {host, config} = await mount();await open(host, kind);
     const saved = kind === 'history' ? ports.history.entries[0] : ports.backups.entries[0];
     const expected = restoreRestorableConfig(saved.config, config), pending = queuedRealHandlerReceipt(kind);
-    button(await beginThroughPublicConfirmation(host), '恢复').click();await settle();
+    button(await begin(host), '恢复').click();await settle();
     expect(ports.send.mock.calls.map(([message]) => message)).toEqual([expectedMessage(kind)]);
     const receipt = restoredReceipt(kind, expected);
     ports.installedConfig = expected;ports.installedHistory = 'history' in receipt ? receipt.history : receipt;
@@ -484,7 +404,7 @@ describe.each(kinds)('%s 恢复的公开组件归属', kind => {
     const {host, config} = await mount();await open(host, kind);
     const saved = kind === 'history' ? ports.history.entries[0] : ports.backups.entries[0];
     const expected = restoreRestorableConfig(saved.config, config), pending = queuedRealHandlerReceipt(kind);
-    button(await beginThroughPublicConfirmation(host), '恢复').click();await settle();
+    button(await begin(host), '恢复').click();await settle();
     ports.installedConfig = expected;await navigate(host, 'install');preview(host);expect(ports.messages).not.toHaveBeenCalled();
     await navigate(host, boundary);expect(host.querySelector('.config-preview-dialog')).toBeNull();
     const foreign = toRestorableConfig(config);await open(host, kind);await begin(host);const before = versionLabels(host);
@@ -494,7 +414,7 @@ describe.each(kinds)('%s 恢复的公开组件归属', kind => {
     await confirm(host);expect(ports.send).toHaveBeenCalledTimes(2);expect(ports.messages).toHaveBeenCalledWith('success', '设置已恢复');
   });
   it('确认前到达恰好等于目标的同对象配置，也必须取消旧确认且不发送', async () => {
-    const {host, config} = await mount();await open(host, kind);await beginThroughPublicConfirmation(host);
+    const {host, config} = await mount();await open(host, kind);await begin(host);
     const saved = kind === 'history' ? ports.history.entries[0] : ports.backups.entries[0];
     ports.installedConfig = restoreRestorableConfig(saved.config, config);await navigate(host, 'install');
     expect(host.querySelector('.config-restore-confirm-dialog')).toBeNull();expect(host.querySelector('.config-preview-dialog')).toBeNull();expect(ports.send).not.toHaveBeenCalled();expect(ports.messages).not.toHaveBeenCalled();
@@ -502,10 +422,28 @@ describe.each(kinds)('%s 恢复的公开组件归属', kind => {
   it('目标广播本身不能代表成功，随后实际 handler 失败仍显示错误而非成功', async () => {
     const {host, config} = await mount();await open(host, kind);
     const saved = kind === 'history' ? ports.history.entries[0] : ports.backups.entries[0];
-    const pending = queuedRealHandlerReceipt(kind);button(await beginThroughPublicConfirmation(host), '恢复').click();await settle();
+    const pending = queuedRealHandlerReceipt(kind);button(await begin(host), '恢复').click();await settle();
     ports.installedConfig = restoreRestorableConfig(saved.config, config);await navigate(host, 'install');preview(host);expect(ports.messages).not.toHaveBeenCalled();
     pending.reject(new Error('controlled history write failure'));await settle();
     expect(ports.messages).toHaveBeenCalledOnce();expect(ports.messages).toHaveBeenCalledWith('error', '恢复失败：controlled history write failure');preview(host);
     expect(host.querySelector('.config-restore-confirm-dialog')).toBeNull();expect(config.count).toBe(73);expect(config.apiKeys.openai).toEqual(['current-fixture-key']);
+  });
+});
+
+
+describe('actual history comparison controls', () => {
+  it('switches between the selected change and restoration differences without changing the saved version', async () => {
+    const {host}=await mount();await open(host,'history',2);const dialog=preview(host);
+    const changed=button(dialog,'settings.history.thisChange'),current=button(dialog,'settings.history.compareCurrent');
+    expect(changed.getAttribute('aria-pressed')).toBe('true');expect(dialog.querySelector('.comparison-hint')?.textContent).toBe('settings.history.changeHint');const json=dialog.querySelector('pre')?.textContent;
+    current.click();await settle();expect(current.getAttribute('aria-pressed')).toBe('true');expect(changed.getAttribute('aria-pressed')).toBe('false');expect(dialog.querySelector('.comparison-hint')?.textContent).toBe('settings.history.restoreHint');expect(dialog.querySelector('pre')?.textContent).toBe(json);
+    changed.click();await settle();expect(changed.getAttribute('aria-pressed')).toBe('true');expect(dialog.querySelector('.comparison-hint')?.textContent).toBe('settings.history.changeHint');expect(ports.send).not.toHaveBeenCalled();
+  });
+  it('keeps malformed historical timestamps readable and shows the saved unknown language and custom service summary', async () => {
+    const saved=toRestorableConfig(normalizeConfig({service:'custom:fixture',to:'unknown-language',customOpenAIProviders:[{id:'custom:fixture',name:'Fixture service',endpoint:'https://fixture.example.test/v1',models:['test-model']}]}));
+    saved.to='unknown-language';ports.history.entries[0].savedAt='invalid';ports.backups.entries[0]={...ports.backups.entries[0],savedAt:'invalid',config:saved};
+    const {host}=await mount();expect(host.textContent).toContain('时间未知');const backup=host.querySelector('.version-badge.backup')!.closest('button')!;
+    const first=[...host.querySelectorAll('.version-badge.backup')].find(node=>node.textContent==='b1')!.closest('button')!;expect(first.getAttribute('aria-label')).toContain('unknown-language');expect(first.getAttribute('aria-label')).toContain('Fixture service');
+    expect(backup).not.toBeNull();await open(host,'backup',1);expect(preview(host).textContent).toContain('时间未知');expect(ports.send).not.toHaveBeenCalled();
   });
 });

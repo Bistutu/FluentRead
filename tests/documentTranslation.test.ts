@@ -125,6 +125,8 @@ describe('document translation parser', () => {
         expect(restored('Today we build a <i>small</i> weather station.', '今天我们搭一个 (i)small(/i) 气象站。')).toBe('今天我们搭一个 <i>small</i> 气象站。');
         expect(restored('Today we build a <i>small</i> weather station.', '今天我们搭一个（i）小（／i）气象站。')).toBe('今天我们搭一个<i>小</i>气象站。');
         expect(restored('Choose <i>one</i>: tea or coffee.', '选<i>一个</i>：(i) 茶 (a) 咖啡')).toBe('选<i>一个</i>：(i) 茶 (a) 咖啡');
+        expect(restored('Read <c.highlight>this</c> now.', '现在读(c.highlight)这段(/c)。')).toBe('现在读<c.highlight>这段</c>。');
+        expect(restored('Read <c.highlight>this</c> now.', '现在读(c.highlight)这段(/cXhighlight)。')).toBe('现在读(c.highlight)这段(/cXhighlight)。');
         // 翻译服务丢掉硬换行时，按原文的行数把译文重新断开；服务保留了换行、原文没有换行或找不到断点时不动。
         const line = (text: string) => parseDocument('breaks.ass', `[Events]\nDialogue: 0,0:00:01.00,0:00:02.00,Default,,0,0,0,,${text}`);
         const rebroken = (text: string, translation: string) => renderDocument(line(text), [translation], 'translated').split(',,').at(-1);

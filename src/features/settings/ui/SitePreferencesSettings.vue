@@ -1,7 +1,7 @@
 <!--
  * @file src/features/settings/ui/SitePreferencesSettings.vue
  * 文件职责：在同一张紧凑偏好卡中管理全局自动翻译与网站的三项偏好。
- * 主要内容：使用统一的下拉选择器保持控件与菜单风格一致；独立标题分隔栏与下方自动翻译开关，提供域名归并预览、添加校验、搜索、单站编辑、删除撤销及后台确认反馈。
+ * 主要内容：使用统一的下拉选择器保持控件与菜单风格一致；独立标题分隔栏与下方自动翻译开关，提供域名归并预览、添加校验、搜索、单站编辑、删除撤销及后台确认反馈；网站名单变化时只归一化排序一次，搜索复用已有行。
  * 模块边界：复用既有配置数组及异步补丁端口，不创建新配置格式、不读取当前标签页，不宣称尚未确认的保存成功。
  -->
 <template>
@@ -54,14 +54,24 @@ const error = ref('');
 const status = ref('');
 const removed = ref<SitePreferenceRow | null>(null);
 const rows = computed(() => listSitePreferences(props.settings));
-const visibleRows = computed(() => listSitePreferences(props.settings, search.value));
+const visibleRows = computed(() => {
+  const term = search.value.trim().toLowerCase();
+  return term ? rows.value.filter(row => row.domain.includes(term)) : rows.value;
+});
 const normalized = computed(() => getSiteBaseDomain(input.value));
 async function commit(patch: Partial<SitePreferenceLists> & {autoTranslate?: boolean}): Promise<boolean> {
   if (saving.value) return false;
   saving.value = true; error.value = ''; status.value = '';
-  try { await props.savePreferences(patch); status.value = '网站偏好已保存'; return true; }
-  catch { error.value = '保存失败，请重试；已有偏好未被清空'; return false; }
-  finally { saving.value = false; }
+  try {
+    await props.savePreferences(patch);
+    status.value = '网站偏好已保存';
+    return true;
+  } catch {
+    error.value = '保存失败，请重试；已有偏好未被清空';
+  } finally {
+    saving.value = false;
+  }
+  return false;
 }
 async function addSite() {
   const domain = normalized.value;

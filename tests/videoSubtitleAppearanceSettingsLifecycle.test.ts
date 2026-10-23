@@ -31,7 +31,7 @@ import {Config, normalizeConfig} from '@/src/core/config/model';
 import * as appearanceModule from '@/src/core/config/videoSubtitleAppearance';
 import * as shadowSelectModule from '@/src/ui/shadowSelectOutside';
 import {translate, translateLegacyText, type UiLanguage} from '@/src/core/i18n';
-import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
+import {registerAllUiLanguageBundles} from './helpers/uiLanguageBundles';
 
 registerAllUiLanguageBundles();
 const locale = Vue.ref<UiLanguage>('zh-CN');

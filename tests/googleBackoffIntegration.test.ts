@@ -60,16 +60,18 @@ afterEach(() => {
 });
 
 describe('Google HTTP 退避与免费池/broker 集成', () => {
-    it('63 槽免费池保留 owner 分组，在一次短 429 后等待恢复并成功完成，不跨端点重试', async () => {
+    it('63 槽免费池取消不结束的429正文，保留owner分组与退避恢复且不跨端点重试', async () => {
+        const cancel = vi.fn(() => new Promise<void>(() => {}));
         const starts: number[] = [];
         fetchMock.mockImplementation(async (input, init) => {
             starts.push(Date.now());
-            if (starts.length === 1) return new Response('private original', {status: 429, headers: {'Retry-After': '1'}});
+            if (starts.length === 1) return new Response(new ReadableStream({cancel}), {status: 429, headers: {'Retry-After': '1'}});
             return successful(input, init);
         });
         const outcome = observe(freeTranslation(withProviderSnapshot({origin: slots(63), requestTimeoutMs: 20000}, current)));
         await vi.advanceTimersByTimeAsync(10000);
         expect(outcome).toMatchObject({value: translated(63)});
+        expect(cancel).toHaveBeenCalledOnce();
         expect(outcome.error).toBeUndefined();
         expect(fetchMock).toHaveBeenCalledTimes(9);
         expect(fetchMock.mock.calls.map(([, init]) => JSON.parse(String(init?.body))[0][0].length)).toEqual([8, 8, 8, 8, 8, 8, 8, 8, 7]);

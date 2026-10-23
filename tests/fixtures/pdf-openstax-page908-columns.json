@@ -1,0 +1,3129 @@
+{
+  "source": "OpenStax University Physics Volume 1, PDF page 908 / printed page 898; revision UP1-2016-002(05/18)-MJ",
+  "copyright": "Copyright 2018 Rice University",
+  "license": "CC BY 4.0, https://creativecommons.org/licenses/by/4.0/",
+  "attribution": "Download for free at https://openstax.org/details/books/university-physics-volume-1.",
+  "changes": "PDF.js text items transformed into unrotated page geometry; no textbook text changed. Regression data only, not part of extension builds.",
+  "atoms": [
+    {
+      "text": "tissue?",
+      "x": 72,
+      "y": 58.039423828124995,
+      "width": 25.821,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 66.505,
+      "fontSize": 9.5
+    },
+    {
+      "text": "32.",
+      "x": 72,
+      "y": 83.68942382812497,
+      "width": 11.875,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 92.15499999999997,
+      "fontSize": 9.5
+    },
+    {
+      "text": "A",
+      "x": 107.25999999999999,
+      "y": 83.68942382812497,
+      "width": 6.859,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 92.15499999999997,
+      "fontSize": 9.5
+    },
+    {
+      "text": "sound",
+      "x": 132.7559005,
+      "y": 83.68942382812497,
+      "width": 22.6955,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 92.15499999999997,
+      "fontSize": 9.5
+    },
+    {
+      "text": "wave",
+      "x": 174.0881965,
+      "y": 83.68942382812497,
+      "width": 20.026,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 92.15499999999997,
+      "fontSize": 9.5
+    },
+    {
+      "text": "is",
+      "x": 212.7671995,
+      "y": 83.68942382812497,
+      "width": 6.327,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 92.15499999999997,
+      "fontSize": 9.5
+    },
+    {
+      "text": "modeled",
+      "x": 237.7388995,
+      "y": 83.68942382812497,
+      "width": 32.68,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 92.15499999999997,
+      "fontSize": 9.5
+    },
+    {
+      "text": "as",
+      "x": 289.0860955,
+      "y": 83.68942382812497,
+      "width": 7.904,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 92.15499999999997,
+      "fontSize": 9.5
+    },
+    {
+      "text": "Δ",
+      "x": 74,
+      "y": 95.91599999999995,
+      "width": 7.22,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 106.14599999999996,
+      "fontSize": 10
+    },
+    {
+      "text": "P",
+      "x": 81.21,
+      "y": 95.91599999999995,
+      "width": 6.11,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 106.14599999999996,
+      "fontSize": 10
+    },
+    {
+      "text": "= 1.80 Pa sin",
+      "x": 90.088,
+      "y": 95.91599999999995,
+      "width": 52.77800000000002,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 106.14599999999996,
+      "fontSize": 10
+    },
+    {
+      "text": "⎛",
+      "x": 142.846,
+      "y": 90.40852999999991,
+      "width": 3.1702500000000002,
+      "height": 13.589805,
+      "fontFamily": "sans-serif",
+      "baseline": 101.44099999999992,
+      "fontSize": 7.045
+    },
+    {
+      "text": "⎝",
+      "x": 142.846,
+      "y": 97.38352999999994,
+      "width": 3.1702500000000002,
+      "height": 13.589805,
+      "fontFamily": "sans-serif",
+      "baseline": 108.41599999999994,
+      "fontSize": 7.045
+    },
+    {
+      "text": "55.41 m",
+      "x": 145.601,
+      "y": 95.91599999999995,
+      "width": 32.28,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 106.14599999999996,
+      "fontSize": 10
+    },
+    {
+      "text": "−1",
+      "x": 178.538,
+      "y": 93.86599999999996,
+      "width": 9.48,
+      "height": 11.728,
+      "fontFamily": "serif",
+      "baseline": 102.04999999999995,
+      "fontSize": 8
+    },
+    {
+      "text": "x",
+      "x": 191.77,
+      "y": 95.91599999999995,
+      "width": 4.44,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 106.14599999999996,
+      "fontSize": 10
+    },
+    {
+      "text": "− 18,840 s",
+      "x": 198.452,
+      "y": 95.91599999999995,
+      "width": 42.45199999999999,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 106.14599999999996,
+      "fontSize": 10
+    },
+    {
+      "text": "−1",
+      "x": 241.561,
+      "y": 93.86599999999996,
+      "width": 9.48,
+      "height": 11.728,
+      "fontFamily": "serif",
+      "baseline": 102.04999999999995,
+      "fontSize": 8
+    },
+    {
+      "text": "t",
+      "x": 252.53300000000002,
+      "y": 95.91599999999995,
+      "width": 2.7800000000000002,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 106.14599999999996,
+      "fontSize": 10
+    },
+    {
+      "text": "⎞",
+      "x": 255.483,
+      "y": 90.40852999999991,
+      "width": 3.1702500000000002,
+      "height": 13.589805,
+      "fontFamily": "sans-serif",
+      "baseline": 101.44099999999992,
+      "fontSize": 7.045
+    },
+    {
+      "text": "⎠",
+      "x": 255.483,
+      "y": 97.38352999999994,
+      "width": 3.1702500000000002,
+      "height": 13.589805,
+      "fontFamily": "sans-serif",
+      "baseline": 108.41599999999994,
+      "fontSize": 7.045
+    },
+    {
+      "text": ".",
+      "x": 258.238,
+      "y": 95.91599999999995,
+      "width": 2.5,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 106.14599999999996,
+      "fontSize": 10
+    },
+    {
+      "text": "What is",
+      "x": 266.414,
+      "y": 97.68042382812496,
+      "width": 30.576301000000008,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 106.14599999999996,
+      "fontSize": 9.5
+    },
+    {
+      "text": "the maximum change in pressure, the wavelength, the",
+      "x": 72,
+      "y": 115.45642382812491,
+      "width": 224.9840064999999,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 123.92199999999991,
+      "fontSize": 9.5
+    },
+    {
+      "text": "frequency, and the speed of the sound wave?",
+      "x": 72,
+      "y": 126.85642382812489,
+      "width": 169.70439949999997,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 135.3219999999999,
+      "fontSize": 9.5
+    },
+    {
+      "text": "33.",
+      "x": 72,
+      "y": 152.50642382812487,
+      "width": 11.875,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 160.97199999999987,
+      "fontSize": 9.5
+    },
+    {
+      "text": "A sound wave is modeled with the wave function",
+      "x": 93.017,
+      "y": 152.50642382812487,
+      "width": 203.9591954999999,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 160.97199999999987,
+      "fontSize": 9.5
+    },
+    {
+      "text": "Δ",
+      "x": 74,
+      "y": 164.73299999999998,
+      "width": 7.22,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 174.96299999999997,
+      "fontSize": 10
+    },
+    {
+      "text": "P",
+      "x": 81.21,
+      "y": 164.73299999999998,
+      "width": 6.11,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 174.96299999999997,
+      "fontSize": 10
+    },
+    {
+      "text": "= 1.20 Pa sin",
+      "x": 90.088,
+      "y": 164.73299999999998,
+      "width": 52.77800000000002,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 174.96299999999997,
+      "fontSize": 10
+    },
+    {
+      "text": "⎛",
+      "x": 142.846,
+      "y": 159.22552999999994,
+      "width": 3.1702500000000002,
+      "height": 13.589805,
+      "fontFamily": "sans-serif",
+      "baseline": 170.25799999999992,
+      "fontSize": 7.045
+    },
+    {
+      "text": "⎝",
+      "x": 142.846,
+      "y": 166.20052999999996,
+      "width": 3.1702500000000002,
+      "height": 13.589805,
+      "fontFamily": "sans-serif",
+      "baseline": 177.23299999999995,
+      "fontSize": 7.045
+    },
+    {
+      "text": "kx",
+      "x": 145.601,
+      "y": 164.73299999999998,
+      "width": 9.299999999999988,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 174.96299999999997,
+      "fontSize": 10
+    },
+    {
+      "text": "− 6.28 × 10",
+      "x": 157.143,
+      "y": 164.73299999999998,
+      "width": 47.50699999999998,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 174.96299999999997,
+      "fontSize": 10
+    },
+    {
+      "text": "4",
+      "x": 205.317,
+      "y": 162.68299999999996,
+      "width": 4,
+      "height": 11.728,
+      "fontFamily": "serif",
+      "baseline": 170.86699999999996,
+      "fontSize": 8
+    },
+    {
+      "text": "s",
+      "x": 210.817,
+      "y": 164.73299999999998,
+      "width": 3.89,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 174.96299999999997,
+      "fontSize": 10
+    },
+    {
+      "text": "−1",
+      "x": 215.364,
+      "y": 162.68299999999996,
+      "width": 9.48,
+      "height": 11.728,
+      "fontFamily": "serif",
+      "baseline": 170.86699999999996,
+      "fontSize": 8
+    },
+    {
+      "text": "t",
+      "x": 226.336,
+      "y": 164.73299999999998,
+      "width": 2.7800000000000002,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 174.96299999999997,
+      "fontSize": 10
+    },
+    {
+      "text": "⎞",
+      "x": 229.286,
+      "y": 159.22552999999994,
+      "width": 3.1702500000000002,
+      "height": 13.589805,
+      "fontFamily": "sans-serif",
+      "baseline": 170.25799999999992,
+      "fontSize": 7.045
+    },
+    {
+      "text": "⎠",
+      "x": 229.286,
+      "y": 166.20052999999996,
+      "width": 3.1702500000000002,
+      "height": 13.589805,
+      "fontFamily": "sans-serif",
+      "baseline": 177.23299999999995,
+      "fontSize": 7.045
+    },
+    {
+      "text": "and the sound",
+      "x": 239.021,
+      "y": 166.49742382812497,
+      "width": 57.97770200000006,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 174.96299999999997,
+      "fontSize": 9.5
+    },
+    {
+      "text": "wave travels in air at a speed of",
+      "x": 72,
+      "y": 184.27342382812492,
+      "width": 119.66409949999999,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 192.73899999999992,
+      "fontSize": 9.5
+    },
+    {
+      "text": "v",
+      "x": 195.989,
+      "y": 182.50900000000004,
+      "width": 4.44,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 192.73900000000003,
+      "fontSize": 10
+    },
+    {
+      "text": "= 343.00 m/s.",
+      "x": 203.197,
+      "y": 182.50900000000004,
+      "width": 56.03800000000003,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 192.73900000000003,
+      "fontSize": 10
+    },
+    {
+      "text": "(a) What",
+      "x": 263.559,
+      "y": 184.27342382812503,
+      "width": 33.41689600000001,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 192.73900000000003,
+      "fontSize": 9.5
+    },
+    {
+      "text": "is the wave number of the sound wave? (b) What is the",
+      "x": 72.00000000000003,
+      "y": 197.85342382812507,
+      "width": 224.9839874999999,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 206.31900000000007,
+      "fontSize": 9.5
+    },
+    {
+      "text": "value for",
+      "x": 72.00000000000003,
+      "y": 209.25342382812505,
+      "width": 34.0005,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 217.71900000000005,
+      "fontSize": 9.5
+    },
+    {
+      "text": "Δ",
+      "x": 110.4,
+      "y": 207.48900000000006,
+      "width": 7.22,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 217.71900000000005,
+      "fontSize": 10
+    },
+    {
+      "text": "P",
+      "x": 117.61,
+      "y": 207.48900000000006,
+      "width": 6.11,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 217.71900000000005,
+      "fontSize": 10
+    },
+    {
+      "text": "(3.00 m, 20.00 s)",
+      "x": 123.71,
+      "y": 207.424,
+      "width": 68.13300000000001,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 217.654,
+      "fontSize": 10
+    },
+    {
+      "text": "?",
+      "x": 193.833,
+      "y": 209.25342382812505,
+      "width": 4.2085,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 217.71900000000005,
+      "fontSize": 9.5
+    },
+    {
+      "text": "34.",
+      "x": 72,
+      "y": 238.59842382812508,
+      "width": 11.875,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 247.06400000000008,
+      "fontSize": 9.5
+    },
+    {
+      "text": "The displacement of the air molecules in sound wave",
+      "x": 91.436,
+      "y": 238.59842382812508,
+      "width": 205.5460945,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 247.06400000000008,
+      "fontSize": 9.5
+    },
+    {
+      "text": "is",
+      "x": 72,
+      "y": 249.99842382812506,
+      "width": 6.327,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 258.46400000000006,
+      "fontSize": 9.5
+    },
+    {
+      "text": "modeled",
+      "x": 99.487186,
+      "y": 249.99842382812506,
+      "width": 32.68,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 258.46400000000006,
+      "fontSize": 9.5
+    },
+    {
+      "text": "with",
+      "x": 153.3497825,
+      "y": 249.99842382812506,
+      "width": 16.872,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 258.46400000000006,
+      "fontSize": 9.5
+    },
+    {
+      "text": "the",
+      "x": 191.389882,
+      "y": 249.99842382812506,
+      "width": 11.59,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 258.46400000000006,
+      "fontSize": 9.5
+    },
+    {
+      "text": "wave",
+      "x": 224.146585,
+      "y": 249.99842382812506,
+      "width": 20.026,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 258.46400000000006,
+      "fontSize": 9.5
+    },
+    {
+      "text": "function",
+      "x": 265.34108349999997,
+      "y": 249.99842382812506,
+      "width": 31.634999999999998,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 258.46400000000006,
+      "fontSize": 9.5
+    },
+    {
+      "text": "s",
+      "x": 74,
+      "y": 262.22399999999993,
+      "width": 3.89,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 272.45399999999995,
+      "fontSize": 10
+    },
+    {
+      "text": "(",
+      "x": 77.88,
+      "y": 262.1589999999999,
+      "width": 3.33,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 272.3889999999999,
+      "fontSize": 10
+    },
+    {
+      "text": "x",
+      "x": 81.46,
+      "y": 262.22399999999993,
+      "width": 4.44,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 272.45399999999995,
+      "fontSize": 10
+    },
+    {
+      "text": ",",
+      "x": 85.91999999999999,
+      "y": 262.22399999999993,
+      "width": 2.5,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 272.45399999999995,
+      "fontSize": 10
+    },
+    {
+      "text": "t",
+      "x": 91.75299999999999,
+      "y": 262.22399999999993,
+      "width": 2.7800000000000002,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 272.45399999999995,
+      "fontSize": 10
+    },
+    {
+      "text": ") = 5.00 nm cos",
+      "x": 94.70299999999999,
+      "y": 262.1589999999999,
+      "width": 63.31600000000001,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 272.3889999999999,
+      "fontSize": 10
+    },
+    {
+      "text": "⎛",
+      "x": 157.999,
+      "y": 256.7165299999999,
+      "width": 3.1702500000000002,
+      "height": 13.589805,
+      "fontFamily": "sans-serif",
+      "baseline": 267.7489999999999,
+      "fontSize": 7.045
+    },
+    {
+      "text": "⎝",
+      "x": 157.999,
+      "y": 263.69152999999994,
+      "width": 3.1702500000000002,
+      "height": 13.589805,
+      "fontFamily": "sans-serif",
+      "baseline": 274.72399999999993,
+      "fontSize": 7.045
+    },
+    {
+      "text": "91.54 m",
+      "x": 160.754,
+      "y": 262.22399999999993,
+      "width": 32.28,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 272.45399999999995,
+      "fontSize": 10
+    },
+    {
+      "text": "−1",
+      "x": 193.69099999999997,
+      "y": 260.1739999999999,
+      "width": 9.48,
+      "height": 11.728,
+      "fontFamily": "serif",
+      "baseline": 268.35799999999995,
+      "fontSize": 8
+    },
+    {
+      "text": "x",
+      "x": 204.92299999999997,
+      "y": 262.22399999999993,
+      "width": 4.44,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 272.45399999999995,
+      "fontSize": 10
+    },
+    {
+      "text": "− 3.14 × 10",
+      "x": 211.60499999999996,
+      "y": 262.22399999999993,
+      "width": 47.50699999999998,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 272.45399999999995,
+      "fontSize": 10
+    },
+    {
+      "text": "4",
+      "x": 259.77899999999994,
+      "y": 260.1739999999999,
+      "width": 4,
+      "height": 11.728,
+      "fontFamily": "serif",
+      "baseline": 268.35799999999995,
+      "fontSize": 8
+    },
+    {
+      "text": "s",
+      "x": 267.27899999999994,
+      "y": 262.22399999999993,
+      "width": 3.89,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 272.45399999999995,
+      "fontSize": 10
+    },
+    {
+      "text": "−1",
+      "x": 271.82599999999996,
+      "y": 260.1739999999999,
+      "width": 9.48,
+      "height": 11.728,
+      "fontFamily": "serif",
+      "baseline": 268.35799999999995,
+      "fontSize": 8
+    },
+    {
+      "text": "t",
+      "x": 282.79799999999994,
+      "y": 262.22399999999993,
+      "width": 2.7800000000000002,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 272.45399999999995,
+      "fontSize": 10
+    },
+    {
+      "text": "⎞",
+      "x": 285.74799999999993,
+      "y": 256.7165299999999,
+      "width": 3.1702500000000002,
+      "height": 13.589805,
+      "fontFamily": "sans-serif",
+      "baseline": 267.7489999999999,
+      "fontSize": 7.045
+    },
+    {
+      "text": "⎠",
+      "x": 285.74799999999993,
+      "y": 263.69152999999994,
+      "width": 3.1702500000000002,
+      "height": 13.589805,
+      "fontFamily": "sans-serif",
+      "baseline": 274.72399999999993,
+      "fontSize": 7.045
+    },
+    {
+      "text": ".",
+      "x": 290.503,
+      "y": 263.98842382812495,
+      "width": 2.375,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 272.45399999999995,
+      "fontSize": 9.5
+    },
+    {
+      "text": "(a) What is the wave speed of the sound wave? (b) What is",
+      "x": 72,
+      "y": 281.76442382812496,
+      "width": 224.99060899999995,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 290.22999999999996,
+      "fontSize": 9.5
+    },
+    {
+      "text": "the maximum speed of the air molecules as they oscillate in",
+      "x": 72,
+      "y": 293.16442382812494,
+      "width": 224.99211949999983,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 301.62999999999994,
+      "fontSize": 9.5
+    },
+    {
+      "text": "simple harmonic motion? (c) What is the magnitude of the",
+      "x": 72,
+      "y": 304.5644238281249,
+      "width": 224.98400649999988,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 313.0299999999999,
+      "fontSize": 9.5
+    },
+    {
+      "text": "maximum acceleration of the air molecules as they oscillate",
+      "x": 72,
+      "y": 315.9644238281249,
+      "width": 224.94270049999983,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 324.4299999999999,
+      "fontSize": 9.5
+    },
+    {
+      "text": "in simple harmonic motion?",
+      "x": 72,
+      "y": 327.36442382812487,
+      "width": 106.75150000000001,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 335.82999999999987,
+      "fontSize": 9.5
+    },
+    {
+      "text": "35.",
+      "x": 72,
+      "y": 353.01442382812485,
+      "width": 11.875,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 361.47999999999985,
+      "fontSize": 9.5
+    },
+    {
+      "text": "A speaker is placed at the opening of a long horizontal",
+      "x": 90.877,
+      "y": 353.01442382812485,
+      "width": 206.08269249999992,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 361.47999999999985,
+      "fontSize": 9.5
+    },
+    {
+      "text": "tube. The speaker oscillates at a frequency",
+      "x": 72,
+      "y": 364.4144238281248,
+      "width": 172.39750699999996,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 372.8799999999998,
+      "fontSize": 9.5
+    },
+    {
+      "text": "f",
+      "x": 248.673,
+      "y": 364.4144238281248,
+      "width": 2.6315,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 372.8799999999998,
+      "fontSize": 9.5
+    },
+    {
+      "text": ", creating a",
+      "x": 251.312,
+      "y": 364.4144238281248,
+      "width": 45.67900199999999,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 372.8799999999998,
+      "fontSize": 9.5
+    },
+    {
+      "text": "sound wave that moves down the tube. The wave moves",
+      "x": 71.99900000000002,
+      "y": 375.8144238281248,
+      "width": 224.98251499999992,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 384.2799999999998,
+      "fontSize": 9.5
+    },
+    {
+      "text": "through the tube at a speed of",
+      "x": 71.99900000000002,
+      "y": 387.2144238281248,
+      "width": 112.90219900000002,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 395.6799999999998,
+      "fontSize": 9.5
+    },
+    {
+      "text": "v",
+      "x": 189.364,
+      "y": 385.45,
+      "width": 4.44,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 395.68,
+      "fontSize": 10
+    },
+    {
+      "text": "= 340.00 m/s.",
+      "x": 196.572,
+      "y": 385.45,
+      "width": 56.038000000000004,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 395.68,
+      "fontSize": 10
+    },
+    {
+      "text": "The sound",
+      "x": 257.072,
+      "y": 387.214423828125,
+      "width": 39.92690400000002,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 395.68,
+      "fontSize": 9.5
+    },
+    {
+      "text": "wave",
+      "x": 72,
+      "y": 400.794423828125,
+      "width": 20.026,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 409.26,
+      "fontSize": 9.5
+    },
+    {
+      "text": "is",
+      "x": 106.32869649999999,
+      "y": 400.794423828125,
+      "width": 6.327,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 409.26,
+      "fontSize": 9.5
+    },
+    {
+      "text": "modeled",
+      "x": 126.9500995,
+      "y": 400.794423828125,
+      "width": 32.68,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 409.26,
+      "fontSize": 9.5
+    },
+    {
+      "text": "with",
+      "x": 173.94699849999995,
+      "y": 400.794423828125,
+      "width": 16.872,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 409.26,
+      "fontSize": 9.5
+    },
+    {
+      "text": "the",
+      "x": 205.12140049999994,
+      "y": 400.794423828125,
+      "width": 11.59,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 409.26,
+      "fontSize": 9.5
+    },
+    {
+      "text": "wave",
+      "x": 231.0123964999999,
+      "y": 400.794423828125,
+      "width": 20.026,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 409.26,
+      "fontSize": 9.5
+    },
+    {
+      "text": "function",
+      "x": 265.3410929999999,
+      "y": 400.794423828125,
+      "width": 31.634999999999998,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 409.26,
+      "fontSize": 9.5
+    },
+    {
+      "text": "s",
+      "x": 74,
+      "y": 410.695,
+      "width": 3.89,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 420.925,
+      "fontSize": 10
+    },
+    {
+      "text": "(",
+      "x": 77.88,
+      "y": 410.63,
+      "width": 3.33,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 420.86,
+      "fontSize": 10
+    },
+    {
+      "text": "x",
+      "x": 81.46,
+      "y": 410.695,
+      "width": 4.44,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 420.925,
+      "fontSize": 10
+    },
+    {
+      "text": ",",
+      "x": 85.91999999999999,
+      "y": 410.695,
+      "width": 2.5,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 420.925,
+      "fontSize": 10
+    },
+    {
+      "text": "t",
+      "x": 91.75299999999999,
+      "y": 410.695,
+      "width": 2.7800000000000002,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 420.925,
+      "fontSize": 10
+    },
+    {
+      "text": ") =",
+      "x": 94.70299999999999,
+      "y": 410.63,
+      "width": 12.948,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 420.86,
+      "fontSize": 10
+    },
+    {
+      "text": "s",
+      "x": 110.41899999999998,
+      "y": 410.695,
+      "width": 3.89,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 420.925,
+      "fontSize": 10
+    },
+    {
+      "text": "max",
+      "x": 114.96599999999998,
+      "y": 414.577,
+      "width": 13.776,
+      "height": 11.728,
+      "fontFamily": "serif",
+      "baseline": 422.761,
+      "fontSize": 8
+    },
+    {
+      "text": "cos",
+      "x": 130.22599999999997,
+      "y": 410.695,
+      "width": 13.330000000000002,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 420.925,
+      "fontSize": 10
+    },
+    {
+      "text": "⎛",
+      "x": 143.53599999999997,
+      "y": 409.60542200000003,
+      "width": 2.10735,
+      "height": 9.033507,
+      "fontFamily": "sans-serif",
+      "baseline": 416.939,
+      "fontSize": 4.683
+    },
+    {
+      "text": "⎝",
+      "x": 143.53599999999997,
+      "y": 414.24142200000006,
+      "width": 2.10735,
+      "height": 9.033507,
+      "fontFamily": "sans-serif",
+      "baseline": 421.57500000000005,
+      "fontSize": 4.683
+    },
+    {
+      "text": "kx",
+      "x": 145.36699999999996,
+      "y": 410.69500000000005,
+      "width": 9.299999999999988,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 420.92500000000007,
+      "fontSize": 10
+    },
+    {
+      "text": "−",
+      "x": 156.90899999999996,
+      "y": 410.69500000000005,
+      "width": 6.8500000000000005,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 420.92500000000007,
+      "fontSize": 10
+    },
+    {
+      "text": "ωt",
+      "x": 165.97099999999998,
+      "y": 410.69500000000005,
+      "width": 9.63000000000001,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 420.92500000000007,
+      "fontSize": 10
+    },
+    {
+      "text": "+",
+      "x": 177.99299999999997,
+      "y": 410.69500000000005,
+      "width": 6.8500000000000005,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 420.92500000000007,
+      "fontSize": 10
+    },
+    {
+      "text": "ϕ",
+      "x": 187.05499999999998,
+      "y": 410.69500000000005,
+      "width": 6.2700000000000005,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 420.92500000000007,
+      "fontSize": 10
+    },
+    {
+      "text": "⎞",
+      "x": 193.31499999999997,
+      "y": 409.6054220000001,
+      "width": 2.10735,
+      "height": 9.033507,
+      "fontFamily": "sans-serif",
+      "baseline": 416.9390000000001,
+      "fontSize": 4.683
+    },
+    {
+      "text": "⎠",
+      "x": 193.31499999999997,
+      "y": 414.2414220000001,
+      "width": 2.10735,
+      "height": 9.033507,
+      "fontFamily": "sans-serif",
+      "baseline": 421.5750000000001,
+      "fontSize": 4.683
+    },
+    {
+      "text": ".",
+      "x": 195.14599999999996,
+      "y": 410.6950000000001,
+      "width": 2.5,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 420.9250000000001,
+      "fontSize": 10
+    },
+    {
+      "text": "At time",
+      "x": 203.872,
+      "y": 412.459423828125,
+      "width": 30.578295999999987,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 420.925,
+      "fontSize": 9.5
+    },
+    {
+      "text": "t",
+      "x": 240.707,
+      "y": 410.695,
+      "width": 2.7800000000000002,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 420.925,
+      "fontSize": 10
+    },
+    {
+      "text": "= 0.00 s",
+      "x": 246.435,
+      "y": 410.695,
+      "width": 33.008,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 420.925,
+      "fontSize": 10
+    },
+    {
+      "text": ", an",
+      "x": 281.433,
+      "y": 412.459423828125,
+      "width": 15.558796000000015,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 420.925,
+      "fontSize": 9.5
+    },
+    {
+      "text": "air molecule at",
+      "x": 72,
+      "y": 427.909423828125,
+      "width": 55.796806000000004,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 436.375,
+      "fontSize": 9.5
+    },
+    {
+      "text": "x",
+      "x": 132.132,
+      "y": 426.145,
+      "width": 4.44,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 436.375,
+      "fontSize": 10
+    },
+    {
+      "text": "= 3.5 m",
+      "x": 139.37,
+      "y": 426.145,
+      "width": 31.898000000000003,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 436.375,
+      "fontSize": 10
+    },
+    {
+      "text": "is at the maximum displacement",
+      "x": 175.318,
+      "y": 427.909423828125,
+      "width": 121.61690050000003,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 436.375,
+      "fontSize": 9.5
+    },
+    {
+      "text": "of",
+      "x": 72.00000000000001,
+      "y": 441.449423828125,
+      "width": 7.9135,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 449.915,
+      "fontSize": 9.5
+    },
+    {
+      "text": "7.00",
+      "x": 86.12490400000002,
+      "y": 441.449423828125,
+      "width": 16.625,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 449.915,
+      "fontSize": 9.5
+    },
+    {
+      "text": "nm.",
+      "x": 108.96120350000001,
+      "y": 441.449423828125,
+      "width": 14.506499999999999,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 449.915,
+      "fontSize": 9.5
+    },
+    {
+      "text": "At",
+      "x": 129.68690700000002,
+      "y": 441.449423828125,
+      "width": 9.4905,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 449.915,
+      "fontSize": 9.5
+    },
+    {
+      "text": "the",
+      "x": 145.39820650000001,
+      "y": 441.449423828125,
+      "width": 11.59,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 449.915,
+      "fontSize": 9.5
+    },
+    {
+      "text": "same",
+      "x": 163.21550399999998,
+      "y": 441.449423828125,
+      "width": 19.494,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 449.915,
+      "fontSize": 9.5
+    },
+    {
+      "text": "time,",
+      "x": 188.94640599999994,
+      "y": 441.449423828125,
+      "width": 19.228,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 449.915,
+      "fontSize": 9.5
+    },
+    {
+      "text": "another",
+      "x": 214.4175019999999,
+      "y": 441.449423828125,
+      "width": 28.462,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 449.915,
+      "fontSize": 9.5
+    },
+    {
+      "text": "molecule",
+      "x": 249.11490299999986,
+      "y": 441.449423828125,
+      "width": 34.769999999999996,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 449.915,
+      "fontSize": 9.5
+    },
+    {
+      "text": "at",
+      "x": 290.14400649999993,
+      "y": 441.449423828125,
+      "width": 6.84,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 449.915,
+      "fontSize": 9.5
+    },
+    {
+      "text": "x",
+      "x": 74.26,
+      "y": 451.085,
+      "width": 4.44,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 461.315,
+      "fontSize": 10
+    },
+    {
+      "text": "= 3.7 m",
+      "x": 81.498,
+      "y": 451.085,
+      "width": 31.898000000000003,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 461.315,
+      "fontSize": 10
+    },
+    {
+      "text": "has a displacement of 3.00 nm. What is the",
+      "x": 119.502,
+      "y": 452.849423828125,
+      "width": 177.48230599999997,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 461.315,
+      "fontSize": 9.5
+    },
+    {
+      "text": "frequency at which the speaker is oscillating?",
+      "x": 72,
+      "y": 466.389423828125,
+      "width": 172.8714999999999,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 474.855,
+      "fontSize": 9.5
+    },
+    {
+      "text": "36.",
+      "x": 72,
+      "y": 492.039423828125,
+      "width": 11.875,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 500.505,
+      "fontSize": 9.5
+    },
+    {
+      "text": "A 250-Hz tuning fork is struck and begins to vibrate.",
+      "x": 91.495,
+      "y": 492.039423828125,
+      "width": 205.47250749999992,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 500.505,
+      "fontSize": 9.5
+    },
+    {
+      "text": "A sound-level meter is located 34.00 m away. It takes",
+      "x": 72,
+      "y": 503.439423828125,
+      "width": 224.97449699999996,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 511.905,
+      "fontSize": 9.5
+    },
+    {
+      "text": "the sound",
+      "x": 72,
+      "y": 514.839423828125,
+      "width": 37.355596000000006,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 523.305,
+      "fontSize": 9.5
+    },
+    {
+      "text": "Δ",
+      "x": 114.411,
+      "y": 513.075,
+      "width": 7.22,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 523.3050000000001,
+      "fontSize": 10
+    },
+    {
+      "text": "t",
+      "x": 121.621,
+      "y": 513.075,
+      "width": 2.7800000000000002,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 523.3050000000001,
+      "fontSize": 10
+    },
+    {
+      "text": "= 0.10 s",
+      "x": 127.34899999999999,
+      "y": 513.075,
+      "width": 33.008,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 523.3050000000001,
+      "fontSize": 10
+    },
+    {
+      "text": "to reach the meter. The maximum",
+      "x": 165.401,
+      "y": 514.8394238281251,
+      "width": 131.55939150000003,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 523.3050000000001,
+      "fontSize": 9.5
+    },
+    {
+      "text": "displacement of the tuning fork is 1.00 mm. Write a wave",
+      "x": 72.00000000000001,
+      "y": 528.379423828125,
+      "width": 224.98229649999993,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 536.845,
+      "fontSize": 9.5
+    },
+    {
+      "text": "function for the sound.",
+      "x": 72.00000000000001,
+      "y": 539.779423828125,
+      "width": 86.4975,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 548.245,
+      "fontSize": 9.5
+    },
+    {
+      "text": "37.",
+      "x": 72.00000000000001,
+      "y": 565.429423828125,
+      "width": 11.875,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 573.895,
+      "fontSize": 9.5
+    },
+    {
+      "text": "A sound wave produced by an ultrasonic transducer,",
+      "x": 91.86800000000001,
+      "y": 565.429423828125,
+      "width": 205.13238849999996,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 573.895,
+      "fontSize": 9.5
+    },
+    {
+      "text": "moving",
+      "x": 72.00000000000001,
+      "y": 576.8294238281251,
+      "width": 29.012999999999998,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 585.2950000000001,
+      "fontSize": 9.5
+    },
+    {
+      "text": "in",
+      "x": 108.06230400000003,
+      "y": 576.8294238281251,
+      "width": 7.3815,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 585.2950000000001,
+      "fontSize": 9.5
+    },
+    {
+      "text": "air,",
+      "x": 122.48530850000003,
+      "y": 576.8294238281251,
+      "width": 12.014203500000004,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 585.2950000000001,
+      "fontSize": 9.5
+    },
+    {
+      "text": "is",
+      "x": 141.53300800000005,
+      "y": 576.8294238281251,
+      "width": 6.327,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 585.2950000000001,
+      "fontSize": 9.5
+    },
+    {
+      "text": "modeled",
+      "x": 154.90300400000004,
+      "y": 576.8294238281251,
+      "width": 32.68,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 585.2950000000001,
+      "fontSize": 9.5
+    },
+    {
+      "text": "with",
+      "x": 194.64840099999998,
+      "y": 576.8294238281251,
+      "width": 16.872,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 585.2950000000001,
+      "fontSize": 9.5
+    },
+    {
+      "text": "the",
+      "x": 218.57140549999997,
+      "y": 576.8294238281251,
+      "width": 11.59,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 585.2950000000001,
+      "fontSize": 9.5
+    },
+    {
+      "text": "wave",
+      "x": 237.21080449999994,
+      "y": 576.8294238281251,
+      "width": 20.026,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 585.2950000000001,
+      "fontSize": 9.5
+    },
+    {
+      "text": "equation",
+      "x": 264.2881034999999,
+      "y": 576.8294238281251,
+      "width": 32.68,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 585.2950000000001,
+      "fontSize": 9.5
+    },
+    {
+      "text": "s",
+      "x": 74,
+      "y": 589.056,
+      "width": 3.89,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 599.2860000000001,
+      "fontSize": 10
+    },
+    {
+      "text": "(",
+      "x": 77.88,
+      "y": 588.991,
+      "width": 3.33,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 599.221,
+      "fontSize": 10
+    },
+    {
+      "text": "x",
+      "x": 81.46,
+      "y": 589.056,
+      "width": 4.44,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 599.2860000000001,
+      "fontSize": 10
+    },
+    {
+      "text": ",",
+      "x": 85.91999999999999,
+      "y": 589.056,
+      "width": 2.5,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 599.2860000000001,
+      "fontSize": 10
+    },
+    {
+      "text": "t",
+      "x": 91.75299999999999,
+      "y": 589.056,
+      "width": 2.7800000000000002,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 599.2860000000001,
+      "fontSize": 10
+    },
+    {
+      "text": ") = 4.50 nm cos",
+      "x": 94.70299999999999,
+      "y": 588.991,
+      "width": 63.31600000000001,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 599.221,
+      "fontSize": 10
+    },
+    {
+      "text": "⎛",
+      "x": 157.999,
+      "y": 583.54853,
+      "width": 3.1702500000000002,
+      "height": 13.589805,
+      "fontFamily": "sans-serif",
+      "baseline": 594.581,
+      "fontSize": 7.045
+    },
+    {
+      "text": "⎝",
+      "x": 157.999,
+      "y": 590.52353,
+      "width": 3.1702500000000002,
+      "height": 13.589805,
+      "fontFamily": "sans-serif",
+      "baseline": 601.556,
+      "fontSize": 7.045
+    },
+    {
+      "text": "9.15 × 10",
+      "x": 160.754,
+      "y": 589.0559999999999,
+      "width": 38.444999999999986,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 599.286,
+      "fontSize": 10
+    },
+    {
+      "text": "4",
+      "x": 199.86599999999999,
+      "y": 587.006,
+      "width": 4,
+      "height": 11.728,
+      "fontFamily": "serif",
+      "baseline": 595.1899999999999,
+      "fontSize": 8
+    },
+    {
+      "text": "m",
+      "x": 207.36599999999999,
+      "y": 589.0559999999999,
+      "width": 7.78,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 599.286,
+      "fontSize": 10
+    },
+    {
+      "text": "−1",
+      "x": 215.803,
+      "y": 587.006,
+      "width": 9.48,
+      "height": 11.728,
+      "fontFamily": "serif",
+      "baseline": 595.1899999999999,
+      "fontSize": 8
+    },
+    {
+      "text": "x",
+      "x": 227.035,
+      "y": 589.0559999999999,
+      "width": 4.44,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 599.286,
+      "fontSize": 10
+    },
+    {
+      "text": "− 2",
+      "x": 233.71699999999998,
+      "y": 589.0559999999999,
+      "width": 14.06199999999999,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 599.286,
+      "fontSize": 10
+    },
+    {
+      "text": "π",
+      "x": 247.77899999999997,
+      "y": 589.0559999999999,
+      "width": 5.04,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 599.286,
+      "fontSize": 10
+    },
+    {
+      "text": "(5.00 MHz)",
+      "x": 253.13899999999998,
+      "y": 588.991,
+      "width": 46.66999999999997,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 599.221,
+      "fontSize": 10
+    },
+    {
+      "text": "t",
+      "x": 299.799,
+      "y": 589.0559999999999,
+      "width": 2.7800000000000002,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 599.286,
+      "fontSize": 10
+    },
+    {
+      "text": "⎞",
+      "x": 302.74899999999997,
+      "y": 583.5485299999999,
+      "width": 3.1702500000000002,
+      "height": 13.589805,
+      "fontFamily": "sans-serif",
+      "baseline": 594.5809999999999,
+      "fontSize": 7.045
+    },
+    {
+      "text": "⎠",
+      "x": 302.74899999999997,
+      "y": 590.5235299999999,
+      "width": 3.1702500000000002,
+      "height": 13.589805,
+      "fontFamily": "sans-serif",
+      "baseline": 601.5559999999999,
+      "fontSize": 7.045
+    },
+    {
+      "text": ".",
+      "x": 305.50399999999996,
+      "y": 589.0559999999999,
+      "width": 2.5,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 599.286,
+      "fontSize": 10
+    },
+    {
+      "text": "The transducer is to be used in nondestructive testing to test",
+      "x": 72,
+      "y": 608.596423828125,
+      "width": 224.9746109999999,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 617.062,
+      "fontSize": 9.5
+    },
+    {
+      "text": "for fractures in steel beams. The speed of sound in the steel",
+      "x": 72,
+      "y": 619.996423828125,
+      "width": 224.96659299999996,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 628.462,
+      "fontSize": 9.5
+    },
+    {
+      "text": "beam is",
+      "x": 72,
+      "y": 631.3964238281251,
+      "width": 31.265896499999993,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 639.8620000000001,
+      "fontSize": 9.5
+    },
+    {
+      "text": "v",
+      "x": 109.642,
+      "y": 629.632,
+      "width": 4.44,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 639.862,
+      "fontSize": 10
+    },
+    {
+      "text": "= 5950 m/s.",
+      "x": 116.85,
+      "y": 629.632,
+      "width": 48.538000000000004,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 639.862,
+      "fontSize": 10
+    },
+    {
+      "text": "Find the wave function for the",
+      "x": 171.754,
+      "y": 631.396423828125,
+      "width": 125.23040600000004,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 639.862,
+      "fontSize": 9.5
+    },
+    {
+      "text": "sound wave in the steel beam.",
+      "x": 71.99999999999999,
+      "y": 645.006423828125,
+      "width": 113.867,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 653.472,
+      "fontSize": 9.5
+    },
+    {
+      "text": "38.",
+      "x": 71.99999999999999,
+      "y": 670.656423828125,
+      "width": 11.875,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 679.122,
+      "fontSize": 9.5
+    },
+    {
+      "text": "Porpoises",
+      "x": 95.34499999999998,
+      "y": 670.656423828125,
+      "width": 36.9265,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 679.122,
+      "fontSize": 9.5
+    },
+    {
+      "text": "emit",
+      "x": 139.0125005,
+      "y": 670.656423828125,
+      "width": 16.852999999999998,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 679.122,
+      "fontSize": 9.5
+    },
+    {
+      "text": "sound",
+      "x": 162.61770149999995,
+      "y": 670.656423828125,
+      "width": 22.6955,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 679.122,
+      "fontSize": 9.5
+    },
+    {
+      "text": "waves",
+      "x": 192.03509749999995,
+      "y": 670.656423828125,
+      "width": 23.7215,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 679.122,
+      "fontSize": 9.5
+    },
+    {
+      "text": "that",
+      "x": 222.49629649999994,
+      "y": 670.656423828125,
+      "width": 14.221499999999999,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 679.122,
+      "fontSize": 9.5
+    },
+    {
+      "text": "they",
+      "x": 243.4620934999999,
+      "y": 670.656423828125,
+      "width": 16.34,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 679.122,
+      "fontSize": 9.5
+    },
+    {
+      "text": "use",
+      "x": 266.5383914999998,
+      "y": 670.656423828125,
+      "width": 12.654,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 679.122,
+      "fontSize": 9.5
+    },
+    {
+      "text": "for",
+      "x": 285.9224954999998,
+      "y": 670.656423828125,
+      "width": 11.077,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 679.122,
+      "fontSize": 9.5
+    },
+    {
+      "text": "navigation. If the wavelength of the sound wave emitted",
+      "x": 71.99999999999999,
+      "y": 682.0564238281249,
+      "width": 224.9522859999999,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 690.5219999999999,
+      "fontSize": 9.5
+    },
+    {
+      "text": "is",
+      "x": 71.99999999999999,
+      "y": 693.456423828125,
+      "width": 6.327,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 701.922,
+      "fontSize": 9.5
+    },
+    {
+      "text": "4.5",
+      "x": 84.59240199999998,
+      "y": 693.456423828125,
+      "width": 11.875,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 701.922,
+      "fontSize": 9.5
+    },
+    {
+      "text": "cm,",
+      "x": 102.72339899999997,
+      "y": 693.456423828125,
+      "width": 13.965,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 701.922,
+      "fontSize": 9.5
+    },
+    {
+      "text": "and",
+      "x": 122.96040349999997,
+      "y": 693.456423828125,
+      "width": 13.7085,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 701.922,
+      "fontSize": 9.5
+    },
+    {
+      "text": "the",
+      "x": 142.93289949999996,
+      "y": 693.456423828125,
+      "width": 11.59,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 701.922,
+      "fontSize": 9.5
+    },
+    {
+      "text": "speed",
+      "x": 160.79490399999995,
+      "y": 693.456423828125,
+      "width": 21.6125,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 701.922,
+      "fontSize": 9.5
+    },
+    {
+      "text": "of",
+      "x": 188.68100449999991,
+      "y": 693.456423828125,
+      "width": 7.9135,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 701.922,
+      "fontSize": 9.5
+    },
+    {
+      "text": "sound",
+      "x": 202.85050149999992,
+      "y": 693.456423828125,
+      "width": 22.6955,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 701.922,
+      "fontSize": 9.5
+    },
+    {
+      "text": "in",
+      "x": 231.80360399999992,
+      "y": 693.456423828125,
+      "width": 7.3815,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 701.922,
+      "fontSize": 9.5
+    },
+    {
+      "text": "the",
+      "x": 245.44900499999991,
+      "y": 693.456423828125,
+      "width": 11.59,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 701.922,
+      "fontSize": 9.5
+    },
+    {
+      "text": "water",
+      "x": 263.31090499999993,
+      "y": 693.456423828125,
+      "width": 21.070999999999998,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 701.922,
+      "fontSize": 9.5
+    },
+    {
+      "text": "is",
+      "x": 290.66360899999995,
+      "y": 693.456423828125,
+      "width": 6.327,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 701.922,
+      "fontSize": 9.5
+    },
+    {
+      "text": "v",
+      "x": 74,
+      "y": 703.092,
+      "width": 4.44,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 713.322,
+      "fontSize": 10
+    },
+    {
+      "text": "= 1530 m/s,",
+      "x": 81.208,
+      "y": 703.092,
+      "width": 48.568000000000005,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 713.322,
+      "fontSize": 10
+    },
+    {
+      "text": "what is the period of the sound?",
+      "x": 134.121,
+      "y": 704.856423828125,
+      "width": 121.277,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 713.322,
+      "fontSize": 9.5
+    },
+    {
+      "text": "39.",
+      "x": 315,
+      "y": 58.04042382812497,
+      "width": 11.875,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 66.50599999999997,
+      "fontSize": 9.5
+    },
+    {
+      "text": "Bats use sound waves to catch insects. Bats can detect",
+      "x": 334.022,
+      "y": 58.04042382812497,
+      "width": 205.9375895,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 66.50599999999997,
+      "fontSize": 9.5
+    },
+    {
+      "text": "frequencies up to 100 kHz. If the sound waves travel",
+      "x": 315,
+      "y": 69.44042382812495,
+      "width": 224.968018,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 77.90599999999995,
+      "fontSize": 9.5
+    },
+    {
+      "text": "through",
+      "x": 315,
+      "y": 80.84042382812493,
+      "width": 29.545,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 89.30599999999993,
+      "fontSize": 9.5
+    },
+    {
+      "text": "air",
+      "x": 350.51480000000004,
+      "y": 80.84042382812493,
+      "width": 10.003499999999999,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 89.30599999999993,
+      "fontSize": 9.5
+    },
+    {
+      "text": "at",
+      "x": 366.4962035000001,
+      "y": 80.84042382812493,
+      "width": 6.84,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 89.30599999999993,
+      "fontSize": 9.5
+    },
+    {
+      "text": "a",
+      "x": 379.31410700000015,
+      "y": 80.84042382812493,
+      "width": 4.2085,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 89.30599999999993,
+      "fontSize": 9.5
+    },
+    {
+      "text": "speed",
+      "x": 389.49251150000015,
+      "y": 80.84042382812493,
+      "width": 21.6125,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 89.30599999999993,
+      "fontSize": 9.5
+    },
+    {
+      "text": "of",
+      "x": 417.08451100000013,
+      "y": 80.84042382812493,
+      "width": 7.9135,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 89.30599999999993,
+      "fontSize": 9.5
+    },
+    {
+      "text": "v",
+      "x": 432.96,
+      "y": 79.07499999999995,
+      "width": 4.44,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 89.30499999999995,
+      "fontSize": 10
+    },
+    {
+      "text": "= 343 m/s,",
+      "x": 440.168,
+      "y": 79.07499999999995,
+      "width": 43.56799999999998,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 89.30499999999995,
+      "fontSize": 10
+    },
+    {
+      "text": "what",
+      "x": 491.667,
+      "y": 80.83942382812495,
+      "width": 18.448999999999998,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 89.30499999999995,
+      "fontSize": 9.5
+    },
+    {
+      "text": "is",
+      "x": 516.0954995,
+      "y": 80.83942382812495,
+      "width": 6.327,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 89.30499999999995,
+      "fontSize": 9.5
+    },
+    {
+      "text": "the",
+      "x": 528.393696,
+      "y": 80.83942382812495,
+      "width": 11.59,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 89.30499999999995,
+      "fontSize": 9.5
+    },
+    {
+      "text": "wavelength of the sound waves?",
+      "x": 315,
+      "y": 95.6494238281249,
+      "width": 123.3765,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 104.1149999999999,
+      "fontSize": 9.5
+    },
+    {
+      "text": "40.",
+      "x": 315,
+      "y": 121.29942382812487,
+      "width": 11.875,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 129.76499999999987,
+      "fontSize": 9.5
+    },
+    {
+      "text": "A bat sends of a sound wave 100 kHz and the sound",
+      "x": 334.611,
+      "y": 121.29942382812487,
+      "width": 205.38759649999992,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 129.76499999999987,
+      "fontSize": 9.5
+    },
+    {
+      "text": "waves travel through air at a speed of",
+      "x": 315,
+      "y": 132.69942382812485,
+      "width": 145.03490400000007,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 141.16499999999985,
+      "fontSize": 9.5
+    },
+    {
+      "text": "v",
+      "x": 464.818,
+      "y": 130.93499999999997,
+      "width": 4.44,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 141.16499999999996,
+      "fontSize": 10
+    },
+    {
+      "text": "= 343 m/s.",
+      "x": 472.026,
+      "y": 130.93499999999997,
+      "width": 43.538000000000004,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 141.16499999999996,
+      "fontSize": 10
+    },
+    {
+      "text": "(a) If",
+      "x": 520.346,
+      "y": 132.69942382812496,
+      "width": 19.653600000000026,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 141.16499999999996,
+      "fontSize": 9.5
+    },
+    {
+      "text": "the maximum pressure difference is 1.30 Pa, what is a wave",
+      "x": 315,
+      "y": 146.279423828125,
+      "width": 224.98229650000005,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 154.745,
+      "fontSize": 9.5
+    },
+    {
+      "text": "function that would model the sound wave, assuming the",
+      "x": 315,
+      "y": 157.67942382812498,
+      "width": 224.98398749999998,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 166.14499999999998,
+      "fontSize": 9.5
+    },
+    {
+      "text": "wave is sinusoidal? (Assume the phase shift is zero.) (b)",
+      "x": 315,
+      "y": 169.07942382812496,
+      "width": 224.99989049999994,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 177.54499999999996,
+      "fontSize": 9.5
+    },
+    {
+      "text": "What are the period and wavelength of the sound wave?",
+      "x": 315,
+      "y": 180.47942382812494,
+      "width": 213.23699999999994,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 188.94499999999994,
+      "fontSize": 9.5
+    },
+    {
+      "text": "41.",
+      "x": 315,
+      "y": 206.1294238281249,
+      "width": 11.875,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 214.5949999999999,
+      "fontSize": 9.5
+    },
+    {
+      "text": "Consider the graph shown below of a compression",
+      "x": 335.70799999999997,
+      "y": 206.1294238281249,
+      "width": 204.25721049999987,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 214.5949999999999,
+      "fontSize": 9.5
+    },
+    {
+      "text": "wave. Shown are snapshots of the wave function for",
+      "x": 315,
+      "y": 217.5294238281249,
+      "width": 224.9999094999999,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 225.9949999999999,
+      "fontSize": 9.5
+    },
+    {
+      "text": "t",
+      "x": 317,
+      "y": 227.165,
+      "width": 2.7800000000000002,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 237.39499999999998,
+      "fontSize": 10
+    },
+    {
+      "text": "= 0.000 s",
+      "x": 322.728,
+      "y": 227.165,
+      "width": 38.007999999999974,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 237.39499999999998,
+      "fontSize": 10
+    },
+    {
+      "text": "(blue) and",
+      "x": 364.843,
+      "y": 228.92942382812498,
+      "width": 38.50950400000001,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 237.39499999999998,
+      "fontSize": 9.5
+    },
+    {
+      "text": "t",
+      "x": 407.479,
+      "y": 227.165,
+      "width": 2.7800000000000002,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 237.39499999999998,
+      "fontSize": 10
+    },
+    {
+      "text": "= 0.005 s",
+      "x": 413.207,
+      "y": 227.165,
+      "width": 38.007999999999974,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 237.39499999999998,
+      "fontSize": 10
+    },
+    {
+      "text": "(orange). What are the",
+      "x": 455.322,
+      "y": 228.92942382812498,
+      "width": 84.66170100000004,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 237.39499999999998,
+      "fontSize": 9.5
+    },
+    {
+      "text": "wavelength, maximum displacement, velocity, and period",
+      "x": 315,
+      "y": 242.46942382812495,
+      "width": 224.9839969999999,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 250.93499999999995,
+      "fontSize": 9.5
+    },
+    {
+      "text": "of the compression wave?",
+      "x": 315,
+      "y": 253.86942382812492,
+      "width": 98.84750000000001,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 262.3349999999999,
+      "fontSize": 9.5
+    },
+    {
+      "text": "42.",
+      "x": 315,
+      "y": 377.919423828125,
+      "width": 11.875,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 386.385,
+      "fontSize": 9.5
+    },
+    {
+      "text": "Consider the graph in the preceding problem of a",
+      "x": 336.136,
+      "y": 377.919423828125,
+      "width": 203.85591149999993,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 386.385,
+      "fontSize": 9.5
+    },
+    {
+      "text": "compression",
+      "x": 315,
+      "y": 389.31942382812497,
+      "width": 47.984500000000004,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 397.78499999999997,
+      "fontSize": 9.5
+    },
+    {
+      "text": "wave.",
+      "x": 368.7424975,
+      "y": 389.31942382812497,
+      "width": 22.401,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 397.78499999999997,
+      "fontSize": 9.5
+    },
+    {
+      "text": "Shown",
+      "x": 396.88419550000003,
+      "y": 389.31942382812497,
+      "width": 26.391,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 397.78499999999997,
+      "fontSize": 9.5
+    },
+    {
+      "text": "are",
+      "x": 429.001197,
+      "y": 389.31942382812497,
+      "width": 11.5805,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 397.78499999999997,
+      "fontSize": 9.5
+    },
+    {
+      "text": "snapshots",
+      "x": 446.320799,
+      "y": 389.31942382812497,
+      "width": 36.926500000000004,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 397.78499999999997,
+      "fontSize": 9.5
+    },
+    {
+      "text": "of",
+      "x": 488.9907995,
+      "y": 389.31942382812497,
+      "width": 7.9135,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 397.78499999999997,
+      "fontSize": 9.5
+    },
+    {
+      "text": "the",
+      "x": 502.62740349999996,
+      "y": 389.31942382812497,
+      "width": 11.59,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 397.78499999999997,
+      "fontSize": 9.5
+    },
+    {
+      "text": "wave",
+      "x": 519.9563059999999,
+      "y": 389.31942382812497,
+      "width": 20.026,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 397.78499999999997,
+      "fontSize": 9.5
+    },
+    {
+      "text": "function for",
+      "x": 315,
+      "y": 400.71942382812495,
+      "width": 45.379999000000005,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 409.18499999999995,
+      "fontSize": 9.5
+    },
+    {
+      "text": "t",
+      "x": 365.024,
+      "y": 398.955,
+      "width": 2.7800000000000002,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 409.185,
+      "fontSize": 10
+    },
+    {
+      "text": "= 0.000 s",
+      "x": 370.752,
+      "y": 398.955,
+      "width": 38.007999999999974,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 409.185,
+      "fontSize": 10
+    },
+    {
+      "text": "(blue) and",
+      "x": 413.394,
+      "y": 400.719423828125,
+      "width": 39.03569949999998,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 409.185,
+      "fontSize": 9.5
+    },
+    {
+      "text": "t",
+      "x": 457.082,
+      "y": 398.955,
+      "width": 2.7800000000000002,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 409.185,
+      "fontSize": 10
+    },
+    {
+      "text": "= 0.005 s",
+      "x": 462.81,
+      "y": 398.955,
+      "width": 38.007999999999974,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 409.185,
+      "fontSize": 10
+    },
+    {
+      "text": "(orange).",
+      "x": 505.451,
+      "y": 400.719423828125,
+      "width": 34.5325,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 409.185,
+      "fontSize": 9.5
+    },
+    {
+      "text": "Given",
+      "x": 315,
+      "y": 414.259423828125,
+      "width": 23.199,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 422.725,
+      "fontSize": 9.5
+    },
+    {
+      "text": "that",
+      "x": 344.183202,
+      "y": 414.259423828125,
+      "width": 14.221499999999999,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 422.725,
+      "fontSize": 9.5
+    },
+    {
+      "text": "the",
+      "x": 364.39520250000004,
+      "y": 414.259423828125,
+      "width": 11.59,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 422.725,
+      "fontSize": 9.5
+    },
+    {
+      "text": "displacement",
+      "x": 381.96779900000007,
+      "y": 414.259423828125,
+      "width": 50.05550000000001,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 422.725,
+      "fontSize": 9.5
+    },
+    {
+      "text": "of",
+      "x": 438.05529550000017,
+      "y": 414.259423828125,
+      "width": 7.9135,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 422.725,
+      "fontSize": 9.5
+    },
+    {
+      "text": "the",
+      "x": 451.93549850000016,
+      "y": 414.259423828125,
+      "width": 11.59,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 422.725,
+      "fontSize": 9.5
+    },
+    {
+      "text": "molecule",
+      "x": 469.5080950000002,
+      "y": 414.259423828125,
+      "width": 34.769999999999996,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 422.725,
+      "fontSize": 9.5
+    },
+    {
+      "text": "at",
+      "x": 510.2925925000003,
+      "y": 414.259423828125,
+      "width": 6.84,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 422.725,
+      "fontSize": 9.5
+    },
+    {
+      "text": "time",
+      "x": 523.1151890000002,
+      "y": 414.259423828125,
+      "width": 16.853,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 422.725,
+      "fontSize": 9.5
+    },
+    {
+      "text": "t",
+      "x": 317,
+      "y": 423.895,
+      "width": 2.7800000000000002,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 434.125,
+      "fontSize": 10
+    },
+    {
+      "text": "= 0.00 s",
+      "x": 322.728,
+      "y": 423.895,
+      "width": 33.007999999999974,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 434.125,
+      "fontSize": 10
+    },
+    {
+      "text": "and",
+      "x": 378.531,
+      "y": 425.659423828125,
+      "width": 13.7085,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 434.125,
+      "fontSize": 9.5
+    },
+    {
+      "text": "position",
+      "x": 413.0526985,
+      "y": 425.659423828125,
+      "width": 30.589999999999996,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 434.125,
+      "fontSize": 9.5
+    },
+    {
+      "text": "x",
+      "x": 466.733,
+      "y": 423.895,
+      "width": 4.44,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 434.125,
+      "fontSize": 10
+    },
+    {
+      "text": "= 0.00 m",
+      "x": 473.971,
+      "y": 423.895,
+      "width": 36.897999999999975,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 434.125,
+      "fontSize": 10
+    },
+    {
+      "text": "is",
+      "x": 533.664,
+      "y": 425.659423828125,
+      "width": 6.327,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 434.125,
+      "fontSize": 9.5
+    },
+    {
+      "text": "s",
+      "x": 317,
+      "y": 437.435,
+      "width": 3.89,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 447.665,
+      "fontSize": 10
+    },
+    {
+      "text": "(0.00 m, 0.00 s) = 1.08 mm,",
+      "x": 320.88,
+      "y": 437.37,
+      "width": 113.07900000000005,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 447.6,
+      "fontSize": 10
+    },
+    {
+      "text": "derive a wave function to",
+      "x": 439.342,
+      "y": 439.199423828125,
+      "width": 100.64989700000001,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 447.665,
+      "fontSize": 9.5
+    },
+    {
+      "text": "model the compression wave.",
+      "x": 315,
+      "y": 454.29442382812505,
+      "width": 112.82199999999999,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 462.76000000000005,
+      "fontSize": 9.5
+    },
+    {
+      "text": "43.",
+      "x": 315,
+      "y": 479.944423828125,
+      "width": 11.875,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 488.41,
+      "fontSize": 9.5
+    },
+    {
+      "text": "A guitar string oscillates at a frequency of 100 Hz",
+      "x": 335.632,
+      "y": 479.944423828125,
+      "width": 204.35791050000006,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 488.41,
+      "fontSize": 9.5
+    },
+    {
+      "text": "and produces a sound wave. (a) What do you think the",
+      "x": 315,
+      "y": 491.344423828125,
+      "width": 224.98399699999993,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 499.81,
+      "fontSize": 9.5
+    },
+    {
+      "text": "frequency of the sound wave is that the vibrating string",
+      "x": 315,
+      "y": 502.744423828125,
+      "width": 224.98259099999984,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 511.21,
+      "fontSize": 9.5
+    },
+    {
+      "text": "produces? (b) If the speed of the sound wave is",
+      "x": 315,
+      "y": 514.1444238281249,
+      "width": 179.01799999999997,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 522.6099999999999,
+      "fontSize": 9.5
+    },
+    {
+      "text": "v",
+      "x": 317,
+      "y": 523.78,
+      "width": 4.44,
+      "height": 13.279999999999998,
+      "fontFamily": "serif",
+      "baseline": 534.01,
+      "fontSize": 10
+    },
+    {
+      "text": "= 343 m/s,",
+      "x": 324.208,
+      "y": 523.78,
+      "width": 43.56799999999998,
+      "height": 14.66,
+      "fontFamily": "serif",
+      "baseline": 534.01,
+      "fontSize": 10
+    },
+    {
+      "text": ", what is the wavelength of the sound wave?",
+      "x": 369.746,
+      "y": 525.544423828125,
+      "width": 167.92199999999997,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 534.01,
+      "fontSize": 9.5
+    },
+    {
+      "text": "17.2 Speed of Sound",
+      "x": 315,
+      "y": 565.115265625,
+      "width": 98.25119999999995,
+      "height": 11.171875,
+      "fontFamily": "sans-serif",
+      "baseline": 574.168,
+      "fontSize": 10
+    },
+    {
+      "text": "44.",
+      "x": 315,
+      "y": 581.154423828125,
+      "width": 11.875,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 589.62,
+      "fontSize": 9.5
+    },
+    {
+      "text": "When poked by a spear, an operatic soprano lets out",
+      "x": 334.8,
+      "y": 581.154423828125,
+      "width": 205.19180149999983,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 589.62,
+      "fontSize": 9.5
+    },
+    {
+      "text": "a 1200-Hz shriek. What is its wavelength if the speed of",
+      "x": 315,
+      "y": 592.554423828125,
+      "width": 224.99989999999988,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 601.02,
+      "fontSize": 9.5
+    },
+    {
+      "text": "sound is 345 m/s?",
+      "x": 315,
+      "y": 603.9544238281251,
+      "width": 68.3145,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 612.4200000000001,
+      "fontSize": 9.5
+    },
+    {
+      "text": "45.",
+      "x": 315,
+      "y": 629.604423828125,
+      "width": 11.875,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 638.07,
+      "fontSize": 9.5
+    },
+    {
+      "text": "What frequency sound has a 0.10-m wavelength when",
+      "x": 333.963,
+      "y": 629.604423828125,
+      "width": 206.02740249999994,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 638.07,
+      "fontSize": 9.5
+    },
+    {
+      "text": "the speed of sound is 340 m/s?",
+      "x": 315,
+      "y": 641.004423828125,
+      "width": 116.5555,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 649.47,
+      "fontSize": 9.5
+    },
+    {
+      "text": "46.",
+      "x": 315,
+      "y": 666.654423828125,
+      "width": 11.875,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 675.12,
+      "fontSize": 9.5
+    },
+    {
+      "text": "Calculate the speed of sound on a day when a 1500-Hz",
+      "x": 333.733,
+      "y": 666.654423828125,
+      "width": 206.2570839999999,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 675.12,
+      "fontSize": 9.5
+    },
+    {
+      "text": "frequency has a wavelength of 0.221 m.",
+      "x": 315,
+      "y": 678.054423828125,
+      "width": 151.8575,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 686.52,
+      "fontSize": 9.5
+    },
+    {
+      "text": "47.",
+      "x": 315,
+      "y": 703.7044238281251,
+      "width": 11.875,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 712.1700000000001,
+      "fontSize": 9.5
+    },
+    {
+      "text": "(a) What is the speed of sound in a medium where",
+      "x": 335.364,
+      "y": 703.7044238281251,
+      "width": 204.61829599999987,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 712.1700000000001,
+      "fontSize": 9.5
+    },
+    {
+      "text": "a 100-kHz frequency produces a 5.96-cm wavelength? (b)",
+      "x": 315,
+      "y": 715.104423828125,
+      "width": 224.99991899999998,
+      "height": 10.5205078125,
+      "fontFamily": "serif",
+      "baseline": 723.57,
+      "fontSize": 9.5
+    },
+    {
+      "text": "898",
+      "x": 72,
+      "y": 24.89008593750009,
+      "width": 11.676,
+      "height": 7.8203125,
+      "fontFamily": "sans-serif",
+      "baseline": 31.22700000000009,
+      "fontSize": 7
+    },
+    {
+      "text": "Chapter 17 | Sound",
+      "x": 479.416,
+      "y": 24.89008593750009,
+      "width": 60.535999999999966,
+      "height": 7.8203125,
+      "fontFamily": "sans-serif",
+      "baseline": 31.22700000000009,
+      "fontSize": 7
+    },
+    {
+      "text": "This OpenStax book is available for free at http://cnx.org/content/col12031/1.10",
+      "x": 72,
+      "y": 759.2900859375001,
+      "width": 244.9439999999998,
+      "height": 7.8203125,
+      "fontFamily": "sans-serif",
+      "baseline": 765.6270000000001,
+      "fontSize": 7
+    }
+  ]
+}

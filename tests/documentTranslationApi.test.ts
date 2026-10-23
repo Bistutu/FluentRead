@@ -2,7 +2,6 @@ import {TranslationRequestError, serializeTranslationError} from '@/src/services
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {
-    createDocumentFileLoadGuard,
     createDocumentSegmentTranslator,
     stripInventedPictographs,
 } from '@/src/features/document-translation/services/translation';
@@ -30,6 +29,25 @@ beforeEach(() => {
 });
 
 describe('document translation API', () => {
+    it.each(['resolve', 'reject'] as const)('取消未就绪运行时立即结束任务并消费迟到 %s', async late => {
+        let resolveReady!: () => void, rejectReady!: (error: Error) => void;
+        const readiness = new Promise<void>((resolve, reject) => {resolveReady = resolve; rejectReady = reject;});
+        mocks.waitUntilReady.mockReturnValue(readiness);
+        const controller = new AbortController();
+        const removeListener = vi.spyOn(controller.signal, 'removeEventListener');
+        let outcome: unknown;
+        const work = translateDocumentSegments([{id: 0, source: 'Source'}], {fileName: 'paused.txt', signal: controller.signal})
+            .then(value => {outcome = value;}, error => {outcome = error;});
+        controller.abort();
+        // 运行时仍然未就绪：取消必须独立完成，也不能把监听器挂在永久未决任务上。
+        await Promise.resolve(); await Promise.resolve();
+        expect(outcome).toMatchObject({name: 'AbortError'});
+        expect(removeListener).toHaveBeenCalledWith('abort', expect.any(Function));
+        if (late === 'resolve') resolveReady(); else rejectReady(new Error('Late readiness failure'));
+        await work; await Promise.resolve();
+        expect(mocks.translateText).not.toHaveBeenCalled();
+        expect(mocks.translateTextBatch).not.toHaveBeenCalled();
+    });
     it.each(['microsoft', 'openai'])('为 %s 固定本次缓存策略，未指定时保留客户端默认值', async service => {
         mocks.defaultService = service;
         const segments = Array.from({length: 17}, (_, id) => ({id, source: `Source ${id}`}));
@@ -98,32 +116,6 @@ describe('document translation API', () => {
         await translate([{id: 0, source: 'source'}], {fileName: 'sample.txt', glossaryIds: [], glossaryRevision: 'explicit'});
         expect(gateway.translateTextBatch).toHaveBeenLastCalledWith(['source'], 'sample.txt', expect.objectContaining({glossaryIds: [], glossaryRevision: 'explicit'}));
     });
-    it('较慢的旧文件解析完成后不能覆盖后选文件，重置也会作废在途解析', async () => {
-        const guard = createDocumentFileLoadGuard();
-        const commits: string[] = [];
-        let resolveOld!: (value: string) => void;
-        let resolveNew!: (value: string) => void;
-        const oldParse = new Promise<string>((resolve) => { resolveOld = resolve; });
-        const newParse = new Promise<string>((resolve) => { resolveNew = resolve; });
-        const runLoad = async (parse: Promise<string>) => {
-            const request = guard.begin();
-            const value = await parse;
-            if (request.isCurrent()) commits.push(value);
-        };
-
-        const oldLoad = runLoad(oldParse);
-        const newLoad = runLoad(newParse);
-        resolveNew('new.epub');
-        await newLoad;
-        resolveOld('old.pdf');
-        await oldLoad;
-        expect(commits).toEqual(['new.epub']);
-
-        const pendingRequest = guard.begin();
-        guard.invalidate();
-        expect(pendingRequest.isCurrent()).toBe(false);
-    });
-
     it('等待运行时就绪，并对空文档短路', async () => {
         await expect(translateDocumentSegments([], {fileName: 'empty.txt'})).resolves.toEqual([]);
 

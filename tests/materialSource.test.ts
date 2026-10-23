@@ -13,7 +13,7 @@ import {beginMaterialCapture, completeMaterialCapture} from '@/src/features/voca
 import type {MaterialRecord} from '@/src/features/vocabulary/materialProtocol';
 import {getVideoLearningSource} from '@/src/features/video-subtitle/content/public';
 import {sanitizeVocabularyVideoUrl} from '@/src/features/vocabulary/source';
-import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
+import {registerAllUiLanguageBundles} from './helpers/uiLanguageBundles';
 
 const ports = vi.hoisted(() => ({resolve: vi.fn(), generation: vi.fn(), capture: vi.fn(), config: {uiLanguage: 'zh-CN' as 'zh-CN' | 'en-US'}}));
 vi.mock('@/src/features/vocabulary/materialClient', () => ({materialResolve: ports.resolve, materialGeneration: ports.generation, materialCapture: ports.capture}));

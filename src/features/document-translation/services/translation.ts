@@ -1,7 +1,7 @@
 /**
  * @file src/features/document-translation/services/translation.ts
  * 文件职责：编排文档片段的批量翻译流程，在固定语言和服务快照下按数量及字符预算拆批，并向调用方持续报告确定性进度。
- * 主要内容：定义进度与逐段提交契约，在本次文档调用中默认启用机器批量或 AI 多段槽请求而不改变全局设置，固定缓存策略并透传至批量和降级请求；在单批请求与重试总预算内尊重 Retry-After，暂时限频时由本任务冻结服务共享冷却派发闸门，自身退避与同伴尚余冷却都计入等待预算；禁用客户端叠加重试，冻结服务单次超时，绝对期限中止请求与等待并拒收迟到结果。按阅读位置变化重排待译片段并复用批次游标，以章节内去重避免重复原文挤占批量预算；构建有界篇章参考并区分人工确认译文，移除服务凭空加入的表情符号，报告真实等待数量。原样返回的专名与短词保留原文，复用已有译文续译，固定文件级上下文；不可恢复故障停止派发但收齐在途成功，显式取消立即退出并禁止迟到提交。
+ * 主要内容：定义进度与逐段提交契约，在本次文档调用中默认启用机器批量或 AI 多段槽请求而不改变全局设置，固定缓存策略并透传至批量和降级请求；在单批请求与重试总预算内尊重 Retry-After，暂时限频时由本任务冻结服务共享冷却派发闸门，自身退避与同伴尚余冷却都计入等待预算；禁用客户端叠加重试，冻结服务单次超时，绝对期限中止请求与等待并拒收迟到结果。按阅读位置变化重排待译片段并复用批次游标，以章节内去重避免重复原文挤占批量预算；构建有界篇章参考并区分人工确认译文，移除服务凭空加入的表情符号，报告真实等待数量。原样返回的专名与短词保留原文，复用已有译文续译，固定文件级上下文；不可恢复故障停止派发但收齐在途成功，显式取消覆盖运行时就绪等待、立即移除监听并禁止迟到提交。
  * 模块边界：该层不解析文件、不持久化配置，也不直接绑定具体 provider；上层负责冻结用户设置并注入 gateway，文档结构由 core 提供，网络和缓存语义由应用翻译客户端承担。
  */
 import {serializeTranslationError, TranslationRequestError} from '@/src/services/translation/errors';
@@ -118,33 +118,6 @@ export type TranslateDocumentSegments = (
     options: DocumentTranslationOptions,
 ) => Promise<string[]>;
 
-export interface DocumentFileLoadRequest {
-    /** 旧解析 Promise 完成时必须再次检查，只有当前请求可以提交页面状态。 */
-    isCurrent(): boolean;
-}
-
-export interface DocumentFileLoadGuard {
-    begin(): DocumentFileLoadRequest;
-    invalidate(): void;
-}
-
-/**
- * 为无法真正中止的 PDF/ePub/DOCX 解析提供最新请求所有权。
- * 新文件或页面重置会推进代次，旧解析仍可自然结束，但不能覆盖较新的文档。
- */
-export function createDocumentFileLoadGuard(): DocumentFileLoadGuard {
-    let generation = 0;
-    return {
-        begin() {
-            const requestGeneration = ++generation;
-            return {isCurrent: () => requestGeneration === generation};
-        },
-        invalidate() {
-            generation += 1;
-        },
-    };
-}
-
 const BATCH_ITEM_LIMIT = 16;
 const BATCH_CHARACTER_LIMIT = 3_500;
 const BATCH_CONCURRENCY = 3;
@@ -208,6 +181,7 @@ function waitWithAbort<T>(work: Promise<T>, signal?: AbortSignal): Promise<T> {
     if (!signal) return work;
     return new Promise((resolve, reject) => {
         const abort = () => {
+            cleanup();
             const error = new Error('文档翻译已取消');
             error.name = 'AbortError';
             reject(error);
@@ -240,15 +214,15 @@ async function runAttempt<T>(work: (attempt: DocumentTranslationAttempt) => Prom
     const remaining = deadlineAt - Date.now();
     if (remaining <= 0) throw documentTimeout();
     const timeout = Math.min(remaining, requestTimeout ?? remaining);
+    // 在同步注册监听器之前拒绝已取消任务，不为它建立子控制器和计时器。
+    throwIfAborted(signal);
     const controller = new AbortController();
     const abort = () => controller.abort();
     signal?.addEventListener('abort', abort, {once: true});
-    if (signal?.aborted) abort();
     let timedOut = false;
     const timer = setTimeout(() => {timedOut = true; controller.abort();}, timeout);
     let result: T;
     try {
-        throwIfAborted(signal);
         result = await waitWithAbort(work({signal: controller.signal, timeout}), controller.signal);
     } catch (error) {
         throwIfAborted(signal);
@@ -384,7 +358,8 @@ export function createDocumentSegmentTranslator(
     gateway: DocumentTranslationGateway,
 ): TranslateDocumentSegments {
     return async (segments, options) => {
-        await gateway.waitUntilReady();
+        throwIfAborted(options.signal);
+        await waitWithAbort(Promise.resolve(gateway.waitUntilReady()), options.signal);
         throwIfAborted(options.signal);
         const glossary = gateway.getGlossaryOptions?.();
         const selectedGlossaryIds = options.glossaryIds ?? glossary?.glossaryIds;

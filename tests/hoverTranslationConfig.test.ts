@@ -6,6 +6,7 @@
  */
 import {describe, expect, it, vi} from 'vitest';
 import {Config} from '@/src/core/config/model';
+import {createQuickTranslationProfile} from '@/src/core/config/quickTranslation';
 import {createHoverTranslationConfigInvalidator, createHoverTranslationConfigSubscription} from '@/src/app/content/hoverTranslationConfig';
 
 describe('hover pending config ownership', () => {
@@ -49,6 +50,45 @@ describe('hover pending config ownership', () => {
         expect(cancel).toHaveBeenCalledOnce();
         sync({...source});
         expect(cancel).toHaveBeenCalledOnce();
+    });
+
+    it('cancels a released quick-hover request when its profile changes, but keeps identical echoes', () => {
+        const source = new Config();
+        source.quickTranslationProfiles = [{...createQuickTranslationProfile('hover'), enabled: true, hotkey: 'Ctrl+T'}];
+        const cancel = vi.fn();
+        const sync = createHoverTranslationConfigInvalidator(source, cancel);
+        source.quickTranslationProfiles = source.quickTranslationProfiles.map(profile => ({...profile}));
+        sync(source);
+        expect(cancel).not.toHaveBeenCalled();
+        source.quickTranslationProfiles[0].enabled = false;
+        sync(source);
+        expect(cancel).toHaveBeenCalledOnce();
+        sync(source);
+        expect(cancel).toHaveBeenCalledOnce();
+    });
+
+    it.each(['service', 'model', 'thinking', 'native batching'] as const)('invalidates inherited quick-hover %s independently of the main hover service', field => {
+        const source = new Config(); source.hoverTranslationService = 'microsoft'; source.service = 'openai';
+        source.model.openai = 'old-model';
+        source.quickTranslationProfiles = [
+            {...createQuickTranslationProfile('hover'), enabled: true, service: '', model: ''},
+            {...createQuickTranslationProfile('hover'), enabled: false},
+            {...createQuickTranslationProfile('full-page'), enabled: true},
+        ];
+        const cancel = vi.fn(), sync = createHoverTranslationConfigInvalidator(source, cancel);
+        if (field === 'service') source.service = 'deepseek';
+        if (field === 'model') source.model.openai = 'new-model';
+        if (field === 'thinking') source.modelThinking = {openai: {'old-model': true}};
+        if (field === 'native batching') source.nativeBatchTranslationEnabled.openai = false;
+        sync(source); expect(cancel).toHaveBeenCalledOnce();
+        sync({...source}); expect(cancel).toHaveBeenCalledOnce();
+    });
+    it('tracks a quick-hover explicit model while ignoring changes to another selected default model', () => {
+        const source = new Config(); source.hoverTranslationService = 'microsoft';
+        source.quickTranslationProfiles = [{...createQuickTranslationProfile('hover'), enabled: true, service: 'deepseek', model: 'fixed-model'}];
+        const cancel = vi.fn(), sync = createHoverTranslationConfigInvalidator(source, cancel);
+        source.model.deepseek = 'unrelated-default'; sync(source); expect(cancel).not.toHaveBeenCalled();
+        source.modelThinking = {deepseek: {'fixed-model': true}}; sync(source); expect(cancel).toHaveBeenCalledOnce();
     });
 
     it('keeps pending work for UI updates, credentials and an unrelated service model', () => {

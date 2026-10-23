@@ -58,11 +58,14 @@ function configureEnvironment(): void {
 }
 
 async function dispose(): Promise<void> {
-    await translator?.dispose?.();
+    const previousTranslator = translator;
+    const previousHunyuan = hunyuan;
     translator = undefined;
     translatorRepository = '';
-    await hunyuan?.exit();
     hunyuan = undefined;
+    // 释放失败也不能让损坏会话继续占用缓存；下一条队列请求应能够创建新实例。
+    try { await previousTranslator?.dispose?.(); }
+    finally { await previousHunyuan?.exit(); }
 }
 
 async function getTranslator(request: Extract<WorkerRequest, {type: 'translate'}>): Promise<Translator> {

@@ -174,16 +174,19 @@ describe('字体下载、缓存和切换生命周期', () => {
   it.each(['http', 'empty', 'length', 'oversized', 'truncated', 'digest'] as const)('从 %s 错误自动切换备用源，不缓存错误数据', async failure => {
     const h = harness()
     const asset = getInterfaceFontAssets('noto-sans-sc')[0]
-    const bad = failure === 'http' ? new Response(null, {status: 503})
+    const bad = failure === 'http' ? new Response('unavailable', {status: 503})
       : failure === 'empty' ? new Response(null)
         : failure === 'length' ? new Response('x', {headers: {'Content-Length': String(asset.bytes + 1)}})
           : failure === 'oversized' ? new Response(new Uint8Array(asset.bytes + 1))
             : failure === 'truncated' ? new Response('x')
               : new Response(new Uint8Array(asset.bytes))
+    const cancel = bad.body ? vi.spyOn(bad.body, 'cancel') : undefined
     h.deps.fetch.mockResolvedValueOnce(bad)
     await h.loader.load('noto-sans-sc', 'github')
     expect(h.deps.fetch.mock.calls[0][0]).toContain('raw.githubusercontent.com')
     expect(h.deps.fetch.mock.calls[1][0]).toContain('cdn.jsdmirror.com')
+    expect(bad.body?.locked ?? false).toBe(false)
+    if (failure === 'http' || failure === 'length') expect(cancel).toHaveBeenCalledOnce()
     expect(h.deps.fetch).toHaveBeenCalledTimes(2)
     expect(h.cache.put).toHaveBeenCalledTimes(1)
     expect(h.states.at(-1)?.status).toBe('ready')
@@ -231,8 +234,11 @@ describe('字体下载、缓存和切换生命周期', () => {
     const signal = h.deps.fetch.mock.calls[0][1]?.signal
     await h.loader.load('system')
     expect(signal?.aborted).toBe(true)
-    release(new Response(bytes('NotoSansSC.woff2')))
+    const lateBody = new ReadableStream<Uint8Array>()
+    const cancel = vi.spyOn(lateBody, 'cancel')
+    release(new Response(lateBody))
     await previous
+    await vi.waitFor(() => expect(cancel).toHaveBeenCalledOnce())
     expect(h.states.at(-1)?.status).toBe('system')
     expect(h.deps.install).not.toHaveBeenCalled()
     expect(h.cache.put).not.toHaveBeenCalled()
@@ -274,13 +280,14 @@ describe('字体下载、缓存和切换生命周期', () => {
   it.each(['valid', 'oversized'])('在 %s 流清理期间切换，不继续缓存或重试旧选择', async kind => {
     const h = harness()
     const data = new Uint8Array(bytes('NotoSansSC.woff2'))
-    const response = new Response('placeholder')
-    const reader = {
-      read: vi.fn().mockResolvedValueOnce({done: false, value: kind === 'valid' ? data : new Uint8Array(data.length + 1)})
-        .mockResolvedValue({done: true}),
-      cancel: vi.fn(async () => { await h.loader.load('system') }),
-    }
-    vi.spyOn(response, 'body', 'get').mockReturnValue({getReader: () => reader} as unknown as ReadableStream<Uint8Array>)
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {controller.enqueue(kind === 'valid' ? data : new Uint8Array(data.length + 1)); controller.close()},
+    })
+    const response = new Response(body)
+    const reader = body.getReader()
+    const releaseLock = reader.releaseLock.bind(reader)
+    vi.spyOn(reader, 'releaseLock').mockImplementation(() => {releaseLock(); void h.loader.load('system')})
+    vi.spyOn(body, 'getReader').mockReturnValue(reader)
     h.deps.fetch.mockResolvedValueOnce(response)
     await h.loader.load('noto-sans-sc')
     expect(h.states.at(-1)?.status).toBe('system')
@@ -484,18 +491,14 @@ describe('字体任务队列和不可协作端口', () => {
     }
     expect(h.states.at(-1)?.status).toBe('ready');expect(vi.getTimerCount()).toBe(0)
   })
-  it('流 cancel 不返回时也不阻塞成功下载和下一次选择', async () => {
-    const h = harness();const data = new Uint8Array(bytes('NotoSansSC.woff2'));const response = new Response('placeholder')
-    let release!: () => void;const stalled = new Promise<void>(resolve => {release = resolve})
-    const reader = {read: vi.fn().mockResolvedValueOnce({done: false, value: data}).mockResolvedValue({done: true}),
-      cancel: vi.fn(() => stalled)}
-    vi.spyOn(response, 'body', 'get').mockReturnValue({getReader: () => reader} as unknown as ReadableStream<Uint8Array>)
-    h.deps.fetch.mockResolvedValueOnce(response);let done = false
-    const job = h.loader.load('noto-sans-sc').then(() => {done = true})
-    await vi.waitFor(() => expect(reader.cancel).toHaveBeenCalledOnce())
-    await new Promise(resolve => setImmediate(resolve))
-    try {expect(done).toBe(true);expect(h.states.at(-1)?.status).toBe('ready')}
-    finally {release();await job}
+  it('超限流 cancel 不返回时也释放锁并完成备用源和下一次选择', async () => {
+    const h = harness();const asset = getInterfaceFontAssets('noto-sans-sc')[0]
+    const cancel = vi.fn(() => new Promise<void>(() => {}))
+    const body = new ReadableStream<Uint8Array>({start(controller) {controller.enqueue(new Uint8Array(asset.bytes + 1))}, cancel})
+    h.deps.fetch.mockResolvedValueOnce(new Response(body))
+    await h.loader.load('noto-sans-sc')
+    expect(cancel).toHaveBeenCalledOnce();expect(body.locked).toBe(false)
+    expect(h.states.at(-1)?.status).toBe('ready');expect(h.deps.fetch).toHaveBeenCalledTimes(2)
     await h.loader.load('system');expect(h.states.at(-1)?.status).toBe('system')
   })
   it('同时准备共享中文的两套缓存只调用一次中文解析注册', async () => {
@@ -525,13 +528,19 @@ describe('字体任务队列和不可协作端口', () => {
     expect(current).not.toBe(old);release();await Promise.all([old, clear]);expect(await current).toBe(false)
     expect(h.entries.size).toBe(0)
   })
-  it.each(['throw', 'reject'])('流清理 %s 不隐藏成功下载或产生未处理拒绝', async kind => {
-    const h = harness();const data = new Uint8Array(bytes('NotoSansSC.woff2'));const response = new Response('placeholder')
-    const reader = {read: vi.fn().mockResolvedValueOnce({done: false, value: data}).mockResolvedValue({done: true}),
-      cancel: () => {if (kind === 'throw') throw new Error('cancel failed');return Promise.reject(new Error('cancel denied'))}}
-    vi.spyOn(response, 'body', 'get').mockReturnValue({getReader: () => reader} as unknown as ReadableStream<Uint8Array>)
+  it.each(['throw', 'reject'])('超限流清理 %s 不阻塞备用源或产生未处理拒绝', async kind => {
+    const h = harness();const asset = getInterfaceFontAssets('noto-sans-sc')[0]
+    const body = new ReadableStream<Uint8Array>({start(controller) {controller.enqueue(new Uint8Array(asset.bytes + 1))}})
+    const response = new Response(body)
+    const reader = body.getReader()
+    vi.spyOn(reader, 'cancel').mockImplementation(() => {
+      if (kind === 'throw') throw new Error('cancel failed')
+      return Promise.reject(new Error('cancel denied'))
+    })
+    vi.spyOn(body, 'getReader').mockReturnValue(reader)
     h.deps.fetch.mockResolvedValueOnce(response);await h.loader.load('noto-sans-sc')
-    expect(h.states.at(-1)?.status).toBe('ready');expect(h.deps.fetch).toHaveBeenCalledOnce()
+    expect(reader.cancel).toHaveBeenCalledOnce();expect(body.locked).toBe(false)
+    expect(h.states.at(-1)?.status).toBe('ready');expect(h.deps.fetch).toHaveBeenCalledTimes(2)
   })
   it('状态端口拒绝导致的失败任务从队列释放，后续清除和首屏缓存准备仍可恢复', async () => {
     const h = harness();let rejectState = true

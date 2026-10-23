@@ -49,6 +49,7 @@ import {webDavBackupClient as connectionClient} from '@/src/services/config/webD
 import {CloudBackupRequestError} from '@/src/services/config/cloudBackupClient';
 import type {WebDavConnectionSummary} from '@/src/platform/webdav/connection';
 import RemoteConfigSync from './RemoteConfigSync.vue';
+import {useSettingsActionContext} from '../model/useSettingsActionContext';
 const emit = defineEmits<{busy: [value: boolean]}>();
 const {t, translateLegacy, language} = useUiI18n();
 const connection = ref<WebDavConnectionSummary | null>(null);
@@ -56,6 +57,7 @@ const settingsVisible = ref(false);
 const settingsBusy = ref(false);
 const syncBusy = ref(false);
 const busy = computed(() => settingsBusy.value || syncBusy.value);
+const settingsContext = useSettingsActionContext(() => settingsVisible.value, () => [connection.value?.revision]);
 watch(busy, value => emit('busy', value));
 const syncUi = ref<InstanceType<typeof RemoteConfigSync>>();
 const error = ref('');
@@ -105,7 +107,7 @@ const guideUrl = computed(() => `https://read.thinkstu.com/${language.value === 
 watch(draft, () => {tested.value = false;});
 function setSyncBusy(value: boolean) {syncBusy.value = value;}
 async function perform(nextAction: string, operation: () => Promise<void>) {
-  if (settingsBusy.value) return;
+  if (!alive || settingsBusy.value) return;
   settingsBusy.value = true; action.value = nextAction; error.value = '';
   try {await operation();} catch (failure) {if (!alive) return; error.value = failure instanceof CloudBackupRequestError && failure.errorKey ? t(failure.errorKey, failure.params) : failure instanceof Error ? translateLegacy(failure.message) : t('settings.webdav.error.failure');}
   finally {settingsBusy.value = false; action.value = '';}
@@ -126,8 +128,16 @@ async function save() {if (ready.value) await perform('save', async () => {
   await syncUi.value?.refreshStatus(); if (alive) ElMessage.success(t('settings.webdav.saveSuccess'));
 });}
 async function clearConnection() {
+  if (!settingsContext.active.value || busy.value) return;
+  const current = settingsContext.capture(), revision = connection.value?.revision ?? null;
   try {await ElMessageBox.confirm(t('settings.webdav.clearDescription'), t('settings.webdav.clear'), {confirmButtonText: t('settings.webdav.clear'), cancelButtonText: t('settings.drive.cancelSync'), type: 'warning'});} catch {return;}
-  await perform('clear', async () => {await client.clear(connection.value?.revision ?? null); connection.value = null; draft.password = ''; settingsVisible.value = false; await syncUi.value?.refreshStatus(); if (alive) ElMessage.success(t('settings.webdav.cleared'));});
+  if (!current() || busy.value) return;
+  await perform('clear', async () => {
+    await client.clear(revision);
+    if (!current()) return;
+    connection.value = null; draft.password = ''; settingsVisible.value = false;
+    await syncUi.value?.refreshStatus(); if (alive) ElMessage.success(t('settings.webdav.cleared'));
+  });
 }
 </script>
 <style scoped>

@@ -4,10 +4,10 @@ import {parseHTML} from 'linkedom';
 import {describe, expect, it} from 'vitest';
 
 import {
-    createTranslationCore,
     extractTranslationText,
     extractTranslationTextFromNodes,
 } from '@/src/core/translation/public';
+import {createTranslationCore} from './helpers/translationCore';
 import {shouldSkipTranslationForTarget} from '@/src/core/language/detect';
 import type {TranslationCandidate, TranslationCandidateCore} from '@/src/core/translation/public';
 

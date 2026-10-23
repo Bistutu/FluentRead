@@ -111,7 +111,7 @@ function exceedsDefuddleBudget(doc: Document): boolean {
                 if (attribute) markupCharacters += attribute.name.length + attribute.value.length;
             }
         }
-        else if (current.nodeType === 3) characters += current.nodeValue?.length ?? 0;
+        else if (current.nodeType === 3) characters += current.nodeValue!.length;
         if (shouldUseBoundedPageCapture({
             elements,
             textCharacters: characters,
@@ -123,15 +123,12 @@ function exceedsDefuddleBudget(doc: Document): boolean {
     return false;
 }
 
+// Called synchronously after exceedsDefuddleBudget has established a root and TreeWalker.
 function collectBoundedReadableText(doc: Document): string {
     const root = doc.querySelector?.('main, article, [role="main"]') || doc.body || doc.documentElement;
-    if (!root) return '';
     // TreeWalker 的过滤器不检查 root，也看不到 root 外的祖先。
     // 草稿、隐藏文章和扩展自有正文不能因有界捕获选择了它们作为根而进入提示词。
     if (root.closest?.(PAGE_CONTEXT_EXCLUDED_SELECTOR)) return '';
-    if (typeof doc.createTreeWalker !== 'function') {
-        return normalizePageText(root.textContent || '').slice(0, pageContextLimits.captureCharacters);
-    }
 
     const {showElement, showText, accept, reject} = nodeFilterConstants(doc);
     const walker = doc.createTreeWalker(root, showElement | showText, {
@@ -151,7 +148,7 @@ function collectBoundedReadableText(doc: Document): string {
     while (current && visited < pageContextLimits.captureNodes && characters < pageContextLimits.captureCharacters) {
         visited += 1;
         if (current.nodeType === 3) {
-            const value = current.nodeValue || '';
+            const value = current.nodeValue!;
             if (value.trim()) {
                 const remaining = pageContextLimits.captureCharacters - characters;
                 parts.push(value.slice(0, remaining));
@@ -164,7 +161,6 @@ function collectBoundedReadableText(doc: Document): string {
 }
 
 function createDefuddleSnapshotDocument(): Document | null {
-    if (typeof document === 'undefined') return null;
 
     // 脱离页面的 document 可防止解析器读取或修改实时页面。
     if (document.implementation?.createHTMLDocument && document.documentElement?.outerHTML) {
@@ -241,8 +237,7 @@ async function extractReadablePageText(source: CapturedReadablePage): Promise<st
     return normalizePageText(fallback?.innerText || fallback?.textContent || '');
 }
 
-async function getReadablePageSnapshot(): Promise<PageTranslationSnapshot | null> {
-    if (typeof document === 'undefined') return null;
+async function getReadablePageSnapshot(): Promise<PageTranslationSnapshot> {
 
     const url = currentUrl();
     if (cachedSnapshot?.url === url) return cachedSnapshot;
@@ -275,7 +270,6 @@ async function getReadablePageSnapshot(): Promise<PageTranslationSnapshot | null
 }
 
 function getDocumentDescription(): string {
-    if (typeof document === 'undefined') return '';
 
     for (const selector of [
         'meta[name="description"]',
@@ -297,9 +291,9 @@ export async function getPageTranslationContext(): Promise<string> {
 
     const snapshot = await getReadablePageSnapshot();
     return buildPageTranslationContext({
-        title: snapshot?.title,
-        description: snapshot?.description,
-        readableText: snapshot?.text,
+        title: snapshot.title,
+        description: snapshot.description,
+        readableText: snapshot.text,
     });
 }
 

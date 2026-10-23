@@ -1,7 +1,7 @@
 /**
  * @file src/features/image-translation/core.ts
  * 文件职责：提供图片翻译可复用的纯数据算法，用于选择真正发生变化的译文、确定 OCR 语言组合并清理 OCR 行数据。
- * 主要内容：相同译文保留原文且不重复展示；从 shared/image 复用 OcrLine 类型，筛选有效译文、规划图片与圈选各自的有界 OCR 尺寸及边框，映回原图坐标，规范化词组、标点和置信度，按基线方向区分横竖排并合并同一气泡的竖列，避免噪声进入翻译与绘制。
+ * 主要内容：相同译文保留原文且不重复展示；从 shared/image 复用 OcrLine 类型，筛选有效译文、规划图片与圈选各自的有界 OCR 尺寸及边框，映回原图坐标，规范化词组、标点和置信度，按基线方向区分横竖排并合并同一气泡的竖列，路径压缩与原地分组避免竖列候选的反复数组复制，避免噪声进入翻译与绘制。
  * 模块边界：该模块不接触 Canvas、Tesseract、网络或浏览器消息；OCR 执行归 ocrRuntime，像素修补与文本绘制归 services，页面展示归 content/runtime。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
@@ -149,18 +149,28 @@ function mergeVerticalOcrColumns(lines: OcrLine[]): OcrLine[] {
     const find = (index: number): number => {
         let root = index;
         while (parent.get(root) !== root) root = parent.get(root)!;
+        while (index !== root) {
+            const next = parent.get(index)!;
+            parent.set(index, root);
+            index = next;
+        }
         return root;
     };
-    vertical.forEach((left, position) => vertical.slice(position + 1).forEach(right => {
-        if (!areAdjacentVerticalColumns(lines[left].bbox, lines[right].bbox)) return;
-        const leftRoot = find(left);
-        const rightRoot = find(right);
-        if (leftRoot !== rightRoot) parent.set(Math.max(leftRoot, rightRoot), Math.min(leftRoot, rightRoot));
-    }));
+    vertical.forEach((left, position) => {
+        for (let next = position + 1; next < vertical.length; next++) {
+            const right = vertical[next];
+            if (!areAdjacentVerticalColumns(lines[left].bbox, lines[right].bbox)) continue;
+            const leftRoot = find(left);
+            const rightRoot = find(right);
+            if (leftRoot !== rightRoot) parent.set(Math.max(leftRoot, rightRoot), Math.min(leftRoot, rightRoot));
+        }
+    });
     const groups = new Map<number, OcrLine[]>();
     vertical.forEach(index => {
         const root = find(index);
-        groups.set(root, [...groups.get(root) || [], lines[index]]);
+        const group = groups.get(root);
+        if (group) group.push(lines[index]);
+        else groups.set(root, [lines[index]]);
     });
     return lines.flatMap((line, index) => {
         if (!line.vertical) return [line];

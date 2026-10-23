@@ -1,37 +1,29 @@
-import {createRequire} from 'node:module';
-import {resolve} from 'node:path';
-import vue from '@vitejs/plugin-vue';
-import {createServer, type Plugin} from 'vite';
+import * as runtime from 'vue';
+import {parseHTML} from 'linkedom';
+import MaterialWorkspace from '@/src/features/vocabulary/ui/MaterialWorkspace.vue';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import type {MaterialRecord} from '@/src/features/vocabulary/materialProtocol';
 
 const KEY = '__fluentreadMaterialUiTest';
 const dispose: Array<() => unknown> = [];
-afterEach(async () => {for (const close of dispose.splice(0).reverse()) await close(); delete (globalThis as any)[KEY];});
+afterEach(async () => {for (const close of dispose.splice(0).reverse()) await close(); delete (globalThis as any)[KEY]; vi.restoreAllMocks(); vi.unstubAllGlobals();});
 const deferred = <T,>() => {let resolve!: (value: T) => void; let reject!: (reason: Error) => void; const promise = new Promise<T>((done, fail) => {resolve=done;reject=fail;}); return {promise,resolve,reject};};
 const record = (id = 'a'): MaterialRecord => ({id,identityKey:`article:https://example.test/${id}`,kind:'article',title:`Article ${id}`,source:{kind:'article',url:`https://example.test/${id}`},locator:{kind:'text',quote:'The original sentence.'},topics:['Design'],references:[{kind:'note',id:'note-1',note:'A personal thought.'}],createdAt:1,updatedAt:2,lastReadAt:2,archivedAt:null});
-function mocks(): Plugin {return {name:'materials-client-test',enforce:'pre',resolveId(id) {
-  if (id.endsWith('/materialClient') || id === '../materialClient') return '\0materials-client';
-  if (id === 'webextension-polyfill') return '\0materials-browser';
-  if (id.endsWith('/reading-assistant/public')) return '\0materials-reading';
-  if (id.endsWith('/reading-assistant/ui/answer/public')) return '\0materials-answer';
-  if (id.endsWith('/ui/dateFormat')) return '\0materials-date';
-  return null;
-},load(id) {
-  if (id === '\0materials-client') return `const api=globalThis.${KEY}.api; export const {materialList,materialCapture,materialUpdate,materialArchive,materialRestore,materialRemoveReference,materialClear,materialExport,materialImport,materialGeneration}=api;`;
-  if (id === '\0materials-browser') return `export default globalThis.${KEY}.browser;`;
-  if (id === '\0materials-reading') return `export const getHarnessSession=(...a)=>globalThis.${KEY}.getSession(...a);export const listLearningMemories=async()=>[];`;
-  if (id === '\0materials-answer') return 'export const ReadingAnswer={render(){return null}};';
-  if (id === '\0materials-date') return 'export const useRenderDateFormatter=()=>()=>"10/15";';
-  return null;
-}};}
-async function mount(options: {list?: (...args: any[]) => Promise<MaterialRecord[]>; session?: (...args: any[]) => Promise<unknown>; update?: (...args: any[]) => Promise<MaterialRecord>} = {}) {
-  const runtime = createRequire(import.meta.url)('vue') as typeof import('vue');
+// Port calls resolve the current fixture, while the normal Vite SFC module retains source maps.
+vi.mock('@/src/features/vocabulary/materialClient', () => Object.fromEntries([
+  'materialList','materialCapture','materialUpdate','materialArchive','materialRestore',
+  'materialRemoveReference','materialClear','materialExport','materialImport','materialGeneration',
+].map(name => [name, (...args: unknown[]) => (globalThis as any).__fluentreadMaterialUiTest.api[name](...args)])));
+vi.mock('webextension-polyfill', () => ({default: {get runtime() {return (globalThis as any).__fluentreadMaterialUiTest.browser.runtime;}}}));
+vi.mock('@/src/features/reading-assistant/public', () => ({getHarnessSession: (...args: unknown[]) => (globalThis as any).__fluentreadMaterialUiTest.getSession(...args), listLearningMemories: (...args: unknown[]) => (globalThis as any).__fluentreadMaterialUiTest.memories(...args)}));
+vi.mock('@/src/features/reading-assistant/ui/answer/public', () => ({ReadingAnswer: {render: () => null}}));
+vi.mock('@/src/ui/dateFormat', () => ({useRenderDateFormatter: () => () => '10/15'}));
+async function mount(options: {list?: (...args: any[]) => Promise<MaterialRecord[]>; session?: (...args: any[]) => Promise<unknown>; update?: (...args: any[]) => Promise<MaterialRecord>; memories?: () => Promise<unknown[]>; getEntry?: (message: unknown) => Promise<unknown>} = {}) {
   let items = [record(),record('b')]; let listener: ((message: unknown) => void) | undefined;
   const api = {
     materialList:vi.fn(options.list || (async () => items.map(item => structuredClone(item)))),
     materialUpdate:vi.fn(options.update || (async (id: string, patch: any) => ({...items.find(item => item.id === id)!,...patch}))),
-    materialCapture:vi.fn(async (input: any) => ({...items[0], references:[...items[0].references,input.reference]})),
+    materialCapture:vi.fn(async (input: any) => ({...items[0], references:input.referenceMode==='update-existing'?items[0].references.map(reference=>reference.id===input.reference.id?input.reference:reference):[...items[0].references,input.reference]})),
     materialArchive:vi.fn(async (id:string) => {items=items.filter(item=>item.id!==id);return record(id);}),
     materialRestore:vi.fn(async (id:string) => record(id)),
     materialRemoveReference:vi.fn(async (id:string) => ({...record(id),references:[]})),
@@ -41,19 +33,33 @@ async function mount(options: {list?: (...args: any[]) => Promise<MaterialRecord
     materialGeneration:vi.fn(async()=>0),
   };
   const removeListener = vi.fn();
-  (globalThis as any)[KEY] = {api,getSession:options.session || (async()=>null),browser:{runtime:{getURL:(p:string)=>`chrome-extension://fixture/${p}`,sendMessage:async()=>({success:true,data:null}),onMessage:{addListener:(value:typeof listener)=>{listener=value;},removeListener}}}};
-  const server = await createServer({configFile:false,appType:'custom',logLevel:'silent',root:process.cwd(),plugins:[mocks(),vue()],resolve:{alias:{'@':resolve(process.cwd())}},server:{hmr:false,middlewareMode:true},ssr:{noExternal:['webextension-polyfill']}});
-  dispose.push(()=>server.close());
-  const component = (await server.ssrLoadModule('/src/features/vocabulary/ui/MaterialWorkspace.vue')).default;
-  component.ssrRender=undefined; component.render=()=>null;
-  const renderer = runtime.createRenderer<any,any>({patchProp:()=>{},insert:()=>{},remove:()=>{},createElement:()=>({}),createText:()=>({}),createComment:()=>({}),setText:()=>{},setElementText:()=>{},parentNode:()=>null,nextSibling:()=>null,querySelector:()=>null,setScopeId:()=>{},cloneNode:()=>({}),insertStaticContent:()=>[{},{}]});
-  let panel: any;
-  const app = renderer.createApp({render:()=>runtime.h(component,{ref:(instance:any)=>{if(instance) panel=instance.$.setupState;}})});
-  app.provide(runtime.ssrContextKey,{modules:new Set()}); app.config.warnHandler=()=>{};app.mount({});
+  (globalThis as any)[KEY] = {api,getSession:options.session || (async()=>null),memories:options.memories || (async()=>[]),browser:{runtime:{getURL:(p:string)=>`chrome-extension://fixture/${p}`,sendMessage:options.getEntry || (async()=>({success:true,data:null})),onMessage:{addListener:(value:typeof listener)=>{listener=value;},removeListener}}}};
+  const {document, window} = parseHTML('<html><body><main></main></body></html>');
+  vi.stubGlobal('document', document); vi.stubGlobal('window', window);
+  for (const key of ['Node','Element','HTMLElement','SVGElement']) vi.stubGlobal(key, (window as any)[key]);
+  const component = MaterialWorkspace;
+  const renderer = runtime.createRenderer<any,any>({
+    createElement: (tag, ns) => runtime.markRaw(ns === 'svg' ? document.createElementNS('http://www.w3.org/2000/svg', tag) : document.createElement(tag)),
+    createText: text => document.createTextNode(text), createComment: text => document.createComment(text),
+    insert: (node, parent, anchor) => parent.insertBefore(node, anchor || null), remove: node => node.remove(),
+    setText: (node, text) => {node.nodeValue = text;}, setElementText: (node, text) => {node.textContent = text;},
+    parentNode: node => node.parentNode, nextSibling: node => node.nextSibling, setScopeId: (node, id) => node.setAttribute(id, ''),
+    patchProp(node, key, old, value) {
+      if (/^on[A-Z]/u.test(key)) {const event = key.slice(2).toLowerCase(); if(old) node.removeEventListener(event,old); if(value) node.addEventListener(event,value);}
+      else if(key === 'value') {node._value = value; if(node.tagName !== 'SELECT') node.value = value ?? '';}
+      else if(key === 'style') Object.assign(node.style, value || {});
+      else if(value == null || key === 'disabled' && value === false) node.removeAttribute(key);
+      else node.setAttribute(key, String(value));
+    },
+    insertStaticContent(html, parent, anchor) {const box = document.createElement('div'); box.innerHTML = html; const first = box.firstChild!, last = box.lastChild!; while(box.firstChild) parent.insertBefore(box.firstChild, anchor || null); return [first,last];},
+  });
+  let panel: any; const openTab=vi.fn();
+  const app = renderer.createApp({render:()=>runtime.h(component,{onOpenTab:openTab,ref:(instance:any)=>{if(instance) panel=instance.$.setupState;}})});
+  app.mount(document.querySelector('main')!);
   let active=true; const unmount=()=>{if(active){active=false;app.unmount();}}; dispose.push(unmount);
   const flush=async()=>{for(let i=0;i<15;i++){await Promise.resolve();await runtime.nextTick();}};
   await flush();
-  return {panel,api,flush,unmount,removeListener,notify:()=>listener?.({type:'fluentReadMaterialsChanged'})};
+  return {panel,api,flush,unmount,document,window,openTab,removeListener,notify:()=>listener?.({type:'fluentReadMaterialsChanged'})};
 }
 describe('material workspace action ownership',()=>{
   it('keeps lightweight list, topic/search and exact selected source; persists editing and notes through real clients',async()=>{
@@ -157,4 +163,89 @@ describe('material workspace action ownership',()=>{
     await ui.panel.select('a');await ui.panel.select('b');session.resolve({id:'s1',text:'Old source',turns:[]});await ui.flush();expect(ui.panel.resolved['session:s1']).toBeUndefined();
     ui.panel.startEdit();ui.panel.draft.title='Changed';const saving=ui.panel.saveEdit();expect(ui.panel.busy).toBe(true);ui.unmount();update.resolve({...record('b'),title:'Changed'});await saving;expect(ui.panel.materials.find((item:MaterialRecord)=>item.id==='b').title).toBe('Article b');
   });
+});
+
+function namedButton(ui: Awaited<ReturnType<typeof mount>>, name: string) {
+  const target = [...ui.document.querySelectorAll('button')].find(button => button.textContent?.trim() === name);
+  expect(target, `button ${name}`).toBeTruthy(); return target!;
+}
+async function activate(ui: Awaited<ReturnType<typeof mount>>, target: Element) {
+  expect(target.hasAttribute('disabled')).toBe(false);
+  target.dispatchEvent(new ui.window.Event('click', {bubbles:true})); await ui.flush();
+}
+async function editField(ui: Awaited<ReturnType<typeof mount>>, target: Element, value: string) {
+  (target as HTMLInputElement).value=value;target.dispatchEvent(new ui.window.Event('input',{bubbles:true}));await ui.flush();
+}
+it.each(['unmount','different-material'] as const)('does not move focus from an obsolete material note after %s',async reason=>{
+  const ui=await mount();await activate(ui,ui.document.querySelector('[data-material-id="a"]')!);
+  const field=ui.document.querySelector<HTMLTextAreaElement>('#fr-material-note')!;
+  const focus=vi.spyOn(field,'focus');
+  namedButton(ui,'编辑').dispatchEvent(new ui.window.Event('click',{bubbles:true}));
+  let replacementFocus: ReturnType<typeof vi.fn> | undefined;
+  if(reason==='unmount'){
+    ui.unmount();const replacement=ui.document.createElement('textarea');replacement.id='fr-material-note';replacementFocus=vi.fn();replacement.focus=replacementFocus;ui.document.body.append(replacement);
+  }else ui.document.querySelector('[data-material-id="b"]')!.dispatchEvent(new ui.window.Event('click',{bubbles:true}));
+  await ui.flush();expect(focus).not.toHaveBeenCalled();if(replacementFocus)expect(replacementFocus).not.toHaveBeenCalled();
+});
+it('uses the real material template to search, organize, cancel edits and save an edited note',async()=>{
+  const ui=await mount();const search=ui.document.querySelector<HTMLInputElement>('input[type="search"]')!;
+  await editField(ui,search,'unmatched');expect(ui.document.querySelectorAll('[data-material-id]')).toHaveLength(0);
+  await activate(ui,namedButton(ui,'清除筛选'));expect(ui.document.querySelectorAll('[data-material-id]')).toHaveLength(2);
+  await activate(ui,ui.document.querySelector('[data-material-id="a"]')!);
+  await activate(ui,namedButton(ui,'整理材料'));const title=ui.document.querySelector<HTMLInputElement>('.fr-material-editor input')!;
+  await editField(ui,title,'A changed title');await editField(ui,ui.document.querySelector('input[list]')!,'Design, Language');await editField(ui,ui.document.querySelector('input[type="url"]')!,'https://changed.example.test/');await activate(ui,namedButton(ui,'取消'));expect(ui.api.materialUpdate).not.toHaveBeenCalled();
+  await activate(ui,namedButton(ui,'编辑'));const note=ui.document.querySelector<HTMLTextAreaElement>('#fr-material-note')!;
+  expect(note.value).toBe('A personal thought.');await editField(ui,note,'A revised personal thought.');
+  note.closest('form')!.dispatchEvent(new ui.window.Event('submit',{bubbles:true,cancelable:true}));await ui.flush();
+  expect(ui.api.materialCapture).toHaveBeenCalledWith(expect.objectContaining({referenceMode:'update-existing',reference:expect.objectContaining({id:'note-1',note:'A revised personal thought.'})}));
+  expect(ui.document.body.textContent).toContain('笔记已保存');await activate(ui,namedButton(ui,'编辑'));await activate(ui,namedButton(ui,'取消编辑'));expect(note.value).toBe('');await activate(ui,namedButton(ui,'编辑'));await activate(ui,namedButton(ui,'删除笔记'));expect(ui.api.materialRemoveReference).toHaveBeenCalledWith('a','note','note-1');expect(note.value).toBe('');await activate(ui,namedButton(ui,'材料列表'));expect(ui.document.querySelector('.fr-material-detail')).toBeNull();
+});
+
+it('renders document/video positions, mixed learning records and recoverable partial failures without dropping source quotes',async()=>{
+  const getEntry=vi.fn().mockResolvedValueOnce({success:false}).mockResolvedValue({success:true,data:{term:'practice',translations:{en:{text:'reference'}},note:'Saved note'}});
+  const memories=vi.fn().mockResolvedValue([{id:'memory-a',content:'A learning memory.'}]);
+  const refs=[{kind:'vocabulary',id:'word-a',excerpt:'A saved original.'},{kind:'session',id:'session-a'},{kind:'session',id:'gone'},
+    {kind:'memory',id:'memory-a'},{kind:'memory',id:'gone'},{kind:'note',id:'note-a',note:'A personal thought.'}] as MaterialRecord['references'];
+  const documentRecord: MaterialRecord={...record(),kind:'document',source:{kind:'document',fingerprint:'doc-fingerprint'},locator:{kind:'document',page:3,section:'Overview',quote:'Document original'},references:refs};
+  const video: MaterialRecord={...record('video'),kind:'video',source:{kind:'video',url:'https://www.youtube.com/watch?v=example'},locator:{kind:'video',startMs:65000,quote:'Video original'}};
+  const session=vi.fn(async(id:string)=>id==='session-a'?{text:'Session source',turns:[{id:'turn-a',question:'Why?',answer:'Explanation'},{id:'turn-b',question:'',answer:''}]}:null);
+  const ui=await mount({list:async()=>[documentRecord,video],getEntry,memories,session});
+  await activate(ui,ui.document.querySelector('[data-material-id="a"]')!);
+  expect(ui.document.body.textContent).toContain('第 3 页');expect(ui.document.body.textContent).toContain('Overview');
+  expect(ui.document.body.textContent).toContain('Session source');expect(ui.document.body.textContent).toContain('A learning memory.');
+  expect(ui.document.body.textContent).toContain('部分学习内容读取失败');expect(ui.document.body.textContent).toContain('原记录已删除或过期');
+  await activate(ui,namedButton(ui,'重试'));expect(ui.document.body.textContent).not.toContain('部分学习内容读取失败');expect(ui.document.body.textContent).toContain('reference');expect(ui.document.body.textContent).toContain('Saved note');
+  await activate(ui,namedButton(ui,'整理材料'));expect(ui.document.querySelector('input[type="url"]')).toBeNull();
+  namedButton(ui,'保存').closest('form')!.dispatchEvent(new ui.window.Event('submit',{bubbles:true,cancelable:true}));await ui.flush();expect(ui.api.materialUpdate).toHaveBeenCalledWith('a',expect.not.objectContaining({source:expect.anything()}));
+  await activate(ui,ui.document.querySelector('[data-material-id="video"]')!);expect(ui.document.body.textContent).toContain('上次看到 1:05');
+});
+it('paginates material and reference lists, resets the visible page for search, and navigates from an empty library',async()=>{
+  const list=Array.from({length:35},(_,i)=>({...record(String(i)),topics:i%2?['Language']:['Design'],references:Array.from({length:25},(_,j)=>({kind:'note' as const,id:`note-${j}`,note:`Note ${j}`}))}));
+  const ui=await mount({list:async()=>list});expect(ui.document.querySelectorAll('[data-material-id]')).toHaveLength(30);
+  await activate(ui,namedButton(ui,'显示更多材料（30 / 35）'));expect(ui.document.querySelectorAll('[data-material-id]')).toHaveLength(35);
+  await editField(ui,ui.document.querySelector('input[type="search"]')!,'Article');expect(ui.document.querySelectorAll('[data-material-id]')).toHaveLength(30);
+  await activate(ui,ui.document.querySelector('[data-material-id="0"]')!);expect(ui.document.querySelectorAll('.fr-material-reference')).toHaveLength(24);
+  await activate(ui,namedButton(ui,'显示更多学习内容'));expect(ui.document.querySelectorAll('.fr-material-reference')).toHaveLength(25);
+  await activate(ui,namedButton(ui,'清空全部材料'));expect(ui.api.materialClear).not.toHaveBeenCalled();await activate(ui,namedButton(ui,'取消'));expect(ui.api.materialClear).not.toHaveBeenCalled();
+  await activate(ui,namedButton(ui,'清空全部材料'));await activate(ui,namedButton(ui,'确认清空'));expect(ui.document.body.textContent).toContain('从一段值得留下的原文开始');await activate(ui,namedButton(ui,'查看我的收藏'));expect(ui.openTab).toHaveBeenCalledWith('saved');
+});
+it('exports through the rendered action, releases its download URL and reports a retryable storage failure',async()=>{
+  const ui=await mount();const create=vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:materials');const revoke=vi.spyOn(URL,'revokeObjectURL').mockImplementation(()=>{});
+  const downloads: string[]=[];vi.spyOn(ui.window.HTMLElement.prototype,'click').mockImplementation(function(this:HTMLElement){if(this.tagName==='A')downloads.push((this as HTMLAnchorElement).download);});
+  await activate(ui,namedButton(ui,'导出材料备份'));expect(create).toHaveBeenCalledOnce();expect(revoke).toHaveBeenCalledWith('blob:materials');expect(downloads[0]).toMatch(/^fluentread-materials-.*\.json$/u);expect(ui.document.body.textContent).toContain('材料备份已导出');
+  ui.api.materialExport.mockRejectedValueOnce(new Error('Export unavailable'));await activate(ui,namedButton(ui,'导出材料备份'));expect(ui.document.body.textContent).toContain('Export unavailable');expect(ui.panel.busy).toBe(false);
+  await activate(ui,namedButton(ui,'导出材料备份'));expect(downloads).toHaveLength(2);
+});
+it('validates a chosen backup before import and displays the actual restored counts through the template',async()=>{
+  const ui=await mount();const input=ui.document.querySelector<HTMLInputElement>('input[type="file"]')!;const picker=vi.spyOn(input,'click').mockImplementation(()=>{});await activate(ui,namedButton(ui,'恢复材料备份'));expect(picker).toHaveBeenCalledOnce();
+  Object.defineProperty(input,'files',{configurable:true,value:[{size:21*1024*1024,text:vi.fn()}]});input.dispatchEvent(new ui.window.Event('change',{bubbles:true}));await ui.flush();expect(ui.document.body.textContent).toContain('超过 20 MB');expect(ui.api.materialImport).not.toHaveBeenCalled();
+  Object.defineProperty(input,'files',{configurable:true,value:[{size:2,text:async()=>'{}'}]});input.dispatchEvent(new ui.window.Event('change',{bubbles:true}));await ui.flush();expect(ui.api.materialImport).toHaveBeenCalledOnce();expect(ui.document.body.textContent).toContain('已恢复 1 份材料');
+});
+it('keeps source text visible when stored source or learning memories cannot be read, retries, and follows a broadcast refresh',async()=>{
+  const damaged: MaterialRecord={...record(),source:{kind:'article',url:'not-a-url'},references:[{kind:'memory',id:'memory-a',excerpt:'A recoverable original.'}]};
+  const memories=vi.fn().mockRejectedValueOnce(new Error('Memory unavailable')).mockResolvedValue([{id:'memory-a',content:'Restored memory.'}]);
+  const ui=await mount({list:async()=>[damaged],memories});expect(ui.document.body.textContent).toContain('来源待恢复');await activate(ui,ui.document.querySelector('[data-material-id="a"]')!);
+  expect(ui.document.body.textContent).toContain('A recoverable original.');expect(ui.document.body.textContent).toContain('部分学习内容读取失败');expect(ui.document.body.textContent).toContain('来源地址已失效');
+  await activate(ui,namedButton(ui,'重试'));expect(ui.document.body.textContent).toContain('Restored memory.');expect(ui.document.body.textContent).not.toContain('部分学习内容读取失败');
+  ui.api.materialList.mockResolvedValueOnce([record('new')]);ui.notify();await ui.flush();expect(ui.document.querySelector('[data-material-id="new"]')).toBeTruthy();expect(ui.document.querySelector('.fr-material-detail')).toBeNull();
 });

@@ -16,6 +16,7 @@ const {
 const MAINTENANCE = require('./site-translation/maintenance-cases.json');
 const CASE_RUNNER = path.join(__dirname, 'run-site-translation-test.cjs');
 const MAX_CONCURRENT_JOBS = 2;
+const {FOCUS_SAFETY_EXIT_CODE} = require('./testing/site-error-diagnostics.cjs');
 
 function parseArgs(argv) {
   const args = {
@@ -373,7 +374,7 @@ async function runJobAttempts(runAttempt, maxAttempts, options = {}) {
       result = {ok: false, timedOut: false, error: error?.message || String(error)};
     }
     attempts.push(result);
-    if (result.ok || result.timedOut || result.aborted) break;
+    if (result.ok || result.timedOut || result.aborted || result.exitCode === FOCUS_SAFETY_EXIT_CODE) break;
   }
   if (attempts.length === 0) return {ok: false, timedOut: false, aborted: true, notStarted: true, attempts};
   return {...attempts[attempts.length - 1], attempts};
@@ -402,6 +403,7 @@ async function runJobsWithBoundedConcurrency(jobs, runJob, options = {}) {
         const job = jobs[index];
         try {
           results[index] = {...job, ...await runJob(job, controller.signal)};
+          if (results[index].exitCode === FOCUS_SAFETY_EXIT_CODE) interrupt('FOCUS_SAFETY_VIOLATION');
         } catch (error) {
           results[index] = {...job, ok: false, timedOut: false, error: error?.message || String(error)};
         }

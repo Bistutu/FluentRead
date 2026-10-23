@@ -388,9 +388,10 @@ export function getDirectInlineRuns(
     protectionOptions?: TranslationTextProtectionOptions,
     scope: TranslationScope = 'content',
     allowInlineContainer = false,
+    regionOptions?: StructuralRegionOptions,
 ): ChildNode[][] {
-    if (scope === 'content' && (isDocumentSurface(element) || isStructuralContainer(element) ||
-        (!skipStructuralAncestorCheck && hasStructuralAncestor(element)))) return [];
+    if (scope === 'content' && (isDocumentSurface(element) || isStructuralContainer(element, regionOptions) ||
+        (!skipStructuralAncestorCheck && hasStructuralAncestor(element, regionOptions)))) return [];
     if (shouldStayOriginal?.(element) || isProtectedTextElement(element) ||
         (scope === 'content' && !allowInlineContainer && !isBlockBoundary(element))) return [];
     // 控件只能走保留宿主标签/图标的实时文本槽路径，不能拆出会增加第二行的内联段落。

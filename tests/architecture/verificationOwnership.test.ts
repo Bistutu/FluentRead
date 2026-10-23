@@ -275,8 +275,6 @@ const BUILD_ONLY_SRC_ALLOWLIST = new Set([
     'src/services/translation/context/browser.ts',
     // 文档组合根只把 config/store 与 app translation client 注入严格覆盖的编排服务；由文档功能回归和双浏览器构建验证。
     'src/app/document-translation/runtime.ts',
-    // 文档 WXT 页面 composition 只挂载 Vue/Element Plus 与页面样式；由文档组件回归和双浏览器构建验证。
-    'src/app/document-translation/page.ts',
     // 默认组装根只注入存储及可信上下文并显式启动应用；authority/client/history/纯策略严格覆盖，既有导入与集成行为由 config.test 验证。
     'src/services/config/store.ts',
     // 自动备份 store 绑定加密配置仓库 watch 与配置保存队列；纯状态机严格覆盖，集成读写和恢复由 configAutoBackupStore.test 验证。
@@ -291,15 +289,11 @@ const BUILD_ONLY_SRC_ALLOWLIST = new Set([
     'src/features/video-subtitle/content/runtime.ts',
     // 平台字幕适配器绑定真实 DOM、TextTrack 与 Shadow DOM；专属生命周期单测及生产扩展浏览器夹具验证。
     'src/features/video-subtitle/content/platformRuntime.ts',
-    // MAIN world adapter 只把 window Fetch/XHR 注入严格覆盖的 timedtext bridge core。
-    'src/features/video-subtitle/content/youtubeTimedTextBridge.ts',
     // X 浏览器适配器接入 Fetch/AudioContext；URL、读取预算、取消策略和字幕解析由严格覆盖模块负责。
     'src/app/content/xVideoBridge.ts',
     'src/features/video-subtitle/content/hlsAudioRuntime.ts',
     // X 原生 TextTrack 与视频帧时钟的 DOM 映射由生产扩展同步夹具验证。
     'src/features/video-subtitle/content/xCaptionSource.ts',
-    // 后台组合根只把共享 Offscreen client 和 storage 注入严格覆盖的 owner/message handlers。
-    'src/features/video-subtitle/background/runtime.ts',
     // PDF Canvas 预览绑定 PDF.js worker、真实 Canvas 像素采样与对象 URL；由隔离文档浏览器回归和双浏览器构建验证。
     'src/features/document-translation/ui/pdfPreview.ts',
     // 图片悬停 runtime 绑定页面 Image/Canvas/Shadow DOM；协议、OCR 与修复规则由 strict coverage 验证，跨域读取边界由安全契约验证。
@@ -446,6 +440,14 @@ describe('repository verification ownership', () => {
         expect(auditVueOwners(input)).toEqual([expect.stringContaining('不是可追踪的实际组件消费者')]);
         input.tests[test] = `import Card from '@/${component}';it('actual component',()=>{const app=createApp(Card);expect(app).toBeDefined()});`;
         expect(auditVueOwners(input)).toEqual([]);
+        input.tests[test] = `import Card from '@/${component}';it('actual component alias',()=>{const view=true?Card:{...Card,render:()=>null};const mounted=view;createApp(mounted);expect(mounted).toBeDefined()});`;
+        expect(auditVueOwners(input)).toEqual([]);
+        for (const declaration of ['let view=Card', 'const view={component:Card}', 'const view=makeFake(Card)']) {
+            input.tests[test] = `import Card from '@/${component}';it('unproven alias',()=>{${declaration};createApp(view);expect(view).toBeDefined()});`;
+            expect(auditVueOwners(input)).toEqual([expect.stringContaining('不是可追踪的实际组件消费者')]);
+        }
+        input.tests[test] = `import Card from '@/${component}';const view=Card;it('shadowed alias',(view)=>{createApp(view);expect(view).toBeDefined()});`;
+        expect(auditVueOwners(input)).toEqual([expect.stringContaining('不是可追踪的实际组件消费者')]);
         input.tests[test] = `import Card from '@/${component}';it('mount removed',()=>expect(Card).toBeDefined());`;
         expect(auditVueOwners(input)).toEqual([expect.stringContaining('不是可追踪的实际组件消费者')]);
         input.tests[test] = `import Other from '@/src/ui/Other.vue';it('unrelated mount',()=>{createApp(Other);expect(Other).toBeDefined()});`;

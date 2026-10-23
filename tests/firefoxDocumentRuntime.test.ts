@@ -1,4 +1,6 @@
 import {parseHTML} from 'linkedom';
+import {translationSnapshot, ttsPreparation} from './helpers/localInferenceFixtures';
+import {LOCAL_TRANSLATION_MODEL_IDS} from '@/src/core/config/localTranslation';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {createFirefoxBackgroundDocument} from '@/src/platform/offscreen/firefoxDocument';
 import {createExtensionDomClient} from '@/src/platform/offscreen/extensionClient';
@@ -60,6 +62,7 @@ afterEach(() => {
     vi.doUnmock('@/src/platform/browser/capabilities');
     vi.doUnmock('@/src/app/offscreen/imageTranslation');
     vi.doUnmock('@/src/app/offscreen/translation');
+    for (const id of ['@/src/features/local-translation/offscreen/translation', '@/src/features/local-tts/offscreen/tts', '@/src/features/video-subtitle/offscreen/transcription', '@/src/features/information-highlight/offscreen/runtime']) vi.doUnmock(id);
     vi.resetModules();
 });
 
@@ -256,5 +259,86 @@ describe('Firefox shared DOM runtime', () => {
             expect.objectContaining({...route, state: 'stopped'}),
         ]);
         expect(readLastError).toHaveBeenCalledTimes(2);
+    });
+});
+
+
+describe('shared offscreen composition through actual message routing', () => {
+    it('routes model preparation, inference, progress, cancellation and teardown through the composed public ports', async () => {
+        const translation = {configureLocalTranslationDownloadNotifications: vi.fn(), disposeLocalTranslationWorker: vi.fn(),
+            prepareLocalTranslationModel: vi.fn(async () => translationSnapshot()), pauseLocalTranslationModelDownload: vi.fn(async () => translationSnapshot('paused')),
+            getLocalTranslationModelStatus: vi.fn(async () => ({...translationSnapshot('ready'), models: []})), removeLocalTranslationModel: vi.fn(async () => {}), translateLocalText: vi.fn(async () => '本地译文')};
+        const speech = {disposeLocalTtsWorker: vi.fn(), getLocalTtsModelStatus: vi.fn(async () => ({models: []})),
+            prepareLocalTtsModel: vi.fn(async (_warm: boolean, report: (value: any) => void) => {report({loaded: 5, total: 10}); return ttsPreparation();}),
+            removeLocalTtsModel: vi.fn(async () => {}), synthesizeLocalTts: vi.fn(async () => ({audio: new Uint8Array([1, 2]).buffer, contentType: 'audio/wav', voice: 'fixture'}))};
+        const video = {cancelLocalVideoTranscription: vi.fn(async () => {}), removeLocalVideoTranscriptionModel: vi.fn(async () => {}),
+            transcribeLocalVideoAudio: vi.fn(async () => ({text: 'Video speech', model: 'tiny'})),
+            prepareLocalVideoTranscriptionModel: vi.fn(async (model: string, options: any) => {options.onProgress?.({loaded: 7, total: 10}); return {model};})};
+        const downloadOcr = vi.fn(async (_languages: string[], _signal: unknown, progress: (value: any) => void) => progress({loaded: 2, total: 4}));
+        const translateChrome = vi.fn(async () => 'Chrome译文'), disposeChrome = vi.fn(), disposeOcr = vi.fn();
+        vi.doMock('@/src/features/local-translation/offscreen/translation', () => translation);
+        vi.doMock('@/src/features/local-tts/offscreen/tts', () => speech);
+        vi.doMock('@/src/features/video-subtitle/offscreen/transcription', () => video);
+        vi.doMock('@/src/app/offscreen/imageTranslation', async original => ({...await original<typeof import('@/src/app/offscreen/imageTranslation')>(), downloadImageOcrLanguages: downloadOcr, disposeImageOcrWorker: disposeOcr}));
+        vi.doMock('@/src/app/offscreen/translation', async original => ({...await original<typeof import('@/src/app/offscreen/translation')>(), translateWithChromeApi: translateChrome, disposeChromeTranslationModels: disposeChrome}));
+        let informationPorts: any; const disposeInformation = vi.fn();
+        vi.doMock('@/src/features/information-highlight/offscreen/runtime', () => ({probeInformationHighlightWebGpu: vi.fn(async () => ({supported: true})), createInformationHighlightModelsRuntime: (ports: any) => {
+            informationPorts = ports; return {status: async () => ({phase: 'ready'}), prepare: async (id: string) => {ports.createWorker(); ports.notify({loaded: 3, total: 6}, id); ports.notify(undefined, id); return {phase: 'ready'};},
+                pause: async () => ({}), remove: async () => ({}), score: async () => ({}), dispose: disposeInformation};
+        }}));
+        const workers: any[] = [];
+        class WorkerPort {onmessage: ((event: any) => void) | null = null; onerror = null; onmessageerror = null; terminate = vi.fn();
+            constructor(readonly url: string, readonly options: unknown) {workers.push(this);}
+            postMessage(message: any) {queueMicrotask(() => this.onmessage?.({data: {id: message.id, ok: true, result: {text: 'nihongo', language: 'ja', scheme: 'romaji'}}}));}}
+        const audios: any[] = [];
+        class AudioPort {src = ''; preload = ''; currentTime = 1; duration = 10; onended = null; onerror: (() => void) | null = null; pause = vi.fn(); load = vi.fn(); play = vi.fn(async () => {}); removeAttribute() {this.src = '';} constructor() {audios.push(this);}}
+        vi.stubGlobal('Audio', AudioPort);
+        vi.stubGlobal('Worker', WorkerPort); const windowPort = new EventTarget(); vi.stubGlobal('window', windowPort); vi.stubGlobal('self', windowPort);
+        let listener!: ReturnType<typeof createOffscreenMessageListener>; const sent: any[] = [];
+        const readLastError = vi.fn(() => undefined), runtimeId = 'composed-offscreen';
+        vi.stubGlobal('chrome', {runtime: {id: runtimeId, getURL: (path: string) => `chrome-extension://fixture/${path}`,
+            onMessage: {addListener: (value: typeof listener) => {listener = value;}},
+            sendMessage: (value: any, callback: () => void) => {sent.push(value); callback();}, get lastError() {return readLastError();}}});
+        (await import('@/src/app/offscreen/runtime')).startOffscreenApp();
+        const send = (type: string, data: Record<string, unknown> = {}) => new Promise<any>(resolve => {expect(listener({target: 'offscreen', type, ...data}, {id: runtimeId}, resolve)).toBe(true);});
+        try {
+            expect(await send('READING_ANNOTATION', {requestId: 'reading', text: '日本語', language: 'ja'})).toMatchObject({success: true, result: {text: 'nihongo'}});
+            expect(workers[0].url).toBe('chrome-extension://fixture/readingAnnotationWorker.js'); expect(workers[0].options).toEqual({type: 'module'});
+            expect(await send('CHROME_TRANSLATE_OFFSCREEN', {requestId: 'chrome', data: {text: 'Original'}})).toMatchObject({success: true, result: 'Chrome译文'});
+            expect(translateChrome).toHaveBeenCalledWith({text: 'Original'}, windowPort, expect.any(AbortSignal));
+            const model = LOCAL_TRANSLATION_MODEL_IDS.m2m100;
+            expect(await send('LOCAL_TRANSLATION_TRANSLATE', {requestId: 'translate', model, text: 'Original', sourceLanguage: 'en', targetLanguage: 'zh'})).toMatchObject({success: true, result: '本地译文'});
+            expect(translation.translateLocalText).toHaveBeenCalledWith(expect.objectContaining({model, text: 'Original'}), expect.any(AbortSignal));
+            for (const type of ['LOCAL_TRANSLATION_PREPARE', 'LOCAL_TRANSLATION_STATUS', 'LOCAL_TRANSLATION_PAUSE', 'LOCAL_TRANSLATION_REMOVE_MODEL']) expect(await send(type, {model})).toMatchObject({success: true});
+            expect(translation.prepareLocalTranslationModel).toHaveBeenCalledWith(model); expect(translation.pauseLocalTranslationModelDownload).toHaveBeenCalledWith(model); expect(translation.removeLocalTranslationModel).toHaveBeenCalledWith(model);
+            await translation.configureLocalTranslationDownloadNotifications.mock.calls[0][0](translationSnapshot());
+            expect(sent).toContainEqual({type: 'fluentReadLocalTranslationDownloadProgress', snapshot: translationSnapshot()});
+            expect(await send('LOCAL_TTS_SYNTHESIZE', {requestId: 'speech', text: 'Original', language: 'en', voice: 'fixture'})).toMatchObject({success: true, audioBase64: 'AQI='});
+            expect(speech.synthesizeLocalTts).toHaveBeenCalledWith('Original', 'en', 'fixture', expect.any(AbortSignal));
+            for (const keepWarm of [true, false]) expect(await send('LOCAL_TTS_PREPARE', {keepWarm})).toMatchObject({success: true});
+            for (const type of ['LOCAL_TTS_STATUS', 'LOCAL_TTS_REMOVE_MODEL']) expect(await send(type)).toMatchObject({success: true});
+            expect(speech.prepareLocalTtsModel).toHaveBeenNthCalledWith(1, true, expect.any(Function)); expect(speech.prepareLocalTtsModel).toHaveBeenNthCalledWith(2, false, expect.any(Function));
+            expect(await send('VIDEO_AI_TRANSCRIBE', {model: 'tiny', audioPcm16Base64: 'AA=='})).toMatchObject({success: true, text: 'Video speech'});
+            expect(await send('VIDEO_AI_PREPARE', {model: 'tiny', keepWarm: true, streamId: 'warm'})).toMatchObject({success: true});
+            expect(video.prepareLocalVideoTranscriptionModel).toHaveBeenLastCalledWith('tiny', {keepWarm: true, streamId: 'warm'});
+            expect(await send('VIDEO_AI_PREPARE', {model: 'small', preference: 'mirror'})).toMatchObject({success: true});
+            expect(video.prepareLocalVideoTranscriptionModel).toHaveBeenLastCalledWith('small', {keepWarm: false, preference: 'mirror', onProgress: expect.any(Function)});
+            expect(await send('VIDEO_AI_CANCEL', {streamId: 'warm', reason: 'complete'})).toMatchObject({success: true});
+            expect(await send('VIDEO_AI_REMOVE_MODEL', {model: 'tiny'})).toMatchObject({success: true}); expect(video.removeLocalVideoTranscriptionModel).toHaveBeenCalledWith('tiny');
+            expect(await send('FLUENT_READ_IMAGE_OCR_DOWNLOAD_OFFSCREEN', {languages: ['eng']})).toMatchObject({success: true});
+            expect(downloadOcr).toHaveBeenCalledWith(['eng'], undefined, expect.any(Function));
+            for (const modelId of ['qwen2.5-0.5b']) expect(await send('INFORMATION_HIGHLIGHT_PREPARE_OFFSCREEN', {modelId})).toMatchObject({success: true});
+            expect(workers.filter(worker => worker.url.endsWith('informationHighlightWorker.js'))).toHaveLength(1);
+            expect(informationPorts.probe).toBeTypeOf('function'); expect(informationPorts.budget).toBeTypeOf('function');
+            expect(sent.some(message => message.type === 'fluentReadDownloadProgress')).toBe(true); expect(readLastError).toHaveBeenCalled();
+            const route = {tabId: 7, clientRequestId: 'speech-playback', frameId: 2, ownerUrl: 'https://fixture.invalid/reader'};
+            const revision = await send('READ_SELECTION_TTS_REVISION');
+            const reservation = await send('RESERVE_SELECTION_TTS', {...route, expectedRevision: revision.revision});
+            expect(await send('PLAY_SELECTION_TTS', {...route, text: 'This text is spoken aloud.', audioBase64: 'AA==', contentType: 'audio/wav', playbackToken: reservation.playbackToken})).toEqual({success: true});
+            expect(sent).toContainEqual(expect.objectContaining({...route, type: 'selectionTtsPlaybackState', state: 'progress', position: {currentTime: 1, duration: 10}}));
+            audios[0].onerror(); expect(sent).toContainEqual(expect.objectContaining({...route, state: 'error', error: '扩展音频解码或播放失败'}));
+        } finally {windowPort.dispatchEvent(new Event('pagehide'));}
+        expect(workers[0].terminate).toHaveBeenCalledOnce(); expect(disposeInformation).toHaveBeenCalledOnce(); expect(disposeChrome).toHaveBeenCalledWith(windowPort);
+        expect(disposeOcr).toHaveBeenCalledOnce(); expect(translation.disposeLocalTranslationWorker).toHaveBeenCalledOnce(); expect(speech.disposeLocalTtsWorker).toHaveBeenCalledOnce();
     });
 });

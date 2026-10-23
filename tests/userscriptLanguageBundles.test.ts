@@ -35,7 +35,7 @@ describe('userscript remote UI language data', () => {
         globalThis.GM = undefined;
     });
 
-    it('registers the English bundle supplied by the pinned data resource without a network request', async () => {
+    it.each(['current', 'legacy'] as const)('registers the %s English data resource without a network request or mutating its source', async version => {
         for (const bundle of Object.values(UI_LANGUAGE_BUNDLES)) {
             expect(bundle.messages).not.toHaveProperty('popup.compact.translate');
             expect(bundle.messages).not.toHaveProperty('popup.compact.restore');
@@ -49,11 +49,13 @@ describe('userscript remote UI language data', () => {
             xmlHttpRequest(details) { requests.push(details.url); throw new Error('unexpected request'); },
         };
         const pinned = runInNewContext(readFileSync(resolve(process.cwd(), 'userscript/resources/fluentread-data.v1.js'), 'utf8'), {}, {timeout: 5000});
+        if (version === 'legacy') {
+            delete pinned.english.messages['settings.services.deeplx.defaultRoute'];
+            pinned.english.messages['settings.services.deeplx.endpointHelp'] = 'Legacy endpoint route help';
+        }
         const original = JSON.stringify(pinned.english);
-        expect(pinned.english.messages).not.toHaveProperty('settings.services.deeplx.defaultRoute');
-        expect(pinned.english.messages['settings.services.deeplx.endpointHelp']).not.toBe(extensionBundles['en-US'].messages['settings.services.deeplx.endpointHelp']);
         vi.stubGlobal('__FLUENTREAD_USERSCRIPT_DATA__', pinned);
-        // 嵌入的旧 data 优先于压缩资源，因此两条新文案必须在注册时覆盖。
+        // data 优先于压缩资源；旧资源缺失或过期的两条文案也必须在注册时修复。
         vi.stubGlobal('__FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__', {'en-US': 'invalid-if-selected'});
         vi.stubGlobal('__FLUENTREAD_USERSCRIPT_REMOTE_LANGUAGES__', {});
 
@@ -82,7 +84,7 @@ describe('userscript remote UI language data', () => {
         vi.stubGlobal('DecompressionStream', undefined);
         vi.stubGlobal('pako', {ungzip});
         const original = UI_LANGUAGE_BUNDLES['en-US'];
-        const messages = Object.fromEntries(Object.entries(original.messages).filter(([key]) => !key.startsWith('document.')));
+        const messages = Object.fromEntries(Object.entries(original.messages).filter(([key]) => !key.startsWith('document.') && !key.startsWith('translationStats.')));
         const expected = {...original, messages, legacyText: {...original.legacyText, ...mimoRetirementLegacyText['en-US']}};
         const core = await import('@/src/core/i18n');
         expect(core.hasUiLanguageBundle('en-US')).toBe(false);

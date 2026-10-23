@@ -2,26 +2,17 @@
  * @file tests/floatingBallLifecycle.test.ts
  * 文件职责：执行悬浮球真实 Vue SFC 的 setup、模板、watch 与挂载/卸载逻辑。
  * 主要内容：覆盖触屏/鼠标指针与兼容 click 去重、辅助激活、拖动跟手和取消不保存、视口变化、props/翻译状态和事件资源释放。
- * 模块边界：使用官方 SFC 编译器和 Vue 自定义 DOM renderer；仅把语言、视口订阅和元素几何作为受控平台端口，不以此代替真实浏览器 CSS/触摸或焦点验收。
+ * 模块边界：直接导入生产 SFC 并使用 Vue 自定义 DOM renderer；仅把语言、视口订阅和元素几何作为受控平台端口，不以此代替真实浏览器 CSS/触摸或焦点验收。
  */
-import {readFileSync} from 'node:fs';
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import {compileScript, compileTemplate, parse} from 'vue/compiler-sfc';
 import * as Vue from 'vue';
-import ts from 'typescript';
 import {parseHTML} from 'linkedom';
-import * as position from '@/src/features/floating-ball/position';
+import FloatingBall from '@/src/features/floating-ball/ui/FloatingBall.vue';
 
-const filename = 'src/features/floating-ball/ui/FloatingBall.vue';
-const {descriptor} = parse(readFileSync(filename, 'utf8'), {filename});
-const script = compileScript(descriptor, {id: 'floating-ball-lifecycle'});
-const template = compileTemplate({source: descriptor.template!.content, filename, id: 'floating-ball-lifecycle',
-  compilerOptions: {bindingMetadata: script.bindings, hoistStatic: false}});
-if (template.errors.length) throw new Error(template.errors.map(String).join('\n'));
-const transpile = (source: string) => ts.transpileModule(source.replaceAll('import.meta.env.BROWSER', '"chrome"'), {
-  compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true},
-}).outputText;
-const setupCode = transpile(script.content), renderCode = transpile(template.code);
+const platform = vi.hoisted(() => ({viewport: () => ({}), observe: (_callback: () => void): (() => void) => () => {}}));
+vi.mock('@/src/platform/dom/visualViewport', () => ({getVisualViewportRect: () => platform.viewport(), observeVisualViewport: (callback: () => void) => platform.observe(callback)}));
+vi.mock('@/src/ui/i18n', () => ({useUiI18n: () => ({translateLegacy: (text: string) => text,
+  t: (key: string) => ({'common.brand': '流畅阅读', 'fullPage.progress.title': '翻译中', 'fullPage.progress.failuresTitle': '翻译失败', 'fullPage.progress.completed': '已完成'}[key] || key)})}));
 let app: Vue.App | undefined;
 let componentErrors: ReturnType<typeof vi.fn> | undefined;
 afterEach(() => {
@@ -49,18 +40,7 @@ function mountBall(initial: Record<string, unknown> = {}, navigatorPort: {maxTou
   let viewportCallback: (() => void) | undefined;
   const stopViewport = vi.fn();
   const observeViewport = vi.fn((callback: () => void) => {viewportCallback = callback; return stopViewport;});
-  const modules: Record<string, unknown> = {
-    vue: Vue,
-    '@/src/features/floating-ball/position': position,
-    '@/src/platform/dom/visualViewport': {getVisualViewportRect: () => viewport, observeVisualViewport: observeViewport},
-    '@/src/ui/i18n': {useUiI18n: () => ({translateLegacy: (text: string) => text,
-      t: (key: string) => ({'common.brand': '流畅阅读', 'fullPage.progress.title': '翻译中', 'fullPage.progress.failuresTitle': '翻译失败', 'fullPage.progress.completed': '已完成'}[key] || key)})},
-  };
-  const load = (id: string) => {if (!(id in modules)) throw Error(`Unexpected runtime import: ${id}`); return modules[id];};
-  const exports: Record<string, any> = {}, rendered: Record<string, any> = {};
-  new Function('require', 'exports', setupCode)(load, exports);
-  new Function('require', 'exports', renderCode)(load, rendered);
-  exports.default.render = rendered.render;
+  platform.viewport = () => viewport;platform.observe = observeViewport;
   const registered = new WeakMap<Element, Map<string, EventListener>>();
   const renderer = Vue.createRenderer<Node, Element>({
     // 真实浏览器DOM不会成为Vue响应式对象；Linkedom的元素需显式markRaw保持事件composedPath身份。
@@ -69,6 +49,9 @@ function mountBall(initial: Record<string, unknown> = {}, navigatorPort: {maxTou
     insert: (node, parent, anchor) => {parent.insertBefore(node, anchor ?? null);}, remove: node => {node.parentNode?.removeChild(node);},
     setText: (node, value) => {node.nodeValue = value;}, setElementText: (node, value) => {node.textContent = value;},
     parentNode: node => node.parentNode as Element | null, nextSibling: node => node.nextSibling,
+    setScopeId: (element, id) => element.setAttribute(id, ''), cloneNode: node => Vue.markRaw(node.cloneNode(true)),
+    insertStaticContent: (html, parent, anchor) => {const box = document.createElement('div');box.innerHTML = html;
+      const first = box.firstChild!, last = box.lastChild!;while (box.firstChild) parent.insertBefore(box.firstChild, anchor ?? null);return [first, last];},
     patchProp(element, key, previous, value) {
       if (/^on[A-Z]/.test(key)) {
         const name = key.slice(2).toLowerCase(); const listeners = registered.get(element) || new Map<string, EventListener>(); registered.set(element, listeners);
@@ -89,11 +72,15 @@ function mountBall(initial: Record<string, unknown> = {}, navigatorPort: {maxTou
   const translate = vi.fn(), savePosition = vi.fn(), settings = vi.fn(), mangaToggle = vi.fn();
   const props = Vue.reactive<Record<string, any>>({onTranslationToggle: translate, onPositionChanged: savePosition, onSettingsClick: settings, onMangaToggle: mangaToggle, ...initial});
   const exposed = Vue.ref<BallApi>();
-  const current = renderer.createApp({render: () => Vue.h(exports.default, {...props, ref: exposed})});
+  const current = renderer.createApp({render: () => Vue.h(FloatingBall, {...props, ref: exposed})});
   const errors = vi.fn(); componentErrors = errors; current.config.errorHandler = errors; current.directive('ui-i18n', {});
   app = current; current.mount(document.body);
   const ball = () => document.querySelector<HTMLElement>('.fr-floating-ball')!;
   const main = () => document.querySelector<HTMLElement>('.floating-ball-main')!;
+  // Linkedom does not implement native focus pseudos; the browser focus port starts empty.
+  const query = ball().querySelector.bind(ball());
+  Object.defineProperty(ball(), 'querySelector', {configurable: true, value: (selector: string) => selector === ':focus-visible' || selector === ':focus' ? null : query(selector)});
+
   const numeric = (value: string, fallback: number) => /^-?[\d.]+px$/.test(value) ? Number.parseFloat(value) : fallback;
   // 几何端口仅模拟“容器中主手柄偏移40px”；最终定位仍由真实组件/position算法执行。
   Object.defineProperty(ball(), 'getBoundingClientRect', {value: () => {
@@ -234,6 +221,57 @@ describe('FloatingBall actual SFC lifecycle', () => {
     port.props.showMenu = false; await flush(); expect(port.document.querySelector('.floating-ball-translate')).toBeNull();
   });
 
+  it('opens after the configured hover delay, cancels a departing hover, and gives keyboard focus immediate access', async () => {
+    const port = mountBall({presentation: {hoverDelay: 200}});await flush();
+    const expanded = () => port.ball().classList.contains('floating-ball-expanded');
+    port.ball().dispatchEvent(port.event('mouseenter'));vi.advanceTimersByTime(100);await flush();expect(expanded()).toBe(false);
+    port.ball().dispatchEvent(port.event('mouseleave'));vi.advanceTimersByTime(200);await flush();expect(expanded()).toBe(false);
+    port.ball().dispatchEvent(port.event('mouseenter'));vi.advanceTimersByTime(200);await flush();expect(expanded()).toBe(true);
+    port.ball().dispatchEvent(port.event('mouseleave'));await flush();expect(expanded()).toBe(false);
+    port.ball().dispatchEvent(port.event('mouseenter'));port.main().dispatchEvent(port.event('focusin'));await flush();expect(expanded()).toBe(true);expect(vi.getTimerCount()).toBe(0);
+    port.document.dispatchEvent(port.event('keydown', {key: 'Escape'}));await flush();expect(expanded()).toBe(false);
+    port.props.presentation = {toolsDisplay: 'always'};await flush();expect(expanded()).toBe(true);
+    port.ball().dispatchEvent(port.event('mouseenter'));port.ball().dispatchEvent(port.event('mouseleave'));port.main().dispatchEvent(port.event('focusin'));await flush();expect(expanded()).toBe(true);expect(vi.getTimerCount()).toBe(0);
+    port.props.presentation = {toolsDisplay: 'hover', hoverDelay: 0};await flush();port.ball().dispatchEvent(port.event('mouseenter'));await flush();expect(expanded()).toBe(true);
+  });
+  it('keeps manga controls available during current keyboard focus, resets mouse idle delay, and reports progress or errors without new translation', async () => {
+    const port = mountBall({manga: {available: true, active: false, pending: false, errors: 0}});await flush();
+    let focused = false, hovered = false;
+    const find = port.ball().querySelector.bind(port.ball()), matches = port.ball().matches.bind(port.ball());
+    vi.spyOn(port.ball(), 'querySelector').mockImplementation((selector: string) => selector === ':focus-visible' || selector === ':focus' ? focused ? port.main() : null : find(selector));
+    vi.spyOn(port.ball(), 'matches').mockImplementation((selector: string) => selector === ':hover' ? hovered : matches(selector));
+    const expanded = () => port.ball().classList.contains('floating-ball-expanded'), manga = () => port.document.querySelector<HTMLElement>('.floating-ball-manga')!;
+    port.ball().dispatchEvent(port.event('pointermove', {pointerType: 'touch'}));await flush();expect(expanded()).toBe(false);
+    port.ball().dispatchEvent(port.event('pointermove', {pointerType: 'mouse'}));await flush();expect(expanded()).toBe(true);
+    vi.advanceTimersByTime(2000);port.ball().dispatchEvent(port.event('pointermove', {pointerType: 'mouse'}));vi.advanceTimersByTime(2000);await flush();expect(expanded()).toBe(true);
+    focused = true;vi.advanceTimersByTime(500);await flush();expect(expanded()).toBe(true);
+    port.main().dispatchEvent(port.event('focusin'));port.click(manga(), 0);await flush();expect(vi.getTimerCount()).toBe(0);expect(port.mangaToggle).toHaveBeenCalledOnce();
+    focused = false;hovered = true;port.ball().dispatchEvent(port.event('focusout'));await flush();expect(expanded()).toBe(true);
+    port.click(manga(), 1);vi.advanceTimersByTime(2500);await flush();expect(expanded()).toBe(false);expect(port.mangaToggle).toHaveBeenCalledTimes(2);
+    port.props.manga = {available: true, active: true, pending: true, errors: 0, message: '正在识别'};await flush();expect(manga().getAttribute('title')).toContain('正在识别');expect(manga().getAttribute('aria-busy')).toBe('true');
+    port.props.manga.message = '';await flush();expect(manga().getAttribute('title')).toContain('正在处理当前漫画页');
+    port.props.manga.pending = false;port.props.manga.errors = 1;await flush();expect(port.document.querySelector('.manga-error')).not.toBeNull();expect(manga().getAttribute('title')).toContain('部分页面未完成');
+    port.props.manga.errors = 0;port.props.manga.completed = 2;await flush();expect(port.document.querySelector('.manga-check')).not.toBeNull();expect(manga().getAttribute('title')).toContain('连续翻译已开启');
+    port.props.manga.areaFallback = true;await flush();expect(manga().getAttribute('aria-label')).toBe('圈选漫画翻译');expect(manga().getAttribute('title')).toContain('拖选可见区域');expect(port.translate).not.toHaveBeenCalled();
+    port.props.presentation = {toolsDisplay: 'always'};await flush();port.click(manga(), 0);expect(vi.getTimerCount()).toBe(0);
+  });
+  it('routes the settings tool and synchronizes public position changes without interrupting an unchanged drag', async () => {
+    const port = mountBall({position: 'right', verticalPosition: .5});await flush();
+    port.ball().dispatchEvent(port.event('mouseenter'));await flush();const settings = port.document.querySelector<HTMLElement>('.floating-ball-settings')!;
+    const blur = vi.spyOn(settings, 'blur');port.click(settings, 1);await flush();expect(blur).toHaveBeenCalledOnce();expect(port.settings).toHaveBeenCalledOnce();expect(port.ball().classList.contains('floating-ball-expanded')).toBe(false);
+    port.exposed.value!.setPosition('left', .2);await flush();expect(port.ball().getAttribute('data-position')).toBe('left');expect(port.ball().style.top).toContain('160px');
+    port.pointer('pointerdown');port.pointer('pointermove', {clientX: 300, clientY: 340}, 'window');await flush();const draggedTop = port.ball().style.top;
+    port.exposed.value!.setPosition('left', .2);await flush();expect(port.ball().classList.contains('dragging')).toBe(true);expect(port.ball().style.top).toBe(draggedTop);
+    port.pointer('pointercancel', {pointerId: 2}, 'window');await flush();expect(port.ball().classList.contains('dragging')).toBe(true);
+    port.pointer('pointercancel', {pointerId: 1}, 'window');await flush();expect(port.ball().classList.contains('dragging')).toBe(false);expect(port.savePosition).not.toHaveBeenCalled();
+  });
+  it('clears touch expansion on outside interaction and hidden menus, and never starts a secondary mouse button gesture', async () => {
+    const port = mountBall();await flush();port.pointer('pointerdown', {pointerType: 'mouse', button: 2});expect(port.windowListeners.get('pointerup')?.size ?? 0).toBe(0);
+    port.pointer('pointerdown');port.pointer('pointerup');await flush();expect(port.ball().classList.contains('floating-ball-expanded')).toBe(true);
+    port.document.body.dispatchEvent(port.event('pointerdown'));await flush();expect(port.ball().classList.contains('floating-ball-expanded')).toBe(false);
+    port.pointer('pointerdown');port.pointer('pointercancel');await flush();port.props.showMenu = false;await flush();expect(port.ball().classList.contains('floating-ball-expanded')).toBe(false);
+    port.pointer('pointerup');expect(port.translate).toHaveBeenCalledTimes(1);
+  });
   it('releases viewport subscription, document/window listeners and pending hover timers on unmount', async () => {
     const port = mountBall({presentation: {hoverDelay: 200}}); await flush();
     expect(port.observeViewport).toHaveBeenCalledOnce();

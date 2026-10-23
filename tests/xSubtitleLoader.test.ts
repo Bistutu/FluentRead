@@ -1,4 +1,4 @@
-import {describe, expect, it} from 'vitest';
+import {afterEach, describe, expect, it, vi} from 'vitest';
 import {XSubtitleLoader} from '@/src/features/video-subtitle/content/xSubtitleLoader';
 import type {XSubtitleResource} from '@/src/features/video-subtitle/content/xVideoSubtitleData';
 
@@ -7,8 +7,53 @@ const resource = (id: string, languageCode?: string, offsetMs = 0): XSubtitleRes
   url: `https://video.twimg.com/captions/${id}.vtt`, offsetMs, languageCode,
 });
 const tick = () => new Promise<void>(resolve => setTimeout(resolve, 0));
+afterEach(() => vi.useRealTimers());
 
 describe('XSubtitleLoader', () => {
+  it('stalled requests time out, release all three slots and consume late responses without publishing old cues', async () => {
+    vi.useFakeTimers();
+    const pending: Array<{resolve(response: Response): void; signal: AbortSignal}> = [];
+    const cues = vi.fn();
+    const loader = new XSubtitleLoader({
+      fetch: (_url, {signal}) => new Promise<Response>(resolve => pending.push({resolve, signal})),
+      language: () => 'en', onCues: cues,
+    });
+    for (let index = 0; index < 3; index++) loader.load(resource(`stalled-${index}`));
+    loader.load(resource('ready'), cueText);
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(pending).toHaveLength(3);
+    expect(pending.every(request => request.signal.aborted)).toBe(true);
+    expect(cues).toHaveBeenCalledOnce();
+    expect(cues.mock.calls[0][0]).toBe(resource('ready').url);
+    const cancel = vi.fn();
+    for (const request of pending) request.resolve(new Response(new ReadableStream({cancel})));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(cancel).toHaveBeenCalledTimes(3);
+    expect(cues).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+    loader.reset();
+  });
+
+  it('reset releases stalled old slots before loading the next media and cancels rejected response bodies', async () => {
+    vi.useFakeTimers();
+    const cancel = vi.fn();
+    const cues = vi.fn();
+    const loader = new XSubtitleLoader({
+      fetch: async url => url.includes('rejected')
+        ? new Response(new ReadableStream({cancel}), {status: 403}) : new Promise<Response>(() => undefined),
+      language: () => 'en', onCues: cues,
+    });
+    for (let index = 0; index < 3; index++) loader.load(resource(`stalled-${index}`));
+    loader.reset();
+    loader.load(resource('rejected'));
+    loader.load(resource('next'), cueText);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(cues).toHaveBeenCalledOnce();
+    expect(cues.mock.calls[0][0]).toBe(resource('next').url);
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+    loader.reset();
+  });
   it('加载 inline cue，并从 master 只递归首选语言轨道', async () => {
     const calls: string[] = [];
     const cues: string[] = [];
@@ -36,6 +81,8 @@ describe('XSubtitleLoader', () => {
     [...pending.values()].slice(0, 1).forEach(resolve => resolve(new Response(cueText)));
     await tick();
     expect(pending.size).toBe(4);
+    loader.reset();
+    await tick();
   });
 
   it('限制已访问资源容量为 96，并忽略非法、重复和大响应', async () => {

@@ -22,14 +22,13 @@ export async function translateMicrosoftTexts(
     enableNativeBatch = true,
     lease?: MicrosoftTranslationLease,
 ): Promise<string[]> {
-    if (!lease) return translateMicrosoftTextsWithTransport(runtimeFetch, texts, fromLang, toLang, abortSignal, enableNativeBatch);
     return translateMicrosoftTextsWithTransport(runtimeFetch, texts, fromLang, toLang, abortSignal, enableNativeBatch, lease);
 }
 
 async function microsoft(message: TranslationProviderRequest & TranslationLanguageOverride) {
     const origin = message.origin;
     const isSingleText = typeof origin === 'string';
-    const texts: string[] = typeof origin === 'string' ? [origin] : origin;
+    const texts: string[] = isSingleText ? [origin] : origin;
     const {sourceLanguage, targetLanguage} = getTranslationProviderLanguages(message);
     const current = requireTranslationProviderConfig(message);
     const enableNativeBatch = message.enableNativeBatch
@@ -38,11 +37,8 @@ async function microsoft(message: TranslationProviderRequest & TranslationLangua
         enableNativeBatch, getTranslationRequestScheduler(message)?.lease);
     if (!isSingleText) return translations;
 
-    const translatedText = translations[0];
-    if (translatedText === undefined) {
-        throw new Error('微软翻译未返回译文');
-    }
-    return translatedText;
+    // The shared transport has already validated one output per input, including blank slots.
+    return translations[0]!;
 }
 
 export default microsoft;

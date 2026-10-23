@@ -1,7 +1,7 @@
 <!--
  @file src/features/model-usage/ui/ModelUsageDashboard.vue
  文件职责：在 Options 设置页展示当前浏览器保存的模型调用可观测数据，并提供筛选、请求明细和清除统计入口。
- 主要内容：按界面语言格式化 Token、输出速度、日期和耗时，在本组件内以既有有界语言缓存复用速度与秒/分钟三套固定数字规则，呈现请求概览，支持双指标趋势及键盘选取、互斥 Token 构成、常驻平均构成、模型排行双向筛选，以及固定时间边界的指定页请求记录。
+ 主要内容：缓存面板失活时关闭清除确认并释放背景，按会话丢弃旧查询、清除回复及旧弹窗确认/取消/键盘事件；按界面语言格式化 Token、输出速度、日期和耗时，在本组件内以既有有界语言缓存复用速度与秒/分钟三套固定数字规则，呈现请求概览，支持双指标趋势及键盘选取、互斥 Token 构成、常驻平均构成、模型排行双向筛选，以及固定时间边界的指定页请求记录。
  模块边界：组件只消费后台白名单数据，不读取 API Key、不记录原文、译文、提示词或网址，也不直接访问 IndexedDB；事件采集、Token 解释、持久化及备份恢复由 services、providers、background 与统一“备份与恢复”页面拥有。
 -->
 <template>
@@ -461,7 +461,7 @@
     </template>
 
     <Teleport to="body">
-      <div v-if="resetDialogOpen" class="usage-dialog-backdrop" @click.self="closeResetDialog">
+      <div v-if="resetDialogOpen" class="usage-dialog-backdrop" :onClick="resetDialogActions.backdrop">
         <section
           ref="resetDialog"
           class="usage-reset-dialog"
@@ -470,15 +470,15 @@
           aria-labelledby="usage-reset-title"
           aria-describedby="usage-reset-description"
           tabindex="-1"
-          @keydown="handleResetDialogKeydown"
+          :onKeydown="resetDialogActions.keydown"
         >
           <span class="usage-dialog-icon" aria-hidden="true">!</span>
           <h2 id="usage-reset-title">清除本机模型用量？</h2>
           <p id="usage-reset-description">{{ translateLegacy('会删除本机请求记录及其汇总；不会删除 API Key、翻译设置、FluentRead 译文缓存或配置历史。此操作无法撤销。').replace('FluentRead', t('common.brand')) }}</p>
           <p v-if="resetError" class="usage-dialog-error" role="alert">{{ resetError }}</p>
           <div>
-            <button ref="resetCancelButton" type="button" :disabled="resetting" @click="closeResetDialog">取消</button>
-            <button type="button" class="danger" :disabled="resetting" @click="resetUsage">
+            <button ref="resetCancelButton" type="button" :disabled="resetting" :onClick="resetDialogActions.close">取消</button>
+            <button type="button" class="danger" :disabled="resetting" :onClick="resetDialogActions.confirm">
               {{ resetting ? '正在清除…' : '确认清除统计' }}
             </button>
           </div>
@@ -593,6 +593,7 @@ const resetCancelButton = ref<HTMLButtonElement | null>(null)
 const resetButton = ref<HTMLButtonElement | null>(null)
 let dashboardRevision = 0
 let requestLogRevision = 0
+const resetRevision = ref(0)
 let mounted = false
 let inertSettingsApp: HTMLElement | null = null
 const unsubscribeConfig = subscribeConfig(nextConfig => {
@@ -964,22 +965,36 @@ async function loadRequestPage(pageIndex: number): Promise<void> {
   }
 }
 
+// 每个已渲染入口以 :onX 绑定捕获同一确认会话，避免模板缓存包装在调用时重新读取新动作。
+const resetDialogActions = computed(() => {
+  const revision = resetRevision.value
+  const current = () => mounted && props.active && resetDialogOpen.value && revision === resetRevision.value
+  return {
+    close: () => {if (current()) closeResetDialog()},
+    backdrop: (event: MouseEvent) => {if (current() && event.target === event.currentTarget) closeResetDialog()},
+    confirm: () => {if (current()) return resetUsage()},
+    keydown: (event: KeyboardEvent) => {if (current()) handleResetDialogKeydown(event)},
+  }
+})
+
 async function openResetDialog(): Promise<void> {
-  if (!mounted) return
+  if (!mounted || !props.active || resetting.value || resetDialogOpen.value) return
+  const revision = ++resetRevision.value
   resetError.value = ''
   resetMessage.value = ''
   setSettingsBackgroundInert(true)
   resetDialogOpen.value = true
   await nextTick()
-  if (mounted && resetDialogOpen.value) resetCancelButton.value?.focus()
+  if (mounted && props.active && revision === resetRevision.value && resetDialogOpen.value) resetCancelButton.value?.focus()
 }
 
 function closeResetDialog(): void {
   if (resetting.value) return
+  const revision = ++resetRevision.value
   resetDialogOpen.value = false
   setSettingsBackgroundInert(false)
   resetError.value = ''
-  void nextTick(() => { if (mounted && !resetDialogOpen.value) resetButton.value?.focus() })
+  void nextTick(() => { if (mounted && props.active && revision === resetRevision.value && !resetDialogOpen.value) resetButton.value?.focus() })
 }
 
 function setSettingsBackgroundInert(value: boolean): void {
@@ -1019,23 +1034,24 @@ function handleResetDialogKeydown(event: KeyboardEvent): void {
 }
 
 async function resetUsage(): Promise<void> {
-  if (!mounted || resetting.value) return
+  if (!mounted || !props.active || !resetDialogOpen.value || resetting.value) return
+  const revision = ++resetRevision.value
   resetting.value = true
   resetError.value = ''
   try {
     const response = await browser.runtime.sendMessage({type: 'modelUsage', action: 'reset'}) as ModelUsageResponse<{cleared?: boolean}>
-    if (!mounted) return
+    if (!mounted || revision !== resetRevision.value) return
     if (response?.success !== true) throw new Error(response?.error || '后台没有确认清除结果')
     resetDialogOpen.value = false
     setSettingsBackgroundInert(false)
     resetMessage.value = '模型用量请求记录及汇总已清除'
     await loadSnapshot()
     await nextTick()
-    if (mounted && !resetDialogOpen.value) resetButton.value?.focus()
+    if (mounted && props.active && revision === resetRevision.value && !resetDialogOpen.value) resetButton.value?.focus()
   } catch (error) {
-    if (mounted) resetError.value = error instanceof Error ? error.message : '清除统计失败'
+    if (mounted && revision === resetRevision.value) resetError.value = error instanceof Error ? error.message : '清除统计失败'
   } finally {
-    if (mounted) resetting.value = false
+    if (mounted && revision === resetRevision.value) resetting.value = false
   }
 }
 
@@ -1050,9 +1066,20 @@ watch([requestPurpose, requestOutcome, requestCacheStatus, requestPageSize], () 
 }, {flush: 'post'})
 
 watch(() => props.active, (active, previous) => {
-  if (!mounted || !active || previous === active) return
-  void loadSnapshot()
-})
+  if (!mounted || active === previous) return
+  if (active) {void loadSnapshot(); return}
+  // 缓存页离开时撤销视图与确认会话，迟到回复不能触碰下一次打开的面板。
+  dashboardRevision += 1
+  requestLogRevision += 1
+  resetRevision.value += 1
+  loading.value = false
+  requestLogLoading.value = false
+  resetting.value = false
+  resetDialogOpen.value = false
+  resetError.value = ''
+  resetMessage.value = ''
+  setSettingsBackgroundInert(false)
+}, {flush: 'sync'})
 
 function handleVisibilityChange(): void {
   if (document.visibilityState === 'visible' && props.active) void loadSnapshot()
@@ -1066,6 +1093,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   mounted = false
+  resetRevision.value += 1
   dashboardRevision += 1
   requestLogRevision += 1
   document.removeEventListener('visibilitychange', handleVisibilityChange)

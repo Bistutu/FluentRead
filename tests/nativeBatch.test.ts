@@ -7,6 +7,17 @@ import {
 import {readNativeBatchJson, translateNativeTextBatch} from '@/src/providers/translation/native-batch';
 
 describe('原生批次 JSON 与读取故障分类', () => {
+    it.each(['headers', 'cancelled'] as const)('提前拒绝 %s 时取消未读正文，无需等错误流结束', async stage => {
+        const cancel = vi.fn(() => new Promise<void>(() => {}));
+        const response = new Response(new ReadableStream({cancel}), {headers: {'content-type': 'text/html'}});
+        const owner = new AbortController();
+        if (stage === 'cancelled') owner.abort();
+        await expect(readNativeBatchJson(response, '坏 JSON', owner.signal)).rejects.toMatchObject(
+            stage === 'cancelled' ? {name: 'AbortError'} : {message: '翻译服务返回网页或验证页，请稍后重试'},
+        );
+        expect(cancel).toHaveBeenCalledOnce();
+    });
+
     it('有效 JSON 原样返回，语法损坏可识别为结构错误', async () => {
         await expect(readNativeBatchJson(new Response('["译文"]'), '坏 JSON')).resolves.toEqual(['译文']);
         await expect(readNativeBatchJson(new Response('["译文"'), '坏 JSON'))

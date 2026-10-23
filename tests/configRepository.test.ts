@@ -52,7 +52,7 @@ describe('加密配置 IndexedDB repository', () => {
 
         await expect(repository.get('local:config')).resolves.toEqual(config);
         expect(await repository.has('local:config')).toBe(true);
-        const raw = await repository.getRawRecord('local:config');
+        const raw = await repository.database.records.get('local:config');
         expect(raw).toMatchObject({key: 'local:config', updatedAt: 1234});
         expect(JSON.stringify(raw)).not.toContain('sk-idb-sensitive-sentinel');
         expect(JSON.stringify(raw)).not.toContain('user-role-sensitive-sentinel');
@@ -66,7 +66,7 @@ describe('加密配置 IndexedDB repository', () => {
         const repository = createRepository();
         await repository.set('local:config', {marker: 'config'});
         await repository.set('local:credentials', {marker: 'credentials'});
-        const configRecord = await repository.getRawRecord('local:config');
+        const configRecord = await repository.database.records.get('local:config');
         expect(configRecord).toBeDefined();
 
         await repository.database.records.put({
@@ -116,22 +116,6 @@ describe('加密配置 IndexedDB repository', () => {
         await expect(unavailable.get('session:credentials')).rejects.toThrow('storage.session unavailable');
         expect(await first.database.records.get('session:credentials')).toBeDefined();
         await expect(first.get('session:credentials')).resolves.toEqual({token: 'recoverable-secret'});
-    });
-
-    it('批量迁移只补缺失键并在一个事务中提交', async () => {
-        const repository = createRepository();
-        await repository.set('local:config', {marker: 'indexed-db-authoritative'});
-
-        const imported = await repository.importMissing(new Map([
-            ['local:config', {marker: 'stale-legacy'}],
-            ['local:configHistory', {entries: [{version: 1}]}],
-            ['local:configAutoBackups', {entries: [{version: 2}]}],
-        ]));
-
-        expect(imported).toEqual(['local:configHistory', 'local:configAutoBackups']);
-        await expect(repository.get('local:config')).resolves.toEqual({marker: 'indexed-db-authoritative'});
-        await expect(repository.get('local:configHistory')).resolves.toEqual({entries: [{version: 1}]});
-        expect(await repository.database.records.count()).toBe(3);
     });
 
     it('主记录缺失时以完整迁移快照替换受管残留，主记录存在时整批放弃', async () => {
@@ -261,17 +245,17 @@ describe('加密配置 IndexedDB repository', () => {
             },
         });
 
-        await expect(repository.importMissing(new Map([
+        await expect(repository.importMigrationSnapshotIfAuthorityMissing(['local:config'], new Map([
             ['local:config', {on: true}],
             ['local:configHistory', {fail: true}],
-        ]))).rejects.toThrow('encrypt failed');
+        ]), ['local:config', 'local:configHistory'])).rejects.toThrow('encrypt failed');
         expect(await repository.database.records.count()).toBe(0);
     });
 
     it('持久记录密文损坏时 fail closed，不删除或回退为默认值', async () => {
         const repository = createRepository();
         await repository.set('local:config', {on: true});
-        const record = await repository.getRawRecord('local:config');
+        const record = await repository.database.records.get('local:config');
         await repository.database.records.put({
             ...record!,
             payload: {...record!.payload, version: 99 as 1},

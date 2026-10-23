@@ -34,7 +34,9 @@ import {
     attachTranslationImageInput,
     isUnchangedTranslationResultAllowed,
 } from './requestSnapshot';
-import {TRANSLATION_REMAINING_BUDGET, type TranslationRemainingBudgetContext, type TranslationRouteObservation} from './types';
+import {TRANSLATION_REMAINING_BUDGET, type TranslationRouteObservation} from './types';
+import {DEFAULT_PROVIDER_TIMEOUT_MS, getExplicitTranslationBudget, normalizeDeadlineTimeoutMs,
+    startTranslationRequest, TranslationProviderDeadlineError} from './requestDeadline';
 import {parseTranslationSlots, serializeTranslationSlots} from '@/src/core/translation/slotProtocol';
 import {isClearlyWrongLanguageResponse, isLikelyUntranslatedResponse, isUnchangedTranslationResponse} from '@/src/core/translation/resultValidation';
 import {hasTranslationContent} from '@/src/core/translation/result';
@@ -118,14 +120,6 @@ interface PendingCacheValue {
 
 const PAGE_SUMMARY_CACHE_SIZE = 8;
 const PAGE_SUMMARY_LIMIT = 1200;
-const DEFAULT_PROVIDER_TIMEOUT_MS = 45_000;
-
-class TranslationProviderDeadlineError extends Error {
-    constructor() {
-        super('翻译请求超时');
-        this.name = 'TranslationProviderDeadlineError';
-    }
-}
 
 class AIMultiSegmentResponseError extends Error {
     readonly kind = 'response';
@@ -321,18 +315,6 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
                 : undefined);
         if (!service) throw new Error(`未找到翻译服务适配器: ${serviceName}`);
         return service;
-    }
-
-    /** 公开请求至少保留一秒，避免调用方误传 0 导致请求永远无法启动。 */
-    function normalizeExternalRequestTimeoutMs(requestTimeoutMs?: number): number | undefined {
-        return typeof requestTimeoutMs === 'number' && Number.isFinite(requestTimeoutMs)
-            ? Math.max(1_000, Math.floor(requestTimeoutMs))
-            : undefined;
-    }
-
-    /** 内部剩余预算必须保持精确，不能再次抬高到公开请求的一秒下限。 */
-    function normalizeDeadlineTimeoutMs(requestTimeoutMs: number): number {
-        return Math.max(1, Math.floor(requestTimeoutMs));
     }
 
     function getRemainingDeadlineMs(requestDeadline: number): number {
@@ -1592,7 +1574,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         message = createTranslationRequestSnapshot(message);
 
         const trace: TranslationRequestTrace = {cachedSegments: 0, shared: false, upstreamCalls: 0, upstreamMs: 0, routeAttempts: []};
-        const startedAt = now();
+        const startedAt = startTranslationRequest(message, now);
         const statsGeneration = deps.captureTranslationStatsGeneration?.() ?? 0;
         try {
             const result = await executeTranslation(message, trace, startedAt);
@@ -1616,11 +1598,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         const glossaryIds = message.glossaryIds ? Object.freeze([...message.glossaryIds]) : message.glossaryIds;
 
         // deadline 从公开入口开始计时（与统计开始时间共用一次时钟读取），配置水合不能让上层剩余预算重新获得完整时长。
-        const isRemainingBudget = (message as TranslationRequestMessage & TranslationRemainingBudgetContext)
-            [TRANSLATION_REMAINING_BUDGET] === true;
-        const explicitProviderBudget = isRemainingBudget
-            ? normalizeDeadlineTimeoutMs(message.requestTimeoutMs as number)
-            : normalizeExternalRequestTimeoutMs(message.requestTimeoutMs);
+        const explicitProviderBudget = getExplicitTranslationBudget(message);
         // 水合仍有独立的有界等待；不得先读取未就绪的服务/设置决定此次 AI 默认。
         await runWithinDeadline(() => deps.ready,
             providerStartedAt + (explicitProviderBudget ?? DEFAULT_PROVIDER_TIMEOUT_MS), requestControl?.signal);

@@ -1,0 +1,1226 @@
+{
+  "source": "OpenStax University Physics Volume 1, PDF page 377 / printed page 367; revision UP1-2016-002(05/18)-MJ",
+  "copyright": "Copyright 2018 Rice University",
+  "license": "CC BY 4.0, https://creativecommons.org/licenses/by/4.0/",
+  "attribution": "Download for free at https://openstax.org/details/books/university-physics-volume-1.",
+  "changes": "PDF.js text items transformed into unrotated page geometry; no textbook text changed. Regression data only, not part of extension builds.",
+  "pdfPage": 377,
+  "input": {
+    "atoms": [
+      {
+        "text": "8.4",
+        "x": 100.3,
+        "y": 232.39286718749997,
+        "width": 12.5,
+        "height": 11.07421875,
+        "fontFamily": "serif",
+        "baseline": 241.30399999999997,
+        "fontSize": 10
+      },
+      {
+        "text": "m",
+        "x": 262.253,
+        "y": 70.85399999999994,
+        "width": 7.22,
+        "height": 13.279999999999998,
+        "fontFamily": "serif",
+        "baseline": 81.08399999999995,
+        "fontSize": 10
+      },
+      {
+        "text": "=",
+        "x": 272.241,
+        "y": 70.85399999999994,
+        "width": 6.8500000000000005,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 81.08399999999995,
+        "fontSize": 10
+      },
+      {
+        "text": "F",
+        "x": 282.525,
+        "y": 65.38999999999989,
+        "width": 6.11,
+        "height": 13.279999999999998,
+        "fontFamily": "serif",
+        "baseline": 75.61999999999989,
+        "fontSize": 10
+      },
+      {
+        "text": "w",
+        "x": 289.292,
+        "y": 69.19599999999988,
+        "width": 5.336,
+        "height": 10.623999999999999,
+        "fontFamily": "serif",
+        "baseline": 77.37999999999988,
+        "fontSize": 8
+      },
+      {
+        "text": "g",
+        "x": 286.073,
+        "y": 74.31899999999986,
+        "width": 5,
+        "height": 13.279999999999998,
+        "fontFamily": "serif",
+        "baseline": 84.54899999999986,
+        "fontSize": 10
+      },
+      {
+        "text": "=",
+        "x": 298.064,
+        "y": 70.85399999999994,
+        "width": 6.8500000000000005,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 81.08399999999995,
+        "fontSize": 10
+      },
+      {
+        "text": "1.2 N",
+        "x": 311.509,
+        "y": 67.18399999999998,
+        "width": 22.49800000000002,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 77.41399999999999,
+        "fontSize": 10
+      },
+      {
+        "text": "9.8m/s",
+        "x": 308.349,
+        "y": 79.41499999999998,
+        "width": 26.950000000000003,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 89.64499999999998,
+        "fontSize": 10
+      },
+      {
+        "text": "2",
+        "x": 335.935,
+        "y": 77.36499999999998,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 85.54899999999998,
+        "fontSize": 8
+      },
+      {
+        "text": "= 0.12kg",
+        "x": 343.38,
+        "y": 70.85399999999994,
+        "width": 37.03799999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 81.08399999999995,
+        "fontSize": 10
+      },
+      {
+        "text": "The kinetic energy at point B therefore is 0.12 J because the total energy is zero. Therefore, the speed of",
+        "x": 121.75,
+        "y": 94.70142382812503,
+        "width": 399.2498975,
+        "height": 10.5205078125,
+        "fontFamily": "serif",
+        "baseline": 103.16700000000003,
+        "fontSize": 9.5
+      },
+      {
+        "text": "the block at point B is equal to",
+        "x": 121.75,
+        "y": 106.10142382812501,
+        "width": 116.242,
+        "height": 10.5205078125,
+        "fontFamily": "serif",
+        "baseline": 114.56700000000001,
+        "fontSize": 9.5
+      },
+      {
+        "text": "K",
+        "x": 251.536,
+        "y": 123.89099999999998,
+        "width": 6.67,
+        "height": 13.279999999999998,
+        "fontFamily": "serif",
+        "baseline": 134.12099999999998,
+        "fontSize": 10
+      },
+      {
+        "text": "=",
+        "x": 261.534,
+        "y": 123.89099999999998,
+        "width": 6.8500000000000005,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 134.12099999999998,
+        "fontSize": 10
+      },
+      {
+        "text": "1",
+        "x": 276.818,
+        "y": 120.33100000000003,
+        "width": 5,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 130.56100000000004,
+        "fontSize": 10
+      },
+      {
+        "text": "2",
+        "x": 276.818,
+        "y": 129.70600000000005,
+        "width": 5,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 139.93600000000004,
+        "fontSize": 10
+      },
+      {
+        "text": "mv",
+        "x": 282.484,
+        "y": 123.89099999999998,
+        "width": 11.65000000000001,
+        "height": 13.279999999999998,
+        "fontFamily": "serif",
+        "baseline": 134.12099999999998,
+        "fontSize": 10
+      },
+      {
+        "text": "v",
+        "x": 251.53499999999997,
+        "y": 148.443,
+        "width": 4.44,
+        "height": 13.279999999999998,
+        "fontFamily": "serif",
+        "baseline": 158.673,
+        "fontSize": 10
+      },
+      {
+        "text": "=",
+        "x": 258.743,
+        "y": 148.443,
+        "width": 6.8500000000000005,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 158.673,
+        "fontSize": 10
+      },
+      {
+        "text": "2",
+        "x": 281.817,
+        "y": 144.88300000000007,
+        "width": 5,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 155.11300000000006,
+        "fontSize": 10
+      },
+      {
+        "text": "K",
+        "x": 286.817,
+        "y": 144.88300000000007,
+        "width": 6.67,
+        "height": 13.279999999999998,
+        "fontFamily": "serif",
+        "baseline": 155.11300000000006,
+        "fontSize": 10
+      },
+      {
+        "text": "m",
+        "x": 284.323,
+        "y": 151.90800000000004,
+        "width": 7.22,
+        "height": 13.279999999999998,
+        "fontFamily": "serif",
+        "baseline": 162.13800000000003,
+        "fontSize": 10
+      },
+      {
+        "text": "=",
+        "x": 297.482,
+        "y": 148.443,
+        "width": 6.8500000000000005,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 158.673,
+        "fontSize": 10
+      },
+      {
+        "text": "2(0.12 J )",
+        "x": 312.766,
+        "y": 143.18800000000002,
+        "width": 38.476000000000006,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 153.418,
+        "fontSize": 10
+      },
+      {
+        "text": "⎛",
+        "x": 316.37,
+        "y": 153.48037,
+        "width": 2.1622500000000002,
+        "height": 9.268844999999999,
+        "fontFamily": "sans-serif",
+        "baseline": 161.005,
+        "fontSize": 4.805
+      },
+      {
+        "text": "⎝",
+        "x": 316.37,
+        "y": 158.23636999999997,
+        "width": 2.1622500000000002,
+        "height": 9.268844999999999,
+        "fontFamily": "sans-serif",
+        "baseline": 165.76099999999997,
+        "fontSize": 4.805
+      },
+      {
+        "text": "0.12kg",
+        "x": 318.249,
+        "y": 154.79800000000003,
+        "width": 27.420000000000016,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 165.02800000000002,
+        "fontSize": 10
+      },
+      {
+        "text": "⎞",
+        "x": 345.749,
+        "y": 153.48037,
+        "width": 2.1622500000000002,
+        "height": 9.268844999999999,
+        "fontFamily": "sans-serif",
+        "baseline": 161.005,
+        "fontSize": 4.805
+      },
+      {
+        "text": "⎠",
+        "x": 345.749,
+        "y": 158.23636999999997,
+        "width": 2.1622500000000002,
+        "height": 9.268844999999999,
+        "fontFamily": "sans-serif",
+        "baseline": 165.76099999999997,
+        "fontSize": 4.805
+      },
+      {
+        "text": "= 1.4m/s",
+        "x": 354.677,
+        "y": 148.443,
+        "width": 36.56799999999998,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 158.673,
+        "fontSize": 10
+      },
+      {
+        "text": "Significance",
+        "x": 91.75,
+        "y": 176.74790234374996,
+        "width": 55.897999999999996,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 185.34799999999996,
+        "fontSize": 9.5
+      },
+      {
+        "text": "Even though the potential energy due to gravity is relative to a chosen zero location, the solutions to this problem",
+        "x": 91.75,
+        "y": 192.94442382812497,
+        "width": 429.2261120000001,
+        "height": 10.5205078125,
+        "fontFamily": "serif",
+        "baseline": 201.40999999999997,
+        "fontSize": 9.5
+      },
+      {
+        "text": "would be the same if the zero energy points were chosen at different locations.",
+        "x": 91.75,
+        "y": 204.34442382812495,
+        "width": 298.20570299999997,
+        "height": 10.5205078125,
+        "fontFamily": "serif",
+        "baseline": 212.80999999999995,
+        "fontSize": 9.5
+      },
+      {
+        "text": "Check Your Understanding",
+        "x": 123.3,
+        "y": 232.62164550781245,
+        "width": 114.47389200000003,
+        "height": 10.79736328125,
+        "fontFamily": "serif",
+        "baseline": 241.30999999999995,
+        "fontSize": 9.75
+      },
+      {
+        "text": "Suppose the mass in",
+        "x": 240.346,
+        "y": 232.62164550781245,
+        "width": 79.6425435,
+        "height": 10.79736328125,
+        "fontFamily": "serif",
+        "baseline": 241.30999999999995,
+        "fontSize": 9.75
+      },
+      {
+        "text": "Equation 8.6",
+        "x": 322.534,
+        "y": 232.48358398437495,
+        "width": 58.066349249999966,
+        "height": 10.892578125,
+        "fontFamily": "sans-serif",
+        "baseline": 241.30999999999995,
+        "fontSize": 9.75
+      },
+      {
+        "text": "is doubled while keeping the all other",
+        "x": 383.149,
+        "y": 232.62164550781245,
+        "width": 147.3351945,
+        "height": 10.79736328125,
+        "fontFamily": "serif",
+        "baseline": 241.30999999999995,
+        "fontSize": 9.75
+      },
+      {
+        "text": "conditions the same. Would the maximum expansion of the spring increase, decrease, or remain the same?",
+        "x": 100.30099999999999,
+        "y": 244.62164550781245,
+        "width": 430.1655540000005,
+        "height": 10.79736328125,
+        "fontFamily": "serif",
+        "baseline": 253.30999999999995,
+        "fontSize": 9.75
+      },
+      {
+        "text": "Would the speed at point B be larger, smaller, or the same compared to the original mass?",
+        "x": 100.30099999999999,
+        "y": 256.62164550781245,
+        "width": 348.9923482500003,
+        "height": 10.79736328125,
+        "fontFamily": "serif",
+        "baseline": 265.30999999999995,
+        "fontSize": 9.75
+      },
+      {
+        "text": "View this",
+        "x": 96.00099999999999,
+        "y": 289.57342382812493,
+        "width": 35.756698500000006,
+        "height": 10.5205078125,
+        "fontFamily": "serif",
+        "baseline": 298.03899999999993,
+        "fontSize": 9.5
+      },
+      {
+        "text": "simulation (https://openstaxcollege.org/l/21conenerskat)",
+        "x": 133.817,
+        "y": 289.43890234374993,
+        "width": 254.56149649999998,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 298.03899999999993,
+        "fontSize": 9.5
+      },
+      {
+        "text": "to learn about conservation of energy",
+        "x": 390.685,
+        "y": 289.57342382812493,
+        "width": 139.81690550000002,
+        "height": 10.5205078125,
+        "fontFamily": "serif",
+        "baseline": 298.03899999999993,
+        "fontSize": 9.5
+      },
+      {
+        "text": "with a skater! Build tracks, ramps and jumps for the skater and view the kinetic energy, potential energy and friction",
+        "x": 96.00200000000001,
+        "y": 300.9734238281249,
+        "width": 434.4681170000002,
+        "height": 10.5205078125,
+        "fontFamily": "serif",
+        "baseline": 309.4389999999999,
+        "fontSize": 9.5
+      },
+      {
+        "text": "as he moves. You can also take the skater to different planets or even space!",
+        "x": 96.00200000000001,
+        "y": 312.3734238281249,
+        "width": 288.1521949999999,
+        "height": 10.5205078125,
+        "fontFamily": "serif",
+        "baseline": 320.8389999999999,
+        "fontSize": 9.5
+      },
+      {
+        "text": "A sample chart of a variety of energies is shown in",
+        "x": 72.00200000000001,
+        "y": 344.76142382812486,
+        "width": 197.56881149999998,
+        "height": 10.5205078125,
+        "fontFamily": "serif",
+        "baseline": 353.22699999999986,
+        "fontSize": 9.5
+      },
+      {
+        "text": "Table 8.1",
+        "x": 272.418,
+        "y": 344.62690234374986,
+        "width": 40.457802000000015,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 353.22699999999986,
+        "fontSize": 9.5
+      },
+      {
+        "text": "to give you an idea about typical energy values associated",
+        "x": 315.726,
+        "y": 344.76142382812486,
+        "width": 224.2255929999999,
+        "height": 10.5205078125,
+        "fontFamily": "serif",
+        "baseline": 353.22699999999986,
+        "fontSize": 9.5
+      },
+      {
+        "text": "with certain events. Some of these are calculated using kinetic energy, whereas others are calculated by using quantities",
+        "x": 72.00299999999999,
+        "y": 356.16142382812484,
+        "width": 467.95081000000005,
+        "height": 10.5205078125,
+        "fontFamily": "serif",
+        "baseline": 364.62699999999984,
+        "fontSize": 9.5
+      },
+      {
+        "text": "found in a form of potential energy that may not have been discussed at this point.",
+        "x": 72.00299999999999,
+        "y": 367.5614238281248,
+        "width": 312.03889999999996,
+        "height": 10.5205078125,
+        "fontFamily": "serif",
+        "baseline": 376.0269999999998,
+        "fontSize": 9.5
+      },
+      {
+        "text": "Object/phenomenon",
+        "x": 173.42199999999997,
+        "y": 386.68526562499983,
+        "width": 96.57,
+        "height": 11.171875,
+        "fontFamily": "sans-serif",
+        "baseline": 395.73799999999983,
+        "fontSize": 10
+      },
+      {
+        "text": "Energy in joules",
+        "x": 361.34299999999996,
+        "y": 386.68526562499983,
+        "width": 77.13999999999999,
+        "height": 11.171875,
+        "fontFamily": "sans-serif",
+        "baseline": 395.73799999999983,
+        "fontSize": 10
+      },
+      {
+        "text": "Big Bang",
+        "x": 173.42199999999997,
+        "y": 406.1649023437498,
+        "width": 38.522499999999994,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 414.7649999999998,
+        "fontSize": 9.5
+      },
+      {
+        "text": "10",
+        "x": 363.34,
+        "y": 407.222,
+        "width": 10,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 417.452,
+        "fontSize": 10
+      },
+      {
+        "text": "68",
+        "x": 374.00699999999995,
+        "y": 405.05999999999995,
+        "width": 8,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 413.24399999999997,
+        "fontSize": 8
+      },
+      {
+        "text": "Annual world energy use",
+        "x": 173.419,
+        "y": 428.39090234375,
+        "width": 104.50949999999997,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 436.991,
+        "fontSize": 9.5
+      },
+      {
+        "text": "4.0 × 10",
+        "x": 363.34,
+        "y": 429.376,
+        "width": 33.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 439.606,
+        "fontSize": 10
+      },
+      {
+        "text": "20",
+        "x": 397.453,
+        "y": 427.21399999999994,
+        "width": 8,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 435.39799999999997,
+        "fontSize": 8
+      },
+      {
+        "text": "Large fusion bomb (9 megaton)",
+        "x": 173.419,
+        "y": 450.64590234375,
+        "width": 132.47749999999996,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 459.246,
+        "fontSize": 9.5
+      },
+      {
+        "text": "3.8 × 10",
+        "x": 363.34,
+        "y": 451.703,
+        "width": 33.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 461.933,
+        "fontSize": 10
+      },
+      {
+        "text": "16",
+        "x": 397.453,
+        "y": 449.54099999999994,
+        "width": 8,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 457.72499999999997,
+        "fontSize": 8
+      },
+      {
+        "text": "Hiroshima-size fission bomb (10 kiloton)",
+        "x": 173.419,
+        "y": 472.97290234375,
+        "width": 168.34000000000006,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 481.573,
+        "fontSize": 9.5
+      },
+      {
+        "text": "4.2 × 10",
+        "x": 363.34,
+        "y": 473.957,
+        "width": 33.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 484.187,
+        "fontSize": 10
+      },
+      {
+        "text": "13",
+        "x": 397.453,
+        "y": 471.79499999999996,
+        "width": 8,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 479.979,
+        "fontSize": 8
+      },
+      {
+        "text": "1 barrel crude oil",
+        "x": 173.419,
+        "y": 495.22690234375,
+        "width": 70.71799999999995,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 503.827,
+        "fontSize": 9.5
+      },
+      {
+        "text": "5.9 × 10",
+        "x": 363.34,
+        "y": 496.268,
+        "width": 33.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 506.498,
+        "fontSize": 10
+      },
+      {
+        "text": "9",
+        "x": 397.453,
+        "y": 494.04999999999995,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 502.234,
+        "fontSize": 8
+      },
+      {
+        "text": "1 ton TNT",
+        "x": 173.419,
+        "y": 517.5379023437499,
+        "width": 42.18949999999998,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 526.1379999999999,
+        "fontSize": 9.5
+      },
+      {
+        "text": "4.2 × 10",
+        "x": 363.34,
+        "y": 518.578,
+        "width": 33.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 528.808,
+        "fontSize": 10
+      },
+      {
+        "text": "9",
+        "x": 397.453,
+        "y": 516.36,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 524.544,
+        "fontSize": 8
+      },
+      {
+        "text": "1 gallon of gasoline",
+        "x": 173.419,
+        "y": 539.84790234375,
+        "width": 81.81399999999994,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 548.448,
+        "fontSize": 9.5
+      },
+      {
+        "text": "1.2 × 10",
+        "x": 363.34,
+        "y": 540.833,
+        "width": 33.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 551.063,
+        "fontSize": 10
+      },
+      {
+        "text": "8",
+        "x": 397.453,
+        "y": 538.671,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 546.855,
+        "fontSize": 8
+      },
+      {
+        "text": "Daily adult food intake (recommended)",
+        "x": 173.419,
+        "y": 562.10290234375,
+        "width": 163.07700000000003,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 570.703,
+        "fontSize": 9.5
+      },
+      {
+        "text": "1.2 × 10",
+        "x": 363.34,
+        "y": 562.927,
+        "width": 33.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 573.157,
+        "fontSize": 10
+      },
+      {
+        "text": "7",
+        "x": 397.453,
+        "y": 560.821,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 569.005,
+        "fontSize": 8
+      },
+      {
+        "text": "1000-kg car at 90 km/h",
+        "x": 173.419,
+        "y": 584.19690234375,
+        "width": 97.09949999999994,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 592.797,
+        "fontSize": 9.5
+      },
+      {
+        "text": "3.1 × 10",
+        "x": 363.34,
+        "y": 585.278,
+        "width": 33.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 595.508,
+        "fontSize": 10
+      },
+      {
+        "text": "5",
+        "x": 397.453,
+        "y": 583.116,
+        "width": 4,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 591.3,
+        "fontSize": 8
+      },
+      {
+        "text": "Tennis ball at 100 km/h",
+        "x": 173.419,
+        "y": 606.54790234375,
+        "width": 97.09949999999995,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 615.148,
+        "fontSize": 9.5
+      },
+      {
+        "text": "22",
+        "x": 363.34,
+        "y": 604.918,
+        "width": 10,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 615.148,
+        "fontSize": 10
+      },
+      {
+        "text": "Mosquito",
+        "x": 173.419,
+        "y": 628.44990234375,
+        "width": 38.532,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 637.05,
+        "fontSize": 9.5
+      },
+      {
+        "text": "⎛",
+        "x": 216.606,
+        "y": 621.31253,
+        "width": 3.1702500000000002,
+        "height": 13.589805,
+        "fontFamily": "sans-serif",
+        "baseline": 632.345,
+        "fontSize": 7.045
+      },
+      {
+        "text": "⎝",
+        "x": 216.606,
+        "y": 628.28753,
+        "width": 3.1702500000000002,
+        "height": 13.589805,
+        "fontFamily": "sans-serif",
+        "baseline": 639.3199999999999,
+        "fontSize": 7.045
+      },
+      {
+        "text": "10",
+        "x": 219.361,
+        "y": 626.8199999999999,
+        "width": 10,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 637.05,
+        "fontSize": 10
+      },
+      {
+        "text": "−2",
+        "x": 230.028,
+        "y": 624.77,
+        "width": 9.48,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 632.954,
+        "fontSize": 8
+      },
+      {
+        "text": "g at 0.5 m/s",
+        "x": 243,
+        "y": 626.8199999999999,
+        "width": 46.67,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 637.05,
+        "fontSize": 10
+      },
+      {
+        "text": "⎞",
+        "x": 289.62,
+        "y": 621.31253,
+        "width": 3.1702500000000002,
+        "height": 13.589805,
+        "fontFamily": "sans-serif",
+        "baseline": 632.345,
+        "fontSize": 7.045
+      },
+      {
+        "text": "⎠",
+        "x": 289.62,
+        "y": 628.28753,
+        "width": 3.1702500000000002,
+        "height": 13.589805,
+        "fontFamily": "sans-serif",
+        "baseline": 639.3199999999999,
+        "fontSize": 7.045
+      },
+      {
+        "text": "1.3 × 10",
+        "x": 363.34,
+        "y": 627.004,
+        "width": 33.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 637.234,
+        "fontSize": 10
+      },
+      {
+        "text": "−6",
+        "x": 397.453,
+        "y": 624.8420000000001,
+        "width": 9.48,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 633.0260000000001,
+        "fontSize": 8
+      },
+      {
+        "text": "Single electron in a TV tube beam",
+        "x": 173.419,
+        "y": 652.22590234375,
+        "width": 142.994,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 660.826,
+        "fontSize": 9.5
+      },
+      {
+        "text": "4.0 × 10",
+        "x": 363.34,
+        "y": 653.307,
+        "width": 33.44599999999999,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 663.537,
+        "fontSize": 10
+      },
+      {
+        "text": "−15",
+        "x": 397.453,
+        "y": 651.145,
+        "width": 13.48,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 659.329,
+        "fontSize": 8
+      },
+      {
+        "text": "Energy to break one DNA strand",
+        "x": 173.419,
+        "y": 674.57690234375,
+        "width": 137.19899999999998,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 683.177,
+        "fontSize": 9.5
+      },
+      {
+        "text": "10",
+        "x": 363.34,
+        "y": 675.617,
+        "width": 10,
+        "height": 14.66,
+        "fontFamily": "serif",
+        "baseline": 685.847,
+        "fontSize": 10
+      },
+      {
+        "text": "−19",
+        "x": 374.00699999999995,
+        "y": 673.399,
+        "width": 13.48,
+        "height": 11.728,
+        "fontFamily": "serif",
+        "baseline": 681.583,
+        "fontSize": 8
+      },
+      {
+        "text": "Table 8.1 Energy of Various Objects and Phenomena",
+        "x": 163.669,
+        "y": 698.53690234375,
+        "width": 236.71969849999996,
+        "height": 10.61328125,
+        "fontFamily": "sans-serif",
+        "baseline": 707.137,
+        "fontSize": 9.5
+      },
+      {
+        "text": "Chapter 8 | Potential Energy and Conservation of Energy",
+        "x": 72.00000000000001,
+        "y": 24.889085937500113,
+        "width": 176.39999999999992,
+        "height": 7.8203125,
+        "fontFamily": "sans-serif",
+        "baseline": 31.226000000000113,
+        "fontSize": 7
+      },
+      {
+        "text": "367",
+        "x": 528.321,
+        "y": 24.889085937500113,
+        "width": 11.676,
+        "height": 7.8203125,
+        "fontFamily": "sans-serif",
+        "baseline": 31.226000000000113,
+        "fontSize": 7
+      }
+    ],
+    "graphics": [
+      {
+        "x": 72,
+        "y": 57.59999999999991,
+        "width": 0.75,
+        "height": 167.20500000000004,
+        "kind": "path"
+      },
+      {
+        "x": 72,
+        "y": 235.40480000000002,
+        "width": 17.325000000000003,
+        "height": 17.32499999999999,
+        "kind": "path"
+      },
+      {
+        "x": 72.9,
+        "y": 236.37979999999996,
+        "width": 15.524999999999991,
+        "height": 8.849999999999994,
+        "kind": "path"
+      },
+      {
+        "x": 78.975,
+        "y": 237.80479999999994,
+        "width": 11.700000000000003,
+        "height": 9.675000000000011,
+        "kind": "path"
+      },
+      {
+        "x": 74.55,
+        "y": 233.82980000000003,
+        "width": 17.85000000000001,
+        "height": 13.800000000000011,
+        "kind": "path"
+      },
+      {
+        "x": 74.7,
+        "y": 234.0548,
+        "width": 17.775000000000006,
+        "height": 11.550000000000011,
+        "kind": "path"
+      },
+      {
+        "x": 77.55000000000001,
+        "y": 239.15479999999997,
+        "width": 6.8999999999999915,
+        "height": 1.0500000000000114,
+        "kind": "path"
+      },
+      {
+        "x": 75.075,
+        "y": 242.22980000000004,
+        "width": 11.924999999999997,
+        "height": 7.200000000000017,
+        "kind": "path"
+      },
+      {
+        "x": 75.075,
+        "y": 239.15480000000002,
+        "width": 0.75,
+        "height": 0.75,
+        "kind": "path"
+      },
+      {
+        "x": 72,
+        "y": 290.9452,
+        "width": 19.575000000000003,
+        "height": 19.57499999999999,
+        "kind": "path"
+      },
+      {
+        "x": 73.125,
+        "y": 291.9952,
+        "width": 17.47500000000001,
+        "height": 9.899999999999977,
+        "kind": "path"
+      },
+      {
+        "x": 78.975,
+        "y": 299.34520000000003,
+        "width": 6.974999999999994,
+        "height": 6.974999999999966,
+        "kind": "path"
+      },
+      {
+        "x": 79.8,
+        "y": 299.7202,
+        "width": 5.549999999999997,
+        "height": 5.550000000000011,
+        "kind": "path"
+      },
+      {
+        "x": 163.669,
+        "y": 383.272,
+        "width": 187.92100000000002,
+        "height": 19.5,
+        "kind": "path"
+      },
+      {
+        "x": 351.59,
+        "y": 383.272,
+        "width": 96.74099999999999,
+        "height": 19.5,
+        "kind": "path"
+      },
+      {
+        "x": 163.669,
+        "y": 401.272,
+        "width": 187.92100000000002,
+        "height": 1.5,
+        "kind": "path"
+      },
+      {
+        "x": 351.59,
+        "y": 401.272,
+        "width": 96.74099999999999,
+        "height": 1.5,
+        "kind": "path"
+      },
+      {
+        "x": 281.8583,
+        "y": 78.524,
+        "width": 13.427999999999997,
+        "height": 0,
+        "kind": "path"
+      },
+      {
+        "x": 307.6818,
+        "y": 78.524,
+        "width": 32.920000000000016,
+        "height": 0,
+        "kind": "path"
+      },
+      {
+        "x": 276.1511,
+        "y": 131.56150000000002,
+        "width": 6.333000000000027,
+        "height": 0,
+        "kind": "path"
+      },
+      {
+        "x": 281.1511,
+        "y": 156.1132,
+        "width": 13.552999999999997,
+        "height": 0,
+        "kind": "path"
+      },
+      {
+        "x": 276.6511,
+        "y": 151.35330000000002,
+        "width": 0.8999999999999773,
+        "height": 3.1040000000000134,
+        "kind": "path"
+      },
+      {
+        "x": 277.5511,
+        "y": 151.35299999999995,
+        "width": 1.3500000000000227,
+        "height": 10.865000000000009,
+        "kind": "path"
+      },
+      {
+        "x": 278.9011,
+        "y": 146.69620000000003,
+        "width": 2.25,
+        "height": 15.521999999999991,
+        "kind": "path"
+      },
+      {
+        "x": 281.1511,
+        "y": 146.69650000000001,
+        "width": 14.052999999999997,
+        "height": 0,
+        "kind": "path"
+      },
+      {
+        "x": 312.1,
+        "y": 156.1132,
+        "width": 39.79899999999998,
+        "height": 0,
+        "kind": "path"
+      },
+      {
+        "x": 307.6,
+        "y": 151.61530000000005,
+        "width": 0.8999999999999773,
+        "height": 4.451999999999998,
+        "kind": "path"
+      },
+      {
+        "x": 308.5,
+        "y": 151.615,
+        "width": 1.3500000000000227,
+        "height": 15.582999999999998,
+        "kind": "path"
+      },
+      {
+        "x": 309.85,
+        "y": 144.93620000000004,
+        "width": 2.25,
+        "height": 22.262,
+        "kind": "path"
+      },
+      {
+        "x": 312.1,
+        "y": 144.93650000000002,
+        "width": 40.29899999999998,
+        "height": 0,
+        "kind": "path"
+      }
+    ],
+    "width": 612,
+    "height": 792
+  }
+}

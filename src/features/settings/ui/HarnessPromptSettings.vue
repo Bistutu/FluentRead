@@ -35,11 +35,13 @@ import {HARNESS_ACTIONS, HARNESS_PROMPT_MAX_LENGTH, HARNESS_PROMPT_VARIABLES, ty
 import {useUiI18n} from '@/src/ui/i18n';
 import SettingsGroup from './components/SettingsGroup.vue';
 import SegmentedControl from './components/SegmentedControl.vue';
+import {useSettingsActionContext} from '../model/useSettingsActionContext';
 
 const props = defineProps<{preferences: HarnessPreferences}>();
 const {translateLegacy, language} = useUiI18n();
 const selected = ref<string | number>('system');
 const editor = ref<HTMLTextAreaElement | null>(null);
+const actionContext = useSettingsActionContext(() => true, () => [props.preferences, selected.value]);
 const promptOptions = computed(() => [{value: 'system', label: translateLegacy('通用指令')}, ...HARNESS_ACTIONS.map(action => ({value: action.id, label: translateLegacy(action.label)}))]);
 const defaultPrompt = computed(() => getDefaultHarnessPrompt(selected.value as HarnessPromptKind, language.value));
 const prompt = computed({
@@ -55,13 +57,16 @@ const prompt = computed({
 });
 function restore() { prompt.value = defaultPrompt.value; }
 async function insertVariable(token: string) {
-  const field = editor.value!;
+  const field = editor.value;
+  const isCurrent = actionContext.capture();
+  if (!field || !isCurrent()) return;
   const start = field.selectionStart;
   const end = field.selectionEnd;
   const next = prompt.value.slice(0, start) + token + prompt.value.slice(end);
   if (next.length > HARNESS_PROMPT_MAX_LENGTH) return;
   prompt.value = next;
   await nextTick();
+  if (!isCurrent() || editor.value !== field || prompt.value !== next) return;
   field.focus();
   field.setSelectionRange(start + token.length, start + token.length);
 }

@@ -5,7 +5,7 @@ const PUBLIC_CODES = new Set([
   'CDP_CONNECT_TIMEOUT', 'CDP_QUERY_TIMEOUT', 'DETACH_TIMEOUT', 'NATIVE_CLOSE_TIMEOUT',
   'CONTEXT_CLOSE_TIMEOUT', 'PS_TIMEOUT', 'PROFILE_INVALID', 'PS_INVALID', 'PLATFORM_UNSUPPORTED',
   'OWNERSHIP_UNKNOWN', 'IDENTITY_CHANGED', 'TERMINATION_TIMEOUT', 'PROFILE_CHANGED',
-  'HELPER_UNSUPPORTED', 'SESSION_UNGUARDED',
+  'HELPER_UNSUPPORTED', 'SESSION_UNGUARDED', 'FOCUS_SAFETY_VIOLATION',
 ]);
 const MAX_NODES = 128, MAX_DEPTH = 32;
 const PREFIX = '[site-error-codes] ';
@@ -74,4 +74,17 @@ function reportErrorCodes(error, phase, write = chunk => process.stderr.write(ch
   } catch { /* 旁路日志失败不能覆盖原始异常、清理结果或 CLI 退出状态。 */ }
 }
 
-module.exports = {collectErrorCodes, reportErrorCodes};
+// 独立退出码让矩阵停止分发和重试；只相信已有公开错误码，不从错误文案推断。
+const FOCUS_SAFETY_EXIT_CODE = 86;
+function siteTestExitCode(error) {
+  const pending = [collectErrorCodes(error)];
+  while (pending.length) {
+    const item = pending.pop();
+    if (item.code === 'FOCUS_SAFETY_VIOLATION') return FOCUS_SAFETY_EXIT_CODE;
+    if (item.cause) pending.push(item.cause);
+    if (item.errors) pending.push(...item.errors);
+  }
+  return 1;
+}
+
+module.exports = {collectErrorCodes, reportErrorCodes, siteTestExitCode, FOCUS_SAFETY_EXIT_CODE};

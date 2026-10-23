@@ -1,7 +1,7 @@
 <!--
  * @file src/features/vocabulary/ui/SavedExplanation.vue
  * 文件职责：展示和编辑收藏附带的简短解释，允许不调用 AI 的手动保存与清空。
- * 主要内容：用独立草稿保留未保存的编辑，通过 updateNote 更新已有收藏，并阻止卸载后的响应回写界面。
+ * 主要内容：用独立草稿保留未保存的编辑，通过 updateNote 更新已有收藏，切换收藏时重置草稿，并阻止旧收藏或卸载后的响应回写界面。
  * 模块边界：不增添收藏次数、不修改译文或掌握程度，持久化和删除竞争由后台仓库负责。
  -->
 <template>
@@ -16,7 +16,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import {onBeforeUnmount, ref} from 'vue';
+import {onBeforeUnmount, ref, watch} from 'vue';
 import browser from 'webextension-polyfill';
 import {VOCABULARY_BOOK_MESSAGE, type VocabularyBookResponse, type VocabularyEntry} from '../learningModel';
 const props = defineProps<{entry: VocabularyEntry; initialEditing?: boolean}>();
@@ -26,16 +26,25 @@ const draft = ref(props.initialEditing ? props.entry.note || '' : '');
 const busy = ref(false);
 const error = ref('');
 let active = true;
+let generation = 0;
+watch(() => props.entry.id, () => {
+  generation += 1;
+  busy.value = false; error.value = '';
+  editing.value = props.initialEditing === true;
+  draft.value = props.initialEditing ? props.entry.note || '' : '';
+}, {flush: 'sync'});
 function edit(): void {draft.value = props.entry.note || ''; editing.value = true; error.value = '';}
 async function save(): Promise<void> {
   if (busy.value) return;
+  const owner = generation;
+  const current = () => active && owner === generation;
   busy.value = true; error.value = '';
   try {
     const response = await browser.runtime.sendMessage({type:VOCABULARY_BOOK_MESSAGE, action:'updateNote', entryId:props.entry.id, note:draft.value}) as VocabularyBookResponse<VocabularyEntry>;
     if (!response.success) throw new Error(response.error.message);
-    if (active) {emit('updated', response.data); editing.value = false;}
-  } catch (cause) {if (active) error.value = cause instanceof Error ? cause.message : '解释保存失败，请重试';}
-  finally {if (active) busy.value = false;}
+    if (current()) {emit('updated', response.data); editing.value = false;}
+  } catch (cause) {if (current()) error.value = cause instanceof Error ? cause.message : '解释保存失败，请重试';}
+  finally {if (current()) busy.value = false;}
 }
 onBeforeUnmount(() => {active = false;});
 </script>

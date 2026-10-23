@@ -6,15 +6,33 @@ import {
     listStoredKeys,
     removeStoredValue,
     setStoredValue,
+    storage,
 } from '@/userscript/storage';
 
 describe('userscript GM storage adapter', () => {
+    it.each(['classic', 'modern', 'memory'] as const)('preserves stored null while applying an undecoded default only to missing keys (%s)', async kind => {
+        const values = new Map<string, unknown>();
+        const getValue = (key: string, fallback: unknown) => values.has(key) ? values.get(key) : fallback;
+        const setValue = (key: string, value: unknown) => {values.set(key, value);};
+        if (kind === 'classic') {globalThis.GM_getValue = getValue as NonNullable<typeof globalThis.GM_getValue>;globalThis.GM_setValue = setValue;}
+        if (kind === 'modern') globalThis.GM = {getValue, setValue};
+        const key = `local:default-contract-${kind}`;
+        await setStoredValue(key, null);
+        expect(await getStoredValue(key, {fallback: 'fallback'})).toBeNull();
+        expect(await getStoredValue(`${key}-absent`, {fallback: 'null'})).toBe('null');
+        expect(await getStoredValue(`${key}-absent`, {fallback: undefined})).toBeUndefined();
+        expect(await getStoredValue(`${key}-absent`)).toBeNull();
+        await removeStoredValue(key);
+    });
+
     afterEach(() => {
         globalThis.GM_getValue = undefined;
         globalThis.GM_setValue = undefined;
         globalThis.GM_deleteValue = undefined;
         globalThis.GM_listValues = undefined;
         globalThis.GM = undefined;
+        vi.restoreAllMocks();
+        vi.unstubAllGlobals();
     });
 
     it('persists with Safari Userscripts async GM.* when classic functions are absent', async () => {
@@ -53,6 +71,74 @@ describe('userscript GM storage adapter', () => {
     it('reads plain strings left by the 2024 userscript', async () => {
         globalThis.GM_getValue = ((key, fallback) => key === 'model' ? 'microsoft' : fallback) as NonNullable<typeof globalThis.GM_getValue>;
         await expect(getStoredValue('model')).resolves.toBe('microsoft');
+    });
+
+    it('enumerates only string keys and keeps its in-memory fallback usable without GM listValues', async () => {
+        await setStoredValue('local:fallback-list', {value: 1});
+        const keys = await listStoredKeys();
+        expect(keys).toContain('local:fallback-list');
+        expect(new Set(keys).size).toBe(keys.length);
+        globalThis.GM_listValues = (() => ['local:valid', 7, null]) as NonNullable<typeof globalThis.GM_listValues>;
+        await expect(listStoredKeys()).resolves.toEqual(['local:valid']);
+        globalThis.GM_listValues = (() => ({unexpected: true})) as unknown as NonNullable<typeof globalThis.GM_listValues>;
+        await expect(listStoredKeys()).resolves.toEqual([]);
+    });
+
+    it('refreshes non-JSON primitive values returned by the manager without losing its observer', async () => {
+        const target = new EventTarget();
+        vi.stubGlobal('window', target);
+        vi.stubGlobal('document', new EventTarget());
+        let value = 1n;
+        globalThis.GM_getValue = (() => value) as NonNullable<typeof globalThis.GM_getValue>;
+        const received = vi.fn();
+        const stop = storage.watch('local:external-bigint', received);
+        try {
+            await new Promise(resolve => setTimeout(resolve, 0));
+            value = 2n;
+            target.dispatchEvent(new Event('focus'));
+            await vi.waitFor(() => expect(received).toHaveBeenCalledWith(2n, 1n));
+        } finally {stop();}
+    });
+
+    it.each(['save', 'remove'] as const)('does not report a committed %s as failed when one observer throws', async action => {
+        const key = `local:observer-${action}`;
+        await setStoredValue(key, {revision: 1});
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const broken = storage.watch(key, () => {throw new Error('observer failure');});
+        const received = vi.fn();
+        const healthy = storage.watch(key, received);
+        try {
+            const next = action === 'save' ? {revision: 2} : null;
+            await expect(action === 'save' ? setStoredValue(key, next) : removeStoredValue(key)).resolves.toBeUndefined();
+            await expect(getStoredValue(key)).resolves.toEqual(next);
+            expect(received).toHaveBeenCalledOnce();
+            expect(received).toHaveBeenCalledWith(next, {revision: 1});
+            expect(warn).toHaveBeenCalledOnce();
+        } finally {broken(); healthy();}
+    });
+
+    it('delivers external focus refreshes to remaining observers after an earlier observer fails', async () => {
+        const target = new EventTarget();
+        const documentTarget = Object.assign(new EventTarget(), {visibilityState: 'visible'});
+        vi.stubGlobal('window', target);
+        vi.stubGlobal('document', documentTarget);
+        let stored = JSON.stringify({revision: 1});
+        globalThis.GM_getValue = (() => stored) as NonNullable<typeof globalThis.GM_getValue>;
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const broken = storage.watch('local:external-observer', () => {throw new Error('observer failure');});
+        const received = vi.fn();
+        const healthy = storage.watch('local:external-observer', received);
+        try {
+            await new Promise(resolve => setTimeout(resolve, 0));
+            stored = JSON.stringify({revision: 2});
+            target.dispatchEvent(new Event('focus'));
+            await vi.waitFor(() => expect(received).toHaveBeenCalledWith({revision: 2}, {revision: 1}));
+            expect(received).toHaveBeenCalledOnce();
+            expect(warn).toHaveBeenCalledOnce();
+            target.dispatchEvent(new Event('focus'));
+            await new Promise(resolve => setTimeout(resolve, 0));
+            expect(received).toHaveBeenCalledOnce();
+        } finally {broken(); healthy();}
     });
 
     it('blocks the shared config store until userscript migration has completed', async () => {
