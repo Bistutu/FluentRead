@@ -1,7 +1,7 @@
 /**
  * @file tests/promptSyncLifecycle.test.ts
  * 文件职责：通过实际 ServiceConfiguration 模板控件与确认端口验证服务设置的操作归属。
- * 主要内容：覆盖原生合批开关的服务范围、默认状态、独立修改和失活事件；验证提示词同步的来源编辑或删除、配置和服务切换、页签和活跃生命周期、目标列表重算、重复确认及旧按钮。
+ * 主要内容：挂载真实折叠容器及其始终保留的默认插槽，覆盖原生合批开关的服务范围、默认状态、独立修改和失活事件；验证提示词同步的来源编辑或删除、配置和服务切换、页签和活跃生命周期、目标列表重算、重复确认及旧按钮。
  * 模块边界：正常导入实际客户端 SFC 并挂载，Element Plus 和浏览器为受控端口；不访问 setup 私有函数、不证明真实浏览器或存储。
  */
 import * as runtime from 'vue'
@@ -128,6 +128,9 @@ describe('原生合批设置的实际模板与服务归属', () => {
   it.each([services.google, services.microsoft, services.deepL, services.azureTranslator, services.googleCloudTranslation])('%s 默认开启，实际开关只修改当前服务偏好', async service => {
     await mount();await select(service)
     const defaultService = props.config.service, original = {...props.config.nativeBatchTranslationEnabled}
+    const disclosure = document.querySelector('details[data-service-request-disclosure]')
+    expect(disclosure).not.toBeNull();expect(disclosure!.hasAttribute('open')).toBe(false)
+    expect(disclosure!.querySelector('[data-native-batch-toggle]')).toBe(toggle().element)
     expect(document.querySelector('[data-native-batch-service]')?.getAttribute('data-native-batch-service')).toBe(service)
     expect(toggle().element.getAttribute('aria-label')).toBe('settings.services.nativeBatch.label')
     expect(toggle().element.getAttribute('aria-checked')).toBe('true')

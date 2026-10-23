@@ -404,6 +404,7 @@ describe('document user actions: download consumers', () => {
         expect(ports.download).toHaveBeenCalledOnce();
         expect(blobs).toHaveLength(0);
         await selectFile('zip-progress-first.txt');
+        await fire(button('校订译文'), 'click');
         expect(textarea(0).value).toBe('T:Original text.');
     });
 
@@ -569,6 +570,7 @@ describe('document user actions: download consumers', () => {
         const zip = await JSZip.loadAsync(await blobs[0].arrayBuffer());
         expect(await zip.file('1/zip-first.translated.txt')!.async('string')).toBe('T:Original text.');
         await selectFile('zip-first.txt');
+        await fire(button('校订译文'), 'click');
         expect(textarea(0).value).toBe('T:Original text.');
     });
 });
@@ -689,12 +691,16 @@ describe('document user actions: real editor events and parent consumers', () =>
         await fire(pendingFilter(), 'change', {checked: true});
         await fire(textarea(1), 'focus');
         await selectFile('editor-second.json');
+        expect(walk(root).some(node => node.props['aria-label'] === '全量译文校订')).toBe(false);
+        await fire(button('校订译文'), 'click');
         expect(search().value).toBe('');
         expect(pendingFilter().checked).toBe(false);
-        await fire(button('校订译文'), 'click');
         await fire(search(), 'input', {value: 'First'});
         expect(walk(editor()).filter(node => node.tag === 'textarea')).toHaveLength(1);
         await selectFile('editor-first.json');
+        expect(walk(root).some(node => node.props['aria-label'] === '全量译文校订')).toBe(false);
+        await fire(button('校订译文'), 'click');
+        expect(search().value).toBe('');
         expect(textarea(0).value).toBe('Saved first');
         expect(textarea(1).value).toBe('');
     });
@@ -805,6 +811,7 @@ describe('document user actions: confirmation and task consumers', () => {
         expect(ports.batch.mock.calls.map(call => call[1])).toEqual(['failed.txt', 'succeeded.txt', 'failed.txt']);
         expect(textOf(taskbar())).not.toContain('offline');
         await selectFile('succeeded.txt');
+        await fire(button('校订译文'), 'click');
         expect(textarea(0).value).toBe('T:Original text.');
     });
 
@@ -817,6 +824,7 @@ describe('document user actions: confirmation and task consumers', () => {
         expect(ports.batch).not.toHaveBeenCalled();
         expect(textarea(0).value).toBe('reviewed first');
         await selectFile('pending.txt');
+        await fire(button('校订译文'), 'click');
         expect(textarea(0).value).toBe('');
     });
 
@@ -850,6 +858,7 @@ describe('document user actions: confirmation and task consumers', () => {
         await fire(labelled('document.batch.remove second.txt'), 'click');
         await fire(button('document.batch.remove', confirmation), 'click');
         expect(textOf(root)).not.toContain('second.txt');
+        await fire(button('校订译文'), 'click');
         expect(textarea(0).value).toBe('first reviewed');
     });
 
@@ -866,6 +875,7 @@ describe('document user actions: confirmation and task consumers', () => {
         expect(textOf(root)).toContain('把文件拖到这里');
         expect(walk(root).some(node => node.tag === 'textarea')).toBe(false);
         await importFiles(file('new.txt'));
+        await fire(button('校订译文'), 'click');
         expect(textarea(0).value).toBe('');
     });
 
@@ -899,6 +909,7 @@ describe('document user actions: confirmation and task consumers', () => {
         expect(signal.aborted).toBe(true);
         late.resolve(['late 16', 'late 17']); await flush();
         expect(textOf(taskbar())).toContain('已暂停');
+        await fire(button('校订译文'), 'click');
         expect(textarea(16).value).toBe('');
         await edit(0, 'manual kept');
         await fire(translateButton(), 'click');
@@ -960,6 +971,7 @@ describe('document user actions: confirmation and task consumers', () => {
         await vi.waitFor(() => expect(textOf(taskbar())).toContain('翻译完成'));
         expect(ports.batch).toHaveBeenCalledTimes(2);
         expect(ports.batch.mock.calls[1][0]).toEqual(['First batched passage.', 'Second batched passage.']);
+        await fire(button('校订译文'), 'click');
         expect(textarea(0).value).toBe('T:First batched passage.');
         expect(textarea(1).value).toBe('T:Second batched passage.');
         expect(textOf(taskbar())).not.toContain('将自动重试');
@@ -983,6 +995,7 @@ describe('document user actions: confirmation and task consumers', () => {
         expect(textOf(translateButton())).toBe('继续翻译');
         pendingWait.resolve(); await flush();
         expect(ports.batch).toHaveBeenCalledOnce();
+        await fire(button('校订译文'), 'click');
         expect(textarea(0).value).toBe('');
         expect(textOf(taskbar())).toContain('已暂停');
     });
@@ -1024,6 +1037,7 @@ describe('document user actions: confirmation and task consumers', () => {
         await fire(button('document.batch.pause'), 'click');
         await selectFile('queue-second.txt');
         pending.resolve(['late']); await flush();
+        await fire(button('校订译文'), 'click');
         expect(textarea(0).value).toBe('');
         await selectFile('queue-first.txt');
         expect(textOf(taskbar())).toContain('已暂停');
@@ -1031,6 +1045,7 @@ describe('document user actions: confirmation and task consumers', () => {
         await vi.waitFor(() => expect(textOf(root)).toContain('document.batch.completed {"count":2}'));
         await selectFile('queue-first.txt');
         expect(textOf(taskbar())).toContain('翻译完成');
+        await fire(button('校订译文'), 'click');
         expect(textarea(0).value).toBe('T:Original text.');
         expect(ports.batch).toHaveBeenCalledTimes(3);
     });
@@ -1044,6 +1059,7 @@ describe('document user actions: confirmation and task consumers', () => {
         expect(textOf(root)).toContain('document.batch.externalSettings');
         expect(ports.batch).toHaveBeenCalledOnce();
         expect(language).not.toBe('fr');
+        await fire(button('校订译文'), 'click');
         expect(textarea(0).value).toBe('first snapshot');
         await selectFile('snapshot-second.txt');
         expect(textOf(taskbar())).toContain('准备就绪');

@@ -1,6 +1,6 @@
 <!--
  * @file src/features/settings/ui/services/ServiceConfiguration.vue
- * 文件职责：渲染当前翻译服务的详细连接配置：连接字段（密钥、区域、端点等）直接排在服务标题下方、不再单设“连接与密钥”标题，输入下方是添加密钥与密钥使用方式；其后用模型偏好、提示词、请求限制、接口兼容几个页签显示代理、密钥要求、提示词、自定义请求体与请求头、按域名移除来源头等字段，以及服务和模型的独立请求限制；只有一个页签的服务改用小节标题。
+ * 文件职责：渲染当前翻译服务的详细连接配置：连接字段（密钥、区域、端点等）直接排在服务标题下方、不再单设“连接与密钥”标题，输入下方是添加密钥与密钥使用方式；其后用模型偏好、提示词、请求限制、接口兼容几个页签显示代理、密钥要求、提示词、自定义请求体与请求头、按域名移除来源头等字段，以及服务和模型的独立请求限制；只有请求限制页签的服务默认收起低频表单，摘要显示沿用全局或自定义，表单始终挂载。
  * 主要内容：提示 MiMo 官方端点退役编号的请求兼容与新计费规则；Safari 免费连接检查只包含已授权线路，权限读取失败与未授权分别显示可响应语言包的安全状态；组件派生字段可见性与连接示例，密钥列表始终展示全部已保存的密钥并区分参与请求与备用的行，密钥要求放在接口兼容页签，提示词可在确认后一键同步到所有 AI 服务；原生支持多文本的服务在请求限制中独立编辑默认开启的合并请求开关，当前模型限额按自定义请求体覆盖后的真实模型显示、读取和保存，保留其他模型限额；将成对密钥 ID 同步到 apiKeys 和兼容 token，区分缺少必填 Key 与允许匿名的连接检查并管理等待超时；免费翻译检查完整目录中的已授权服务并逐服务展示结果，Chrome 在点击时准备当前语言对并用进度条显示模型下载比例，通过配置 store 提交修改；有效修复链接首次进入且未发生用户聚焦时直达连接按钮或当前标题；所有服务可手动停止等待；连接和接口字段的迟到输入只属于原服务、配置及活跃会话；错误只保留共享诊断分类与可操作下一步，禁止展示原始错误详情，手动重试与字段定位保留当前选择；隐藏、缓存停用或配置变化取消所属等待，Chrome 状态只在活跃服务订阅，恢复、同步模板和删除共用当前操作所属确认，同步复验来源并按确认时刻重算目标。
  * 状态本地化：逐密钥、逐免费服务及独立失败状态保留安全资源 key，在展示时响应语言选择与异步语言包更新，不重新请求服务或翻译供应商原始错误。
  * 模块边界：组合服务交给独立草稿表单编辑，不展示普通服务的模型或凭据页签；无成员禁止连接测试，组合与各成员配置修改使旧测试失效，测试等待不早于逐路预算与整轮上限；本地模型设置只在对应服务首次呈现时异步加载，实例归属与后台下载由子组件维持；ChatGPT 套餐公开构建不渲染配置或确认窗口、不加载登录子模块，并停用全部设置动作，显式开发模式才通过独立子组件连接本机助手，不显示通用凭据或接口覆写；本组件不执行网页正文翻译或保存公开配置中的明文凭据；Chrome 内置翻译仅在当前点击页完成模型自检，其他连接测试经后台消息，字段规则来自 core/config，服务切换由 ServiceCatalog 和 SettingsSections 负责。
@@ -344,7 +344,6 @@
 
     <ServiceRepairReturn :active="active" :context="config" :context-key="service" @repair-ready="focusInitialRepair" />
 
-    <header v-if="singleSettingsTab" class="configuration-group-heading settings-tabs-heading" data-service-settings-heading><h5>{{ singleSettingsTab }}</h5></header>
     <el-tabs v-if="settingsTabs.requests && !isCompositeService" :model-value="activeSettingsTab" :onUpdate:modelValue="fieldActions.tab" class="service-settings-tabs" :class="{ 'is-single-tab': singleSettingsTab }" data-service-settings-tabs>
     <el-tab-pane v-if="settingsTabs.translation" name="translation" :label="t(SETTINGS_TAB_LABELS.translation)">
       <section id="service-translation-settings" class="service-settings-panel" data-configuration-group="translation">
@@ -400,7 +399,7 @@
       </section>
     </el-tab-pane>
     <el-tab-pane v-if="settingsTabs.requests" name="requests" :label="t(SETTINGS_TAB_LABELS.requests)">
-      <section id="service-requests-settings" class="service-settings-panel" data-configuration-group="requests">
+      <component :is="singleSettingsTab ? SettingsDisclosure : 'section'" :key="singleSettingsTab ? service : undefined" v-bind="singleSettingsTab ? singleRequestDisclosure : {}" id="service-requests-settings" class="service-settings-panel" :class="{'single-request-settings': singleSettingsTab}" data-configuration-group="requests">
         <FreeTranslationSettings v-if="service === services.freeTranslation" :active="active && activeSettingsTab === 'requests'" :config="config" :advanced="true" />
         <div v-if="showNativeBatchTranslation" class="connection-field" :data-native-batch-service="service">
           <div class="connection-field-label">
@@ -419,7 +418,7 @@
         </div>
         <RequestLimitSettings :active="active && activeSettingsTab === 'requests'" :config="config" :service="service" :model="compute.showModel ? requestLimitModel : undefined" />
 
-      </section>
+      </component>
     </el-tab-pane>
     <el-tab-pane v-if="settingsTabs['custom-request']" name="custom-request" :label="t(SETTINGS_TAB_LABELS['custom-request'])">
       <section id="service-custom-request-settings" class="service-settings-panel" data-configuration-group="custom-request">
@@ -486,6 +485,7 @@ import {
 } from '@/src/core/config/customOpenAI'
 import { isValidCustomBody } from '@/src/core/config/customBody'
 import { resolveTranslationRequestModel } from '@/src/core/config/requestModel'
+import { getServiceRequestLimitPreference } from '@/src/core/config/requestLimits'
 import { isValidCustomHeaders } from '@/src/core/config/customHeaders'
 import { createApiKeyCheckRevision } from '@/src/core/config/apiKeyCheckIdentity'
 import { normalizeFreeTranslationOrder, normalizeMyMemoryEmail } from '@/src/core/config/freeTranslation'
@@ -501,6 +501,7 @@ import { ElMessage, ElTabs, ElTabPane } from 'element-plus'
 import 'element-plus/es/components/tabs/style/css'
 import FieldHelp from '../components/FieldHelp.vue'
 import SegmentedControl from '../components/SegmentedControl.vue'
+import SettingsDisclosure from '../components/SettingsDisclosure.vue'
 import {
     ChromeTranslationPreparationError,
     getChromeTranslationPreparationLanguageLabel,
@@ -581,7 +582,7 @@ const setNativeBatchTranslationEnabled = computed(() => {
 watch(() => [service.value, Boolean(compute.value.showAI), Boolean(compute.value.showModel)], () => {
   activeSettingsTab.value = compute.value.showAI && compute.value.showModel ? 'translation' : compute.value.showAI ? 'prompts' : 'requests'
 }, {immediate: true})
-// 页签的可见条件与标题只在这里定义一次，模板和“单页签改用小节标题”的判断共用。
+// 页签的可见条件与标题只在这里定义一次；仅请求限制这一页时使用原生折叠容器。
 const SETTINGS_TAB_LABELS = {
   translation: 'settings.organization.model',
   prompts: 'settings.organization.prompts',
@@ -594,11 +595,17 @@ const settingsTabs = computed<Record<keyof typeof SETTINGS_TAB_LABELS, boolean>>
   requests: !publicPlanBlocked.value && service.value !== services.localTranslation && !isCompositeService.value,
   'custom-request': !publicPlanBlocked.value && service.value !== services.chatgptPlan && Boolean(compute.value.showDeepseekApiType || compute.value.showAI || compute.value.showCustomBody || customProvider.value),
 }))
-// 只有一个页签时（机器翻译服务只有“请求限制”）不显示孤立的页签条，改用小节标题。
+// 单一请求页签按需展开；多页签继续使用原来的 section，不增加折叠层。
 const singleSettingsTab = computed(() => {
   const visible = (Object.keys(SETTINGS_TAB_LABELS) as Array<keyof typeof SETTINGS_TAB_LABELS>).filter(name => settingsTabs.value[name])
-  return visible.length === 1 ? t(SETTINGS_TAB_LABELS[visible[0]]) : ''
+  return visible.length === 1 && visible[0] === 'requests' ? t(SETTINGS_TAB_LABELS.requests) : ''
 })
+const singleRequestDisclosure = computed(() => ({
+  title: singleSettingsTab.value,
+  status: t(getServiceRequestLimitPreference(config.value.serviceRequestLimits, service.value)?.enabled
+    ? 'settings.requestLimits.custom' : 'settings.requestLimits.followGlobal'),
+  'data-service-request-disclosure': '',
+}))
 const myMemoryEmailDraft = ref(config.value.myMemoryEmail)
 const myMemoryEmailInvalid = computed(() => Boolean(myMemoryEmailDraft.value.trim() && !normalizeMyMemoryEmail(myMemoryEmailDraft.value)))
 watch(() => config.value.myMemoryEmail, value => { myMemoryEmailDraft.value = value })
@@ -1388,9 +1395,11 @@ watch(serviceActionOpen, open => {if (!open) pendingServiceAction.value = null},
 /* 开关自带 4px 的点击留白：向外抵消，让可见轨道与其他控件左对齐，并保持与输入框相同的行高。 */
 .model-thinking-setting :deep(.el-switch) { flex: none; margin: -3px 0 -3px -4px; }
 .service-settings-tabs { margin-top: 18px; min-width: 0; --el-color-primary: var(--brand-strong); }
-.service-settings-tabs.is-single-tab { margin-top: 0; }
+.service-settings-tabs.is-single-tab { margin-top: 20px; }
 .service-settings-tabs.is-single-tab :deep(.el-tabs__header) { display: none; }
 .service-settings-tabs.is-single-tab .service-settings-panel { padding-top: 0; }
+.single-request-settings { margin-bottom: 0; }
+.single-request-settings :deep(.settings-disclosure-body) { padding: 0 var(--fr-card-padding-inline, 20px) 4px; }
 .service-settings-tabs :deep(.el-tabs__header) { margin: 0; }
 .service-settings-tabs :deep(.el-tabs__item) { height: 44px; padding: 0 18px; color: var(--muted); font-size: 13px; font-weight: 550; }
 .service-settings-tabs :deep(.el-tabs__item.is-active) { color: var(--brand-strong); }
@@ -1466,8 +1475,6 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--brand); o
 .connection-card { padding: 0; border: 0; border-radius: 0; }
 .configuration-group-heading { margin: 0 0 10px; }
 .configuration-group-heading h5 { font-size: 13px; font-weight: 650; }
-/* 单页签标题：用分隔线和留白与上方连接区分成两个并列小节，下方直接接第一行字段。 */
-.configuration-group-heading.settings-tabs-heading { margin: 20px 0 0; padding-top: 20px; border-top: 1px solid var(--line); }
 .provider-account-fields { min-width: 0; }
 @container (max-width: 520px) { .provider-account-fields { grid-template-columns: 1fr; gap: 8px; } }
 </style>

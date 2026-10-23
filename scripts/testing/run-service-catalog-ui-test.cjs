@@ -256,6 +256,8 @@ async function main() {
     await page.setViewportSize({width: 1440, height: 1000});
     const openFreeTranslation = async () => {
       await rail.locator('[data-service-value="freeTranslation"]').click();
+      const details = page.locator('[data-free-provider-disclosure]');
+      if (!await details.evaluate(node => node.open)) await details.locator(':scope > summary').click();
       await page.locator('[data-free-translation-settings] [data-fallback-provider]').first().waitFor({state: 'visible', timeout});
     };
     await openFreeTranslation();

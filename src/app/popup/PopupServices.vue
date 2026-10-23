@@ -2,10 +2,10 @@
  @file src/app/popup/PopupServices.vue
  文件职责：在 Popup 翻译服务抽屉中展示功能分配概览，以独立选择面板替代层叠下拉菜单，让窄弹窗里的服务选择更直观。
  B站匿名讲解只出现在阅读分配中，并展示固定有效模型；写作继续遵循通用AI服务边界。
- 主要内容：突出网页默认服务，以紧凑列表展示各功能的独立服务或继承状态，继承行在同一行标出“跟随默认”与实际跟随的服务，且仅在模型与默认服务的配置模型不同时才显示模型行，以统一状态标签呈现服务并让多语言名称完整换行，保留本地图标、配置模型和配置提醒；选择面板合并功能标题、返回与关闭操作，搜索框随列表一起滚动，常用区只放可直接使用的服务，按免费翻译、已配置或正在使用的服务、微软与谷歌、热门服务排序，待配置的服务留在更多服务中，当前选中项始终在常用区，更多服务默认展开并按机器翻译、云服务厂商与 AI 翻译分组，选项下方标出配置模型或待配置状态，支持模型搜索及键盘导航，保留不可用的旧选择，缓存默认、继承或独立行的配置模型及本地化说明，避免将设置中的模型声明为最终请求模型；只让当前活跃配置和所属面板的事件修改草稿，焦点返回复验面板与用户焦点；切换时仅重置所属抽屉的滚动，渲染后在同一归属保护内让搜索框或原分配行可见，不滚动宿主页面；可见区扩大时只修正仍聚焦的同一搜索外框被吸顶标题遮住的位置，保留查询和长列表滚动归属。
+ 主要内容：突出网页默认服务，以紧凑列表展示各功能的独立服务或继承状态，继承行在同一行标出“跟随默认”与实际跟随的服务，且仅在模型与默认服务的配置模型不同时才显示模型行，以统一状态标签呈现服务并让多语言名称完整换行，保留本地图标、配置模型和配置提醒；选择面板合并功能标题、返回与关闭操作，搜索框随列表一起滚动，常用区只放可直接使用的服务，按免费翻译、已配置或正在使用的服务、微软与谷歌、热门服务排序，待配置的服务留在更多服务中，当前选中项始终在常用区，更多服务默认收起并按机器翻译、云服务厂商与 AI 翻译分组，选项下方标出配置模型或待配置状态，支持模型搜索及键盘导航，保留不可用的旧选择，缓存默认、继承或独立行的配置模型及本地化说明，避免将设置中的模型声明为最终请求模型；只让当前活跃配置和所属面板的事件修改草稿，焦点返回复验面板与用户焦点；切换时仅重置所属抽屉的滚动，渲染后在同一归属保护内让搜索框或原分配行可见，不滚动宿主页面；可见区扩大时只修正仍聚焦的同一搜索外框被吸顶标题遮住的位置，保留查询和长列表滚动归属。
  模块边界：复用功能服务映射、模型解析及供应商能力，只修改父级配置草稿；保存由 PopupApp 负责，不请求翻译或处理连接密钥。
  键盘布局：极矮可见区复用同一输入和按钮排成单行，保留原有键盘顺序及控件名称；普通高度保留标题及关闭吸顶、搜索随列表滚动，不因旋转重建查询或会话。
- 概览标题：复用原关闭工具行显示本地化标题，窄屏允许标题换行且不压缩关闭命中区。
+ 概览标题：复用原关闭工具行显示本地化标题，窄屏允许标题换行且不压缩关闭命中区；更多服务初始收起，搜索跨完整目录，返回或重新打开选择面板恢复常用优先。
 -->
 <template>
   <div ref="panel" class="popup-service-panel" data-i18n-ignore :onKeydown="panelActions.keydown">
@@ -91,8 +91,8 @@ const emit = defineEmits<{close: []}>();
 const props = withDefaults(defineProps<{config: Config; serviceOptions: readonly ServiceOption[]; active?: boolean}>(), {active: true});
 const {t, translateLegacy} = useUiI18n();
 const {active, capture, revision} = useSettingsActionContext(() => props.active, () => [props.config]);
-// 更多服务默认展开：整个面板随抽屉滚动，用户无需先点开才能浏览全部服务。
-const query = ref(''), moreOpen = ref(true), viewRevision = ref(0);
+// 首屏聚焦当前与常用服务；完整目录按需展开，搜索仍直接检索全部可用服务。
+const query = ref(''), moreOpen = ref(false), viewRevision = ref(0);
 const session = shallowRef<PickerSession | null>(null);
 const editing = computed(() => session.value?.field || null);
 const searchInput = shallowRef<HTMLInputElement | null>(null);
@@ -199,7 +199,7 @@ const choiceGroups = computed(() => {
   if (moreChoices.value.length) more[0].toggle = true;
   return [{id: 'common', label: t('popup.commonServices'), toggle: false, items: bind(splitChoices.value.common)}, ...more];
 });
-function resetPicker() {session.value = null;query.value = '';moreOpen.value = true;viewRevision.value += 1;}
+function resetPicker() {session.value = null;query.value = '';moreOpen.value = false;viewRevision.value += 1;}
 watch(() => [revision.value, session.value && selected(session.value.field.feature), session.value && effective(session.value.field.feature)], () => {
   if (!active.value || (session.value && !ownsSession(session.value))) resetPicker();
 }, {flush: 'sync'});

@@ -35,7 +35,7 @@ beforeEach(async () => {
       if (id === 'element-plus') return '\0prompt-element'
       if (/\/src\/platform\/browser\/capabilities(?:\.ts)?$/u.test(id)) return '\0feature-menu-capabilities'
       if (id === '@element-plus/icons-vue') return '\0prompt-icons'
-      if (id.endsWith('.vue') && !/\/(?:FeatureServiceSettings|ContextMenuSettings)\.vue$/u.test(id)) return '\0prompt-display'
+      if (id.endsWith('.vue') && !/\/(?:FeatureServiceSettings|ContextMenuSettings|SettingsDisclosure)\.vue$/u.test(id)) return '\0prompt-display'
       return null
     }, load(id) {
       if (id === '\0prompt-i18n') return "import {ref} from 'vue';export const useUiI18n = () => ({language: ref('zh-CN'), t: key => key, translateLegacy: text => text})"
@@ -57,6 +57,7 @@ async function compile(path: string) {
   return component
 }
 async function mount(path: string, values: Record<string, unknown>, listeners: Record<string, unknown> = {}) {
+  if (path === featurePath) await compile('src/features/settings/ui/components/SettingsDisclosure.vue')
   const component = await compile(path), source = runtime.shallowReactive({active: true, context: {}, contextKey: 'service-a', ...values});shown = runtime.ref(true)
   const renderer = runtime.createRenderer({patchProp(el: any, key: string, previous: any, next: any) {
     const handlers = events.get(el) || {};events.set(el, handlers)
@@ -90,6 +91,37 @@ async function mountFeature(config = runtime.reactive(new Config()), values: Rec
 async function mountMenu(config: Config = runtime.reactive(Object.assign(new Config(), {disableImageTranslator: false, disableSelectionTranslator: false, selectionTranslatorMode: 'bilingual'})), values: Record<string, unknown> = {}) {await mount(menuPath, {config, ...values})}
 
 describe('功能服务分配实际缓存模板归属', () => {
+  it('默认折叠显示继承摘要，独立服务的缺配置状态仍可发现且不改变配置', async () => {
+    const config = runtime.reactive(new Config()); config.service = 'microsoft'; config.harness.enabled = false; config.writing.enabled = false; await mountFeature(config)
+    expect(document.querySelector('details.feature-services')?.hasAttribute('open')).toBe(false)
+    expect(state.summaryServices).toBe('featureServices.followDefault')
+    expect(state.summaryWarning).toBe('')
+    config.selectionTranslationService = 'openai'; await settle()
+    const snapshot = JSON.stringify(config)
+    expect(state.summaryServices).toBe('featureServices.selection')
+    expect(state.summaryWarning).toContain('API Key')
+    expect(document.querySelector('.feature-services-status')?.textContent).toBe('featureServices.needsSetup')
+    expect(JSON.stringify(config)).toBe(snapshot)
+    config.token.openai = 'fixture'; await settle()
+    expect(state.summaryWarning).toBe('')
+    expect(document.querySelector('.feature-services-status')?.textContent).toBe('featureServices.selection')
+    expect(config.selectionTranslationService).toBe('openai')
+    expect(updates).not.toHaveBeenCalled()
+  })
+  it('折叠时仍提示继承服务的缺凭据与已开启 AI 功能的能力问题', async () => {
+    const config = runtime.reactive(new Config()); config.service = 'microsoft'; config.harness.enabled = false; config.writing.enabled = false; await mountFeature(config)
+    expect(state.summaryWarning).toBe('')
+    config.harness.enabled = true; await settle()
+    expect(state.summaryWarning).toContain('featureServices.reading')
+    config.harness.enabled = false; config.writing.enabled = true; await settle()
+    expect(state.summaryWarning).toBe('featureServices.writing · featureServices.needsAi')
+    expect(document.querySelector('[data-feature-service="writing"] .feature-service-warning')?.textContent).toBe('featureServices.needsAi')
+    expect(document.querySelector('.feature-services-status')?.getAttribute('title')).toBe(state.summaryWarning)
+    config.writing.enabled = false; config.service = 'openai'; await settle()
+    expect(state.summaryWarning).toContain('API Key')
+    config.token.openai = 'fixture'; await settle()
+    expect(state.summaryWarning).toBe('')
+  })
   it('旧套餐默认继承使用目录名称，不重新开放选项且父级标签优先', async () => {
     const config = runtime.reactive(new Config());config.service = 'chatgptPlan';config.model.chatgptPlan = 'saved-account-model';await mountFeature(config)
     const before = JSON.stringify(config)
@@ -116,8 +148,9 @@ describe('功能服务分配实际缓存模板归属', () => {
     const config = runtime.reactive(new Config()); config.service = 'bilibili'
     await mountFeature(config, {serviceOptions: [...services, {value: 'bilibili', label: 'B站翻译'}]})
     expect(document.querySelector('[data-feature-service="reading"] .feature-service-warning')).toBeNull()
-    expect(document.querySelector('[data-feature-service="writing"] .feature-service-warning')?.textContent).toBe('featureServices.writing · featureServices.aiOnly')
+    expect(document.querySelector('[data-feature-service="writing"] .feature-service-warning')?.textContent).toBe('featureServices.needsAi')
     config.writing.service = 'bilibili'; await settle()
+    expect(document.querySelector('[data-feature-service="writing"] .feature-service-warning')?.textContent).toBe('featureServices.aiOnly')
     expect(state.rows.find((row: any) => row.feature.id === 'writing').choices.find((item: any) => item.value === 'bilibili')?.disabled).toBe(true)
     eventOf(featureControl('writing'))('openai'); await settle(); expect(config.writing.service).toBe('openai')
     expect(document.querySelector('[data-feature-service="writing"] .feature-service-warning')?.textContent).toContain('API Key')
@@ -153,7 +186,7 @@ describe('功能服务分配实际缓存模板归属', () => {
     config.requireApiKey[createApiKeyRequirementKey('openai','input')] = true;await settle();expect(document.querySelector('[data-feature-service="input"] .feature-service-warning')).not.toBeNull()
   })
   it('普通未声明 active 调用正常，机器服务继承的 AI 警告不妨碍恢复兼容服务', async () => {
-    const config = runtime.reactive(new Config());config.service = 'microsoft';await mountFeature(config,{active:undefined});expect(document.querySelector('[data-feature-service="reading"] .feature-service-warning')?.textContent).toBe('featureServices.reading · featureServices.aiOnly');expect(document.querySelector('[data-feature-service="writing"] .feature-service-warning')?.textContent).toBe('featureServices.writing · featureServices.aiOnly')
+    const config = runtime.reactive(new Config());config.service = 'microsoft';await mountFeature(config,{active:undefined});expect(document.querySelector('[data-feature-service="reading"] .feature-service-warning')?.textContent).toBe('featureServices.needsAi');expect(document.querySelector('[data-feature-service="writing"] .feature-service-warning')?.textContent).toBe('featureServices.needsAi')
     eventOf(featureControl('reading'))('openai');expect(config.harness.service).toBe('openai')
   })
 })

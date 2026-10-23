@@ -5,7 +5,10 @@
  * 伪哈希和被大写的句子不得被当作标识符；明确中文读音角色的 IPA 注音有界遮蔽，普通外语、无角色注音和跨行保留；非 Latin 正文中 Latin 词的角色与权重。
  */
 import {describe, expect, it} from 'vitest';
+import {spawnSync} from 'node:child_process';
+import {resolve} from 'node:path';
 import {shouldSkipTranslationForTarget} from '@/src/core/language/detect';
+import {identifyTextLanguage} from '@/src/core/language/identify';
 import {
     classifyEmbeddedLatinWord,
     createLanguageDetectionCopy,
@@ -89,6 +92,84 @@ describe('结构化标识符遮蔽', () => {
     it('NFD 输入先规范为 NFC，带附加符号的 Latin 字母不会被拆开', () => {
         expect(createLanguageDetectionCopy('Cafe\u0301 ouvert').text).toBe('Café ouvert');
     });
+});
+
+describe('Markdown 链接目标与相邻正文', () => {
+    it.each([
+        'https://example.com', 'www.example.com/path', 'example.com/guide',
+        'https://example.com/a_(b)', 'example.com/a_(b_(c))',
+        String.raw`https://example.com/a\)b`, String.raw`https://example.com/a\(b`,
+        String.raw`https://example.com/a\\`,
+        'https://example.com/a?x=1&y=2#part',
+    ])('目标 %s 之外的正文完整保留，混合段落不能被跳过', target => {
+        const source = `This is a link to [read the manual](${target})请保存设置后重启浏览器。`;
+        const copy = createLanguageDetectionCopy(source);
+        expect(copy.text).toBe('This is a link to [read the manual]( )请保存设置后重启浏览器。');
+        expect(copy.identifiers).toBe(1);
+        expect(identifyTextLanguage(source).status).toBe('mixed');
+        expect(shouldSkipTranslationForTarget(source, 'en')).toBe(false);
+        expect(shouldSkipTranslationForTarget(source, 'zh-Hans')).toBe(false);
+        expect(source).toBe(`This is a link to [read the manual](${target})请保存设置后重启浏览器。`);
+    });
+
+    it.each([
+        '[说明]( https://example.com)Retry。',
+        '![说明](https://example.com/picture.png)Retry。',
+        '[外层[内层]说明](https://example.com)Retry。',
+        '[说明](https://example.com "帮助标题")Retry。',
+        '[说明](<https://example.com>)Retry。',
+    ])('标签、标题和紧贴外语不会被目标掩盖：%s', link => {
+        const source = `请先阅读使用说明${link}`;
+        expect(createLanguageDetectionCopy(source).text).toContain('Retry');
+        expect(createLanguageDetectionCopy(source).text).toContain('说明');
+        expect(shouldSkipTranslationForTarget(source, 'zh-Hans')).toBe(false);
+    });
+
+    it.each([
+        '[read the manual](https://example.com请保存设置后重启浏览器。',
+        '[read the manual](example.com/guide请保存设置后重启浏览器。',
+        '[read the manual](https://example.com/a_(b)请保存设置后重启浏览器。',
+        String.raw`[read the manual](https://example.com/a\)请保存设置后重启浏览器。`,
+        '[read the manual](https://example.com/请保存设置后重启浏览器\\',
+    ])('不完整目标保留不确定正文，不能猜测闭合位置：%s', link => {
+        const source = `This is a link to ${link}`;
+        expect(createLanguageDetectionCopy(source).text).toContain('请保存设置后重启浏览器');
+        expect(shouldSkipTranslationForTarget(source, 'en')).toBe(false);
+    });
+
+    it('连续目标、空目标和带空格标题的边界互不影响', () => {
+        const source = '[one](https://example.com)后续[two](example.org/path)正文[empty]()保留';
+        expect(createLanguageDetectionCopy(source)).toEqual({
+            text: '[one]( )后续[two]( )正文[empty]()保留', identifiers: 2, versionedNames: 0,
+        });
+        expect(createLanguageDetectionCopy('[说明](https://example.com "帮助标题")后续').text)
+            .toBe('[说明](  "帮助标题")后续');
+        expect(createLanguageDetectionCopy('https://example.com [未完成](   ').text).toBe('  [未完成](   ');
+        expect(createLanguageDetectionCopy('[说明](https://example.com>保留正文').text).toBe('[说明]( >保留正文');
+        expect(createLanguageDetectionCopy('[说明](a.www.example.com)保留正文').text).toBe('[说明](a. )保留正文');
+    });
+
+    it('无空格连续三万个链接在独立进程中有界完成并保留全部标签', () => {
+        const sourcePath = resolve('src/core/language/technicalTokens.ts');
+        // 加载真实生产模块；独立进程超时防止退化的匹配阻塞整个测试运行。
+        const loader = `
+            import fs from 'node:fs';
+            import {createRequire} from 'node:module';
+            const require = createRequire(process.cwd() + '/package.json');
+            const ts = require('typescript');
+            const source = fs.readFileSync(process.argv[1], 'utf8');
+            const output = ts.transpileModule(source, {compilerOptions: {target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext}}).outputText;
+            const {createLanguageDetectionCopy} = await import('data:text/javascript;base64,' + Buffer.from(output).toString('base64'));
+            const copy = createLanguageDetectionCopy('[x](https://example.com)'.repeat(30000) + '正文');
+            console.log(JSON.stringify({identifiers: copy.identifiers, complete: copy.text === '[x]( )'.repeat(30000) + '正文'}));
+        `;
+        const child = spawnSync(process.execPath, ['--input-type=module', '-e', loader, sourcePath], {
+            encoding: 'utf8', timeout: 5000, maxBuffer: 1024 * 1024,
+        });
+        expect(child.error, child.stderr).toBeUndefined();
+        expect(child.status, child.stderr).toBe(0);
+        expect(JSON.parse(child.stdout)).toEqual({identifiers: 30000, complete: true});
+    }, 10_000);
 });
 
 describe('带版本名称的边界', () => {

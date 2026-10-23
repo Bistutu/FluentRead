@@ -1,7 +1,7 @@
 /**
  * @file src/features/settings/ui/components/settings-card-heading.css
  * 文件职责：统一设置分组与独立设置卡片的标题栏，帮助用户区分相邻配置框。
- * 主要内容：以主题浅底色和左侧品牌色标记建立分组起点，较大标题与小字说明横向排列，长文案与窄屏自然换行；支持带右侧操作的说明容器。
+ * 主要内容：以中性表面、清晰标题与次级说明建立分组起点，文案容器纵向排列并将右侧空间留给操作，长文案与窄屏自然换行；圆角、字号和颜色消费共用卡片 token，不添加品牌色装饰条。
  * 模块边界：仅作用于显式使用 settings-card-heading 的设置标题，不改动配置、导航或宿主网页，卡片边框与具体间距由调用组件负责。
  */
 .settings-card-heading {
@@ -11,25 +11,14 @@
   align-items: center;
   gap: 8px 14px;
   min-width: 0;
-  background: var(--surface-soft);
-}
-.settings-card-heading::before {
-  position: absolute;
-  top: 50%;
-  left: 8px;
-  width: 3px;
-  height: 18px;
-  border-radius: 2px;
-  background: var(--brand);
-  transform: translateY(-50%);
-  content: '';
+  background: var(--fr-card-heading-background, var(--surface));
 }
 .settings-card-heading-copy {
   display: flex;
-  flex: 1 1 240px;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 14px;
+  flex: 1 1 160px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
   min-width: 0;
 }
 .settings-card-heading :is(h2, h3) {
@@ -37,19 +26,21 @@
   max-width: 100%;
   margin: 0;
   color: var(--ink);
-  font-size: 16px;
+  font-size: var(--fr-card-title-size, 16px);
   font-weight: 650;
   line-height: 1.4;
   letter-spacing: -.01em;
   overflow-wrap: anywhere;
 }
+.settings-card-heading > p {
+  flex: 1 1 240px;
+}
 .settings-card-heading > p,
 .settings-card-heading-copy > p {
-  flex: 1 1 240px;
   min-width: 0;
   margin: 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--fr-card-description-size, 12px);
   line-height: 1.55;
   overflow-wrap: anywhere;
 }

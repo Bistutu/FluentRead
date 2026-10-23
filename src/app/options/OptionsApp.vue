@@ -455,6 +455,7 @@ async function revealSettingsTarget(result: SearchResult) {
       // 连续表单可能由多个同级 section 组成，目标不一定是首个 section 的后代。
       const target = Array.from(content.querySelectorAll<HTMLElement>(selector)).find(element => element.getClientRects().length)
       if (!target?.getClientRects().length) return
+      if (target.tagName === 'DETAILS' && !target.hasAttribute('open')) target.setAttribute('open', '')
       const targetRect = target.getBoundingClientRect()
       const contentTop = content.getBoundingClientRect().top
       const centerOffset = result.targetId && !target.matches('.settings-section, .settings-page-panel') && targetRect.height < content.clientHeight

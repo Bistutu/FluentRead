@@ -2,6 +2,7 @@
  * @file userscript/languageBundles.ts
  * 文件职责：构建 userscript 的中英内嵌词典并引用已发布的五种固定远程词典。
  * 主要内容：按脚本能力裁剪当前中英文案；远程资源直接使用固定提交中的原始 JSON，避免扩展文案增删后产生尚未发布的摘要。新增远程文案仍由 uiLanguageBundles 注册时补齐。
+ * 发布兼容：扩展已删除的旧说明仅保留在五份已发布远程 JSON 中；中英内嵌词典使用当前扩展文案，不恢复退役说明。
  * 模块边界：只供构建期和资源验证使用；不将远程 JSON 打进脚本，不改扩展词典或运行时语言装载协议。
  */
 import {UI_LANGUAGE_BUNDLES as extensionBundles} from '../src/core/i18n/bundles';

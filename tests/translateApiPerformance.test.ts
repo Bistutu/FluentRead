@@ -987,6 +987,32 @@ describe('translation API request lifecycle performance', () => {
     }
   });
 
+  it.each(['single', 'batch', 'video'] as const)('%s 在本地队列等待时取消立即结束且不发送后台消息', async kind => {
+    mocks.config.maxConcurrentTranslations = 1;
+    const blocker = deferred<string>();
+    mocks.sendMessage.mockReturnValue(blocker.promise);
+    const active = translateText('Active readable source', 'Page', {maxRetries: 0, skipLanguageDetection: true});
+    await flushMicrotasks(40);
+    expect(mocks.sendMessage).toHaveBeenCalledTimes(1);
+    const controller = new AbortController();
+    const pending = kind === 'video' ? translateVideoText('Queued readable source', controller.signal)
+      : kind === 'batch' ? translateTextBatch(['Queued readable source'], 'Page', {signal: controller.signal, maxRetries: 0, skipLanguageDetection: true})
+        : translateText('Queued readable source', 'Page', {signal: controller.signal, maxRetries: 0, skipLanguageDetection: true});
+    const observed = vi.fn();
+    const outcome = pending.then(value => observed('resolved', value), error => observed('rejected', error));
+    try {
+      await flushMicrotasks(40);
+      controller.abort();
+      await flushMicrotasks(40);
+      expect(observed).toHaveBeenCalledWith('rejected', expect.objectContaining({name: 'AbortError'}));
+      expect(mocks.sendMessage).toHaveBeenCalledTimes(1);
+      expect(mocks.persistCountIncrement).not.toHaveBeenCalled();
+    } finally {
+      blocker.resolve('活动译文');
+      await Promise.all([active, outcome]);
+    }
+  });
+
   it.each(['chrome-text', 'text', 'batch', 'video'])('%s abort 发送精确 cancel，中止后台 broker signal 并及时释放前台队列', async (client) => {
     mocks.config.maxConcurrentTranslations = 1;
     const registry = createTranslationRequestRegistry();

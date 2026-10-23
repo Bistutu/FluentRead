@@ -3,6 +3,7 @@
  * 文件职责：实现全文翻译的页面级会话引擎，负责候选发现、可见性调度、批量请求、动态 DOM 重扫、失败重试、缓存复用和恢复原文；显式翻译与增量扫描共用 man7 手册段落准备，完整恢复与卸载清理对应包装。
  * 主要内容：已提交与在途结果复用原译文槽同步当前全局显示模式，显式快捷覆盖保持冻结；精确相同译文和有同目标语言证据的排版回显保留原文且不重复展示；以增量计数发布完成与失败摘要，仅对本会话失败目标重试和定位；维护 FullPageSession、AbortController、Intersection/Mutation 观察器、弹窗优先调度、精确属性写入过滤、候选所有权和生命周期重试；对变化来源等待安静窗口、跳过持续变化的计数，并清理延迟重扫，只有真实宿主删除启动候选与断连观察根回收，重连前保留已排队 DOM 记录，实际翻译 owner 通过公共端口为其开放根安装译文样式，SPA 切换刷新全部活观察根的站点属性依赖，同批重复属性变化只处理一次；按时间片派发并在全文结果提交前让出主线程，合并同段 DOM 写入并在重挂时复用同批布局读数与单文本来源快照；合成行内段在延迟 loading 前后都按精确来源节点、HTML 和 Text 槽识别自身迁移；已拥有状态的发现候选直接登记复验，取消记录命中后才提取原文，避免整批重扫重复计算熔断签名；连续滚动时限频派发当前可见候选，空闲后恢复预取，按阅读进度撤回离开预取区的待派发候选，冻结请求/展示配置与识别范围，在弹窗关闭后继续正文，按实际节点阶段发布进度及工具栏结果；悬浮按候选停留而非每次移动计时，同段复用冻结的独立服务与快捷方案配置，到期复验最新命中并在路由切换取消；同目标预检单独读取受保护规则约束的行内代码语言上下文，发送与渲染仍只使用可翻译文本槽；恢复单个所有者或全文时重置篇章证据，统一恢复原文并清理重挂预算及孤儿产物；向局部翻译开放单候选 translateTarget 与单个译文所有者的恢复入口。
  * 模块边界：这是 content 侧编排层，不实现 provider 协议、纯候选算法或底层状态存储；自动应用外壳许可在重试重新解析和所有者切换时保留来源，不降级为手动解析；翻译调用经 app client，发现规则来自 core/translation，渲染与状态分别交给 renderer、liveTextRender 和 state。
+ * 动态保护：按钮标签属性变化重判来源，类型或提交名称失去资格时立即恢复和取消旧请求；独立扫描根按各自冷却就绪执行，新增就绪根可提前唤醒等待，扫描与选择均遵守时间片。
  * 诊断接线：仅当前全文会话的真实失败进入共享分类器；成功、恢复和换路由清除，完整根扫描没有任何候选时提示无正文，目标语预检和离屏等待不影响候选存在证据。
  */
 import {resetPageDiscourseContext} from '@/src/services/translation/context/pageDiscourse';
@@ -133,7 +134,7 @@ import {resetFullPageRouteSession} from './routeLifecycle';
 import {HoverTranslationScheduler, type HoverTranslationInvocation} from './hoverScheduler';
 import {personalCorrectionIsCurrent, registerPersonalCorrectionResult} from './personalCorrections';
 import {getSiteAdapterAttributeFilter} from '@/src/core/site-adaptation/compiler';
-import {isElementNode, asHTMLElement, mutationTargetElement, isConnectedMutationRoot, allMutationNodesMatch, createTranslationAttributeMutationFilter, createTranslationMutationObserverOptions, isOwnSyntheticSegmentMarkerMutation, mutationRootContains as nodeContains, collapseMutationRescanRoot as broadRescanRoot} from './mutationObservation';
+import {isElementNode, asHTMLElement, mutationTargetElement, isConnectedMutationRoot, allMutationNodesMatch, createMutationRescanSelector, createTranslationAttributeMutationFilter, createTranslationMutationObserverOptions, isOwnSyntheticSegmentMarkerMutation, mutationRootContains as nodeContains, collapseMutationRescanRoot as broadRescanRoot} from './mutationObservation';
 import {isWithinTranslationModal, mayChangeTranslationModal} from './modalPriority';
 import {refreshModalSession} from './modalSession';
 import {createAttributeMutationBatch} from './attributeMutationBatch';
@@ -154,6 +155,7 @@ export type TranslationTargetOutcome =
         attemptNode?: HTMLElement;
     };
 const BROAD_RESCAN_COOLDOWN_MS = 1_000;
+const mutationRescanWakeTimes = new WeakMap<FullPageSession, number>();
 const CANDIDATE_PRUNE_BUDGET_MS = 4;
 const STATEFUL_ATTRIBUTE_DEBOUNCE_MS = 500;
 const FULL_PAGE_LIFECYCLE_RETRY_LIMIT = 2;
@@ -1283,8 +1285,21 @@ function enqueueFullPageRescan(session: FullPageSession, changedNode: Node): voi
         }
         session.dirtyRoots.add(dirtyRoot);
     }
-    if (session.mutationFlushTimer !== null) return;
-    session.mutationFlushTimer = window.setTimeout(() => flushMutationRescans(session), 50);
+    const queuedRoot = session.dirtyRootsBroadMode ? broadRescanRoot(dirtyRoot) : dirtyRoot;
+    const notBefore = session.broadRescanRoots.has(queuedRoot)
+        ? session.broadRescanCooldowns.get(queuedRoot) ?? 0 : 0;
+    scheduleMutationRescan(session, Math.max(50, notBefore - performance.now()));
+}
+
+/** 新就绪根只提前唤醒，不因后续 mutation 推迟已有任务或重复轮询冷却根。 */
+function scheduleMutationRescan(session: FullPageSession, delay: number): void {
+    const wakeAt = performance.now() + delay;
+    if (session.mutationFlushTimer !== null) {
+        if ((mutationRescanWakeTimes.get(session) ?? 0) <= wakeAt) return;
+        window.clearTimeout(session.mutationFlushTimer);
+    }
+    mutationRescanWakeTimes.set(session, wakeAt);
+    session.mutationFlushTimer = window.setTimeout(() => flushMutationRescans(session), delay);
 }
 
 /** 扩大范围仅重建展示类型变化或新增可译 Text 槽的 owner，其余正文和在途请求保持不变。 */
@@ -1308,23 +1323,14 @@ function upgradeFullPageTargetScope(session: FullPageSession, target: HTMLElemen
 
 function flushMutationRescans(session: FullPageSession): void {
     session.mutationFlushTimer = null;
+    mutationRescanWakeTimes.delete(session);
     if (!session.active) return;
-    const startedAt = performance.now();
-    let nextDelay = 16;
+    const selection = createMutationRescanSelector(session, () => performance.now(), session.activeDiscovery !== null);
 
     while (session.activeDiscovery || session.dirtyRoots.size > 0) {
         if (!session.activeDiscovery) {
-            const iterator = session.dirtyRoots.values().next();
-            const root = iterator.value as Node | undefined;
+            const root = selection.take();
             if (!root) break;
-            session.dirtyRoots.delete(root);
-            if (!isConnectedMutationRoot(root)) continue;
-            const rescanNotBefore = session.broadRescanCooldowns.get(root) ?? 0;
-            if (session.broadRescanRoots.has(root) && performance.now() < rescanNotBefore) {
-                session.dirtyRoots.add(root);
-                nextDelay = Math.max(16, rescanNotBefore - performance.now());
-                break;
-            }
             normalizeOrphanedTranslationArtifacts(root);
             normalizeOrphanedSingleSlots(root);
             if (!isConnectedMutationRoot(root)) continue;
@@ -1374,11 +1380,11 @@ function flushMutationRescans(session: FullPageSession): void {
 
         // 每一步最多代表一个已访问元素；即使脏根覆盖整个 Reddit/Wikipedia DOM，
         // 也要在很小的帧预算后让出执行权。
-        if (performance.now() - startedAt >= 8) break;
+        if (selection.shouldYield()) break;
     }
 
     if (session.activeDiscovery || session.dirtyRoots.size > 0) {
-        session.mutationFlushTimer = window.setTimeout(() => flushMutationRescans(session), nextDelay);
+        scheduleMutationRescan(session, selection.delay());
     } else {
         session.dirtyRootsBroadMode = false;
     }
@@ -1896,6 +1902,10 @@ function processFullPageMutations(session: FullPageSession, mutations: readonly 
         if (mayChangeTranslationModal(mutation, session.modal)) session.modalDirty = true;
         const siteAttributeMutation = mutation.type === 'attributes' && mutation.attributeName !== null &&
             (siteAttributes === null || siteAttributes.includes(mutation.attributeName));
+        const controlAttributeMutation = mutation.type === 'attributes' &&
+            (mutation.attributeName === 'value' || mutation.attributeName === 'type' || mutation.attributeName === 'name');
+        // 默认新增观察的三个属性只影响 input；站点显式声明的依赖仍按其规则处理。
+        if (controlAttributeMutation && mutationElement?.localName !== 'input' && !siteAttributeMutation) continue;
         if (!siteAttributeMutation && mutation.type === 'attributes' && (mutation.attributeName === 'aria-modal' ||
             (mutation.attributeName === 'open' && mutationElement?.localName === 'dialog'))) {
             enqueueFullPageRescan(session, mutation.target); continue;
@@ -1974,6 +1984,15 @@ function processFullPageMutations(session: FullPageSession, mutations: readonly 
         } else if (mutation.type === "attributes") {
             if (!mutationElement) continue;
 
+            // input 的资格影响真实表单值；失去资格不能等待滚动停止再恢复。
+            // 保留宿主已改写的 value，并由既有 state 恢复逻辑取消在途结果。
+            if (mutationElement.localName === 'input' && controlAttributeMutation) {
+                const target = asHTMLElement(mutationElement);
+                if (target && getTranslationState(target)?.controlValue) {
+                    restoreStatefulTargetOutsideScope(session, target, reads);
+                }
+            }
+
             // 相邻选择器可能影响兄弟正文；不能穷举的关系选择器保守重扫文档，
             // 后续发现仍受既有帧预算、去重与广域重扫冷却约束。
             const affectedRoot = siteAttributeMutation
@@ -2025,10 +2044,7 @@ function createFullPageSession(
                 if (getTranslationState(target)) restartStatefulTarget(session, target);
             });
             if (session.dirtyRoots.size > 0 && session.mutationFlushTimer === null) {
-                session.mutationFlushTimer = window.setTimeout(
-                    () => flushMutationRescans(session),
-                    0,
-                );
+                scheduleMutationRescan(session, 0);
             }
         },
         afterIdle: () => scheduleFullPageDrain(session),

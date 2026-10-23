@@ -148,7 +148,7 @@ async function consumeEvents(response: Response, signal: AbortSignal, receive: (
         const body = data.join('\n');data = [];
         if (!body || body === '[DONE]') return;
         let value: unknown;try {value = JSON.parse(body);} catch {throw new Error('阅读服务返回了无效的流式数据');}
-        if (signal.aborted) throw new DOMException('Reading cancelled', 'AbortError');
+        // 读后检查至此只有同步解析；receive/onText 才能由外部回调同步取消。
         receive(value);
         if (signal.aborted) throw new DOMException('Reading cancelled', 'AbortError');
     };
@@ -183,7 +183,7 @@ async function consumeEvents(response: Response, signal: AbortSignal, receive: (
 
 type PendingCall = {id: string; name: string; input: string; value?: unknown; signature?: string; part?: RecordValue};
 async function generate(config: Config, service: string, model: string, tools: readonly HarnessToolDefinition[], input: HarnessGenerateInput,
-    recordUsage?: (event: ModelUsageEvent) => void, connected?: () => void): Promise<HarnessGenerateResult> {
+    captureUsage?: (event: ModelUsageEvent) => void, connected?: () => void): Promise<HarnessGenerateResult> {
     const prepared = prepare(config, service, model, tools, input);
     const startedAt = Date.now();
     const secrets = [...getServiceApiKeys(config, service), ...Object.values(parseCustomHeaders(config.customHeaders[service]) ?? {})];
@@ -252,7 +252,7 @@ async function generate(config: Config, service: string, model: string, tools: r
                             const value = geminiCall.value as {reason?: string};value.reason = (value.reason || '') + arg.stringValue;
                         }
                         geminiCall.signature ||= part.thoughtSignature;
-                        if (fn.willContinue !== true && (fn.partialArgs ?? []).every((arg: RecordValue) => arg.willContinue !== true)) geminiCall = undefined;
+                        if (fn.willContinue !== true && fn.partialArgs.every((arg: RecordValue) => arg.willContinue !== true)) geminiCall = undefined;
                     } else if (fn.name == null && fn.args == null && geminiCall) {geminiCall = undefined;}
                     else {
                         const call = pending(calls.size);call.id = fn.id || crypto.randomUUID();call.name = fn.name;call.signature = part.thoughtSignature;
@@ -314,17 +314,18 @@ async function generate(config: Config, service: string, model: string, tools: r
         if (visible) assistant.unshift({type: 'text', text: visible});
         if (reasoning && !bili) assistant.unshift({type: 'reasoning', text: reasoning});
     }
-    if (recordUsage) {
+    // 私有 generate 的两个调用点只传入本文件的赋值闭包；对外统计回调由工厂 finally 统一隔离。
+    if (captureUsage) {
         const normalized = service === services.claude ? normalizeClaudeUsage(usage, actualModel)
             : service === services.gemini ? normalizeGeminiUsage(usage, actualModel) : normalizeOpenAICompatibleUsage(usage, actualModel);
-        try {recordUsage({serviceId: service, configuredModel: model, startedAt, durationMs: Date.now() - startedAt,
-            purpose: 'reading', outcome: 'success', ...normalized});} catch { /* 统计故障不影响阅读。 */ }
+        captureUsage({serviceId: service, configuredModel: model, startedAt, durationMs: Date.now() - startedAt,
+            purpose: 'reading', outcome: 'success', ...normalized});
     }
 
     return {text: visible, assistant: {role: 'assistant', content: assistant}, toolCalls};
     } catch (error) {
-        try {recordUsage?.(createHarnessUsageEvent({service, model, startedAt, durationMs: Date.now() - startedAt,
-            outcome: input.signal.aborted ? input.signal.reason instanceof Error && /超时/u.test(input.signal.reason.message) ? 'timeout' : 'cancelled' : 'error'}));} catch { /* 统计错误不得覆盖模型错误。 */ }
+        captureUsage?.(createHarnessUsageEvent({service, model, startedAt, durationMs: Date.now() - startedAt,
+            outcome: input.signal.aborted ? input.signal.reason instanceof Error && /超时/u.test(input.signal.reason.message) ? 'timeout' : 'cancelled' : 'error'}));
         throw error;
     }
 }

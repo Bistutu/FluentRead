@@ -266,12 +266,12 @@ describe('Popup 首页关键信息', () => {
     language.value = 'zh-CN';await settle();expect(model()?.getAttribute('title')).toBe('配置模型：saved-model');
   });
 
-  it('多个功能服务只占默认图标及唯一额外服务计数，不混淆网页默认服务', async () => {
+  it('多个功能服务仍只展示网页默认服务，其余分配保留在完整提示中', async () => {
     config.hoverTranslationService = 'deepseek';config.selectionTranslationService = 'google';config.documentService = 'google';
     config.quickTranslationProfiles = [];
     await mount();
-    expect(summary().querySelectorAll('.provider-avatar')).toHaveLength(2);
-    expect(summary().querySelector('.provider-overflow')?.textContent).toBe('+2');
+    expect(summary().querySelectorAll('.provider-avatar')).toHaveLength(1);
+    expect(summary().querySelector('.provider-overflow')).toBeNull();
     expect(summary().querySelector('strong')?.textContent).toBe('OpenAI');
     expect(summary().getAttribute('title')).toContain('DeepSeek');
     expect(model()?.textContent).toBe('saved-model');

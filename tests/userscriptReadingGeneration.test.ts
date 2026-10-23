@@ -110,7 +110,9 @@ it('preserves Gemini empty-text signatures and string tool args across the next 
 });
 
 it('assembles only the authorized Gemini partial reason path without allowing prototype or nested writes', async () => {
-    const valid = [{candidates: [{content: {parts: [{functionCall: {id: 'partial', name: 'read_context', willContinue: true, partialArgs: [{jsonPath: '$.reason', stringValue: 'clari', willContinue: true}]}}]}}]},
+    const valid = [{candidates: [{content: {parts: [{functionCall: {id: 'partial', name: 'read_context', willContinue: true, partialArgs: [{jsonPath: '$.reason', stringValue: 'cl', willContinue: true}]}}]}}]},
+        // 顶层省略 willContinue 时，参数自身的继续标记仍保留同一调用，后续帧才能补齐 reason。
+        {candidates: [{content: {parts: [{functionCall: {partialArgs: [{jsonPath: '$.reason', stringValue: 'ari', willContinue: true}]}}]}}]},
         {candidates: [{content: {parts: [{functionCall: {partialArgs: [{jsonPath: '$.reason', stringValue: 'fy'}]}}]}, finishReason: 'STOP'}]}];
     transport.mockResolvedValue(events(valid));const result = await createHarnessGenerator(config('gemini'), 'gemini', 'reader', tools)(input());expect(result.toolCalls[0]).toMatchObject({input: {reason: 'clarify'}});
     for (const path of ['$.extra', '$.__proto__.polluted', '$.reason.nested']) {
@@ -131,6 +133,13 @@ it.each(['success', 'HTTP error', 'stream error', 'cancelled', 'timeout'] as con
     expect(usage).toHaveBeenCalledOnce();expect(usage.mock.calls[0][0]).toMatchObject({purpose: 'reading', outcome: mode === 'success' ? 'success' : mode === 'cancelled' || mode === 'timeout' ? mode : 'error'});
     if (mode === 'success') expect(usage.mock.calls[0][0]).toMatchObject({inputTokens: 5, outputTokens: 3, totalTokens: 8, cachedInputTokens: 2});
     transport.mockResolvedValue(events([openai()]));await expect(createHarnessGenerator(config(), 'openai', 'reader', [], () => {throw new Error('sink failure');})(input())).resolves.toMatchObject({text: 'Visible answer'});
+});
+
+it('preserves the original generation failure when its final usage consumer also throws', async () => {
+    transport.mockResolvedValue(events([{error: {message: 'provider rejected reading'}}]));
+    const usage = vi.fn(() => {throw new Error('usage sink failed');});
+    await expect(createHarnessGenerator(config(), 'openai', 'reader', [], usage)(input())).rejects.toThrow('阅读服务返回错误');
+    expect(usage).toHaveBeenCalledOnce();expect(transport).toHaveBeenCalledOnce();
 });
 
 it('does not wait on a stuck cancellation handshake after HTTP failure or malformed stream data', async () => {

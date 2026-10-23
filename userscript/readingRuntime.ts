@@ -20,17 +20,18 @@ export function createUserscriptReadingRuntime() {
     let disposed = false;
     let suspended = false;
     let epoch = 0;
-    let href = globalThis.location?.href || '';
+    // 组合根仅在 Window 页面内创建 runtime；Location 始终存在，所有 sender 均由下方本页工厂签发。
+    let href = globalThis.location.href;
     let backend: ReturnType<typeof initialize> | undefined;
     let live: Awaited<ReturnType<typeof initialize>> | undefined;
     const ports = new Set<UserscriptRuntimePort>();
-    const currentHref = () => globalThis.location?.href || '';
+    const currentHref = () => globalThis.location.href;
     const ownerCurrent = (sender: ReadingSender) => !disposed && !suspended
         && sender.documentId === String(epoch) && sender.tab?.url === currentHref();
-    const siteBlocked = (sender: ReadingSender) => isExtensionDisabledOnSite(sender.tab?.url || '', config.disabledExtensionDomains);
+    const siteBlocked = () => isExtensionDisabledOnSite(currentHref(), config.disabledExtensionDomains);
     const eligibility = (sender: ReadingSender) => !ownerCurrent(sender) ? INACTIVE.error
         : !config.on || !config.harness.enabled ? '阅读理解已停用'
-            : siteBlocked(sender) ? '当前网站已禁用扩展' : undefined;
+            : siteBlocked() ? '当前网站已禁用扩展' : undefined;
     const sender = (): ReadingSender => {
         const url = currentHref();
         return {id: ID, url: isUserscriptSettingsUrl(url) ? OPTIONS_URL : url,
@@ -83,7 +84,7 @@ export function createUserscriptReadingRuntime() {
             eligibility, store: storage.sessions, privateContext: isUserscriptPrivateContext});
         const memories = createLearningMemoryHandler({extensionId: ID, optionsUrl: OPTIONS_URL, ready: configReady,
             store: storage.memories, privateContext: isUserscriptPrivateContext,
-            eligibility: source => !ownerCurrent(source) ? INACTIVE.error : siteBlocked(source) ? '当前网站已禁用扩展' : undefined,
+            eligibility: source => !ownerCurrent(source) ? INACTIVE.error : siteBlocked() ? '当前网站已禁用扩展' : undefined,
             cancelActive: cancel});
         const configurationKey = () => {
             const {service, model} = resolveHarnessModel(config);

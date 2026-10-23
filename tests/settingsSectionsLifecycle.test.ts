@@ -87,7 +87,9 @@ function configureSectionPorts(data: Record<string, any>, {template = false, req
     vi.doMock('@/src/features/image-translation/ui/public', () => ({ImageOcrSettings: empty, MangaSettings: empty}));
     vi.doMock('@/src/features/model-usage/public', () => ({ModelUsageDashboard: empty}));
     vi.doMock('@/src/features/translation-stats/public', () => ({TranslationStatsDashboard: empty}));
-    componentPort('@/src/features/settings/ui/components/SettingsGroup.vue', slots);
+    componentPort('@/src/features/settings/ui/components/SettingsGroup.vue', {setup(_: unknown, {slots}: any) {
+        return () => runtime.h('div', null, [slots['heading-extra']?.(), slots.default?.()]);
+    }});
     componentPort('@/src/features/settings/ui/components/SettingsItem.vue', slots);
     vi.doMock('@/src/features/settings/ui/components/SettingsPanel.vue', () => repairReturn
         ? vi.importActual('@/src/features/settings/ui/components/SettingsPanel.vue') : {default: slots});

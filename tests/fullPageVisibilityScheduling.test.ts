@@ -213,7 +213,11 @@ vi.mock("@/src/core/translation/public", async (importOriginal) => {
         ".katex", ".notranslate", "[translate='no']", "[data-notranslate='true']", "[hidden]",
         "[inert]", "[aria-hidden='true']",
     ].join(",");
-    const isProtected = (element: Element) => Boolean(element.closest(protectedSelector));
+    const isProtected = (element: Element) => {
+        // 属性型按钮沿用真实 core 的资格；其余 input 仍按输入内容硬剪枝。
+        if (actual.getTranslatableControlValueAttribute(element)) return Boolean(element.parentElement?.closest(protectedSelector));
+        return Boolean(element.closest(protectedSelector));
+    };
     const textSlots = (element: HTMLElement, keepOriginal?: (element: Element) => boolean) => {
         const isProtectedByAdapter = (element: Element) => {
             let current: Element | null = element;
@@ -684,6 +688,162 @@ describe("全文翻译可见性锚点", () => {
         expect(third!.querySelector('.fluent-read-bilingual-content')?.textContent).toBe('清理后重新取得的译文');
         expect(first!.querySelector('.fluent-read-bilingual-content')?.textContent).toBe('清理前的已缓存译文');
         expect(second!.querySelector('.fluent-read-bilingual-content')?.textContent).toBe('清理前的已缓存译文');
+    });
+
+    describe('按钮属性变化与独立重扫就绪顺序', () => {
+        function inputFixture(type = 'button', value = 'Save draft') {
+            replaceGlobal('performance', {now: () => Date.now()});
+            runtime.config.translationScope = 'all';
+            runtime.config.fullPageTranslationMode = 'all';
+            runtime.realTextExtraction = true;
+            runtime.realSourceSnapshots = true;
+            document.body.innerHTML = `<input id="action" type="${type}" value="${value}">`;
+            const input = document.querySelector<HTMLElement>('#action')!;
+            setLayoutBox(input, 200, 30);
+            runtime.realCore = new TranslationCandidateCore({url: new URL('https://example.com'), scope: 'all'});
+            return input;
+        }
+        function inputMutation(input: HTMLElement, attribute: string, value: string | null) {
+            const oldValue = input.getAttribute(attribute);
+            if (value === null) input.removeAttribute(attribute);
+            else input.setAttribute(attribute, value);
+            TestMutationObserver.instances.find(observer => observer.observed.has(document.documentElement))!.emitRegistered([
+                {type: 'attributes', target: input, attributeName: attribute, oldValue, addedNodes: [], removedNodes: []} as unknown as MutationRecord,
+            ]);
+        }
+
+        it('按钮标签 value 更新会重译，插件自身写入不重启，恢复保留最新宿主标签', async () => {
+            const input = inputFixture();
+            autoTranslateEnglishPage(); await finishScheduledWork();
+            expect(input.getAttribute('value')).toBe('译:Save draft');
+            const originalState = getTranslationState(input)!;
+            TestMutationObserver.instances[0]!.emitRegistered([
+                {type: 'attributes', target: input, attributeName: 'value', oldValue: 'Save draft', addedNodes: [], removedNodes: []} as unknown as MutationRecord,
+            ]);
+            await finishScheduledWork();
+            expect(getTranslationState(input)).toBe(originalState);
+            expect(runtime.requests).toHaveBeenCalledTimes(1);
+            inputMutation(input, 'value', 'Publish changes');
+            expect(originalState.controller.signal.aborted).toBe(true);
+            await finishScheduledWork();
+            expect(input.getAttribute('value')).toBe('译:Publish changes');
+            expect(runtime.requests.mock.calls.flat(2)).toEqual(['Save draft', 'Publish changes']);
+            restoreOriginalContent();
+            expect(input.getAttribute('value')).toBe('Publish changes');
+        });
+
+        it.each(['type', 'name'] as const)('按钮 %s 失去资格时即使正在滚动也立即恢复，重新符合资格后可继续', async attribute => {
+            const input = inputFixture('submit');
+            autoTranslateEnglishPage(); await finishScheduledWork();
+            const state = getTranslationState(input)!;
+            expect(input.getAttribute('value')).toBe('译:Save draft');
+            document.dispatchEvent(new window.Event('scroll'));
+            inputMutation(input, attribute, attribute === 'type' ? 'text' : 'commit');
+            expect(state.controller.signal.aborted).toBe(true);
+            expect(getTranslationState(input)).toBeUndefined();
+            expect(input.getAttribute('value')).toBe('Save draft');
+            await finishScheduledWork();
+            expect(runtime.requests).toHaveBeenCalledTimes(1);
+            inputMutation(input, attribute, attribute === 'type' ? 'submit' : null);
+            await finishScheduledWork();
+            expect(input.getAttribute('value')).toBe('译:Save draft');
+            expect(getTranslationState(input)?.phase).toBe('translated');
+            restoreOriginalContent();
+            expect(input.getAttribute('value')).toBe('Save draft');
+        });
+
+        it('按钮请求在途新增提交 name 会取消旧提交，迟到结果不改写表单值', async () => {
+            const input = inputFixture('submit'), pending = deferred<string[]>();
+            runtime.requests.mockReturnValueOnce(pending.promise);
+            autoTranslateEnglishPage(); await vi.advanceTimersByTimeAsync(60); await waitForRequestCount(1);
+            const state = getTranslationState(input)!;
+            inputMutation(input, 'name', 'commit');
+            expect(state.controller.signal.aborted).toBe(true);
+            pending.resolve(['过期按钮译文']); await finishScheduledWork();
+            expect(input.getAttribute('value')).toBe('Save draft');
+            expect(getTranslationState(input)).toBeUndefined();
+            expect(runtime.requests).toHaveBeenCalledTimes(1);
+        });
+
+        it.each(['type 先记录', 'value 先记录'] as const)('宿主同轮改 type 和 value 时恢复保留最终新值：%s', async order => {
+            const input = inputFixture();
+            autoTranslateEnglishPage(); await finishScheduledWork();
+            const state = getTranslationState(input)!;
+            const previousValue = input.getAttribute('value');
+            input.setAttribute('type', 'text'); input.setAttribute('value', 'Host-owned replacement');
+            const records = [
+                {type: 'attributes', target: input, attributeName: 'type', oldValue: 'button', addedNodes: [], removedNodes: []},
+                {type: 'attributes', target: input, attributeName: 'value', oldValue: previousValue, addedNodes: [], removedNodes: []},
+            ] as unknown as MutationRecord[];
+            if (order === 'value 先记录') records.reverse();
+            TestMutationObserver.instances[0]!.emitRegistered(records);
+            expect(state.controller.signal.aborted).toBe(true);
+            expect(getTranslationState(input)).toBeUndefined();
+            expect(input.getAttribute('value')).toBe('Host-owned replacement');
+            await finishScheduledWork(); restoreOriginalContent();
+            expect(input.getAttribute('value')).toBe('Host-owned replacement');
+            expect(runtime.requests).toHaveBeenCalledTimes(1);
+        });
+
+        it('普通输入值及密码值的属性变化不产生翻译状态或请求', async () => {
+            const input = inputFixture('text', 'Typed private text');
+            autoTranslateEnglishPage(); await finishScheduledWork();
+            inputMutation(input, 'value', 'Updated private text');
+            inputMutation(input, 'type', 'password'); inputMutation(input, 'name', 'password');
+            await finishScheduledWork();
+            expect(runtime.requests).not.toHaveBeenCalled(); expect(getTranslationState(input)).toBeUndefined();
+            restoreOriginalContent(); expect(input.getAttribute('value')).toBe('Updated private text');
+        });
+
+        it.each(['同一批变化', '冷却等待开始后'] as const)('整页根冷却不阻塞%s的 ShadowRoot 新正文，冷却结束后仍重扫整页', async timing => {
+            replaceGlobal('performance', {now: () => Date.now()});
+            runtime.config.fullPageTranslationMode = 'all'; runtime.config.display = 1;
+            document.body.innerHTML = '<div id="host"></div>';
+            const host = document.querySelector<HTMLElement>('#host')!, shadow = host.attachShadow({mode: 'open'});
+            shadow.innerHTML = '<p>Initial shadow paragraph remains readable.</p>';
+            setLayoutBox(shadow.firstElementChild!, 400, 60);
+            runtime.realCore = new TranslationCandidateCore({url: new URL('https://example.com')});
+            const discover = vi.spyOn(runtime.realCore, 'discoverSteps');
+            autoTranslateEnglishPage(); await vi.advanceTimersByTimeAsync(100);
+            expect(runtime.requests).toHaveBeenCalledTimes(1);
+            const observer = TestMutationObserver.instances[0]!;
+            expect(observer.observed.has(shadow)).toBe(true);
+            discover.mockClear();
+            const late = document.createElement('p'); late.textContent = 'A newly opened shadow paragraph should translate without waiting for the page.';
+            shadow.appendChild(late); setLayoutBox(late, 400, 60);
+            const pageMutation = {type: 'childList', target: document.documentElement, addedNodes: [document.body], removedNodes: []} as unknown as MutationRecord;
+            const shadowMutation = {type: 'childList', target: shadow, addedNodes: [late], removedNodes: []} as unknown as MutationRecord;
+            if (timing === '同一批变化') observer.emitRegistered([pageMutation, shadowMutation]);
+            else {
+                observer.emitRegistered([pageMutation]);
+                await vi.advanceTimersByTimeAsync(60);
+                observer.emitRegistered([shadowMutation]);
+            }
+            await vi.advanceTimersByTimeAsync(100);
+            expect(late.querySelector('.fluent-read-bilingual-content')?.textContent).toBe(`译:${late.firstChild!.textContent}`);
+            expect(discover.mock.calls.map(([root]) => root)).toContain(shadow);
+            expect(discover.mock.calls.map(([root]) => root)).not.toContain(document.documentElement);
+            await vi.advanceTimersByTimeAsync(1000);
+            expect(discover.mock.calls.map(([root]) => root)).toContain(document.documentElement);
+            expect(runtime.requests).toHaveBeenCalledTimes(2);
+        });
+
+        it('只有冷却根待扫时按到期时间等待，恢复结束会话后不再唤醒', async () => {
+            const readClock = vi.fn(() => Date.now()); replaceGlobal('performance', {now: readClock});
+            runtime.config.fullPageTranslationMode = 'all';
+            runtime.realCore = new TranslationCandidateCore({url: new URL('https://example.com')});
+            const discover = vi.spyOn(runtime.realCore, 'discoverSteps');
+            autoTranslateEnglishPage(); await vi.advanceTimersByTimeAsync(100); discover.mockClear();
+            const record = {type: 'childList', target: document.documentElement, addedNodes: [document.body], removedNodes: []} as unknown as MutationRecord;
+            TestMutationObserver.instances[0]!.emitRegistered([record]);
+            await vi.advanceTimersByTimeAsync(100); readClock.mockClear();
+            await vi.advanceTimersByTimeAsync(400);
+            expect(discover).not.toHaveBeenCalled(); expect(readClock).not.toHaveBeenCalled();
+            restoreOriginalContent();
+            TestMutationObserver.instances[0]!.emit([record]);
+            await vi.advanceTimersByTimeAsync(1500);
+            expect(discover).not.toHaveBeenCalled(); expect(runtime.requests).not.toHaveBeenCalled();
+        });
     });
 
     describe('popup display mode synchronization', () => {

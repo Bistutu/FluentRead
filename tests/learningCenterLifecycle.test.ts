@@ -230,6 +230,30 @@ describe('LearningCenter actual client pane loading and lifetime', () => {
     expect(h.actions('memory-save')).toHaveLength(1);expect(h.actions('memory-save')[0][0]).toEqual({type: 'fluentReadHarness', action: 'memory-save', input: {kind: 'note', content: 'Explicit local note'}})
     expect(h.host.querySelector('.fr-memory-list')!.textContent).toContain('Explicit local note')
   })
+  it.each([
+    {label: 'long', content: 'Long original note with a complete explanation. '.repeat(10) + 'End of saved note.'},
+    {label: 'short four-line', content: 'First line.\nSecond line.\nThird line.\nEnd of saved note.'},
+  ])('keeps $label notes readable after search, and preserves them when editing is canceled', async ({content}) => {
+    const h = await mountLearning('memory')
+    h.memories[0].content = content;await h.resolvePanel('memory')
+    const search = h.host.querySelector<HTMLInputElement>('.fr-memory-toolbar input')!
+    search.value = 'End of saved note';search.dispatchEvent(new Event('input', {bubbles: true}));await h.settle()
+    const details = h.host.querySelector<HTMLDetailsElement>('.fr-memory-content')!
+    expect(details).not.toBeNull();expect(details.hasAttribute('open')).toBe(false)
+    expect(details.querySelector('p')!.textContent).toBe(content)
+    details.querySelector<HTMLElement>('summary')!.click();await h.settle()
+    expect(h.host.querySelector('textarea')).toBeNull();expect(h.actions('memory-save')).toHaveLength(0)
+    // Linkedom does not implement native details disclosure; the browser owns open state.
+    details.setAttribute('open', '');expect(details.querySelector('p')!.textContent).toBe(content)
+    h.host.querySelector<HTMLButtonElement>('.fr-memory-item footer button')!.click();await h.settle()
+    expect(h.host.querySelector<HTMLTextAreaElement>('textarea')!.value).toBe(content)
+    expect(h.actions('memory-save')).toHaveLength(0)
+    h.host.querySelectorAll<HTMLButtonElement>('.fr-memory-editor-actions button')[1].click();await h.settle()
+    expect(h.host.querySelector('textarea')).toBeNull()
+    expect(h.host.querySelector<HTMLInputElement>('.fr-memory-toolbar input')!.value).toBe('End of saved note')
+    expect(h.host.querySelector('.fr-memory-content p')!.textContent).toBe(content)
+    expect(h.actions('memory-save')).toHaveLength(0)
+  })
   it.each(['history', 'memory'] as const)('keeps late %s list and accepted writes with their real child owner', async tab => {
     const h = await mountLearning(tab, {listGate: tab});await h.resolvePanel(tab)
     expect(h.actions(tab === 'memory' ? 'memory-list' : 'sessions-list')).toHaveLength(1)

@@ -114,6 +114,7 @@
 }
 
 :deep(.settings-navigation-link) { padding: 6px 0; }
+:deep(.settings-heading-link) { margin-left: auto; min-height: 32px; flex-shrink: 0; }
 :deep(.settings-navigation-link:hover),
 .settings-inline-link:hover { color: var(--brand); text-decoration: underline; text-underline-offset: 3px; }
 :deep(.settings-navigation-link:focus-visible),
@@ -125,7 +126,7 @@
   .service-default-control { max-width: none; }
 }
 
-.capability-warning { margin: 6px 0 0; color: #d9345e; font-size: 11px; line-height: 1.5; }
+.capability-warning { margin: 6px 0 0; color: var(--fr-warning); font-size: 11px; line-height: 1.5; }
 .settings-switch { --el-switch-on-color: #ef4776; --el-switch-off-color: #cfd5df; }
 
 .feature-help {

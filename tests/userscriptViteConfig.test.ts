@@ -49,6 +49,9 @@ import {
     wrapUserscriptEntry,
 } from '@/userscript/vite.config';
 
+const pakoGzip = createRequire(import.meta.url)('pako').gzip as
+    (data: Uint8Array, options: {level: 9; memLevel: 8}) => Uint8Array;
+
 const entrypointId = resolve(process.cwd(), 'entrypoints/userscript-injection-fixture.ts');
 const sourceModuleId = resolve(process.cwd(), 'src/app/content/runtime.ts');
 const vueScriptModuleId = `${resolve(process.cwd(), 'src/features/selection-translation/ui/SelectionTranslator.vue')}?vue&type=script&setup=true&lang.ts`;
@@ -195,6 +198,28 @@ describe('userscript build gzip portability', () => {
         }
         expect(input).toEqual(before);
         expect(gunzipSync(first)).toEqual(before);
+    });
+
+    it('never enlarges actual static assets versus the former gzip default and saves bytes on an existing asset', () => {
+        const inputs = [
+            Buffer.from(JSON.stringify(zhCNMessages)),
+            Buffer.from(JSON.stringify(UI_LANGUAGE_BUNDLES['en-US'])),
+            ...['public/misc/approve.jpg', 'src/app/options/assets/wechat-contact.jpg'].map(file =>
+                Buffer.from(`data:image/jpeg;base64,${readFileSync(resolve(process.cwd(), file)).toString('base64')}`)),
+        ];
+        let savedBytes = 0;
+        for (const input of inputs) {
+            const previous = pakoGzip(input, {level: 9, memLevel: 8});
+            const encoded = gzipUserscriptBuildData(input);
+            expect(encoded.byteLength).toBeLessThanOrEqual(previous.byteLength);
+            expect(gunzipSync(encoded)).toEqual(input);
+            expect(Buffer.from(ungzip(encoded))).toEqual(input);
+            expect(gzipUserscriptBuildData(new Uint8Array(input))).toEqual(encoded);
+            savedBytes += previous.byteLength - encoded.byteLength;
+        }
+        expect(savedBytes).toBeGreaterThan(0);
+        // Empty input offers no improvement; preserve the previous standard gzip bytes on ties.
+        expect(gzipUserscriptBuildData(new Uint8Array())).toEqual(Buffer.from(pakoGzip(new Uint8Array(), {level: 9, memLevel: 8})));
     });
 
     it('restores complete real catalog plugin data when the host native gzip encoder is unavailable', async () => {
@@ -404,8 +429,10 @@ describe('userscript browser shim injection', () => {
         'ru-RU': 'ru-RU.83347fe7c1e5f5da.json',
         'es-ES': 'es-ES.ccf366fbe218633c.json',
     };
-    const publishedMessages: Record<string, Record<string, string>> = Object.fromEntries(Object.entries(pinnedLanguageFiles)
-        .map(([language, file]) => [language, JSON.parse(readFileSync(resolve(process.cwd(), 'userscript/languages', file), 'utf8')).messages]));
+    const retiredLegacySources = ['鼠标悬停翻译设置', '将鼠标停在段落上，按快捷键查看译文。', '服务优先顺序'];
+    const publishedBundles: Record<string, {messages: Record<string, string>; legacyText: Record<string, string>}> = Object.fromEntries(Object.entries(pinnedLanguageFiles)
+        .map(([language, file]) => [language, JSON.parse(readFileSync(resolve(process.cwd(), 'userscript/languages', file), 'utf8'))]));
+    const publishedMessages = Object.fromEntries(Object.entries(publishedBundles).map(([language, bundle]) => [language, bundle.messages]));
     it('preserves pinned remote dictionaries for inlined panes and keeps embedded recovery copy', () => {
         const build = (userscriptConfig as {build: {cssCodeSplit: boolean; rollupOptions: {output: {inlineDynamicImports: boolean}}}}).build;
         expect(build.cssCodeSplit).toBe(false);
@@ -422,9 +449,14 @@ describe('userscript browser shim injection', () => {
             for (const phase of ['early', 'late'] as const) {
                 expect(bundle.legacyPatterns[phase]).toEqual(original.legacyPatterns[phase].filter(([source]) => !materialPatterns.includes(source)));
             }
-            for (const [source, value] of Object.entries(original.legacyText)) {
-                if (Object.hasOwn(bundle.legacyText, source)) expect(bundle.legacyText[source]).toBe(value);
+            for (const source of retiredLegacySources) {
+                expect(original.legacyText).not.toHaveProperty(source);
+                if (language === 'en-US') expect(bundle.legacyText).not.toHaveProperty(source);
+                else expect(bundle.legacyText[source]).toBe(publishedBundles[language]!.legacyText[source]);
             }
+            // 审计还删除了其他无消费者旧文案；它们与主线三条退役说明一起留在固定远程契约中。
+            for (const [source, value] of Object.entries(bundle.legacyText)) expect(value).toBe(
+                Object.hasOwn(original.legacyText, source) ? original.legacyText[source] : publishedBundles[language]!.legacyText[source]);
             for (const source of materialSources) expect(original.legacyText[source]).toBeTruthy();
             if (language !== 'en-US') {
                 // 固定资源是发布契约；必须保持整包字节，不能只证明本地生成文件自洽。
@@ -460,13 +492,17 @@ describe('userscript browser shim injection', () => {
         }
         const nonDocument = Object.fromEntries(Object.entries(projected.messages).filter(([key]) => !key.startsWith('document.')));
         for (const [key, value] of Object.entries(nonDocument)) expect(value).toBe(publishedMessages[language]![key]);
-        // 原文案继续使用root已发布投影，材料扩展界面文本不重新进入脚本固定资源。
+        // 固定资源直接读取原始 JSON；现用扩展文案及退役条目分别保持自己的归属。
         const materialSources = new Set(Object.keys(learningMaterialLegacyText[language as keyof typeof learningMaterialLegacyText]));
         for (const [source, value] of Object.entries(original.legacyText)) {
             if (!materialSources.has(source) && source !== mimoRetirementSource && source !== '移动端 / X 自动贴底') expect(projected.legacyText[source]).toBe(value);
         }
         const pinned = JSON.parse(readFileSync(resolve(process.cwd(), 'userscript/languages', pinnedLanguageFiles[language as keyof typeof pinnedLanguageFiles]), 'utf8'));
         expect(projected.legacyText).toEqual(pinned.legacyText);
+        for (const source of retiredLegacySources) {
+            expect(original.legacyText).not.toHaveProperty(source);
+            expect(projected.legacyText[source]).toBe(publishedBundles[language]!.legacyText[source]);
+        }
         const materialPatterns = learningMaterialPatterns.map(({pattern}) => pattern);
         for (const phase of ['early', 'late'] as const) expect(projected.legacyPatterns[phase]).toEqual(original.legacyPatterns[phase].filter(([source]) => !materialPatterns.includes(source)));
         expect(JSON.stringify(original)).toBe(originalBefore);

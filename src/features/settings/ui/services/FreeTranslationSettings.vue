@@ -1,7 +1,7 @@
 <!--
  * @file src/features/settings/ui/services/FreeTranslationSettings.vue
  * 文件职责：编辑免费翻译服务的启停、选择策略、邮箱与等待时间。
- * 主要内容：按配置策略展示全部服务的启停、连接结果、耗时与分流参考，B站翻译仅标注免费；Safari 单独呈现实际域授权并在真实点击中逐线路申请，权限查询有界且切换时取消等待；撤权与重新激活时复查域权限，自己授权后的事件不取消原点击；错误保留翻译键；仅活跃分流视图合并读取后台快照，切换时取消等待和旧事件，邮箱草稿只在所属配置提交。
+ * 主要内容：策略选择与启用数量默认可见，全部服务的启停、连接结果、耗时、分流参考和可选邮箱放在按需展开的设置卡片中，收起保留表单；B站翻译仅标注免费；Safari 单独呈现实际域授权并在真实点击中逐线路申请，权限查询有界且切换时取消等待；撤权与重新激活时复查域权限，自己授权后的事件不取消原点击；错误保留翻译键；仅展开且活跃的分流视图合并读取后台快照，收起或切换时取消等待和旧事件，邮箱草稿只在所属配置提交。
  * 模块边界：只修改传入的配置，由设置页统一持久化；通过平台端口管理 Safari 授权，只读取不含凭据的后台权重快照，不请求翻译或更改启用顺序。
  -->
 <template>
@@ -14,8 +14,8 @@
       </div>
       <p class="mode-help">{{ mode === 'balanced' ? t('settings.services.freeWeights.strategy') : translateLegacy('依次调用启用的免费接口；可使用上下按钮调整顺序') }}</p>
       <p v-if="!isSequential && displayedWeightSnapshot.total === 0 && (!safariPermissions || permissionAccess?.grantedIds.length)" class="service-unavailable" role="status">{{ t('settings.services.freeWeights.unavailable') }}</p>
+      <SettingsDisclosure class="free-provider-details" :title="t('settings.services.freeWeights.services')" :status="providerSummary" :status-tone="failedProviders.length ? 'warning' : 'neutral'" data-free-provider-disclosure :onToggle="actions.toggleProviders">
       <section class="provider-section" :aria-label="translateLegacy(isSequential ? '免费翻译优先顺序' : '免费翻译服务')">
-        <div class="section-heading"><h3>{{ isSequential ? translateLegacy('服务优先顺序') : t('settings.services.freeWeights.services') }}</h3><p>{{ t('settings.services.freeWeights.enabledCount', {count: order.length}) }}</p></div>
         <div v-if="!isSequential" class="routing-summary" data-testid="free-translation-weight-summary" :data-weight-total="displayedWeightSnapshot.total" :data-weight-observed-at="displayedWeightSnapshot.observedAt">
           <span>{{ t('settings.services.freeWeights.description') }}</span>
           <el-tooltip :content="t('settings.services.freeWeights.refresh', {minutes: refreshMinutes})"><span class="allocation-total">{{ t('settings.services.freeWeights.total', {total: formatPercentage(displayedWeightSnapshot.total)}) }}</span></el-tooltip>
@@ -57,6 +57,7 @@
         <p v-if="myMemoryEmailInvalid" class="provider-note" role="status">{{ translateLegacy('请输入有效邮箱，或留空') }}</p>
         <p>{{ translateLegacy('提供邮箱后可提升额度；邮箱会随请求发送给 MyMemory') }} <a href="https://mymemory.translated.net/doc/usagelimits.php" target="_blank" rel="noreferrer">{{ translateLegacy('官方额度说明') }}</a></p>
       </section>
+      </SettingsDisclosure>
     </template>
     <template v-if="advanced">
       <div class="timeout-field">
@@ -87,6 +88,7 @@ import { useUiI18n } from '@/src/ui/i18n'
 import ServiceIcon from '@/src/ui/components/ServiceIcon.vue'
 import ServiceNatureBadge from './ServiceNatureBadge.vue'
 import FieldHelp from '../components/FieldHelp.vue'
+import SettingsDisclosure from '../components/SettingsDisclosure.vue'
 import type { FreeTranslationChecks } from './freeTranslationChecks'
 
 type FreeTranslationMode = 'balanced' | 'sequential'
@@ -106,6 +108,15 @@ const isSequential = computed(() => mode.value === 'sequential')
 const order = computed(() => normalizeFreeTranslationOrder(config.value.freeTranslationOrder))
 const providers = computed(() => mode.value === 'sequential' ? [...order.value.flatMap(id => FREE_TRANSLATION_PROVIDERS.filter(provider => provider.id === id)), ...FREE_TRANSLATION_PROVIDERS.filter(provider => !order.value.includes(provider.id))] : [...FREE_TRANSLATION_PROVIDERS])
 const failedProviders = computed(() => providers.value.filter(provider => props.checks?.[provider.id]?.status === 'error' && props.checks[provider.id]?.error))
+const providerListOpen = ref(false)
+watch(advanced, value => {if (value) providerListOpen.value = false}, {flush: 'sync'})
+const providerSummary = computed(() => {
+  const states = providers.value.map(provider => props.checks?.[provider.id]?.status)
+  const enabled = t('settings.services.freeWeights.enabledCount', {count: order.value.length})
+  if (states.some(status => status === 'checking' || status === 'queued')) return `${enabled} · ${t('settings.services.keys.checking')}`
+  const passed = states.filter(status => status === 'success').length, failed = states.filter(status => status === 'error').length
+  return passed || failed ? `${enabled} · ${t('settings.services.keys.summary', {passed, failed})}` : enabled
+})
 const weightSnapshot = ref<FreeTranslationWeightSnapshot | null>(null)
 const localWeightSnapshot = computed(() => calculateFreeTranslationWeightSnapshot(safariPermissions ? order.value.filter(providerGranted) : order.value))
 const displayedWeightSnapshot = computed(() => weightSnapshot.value || localWeightSnapshot.value)
@@ -170,7 +181,7 @@ function allowProvider(id: string): Promise<void> | void {
     }}
   })()
 }
-const canReadWeights = computed(() => mounted.value && active.value && !advanced.value && mode.value === 'balanced'
+const canReadWeights = computed(() => mounted.value && active.value && !advanced.value && providerListOpen.value && mode.value === 'balanced'
   && (!safariPermissions || permissionAccess.value !== null))
 let weightRequest: {controller: AbortController; promise: Promise<void>} | undefined
 
@@ -283,6 +294,7 @@ function setDuration(seconds: number | undefined): void { if (active.value && ad
 const actions = computed(() => {
   const current = capture()
   return {
+    toggleProviders: (event: Event) => {if (current() && !advanced.value) providerListOpen.value = (event.currentTarget as HTMLDetailsElement).open},
     setMode: (value: FreeTranslationMode) => {if (current()) setMode(value)},
     toggle: (id: string, value: boolean) => {if (current()) toggle(id, value)},
     allow: (id: string) => {if (current()) return allowProvider(id)},
@@ -324,10 +336,9 @@ onBeforeUnmount(() => {
 .mode-option input { margin: 0; accent-color: var(--el-color-primary); }
 .mode-help { margin-top: 7px; }
 .service-unavailable { color: var(--el-color-warning-dark-2); line-height: 1.6; }
+.free-provider-details { margin-top: 16px; }
+.free-provider-details :deep(.settings-disclosure-body) { padding: 0 18px 16px; }
 .provider-section { margin-top: 14px; }
-.section-heading { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; }
-.section-heading h3 { margin: 0; font-size: 13px; font-weight: 600; }
-.section-heading p { margin: 0; color: var(--el-text-color-secondary); font-size: 11px; }
 .routing-summary { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; margin-bottom: 9px; color: var(--el-text-color-secondary); font-size: 11px; line-height: 1.5; }
 .allocation-total { white-space: nowrap; }
 .fallback-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); align-items: start; gap: 7px; margin: 0; padding: 0; list-style: none; }

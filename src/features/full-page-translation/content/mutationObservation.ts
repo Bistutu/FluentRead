@@ -1,8 +1,8 @@
 /**
  * @file src/features/full-page-translation/content/mutationObservation.ts
- * 文件职责：为全文翻译组合 DOM 观察选项，并计算突发变化的扫描边界和安全节点目标。
- * 主要内容：按既有 matches/tagName/style 契约识别元素，保留 ShadowRoot 的宿主观察目标并按宿主连接性释放失效根；保留通用保护和产物完整性属性，合并网站依赖；复杂选择器取消属性过滤，校验合成段身份标记，按断言批量判定增删节点，按检查点去重同节点同属性的变化，并按树包含关系合并扫描根。
- * 模块边界：仅生成选项和读取传入节点的树关系，不创建 MutationObserver、不读取全局 DOM 或配置；只接收标记核验所需的最小状态，不反向依赖翻译状态实现。
+ * 文件职责：为全文翻译组合 DOM 观察选项，并计算突发变化的扫描边界、安全节点目标和本片就绪扫描根。
+ * 主要内容：按既有 matches/tagName/style 契约识别元素，保留 ShadowRoot 的宿主观察目标并按宿主连接性释放失效根；保留通用保护、按钮标签及资格、产物完整性属性，合并网站依赖；复杂选择器取消属性过滤，校验合成段身份标记，按断言批量判定增删节点，按检查点去重同节点同属性的变化，并按树包含关系合并扫描根。
+ * 模块边界：仅生成选项、读取传入节点的树关系并按注入时钟消费根队列，不创建观察器或计时器、不读取全局 DOM、配置或页面会话；标记核验只接收最小状态，不反向依赖翻译状态实现。
  */
 import {getSiteAdapterAttributeFilter} from '@/src/core/site-adaptation/compiler';
 import type {TranslationSiteAdapter} from '@/src/core/translation/types';
@@ -32,6 +32,54 @@ export function isConnectedMutationRoot(node: Node): boolean {
         : node.isConnected;
 }
 
+interface MutationRescanRoots {
+    dirtyRoots: Set<Node>;
+    broadRescanRoots: WeakSet<Node>;
+    broadRescanCooldowns: WeakMap<Node, number>;
+}
+
+/**
+ * 一个时间片只检查初始排队根一次，冷却根轮转到末尾，断连根直接释放。
+ * 根选择也使用八毫秒预算；推进过发现后可能同步出现新根，因此下一片先复查，
+ * 只有纯冷却检查片才按最早到期时刻等待。调用方负责真正的扫描和计时器。
+ */
+export function createMutationRescanSelector(
+    queue: MutationRescanRoots,
+    now: () => number,
+    discoveryInProgress: boolean,
+) {
+    const startedAt = now();
+    let rootsToCheck = queue.dirtyRoots.size;
+    let earliestRescan = Infinity;
+    let discoveredInSlice = discoveryInProgress;
+    const shouldYield = () => now() - startedAt >= 8;
+    return {
+        shouldYield,
+        take(): Node | null {
+            while (rootsToCheck > 0) {
+                const root = queue.dirtyRoots.values().next().value as Node | undefined;
+                if (!root) { rootsToCheck = 0; break; }
+                queue.dirtyRoots.delete(root);
+                rootsToCheck -= 1;
+                if (isConnectedMutationRoot(root)) {
+                    const notBefore = queue.broadRescanRoots.has(root)
+                        ? queue.broadRescanCooldowns.get(root) ?? 0 : 0;
+                    if (now() >= notBefore) {
+                        discoveredInSlice = true;
+                        return root;
+                    }
+                    queue.dirtyRoots.add(root);
+                    earliestRescan = Math.min(earliestRescan, notBefore);
+                }
+                if (shouldYield()) break;
+            }
+            return null;
+        },
+        delay: () => !discoveredInSlice && rootsToCheck === 0 && earliestRescan !== Infinity
+            ? Math.max(16, earliestRescan - now()) : 16,
+    };
+}
+
 /** 同一 observer 检查点只能读取最终 DOM；自有写入过滤后再标记，不吞掉后续真实宿主变化。 */
 export function createTranslationAttributeMutationFilter(): (element: Element, attribute: string) => boolean {
     const checked = new WeakMap<Element, Set<string>>();
@@ -50,7 +98,7 @@ export function createTranslationAttributeMutationFilter(): (element: Element, a
 export function createTranslationMutationObserverOptions(adapters: readonly TranslationSiteAdapter[]): MutationObserverInit {
     const attributeFilter = getSiteAdapterAttributeFilter(adapters, [
         'style', 'class', 'role', 'open', 'aria-modal', 'hidden', 'inert', 'contenteditable', 'aria-hidden', 'translate',
-        'lang', 'dir', 'href', 'title', 'data-notranslate', 'data-fr-translation-owned',
+        'lang', 'dir', 'href', 'title', 'value', 'type', 'name', 'data-notranslate', 'data-fr-translation-owned',
     ]);
     return {
         childList: true, subtree: true, characterData: true, characterDataOldValue: true,

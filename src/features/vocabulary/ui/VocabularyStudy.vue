@@ -168,7 +168,7 @@ onBeforeUnmount(() => { active = false; stop(); unsubscribe(); });
 .word-study textarea { box-sizing:border-box; width:100%; min-height:110px; resize:vertical; padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--surface-soft); color:var(--ink); font:inherit; line-height:1.6; margin:0 0 12px; }
 .word-study .study-primary { background:var(--el-color-primary-dark-2,#cf315e); color:#fff; border-color:var(--brand); }
 .study-status,.study-error { padding:12px; border-radius:10px; background:var(--surface-soft); font-size:13px; }
-.study-error { color:var(--danger,#b42318); }
+.study-error { color:var(--fr-danger); }
 .study-feedback { margin-top:18px; }
 .submitted-sentence { border-left:2px solid var(--line); padding-left:12px; font-size:13px; line-height:1.6; }
 .word-study button:focus-visible,.word-study textarea:focus-visible,.study-reference summary:focus-visible { outline:2px solid var(--brand); outline-offset:3px; }

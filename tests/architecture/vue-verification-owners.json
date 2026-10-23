@@ -394,6 +394,14 @@
       ],
       "scenario": "实际预览选项和菜单模块可见性"
     },
+    "src/features/settings/ui/components/SettingsDisclosure.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/featureMenuSettingsLifecycle.test.ts",
+        "tests/freeTranslationSettings.test.ts"
+      ],
+      "scenario": "真实父子模板默认折叠、摘要状态更新与原生 toggle 透传，收起期间保留功能分配和服务配置控件"
+    },
     "src/features/settings/ui/components/SettingsNumberInput.vue": {
       "kind": "presentation",
       "reason": "只透传父级属性到数值控件并显示单位，不保存或校验业务值。"

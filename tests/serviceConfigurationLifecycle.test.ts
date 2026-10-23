@@ -491,6 +491,9 @@ async function mountServiceClient(initialService = 'freeTranslation', developmen
   vi.doMock('@/src/features/settings/ui/services/PromptTemplateEditor.vue', () => ({default:inputPort('prompt-editor-port')}))
   vi.doMock('@/src/features/settings/ui/components/SegmentedControl.vue', () => ({default:inputPort('segmented-control-port')}))
   vi.doMock('@/src/features/settings/ui/components/FieldHelp.vue', () => ({default:inputPort('field-help-port')}))
+  // 保留真实请求限制父子组件和折叠容器；叶子数值控件提供公开输入端口。
+  vi.doMock('@/src/features/settings/ui/services/RequestLimitSettings.vue', () => vi.importActual('@/src/features/settings/ui/services/RequestLimitSettings.vue'))
+  vi.doMock('@/src/features/settings/ui/services/RequestLimitFields.vue', () => ({default: inputPort('request-limit-fields-port')}))
   vi.doMock('@/src/features/settings/ui/services/ChatGPTPlanSettings.vue', () => requestChatGPT())
   vi.doMock('element-plus', () => ({ElMessage: {success: feedback}, ElTabs: display, ElTabPane: display}))
   let repairDocument: Document | undefined, focusElement: Element | ServiceClientNode | null, fallbackHeading: HTMLElement | undefined
@@ -528,7 +531,7 @@ async function mountServiceClient(initialService = 'freeTranslation', developmen
   }
   const renderer = runtime.createRenderer<ServiceClientNode, ServiceClientNode>({
     patchProp: (n, key, _before, value) => {n.props[key] = value}, insert, remove,
-    createElement: node, createText: () => node('#text'), createComment: () => node('#comment'),
+    createElement: node, createText: value => Object.assign(node('#text'), {value}), createComment: () => node('#comment'),
     setText: (n, value) => {n.value = value}, setElementText: (n, value) => {n.value = value},
     parentNode: n => n.parent || null,
     nextSibling: n => n.parent?.children[n.parent.children.indexOf(n) + 1] || null,
@@ -562,6 +565,50 @@ async function mountServiceClient(initialService = 'freeTranslation', developmen
 }
 
 describe('实际服务父模板的本地子模块按需加载', () => {
+  it('单请求页签默认收起但保留表单与响应式摘要，多页签保持原 section', async () => {
+    const h = await mountServiceClient('freeTranslation')
+    try {
+      const disclosure = () => h.allNodes().find(n => Object.hasOwn(n.props, 'data-service-request-disclosure'))!
+      const fields = () => h.allNodes().find(n => n.props['data-testid'] === 'request-limit-settings')!
+      const mode = () => h.allNodes().find(n => Object.hasOwn(n.props, 'data-request-limit-mode'))!
+      const text = (n: ServiceClientNode): string => (n.value || '') + n.children.map(text).join('')
+      const initialForm = fields(), initialDisclosure = disclosure()
+      expect(initialDisclosure.tag).toBe('details');expect(initialDisclosure.props.open).toBe(false)
+      expect(initialForm).toBeDefined();expect(text(initialDisclosure)).toContain('settings.requestLimits.followGlobal')
+      ;(mode().props['onUpdate:modelValue'] as (value: unknown) => void)('custom');await settle()
+      expect(h.source.config.serviceRequestLimits.freeTranslation.enabled).toBe(true)
+      expect(disclosure()).toBe(initialDisclosure);expect(fields()).toBe(initialForm)
+      expect(text(disclosure())).toContain('settings.requestLimits.custom')
+      ;(mode().props['onUpdate:modelValue'] as (value: unknown) => void)('inherit');await settle()
+      expect(text(disclosure())).toContain('settings.requestLimits.followGlobal')
+      expect(fields()).toBe(initialForm)
+      h.source.service = 'google';await settle()
+      expect(disclosure()).not.toBe(initialDisclosure);expect(disclosure().props.open).toBe(false)
+      h.source.service = 'deepseek';h.source.compute = {...h.source.compute, showAI: true, showModel: true};await settle()
+      expect(h.allNodes().some(n => Object.hasOwn(n.props, 'data-service-request-disclosure'))).toBe(false)
+      expect(h.allNodes().find(n => n.props.id === 'service-requests-settings')?.tag).toBe('section')
+      expect(h.clientErrors).toEqual([]);expect(send).not.toHaveBeenCalled()
+    } finally {await h.finish()}
+  })
+  it.each(['service', 'config', 'inactive'])('折叠请求表单在%s变化后拒绝旧模式与数值事件', async reason => {
+    const h = await mountServiceClient('google')
+    try {
+      const mode = () => h.allNodes().find(n => Object.hasOwn(n.props, 'data-request-limit-mode'))!
+      ;(mode().props['onUpdate:modelValue'] as (value: unknown) => void)('custom');await settle()
+      const oldMode = mode().props['onUpdate:modelValue'] as (value: unknown) => void, owner = h.source.config
+      const fields = h.allNodes().find(n => n.props.layout === 'service' && n.props['onUpdate:modelValue'])!
+      const oldLimits = fields.props['onUpdate:modelValue'] as (value: unknown) => void, snapshot = JSON.stringify(owner.serviceRequestLimits)
+      if (reason === 'service') h.source.service = 'microsoft'
+      if (reason === 'config') h.source.config = runtime.reactive(new Config())
+      if (reason === 'inactive') h.source.active = false
+      await settle()
+      oldMode('inherit');oldLimits({...owner.serviceRequestLimits.google.limits, maxConcurrentTranslations: 17});await settle()
+      expect(JSON.stringify(owner.serviceRequestLimits)).toBe(snapshot)
+      if (reason === 'config') expect(h.source.config.serviceRequestLimits).toEqual({})
+      if (reason === 'service') expect(h.source.config.serviceRequestLimits.microsoft).toBeUndefined()
+      expect(h.clientErrors).toEqual([])
+    } finally {await h.finish()}
+  })
   it('公开套餐父模板没有根DOM或占位且不加载套餐子模块，保存的模型保持原值', async () => {
     const h = await mountServiceClient('chatgptPlan')
     try {

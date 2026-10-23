@@ -2,7 +2,7 @@
  * @file src/services/translation/queue.ts
  *
  * 文件职责：提供带会话取消、并发上限和公平调度的翻译任务队列，供全文等批量场景控制 provider 压力。
- * 主要内容：定义 queue session/lease、TranslationQueueCancelledError，支持创建和取消会话、enqueue、释放租约、按会话索引的 O(1) 取消、队列压缩及全局清理，确保已取消任务不会继续占用槽位；单请求 AbortSignal 可直接摘除等待项，执行后的传输仍由任务与租约拥有。 可核对的公开符号包括 TranslationQueueSession、TranslationQueueLease、TranslationQueueCancelledError、createTranslationQueueSession、cancelTranslationQueueSession、enqueueTranslation、clearTranslationQueue。
+ * 主要内容：定义 queue session/lease、TranslationQueueCancelledError，支持会话与单条 AbortSignal 的 O(1) 等待取消、出队监听清理、队列压缩及全局清理；单条取消不影响同会话其他任务，已运行任务仍由真实传输租约持槽。 可核对的公开符号包括 TranslationQueueSession、TranslationQueueLease、TranslationQueueCancelledError、createTranslationQueueSession、cancelTranslationQueueSession、enqueueTranslation、clearTranslationQueue。
  * 模块边界：本文件位于翻译 application service 层，负责用例编排和端口契约；不挂载页面 UI，且不应把某家供应商的网络细节扩散到 feature，具体 HTTP 协议由 providers/platform 实现。
  */
 
@@ -35,9 +35,10 @@ type TranslationQueueSessionState =
 interface PendingTranslation {
   session: TranslationQueueSession;
   /** 在 pendingTranslations 中的槽位；压缩队列时统一平移，保证取消是 O(1) 定位。 */
-  slot: number;
+  slot: number | undefined;
   execute: () => Promise<void>;
   cancel: (error: Error) => void;
+  removeAbortListener?: () => void;
 }
 
 export class TranslationQueueCancelledError extends Error {
@@ -74,6 +75,8 @@ function forgetPendingTranslation(entry: PendingTranslation): void {
   const entries = sessionPendingEntries(entry.session);
   entries.delete(entry);
   if (entries.size === 0) pendingBySession.delete(entry.session);
+  entry.slot = undefined;
+  entry.removeAbortListener?.();
 }
 
 /**
@@ -81,7 +84,7 @@ function forgetPendingTranslation(entry: PendingTranslation): void {
  * 同步移除索引——因此这里不需要再复验槽位归属。
  */
 function detachPendingTranslation(entry: PendingTranslation): void {
-  pendingTranslations[entry.slot] = undefined;
+  pendingTranslations[entry.slot!] = undefined;
   pendingCount -= 1;
   forgetPendingTranslation(entry);
 }
@@ -132,7 +135,7 @@ function compactPendingQueue(force = false): void {
     const offset = pendingHead;
     pendingTranslations = pendingTranslations.slice(offset);
     pendingHead = 0;
-    for (const entry of pendingTranslations) if (entry) entry.slot -= offset;
+    for (const entry of pendingTranslations) if (entry) entry.slot! -= offset;
   }
 }
 
@@ -199,6 +202,7 @@ export function cancelTranslationQueueSession(session: TranslationQueueSession, 
  * 添加翻译任务到队列。
  * @param translationTask 翻译任务函数，需要返回 Promise
  * @param session 可选的取消会话；默认使用当前全局队列 generation
+ * @param signal 仅负责本条等待项的取消；出队后交由任务自己的传输取消逻辑处理
  */
 export function enqueueTranslation<T>(
   translationTask: (lease: TranslationQueueLease) => Promise<T>,
@@ -208,22 +212,21 @@ export function enqueueTranslation<T>(
   try {
     const cancellationError = getSessionCancellationError(session);
     if (cancellationError) return Promise.reject(cancellationError);
-    if (signal?.aborted) return Promise.reject(new DOMException('翻译已取消', 'AbortError'));
+    if (signal?.aborted) return Promise.reject(createQueueAbortError());
   } catch (error) {
     return Promise.reject(error);
   }
 
   return new Promise<T>((resolve, reject) => {
-    const stopWatching = () => signal?.removeEventListener('abort', onAbort);
     const entry: PendingTranslation = {
       session,
       slot: pendingTranslations.length,
       cancel: (error) => {
-        stopWatching();
+        entry.slot = undefined;
+        entry.removeAbortListener?.();
         reject(error);
       },
       execute: async () => {
-        stopWatching();
         const heldSettlements: Promise<void>[] = [];
         let acceptsHolds = true;
         const lease: TranslationQueueLease = {
@@ -250,18 +253,33 @@ export function enqueueTranslation<T>(
       },
     };
 
-    const onAbort = () => {
-      // 监听只登记等待阶段；出队、会话取消和全局清理均先注销，不存在活动条目。
-      detachPendingTranslation(entry);
-      compactPendingQueue();
-      entry.cancel(new DOMException('翻译已取消', 'AbortError'));
-    };
     pendingTranslations.push(entry);
     pendingCount += 1;
     sessionPendingEntries(session).add(entry);
-    signal?.addEventListener('abort', onAbort, {once: true});
+    if (signal) {
+      const onAbort = () => {
+        // 出队或其它取消路径已经归还等待项所有权，不能再减计数或结束活动任务。
+        if (entry.slot === undefined) return;
+        detachPendingTranslation(entry);
+        entry.cancel(createQueueAbortError());
+        compactPendingQueue();
+      };
+      entry.removeAbortListener = () => {
+        signal.removeEventListener('abort', onAbort);
+        entry.removeAbortListener = undefined;
+      };
+      signal.addEventListener('abort', onAbort, {once: true});
+      // 注册边界可能同步触发取消；既处理漏过的事件，也保持已处理事件的幂等性。
+      if (signal.aborted) onAbort();
+    }
     processQueue();
   });
+}
+
+function createQueueAbortError(): Error {
+  const error = new Error('翻译已取消');
+  error.name = 'AbortError';
+  return error;
 }
 
 /**

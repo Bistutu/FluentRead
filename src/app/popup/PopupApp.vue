@@ -2,6 +2,7 @@
  @file src/app/popup/PopupApp.vue
  文件职责：实现浏览器 Popup 的主交互界面，连接当前标签页状态、翻译配置、可插拔皮肤、功能抽屉和高频操作，让现场开关与显示操作保持简短，将长期偏好引导到对应设置页，并为从划词抽屉打开的设置保留明确返回原网页的入口。
  主要内容：译文显示抽屉读取当前文档的字体状态，提供仅当前页的原字体与浏览器默认切换，并在导航、关闭与失活时撤销旧操作；翻译卡片右下角的双语/仅译文图标与网站规则同行，模式回调随服务和操作变化失效；品牌官网入口保留稳定点击区域，内部图标在悬停和键盘聚焦时缓慢单次摇摆并遵循动画偏好，停留后显示可用 Escape 关闭的官网提示；复用真实全文完成状态呈现首次翻译指引和就地自助诊断，配置修复定位当前服务，本地报告由用户预览并手动导出；在配置 hydration 后汇总翻译服务，直接展示网页默认服务与适用的配置模型；翻译与局部同排，主操作用短标题合并平台快捷键并保留加载状态，长组合在悬停提示中完整显示，站点开关保留独立按钮；赞赏码在当前弹窗内切换放大与还原，关闭后重置；悬停、划词与图片抽屉优先展示开关和操作示意，首次单屏语言选择独占内容，保存后立即显示主菜单；页面操作、抽屉和导航绑定活跃会话，等待期间独占请求，关闭和配置切换使旧回复失效；网站规则写前复验标签页，等待后台确认并呈现保存忙碌、暂停与失败反馈；Safari 免费池精确授权，焦点复查保留已就绪按钮，点击接管旧读取并重新确认实际许可，撤权取消待发操作，授权事件合并刷新，错误随语言资源更新；打开的实际 teleport 抽屉复用平台可见视口订阅跟随键盘与缩放，极矮区域由同一订阅派生紧凑布局，整页遮罩保持背景拦截，可见高度扩大时仅修正当前聚焦服务搜索被吸顶标题遮住的外框，关闭、缓存失活和卸载立即释放，根画布保持固有尺寸。
+ 信息层级：服务摘要只保留当前服务与模型；悬停和划词的快捷开关与标题同排，独立快捷方案的作用范围仍明确说明，圈选快捷键只在操作示意中展示。
  模块边界：组件编排 UI、浏览器导航事件与生命周期；页内面板通过授权来源固定发起网页，页面消息归属由 pageActions 管理，不实现翻译 provider、缓存存储或 content 挂载；公共配置由 services/config 管理；配置草稿复用共享编辑会话，保留 post 合并和关闭补丁交接。
 -->
 <!-- Popup 页面归 app 层所有；WXT 入口只负责调用挂载函数。 -->
@@ -136,7 +137,6 @@
           <span class="provider-avatar">
             <ServiceIcon :service="config.service" :label="providerLabel(config.service)" size="small" />
           </span>
-          <span v-if="assignedProviders.length > 1" class="provider-avatar provider-overflow">+{{ assignedProviders.length - 1 }}</span>
           <span class="provider-summary-chevron">›</span>
         </span>
       </button>
@@ -282,7 +282,18 @@
       <div ref="drawerSurface" class="drawer-surface">
         <div class="drawer-handle" />
         <header v-if="activeDrawer !== 'services'" class="drawer-header">
-        <div class="drawer-heading"><button v-if="activeDrawer === 'aiContext'" type="button" :aria-label="t('popup.providers.title')" :onClick="drawerActions.services">←</button><div><h2>{{ drawerTitle }}</h2><p v-if="!['image', 'services'].includes(activeDrawer)">{{ drawerDescription }}</p></div></div>
+        <div class="drawer-heading">
+          <button v-if="activeDrawer === 'aiContext'" type="button" :aria-label="t('popup.providers.title')" :onClick="drawerActions.services">←</button>
+          <div class="drawer-heading-copy">
+            <div class="drawer-title-row">
+              <h2>{{ drawerTitle }}</h2>
+              <button v-if="activeDrawer === 'hover'" class="switch compact" type="button" role="switch" :aria-label="t('popup.quickTranslation.defaultHoverShortcut')" :aria-checked="defaultHoverEnabled" data-testid="hover-enable" :onClick="drawerActions.hover"><i /></button>
+              <button v-else-if="activeDrawer === 'selection'" class="switch compact" type="button" role="switch" :aria-label="t('popup.selectionTranslation')" :aria-checked="config.selectionTranslatorMode !== 'disabled'" data-testid="selection-enable" :onClick="drawerActions.selection"><i /></button>
+            </div>
+            <p v-if="drawerDescription">{{ drawerDescription }}</p>
+            <p v-if="activeDrawer === 'hover' && quickHoverProfiles.length" class="independent-profile-note">{{ t('popup.quickTranslation.defaultOnly', {count: quickHoverProfiles.length}) }}</p>
+          </div>
+        </div>
         <button type="button" aria-label="关闭" :onClick="drawerActions.close">×</button>
         </header>
 
@@ -316,13 +327,6 @@
       </div>
 
       <div v-else-if="activeDrawer === 'hover'" class="drawer-content">
-        <div class="setting-row quick-enable-row">
-          <span>
-            <strong>{{ t('popup.quickTranslation.defaultHoverShortcut') }}</strong>
-            <small v-if="quickHoverProfiles.length" class="independent-profile-note">{{ t('popup.quickTranslation.defaultOnly', {count: quickHoverProfiles.length}) }}</small>
-          </span>
-          <button class="switch compact" type="button" role="switch" :aria-label="t('popup.quickTranslation.defaultHoverShortcut')" :aria-checked="defaultHoverEnabled" data-testid="hover-enable" :onClick="drawerActions.hover"><i /></button>
-        </div>
         <div class="interaction-preview hover-translation-preview" :class="{'preview-disabled': !hoverProfileCount}">
           <span class="cursor" aria-hidden="true">↖</span><span aria-hidden="true">＋</span>
           <button class="hover-keycap" type="button" :aria-label="t('popup.quickSettings.chooseHoverShortcut')" :title="t('popup.quickSettings.chooseHoverShortcut')" :onClick="drawerActions.translationSettings" data-i18n-ignore>{{ hoverPreviewKey }}</button>
@@ -339,20 +343,12 @@
       </div>
 
       <div v-else-if="activeDrawer === 'selection'" class="drawer-content">
-        <div>
-          <div class="setting-row quick-enable-row">
-            <span><strong>{{ t('popup.selectionTranslation') }}</strong></span>
-            <button class="switch compact" type="button" role="switch" :aria-label="t('popup.selectionTranslation')" :aria-checked="config.selectionTranslatorMode !== 'disabled'" data-testid="selection-enable" :onClick="drawerActions.selection"><i /></button>
+        <div class="choice-block">
+          <label>翻译模式</label>
+          <div class="chips two" role="group" aria-label="划词翻译模式">
+            <button v-for="item in drawerSelectionModes" :key="item.value" type="button" :class="{ selected: (config.selectionTranslatorMode === 'disabled' ? config.selectionTranslatorModeBeforeDisable : config.selectionTranslatorMode) === item.value }" :aria-pressed="(config.selectionTranslatorMode === 'disabled' ? config.selectionTranslatorModeBeforeDisable : config.selectionTranslatorMode) === item.value" :disabled="config.selectionTranslatorMode === 'disabled'" :onClick="item.choose">{{ item.label }}</button>
           </div>
-          <div class="choice-block">
-            <label>翻译模式</label>
-            <div class="chips two" role="group" aria-label="划词翻译模式">
-              <button v-for="item in drawerSelectionModes" :key="item.value" type="button" :class="{ selected: (config.selectionTranslatorMode === 'disabled' ? config.selectionTranslatorModeBeforeDisable : config.selectionTranslatorMode) === item.value }" :aria-pressed="(config.selectionTranslatorMode === 'disabled' ? config.selectionTranslatorModeBeforeDisable : config.selectionTranslatorMode) === item.value" :disabled="config.selectionTranslatorMode === 'disabled'" :onClick="item.choose">{{ item.label }}</button>
-            </div>
-          </div>
-
         </div>
-
       </div>
 
       <div v-else-if="activeDrawer === 'image'" class="drawer-content image-methods">
@@ -371,7 +367,7 @@
         </div>
         <button v-else class="image-method" :class="{enabled: config.selectionAreaEnabled}" type="button" role="switch" :aria-checked="config.selectionAreaEnabled" aria-label="启用或关闭圈选翻译" :onClick="drawerActions.area">
           <svg class="image-method-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5"/><rect x="7" y="7" width="10" height="10" rx="1"/></svg>
-          <span class="image-method-copy"><strong>{{ t('popup.image.area') }}</strong><small class="image-method-shortcut"><kbd data-i18n-ignore>{{ areaHotkeyDisplayName }}</kbd><span>{{ t('popup.image.areaHint') }}</span></small></span>
+          <span class="image-method-copy"><strong>{{ t('popup.image.area') }}</strong><small>{{ t('popup.image.areaHint') }}</small></span>
           <span class="switch compact" :aria-checked="config.selectionAreaEnabled" aria-hidden="true"><i /></span>
         </button>
         <div v-if="browserCapabilities.areaTranslation" class="area-translation-preview quick-area-preview" :class="{'preview-disabled': !config.selectionAreaEnabled}" data-testid="area-translation-demo">
@@ -790,14 +786,14 @@ const popupQuickFeatureViewModels = computed<Record<PopupQuickFeatureId, PopupQu
 };});
 const visiblePopupQuickFeatures = computed(() => visiblePopupQuickFeatureIds.value
   .map((featureId) => popupQuickFeatureViewModels.value[featureId]));
-const drawerTitle = computed(() => ({ services: t('popup.providers.title'), aiContext: t('popup.aiContext.title'), hover: '鼠标悬停翻译设置', selection: '划词翻译设置', appearance: '译文显示设置', image: '图片翻译' }[activeDrawer.value]));
+const drawerTitle = computed(() => ({ services: t('popup.providers.title'), aiContext: t('popup.aiContext.title'), hover: t('popup.quickTranslation.defaultHoverShortcut'), selection: t('popup.selectionTranslation'), appearance: '译文显示设置', image: '图片翻译' }[activeDrawer.value]));
 const drawerDescription = computed(() => ({
   services: '',
   aiContext: t('popup.aiContext.intro'),
-  hover: '将鼠标停在段落上，按快捷键查看译文。',
-  selection: '选中网页文字，按你的偏好获取译文。',
+  hover: '',
+  selection: '',
   appearance: t('popup.quickSettings.appearanceDescription'),
-  image: '把鼠标移到图片上，从图片左下角打开翻译入口。',
+  image: '',
 }[activeDrawer.value]));
 const selectionModes = [
   { value: 'bilingual', label: '双语显示' },

@@ -6,7 +6,7 @@ import {extractTranslationText, extractTranslationTextFromNodes} from '@/src/cor
 import {compileSiteRulePack, composeSiteAdapters, getSiteAdapterAttributeFilter, getSiteRuleObservedAttributes, resolveSiteRule} from '@/src/core/site-adaptation/compiler';
 import {normalizeSiteAdaptationSettings, parseSiteRulePack, SITE_RULE_LIMITS, validateSelectors} from '@/src/core/site-adaptation/schema';
 import type {SiteRule, SiteRulePack} from '@/src/core/site-adaptation/types';
-import {createTranslationMutationObserverOptions} from '@/src/features/full-page-translation/content/mutationObservation';
+import {asHTMLElement, createMutationRescanSelector, createTranslationMutationObserverOptions} from '@/src/features/full-page-translation/content/mutationObservation';
 import {createTranslationSourceSnapshot} from '@/src/core/translation/serialization';
 import {builtinSiteRulePack} from '@/src/core/site-adaptation/catalog';
 
@@ -14,6 +14,86 @@ const rule = (extra: Partial<SiteRule> = {}): SiteRule => ({
     id: 'example', name: 'Example', match: {hosts: ['example.test']}, ...extra,
 });
 const pack = (rules: SiteRule[] = [rule()]): SiteRulePack => ({version: 1, rules});
+
+describe('mutation rescan readiness', () => {
+    function fixture() {
+        const {document} = parseHTML('<html><body><section id="a"></section><section id="b"></section><section id="c"></section></body></html>');
+        const roots = ['a', 'b', 'c'].map(id => document.getElementById(id)!);
+        const queue = {dirtyRoots: new Set<Node>(roots), broadRescanRoots: new WeakSet<Node>(), broadRescanCooldowns: new WeakMap<Node, number>()};
+        return {document, roots, queue};
+    }
+
+    it('不把缺少渲染契约的节点交给页面状态恢复', () => {
+        const {document, roots: [root]} = fixture();
+        expect(asHTMLElement(root)).toBe(root);
+        expect(asHTMLElement(document.createTextNode('source'))).toBeNull();
+        expect(asHTMLElement({nodeType: 1})).toBeNull();
+        expect(asHTMLElement({nodeType: 1, tagName: 'DIV'})).toBeNull();
+    });
+
+    it('冷却根让就绪兄弟按队列顺序前进，到期后仍能扫描', () => {
+        const {roots: [a, b, c], queue} = fixture();
+        queue.broadRescanRoots.add(a!); queue.broadRescanCooldowns.set(a!, 1000);
+        let clock = 100;
+        const selection = createMutationRescanSelector(queue, () => clock, false);
+        expect(selection.take()).toBe(b); expect(selection.take()).toBe(c); expect(selection.take()).toBeNull();
+        expect([...queue.dirtyRoots]).toEqual([a]); expect(selection.delay()).toBe(16);
+        const waiting = createMutationRescanSelector(queue, () => clock, false);
+        expect(waiting.take()).toBeNull(); expect(waiting.delay()).toBe(900);
+        clock = 1000;
+        expect(createMutationRescanSelector(queue, () => clock, false).take()).toBe(a);
+        expect(queue.dirtyRoots.size).toBe(0);
+    });
+
+    it('所有根冷却时每片只检查一轮，并等待最早期限且至少让出16毫秒', () => {
+        const {roots, queue} = fixture();
+        roots.forEach((root, index) => {queue.broadRescanRoots.add(root); queue.broadRescanCooldowns.set(root, [1100, 400, 700][index]!);});
+        let clock = 100, clockReads = 0;
+        const selection = createMutationRescanSelector(queue, () => {clockReads += 1; return clock;}, false);
+        expect(selection.take()).toBeNull(); expect([...queue.dirtyRoots]).toEqual(roots);
+        expect(selection.delay()).toBe(300);
+        const readsAfterRound = clockReads;
+        expect(selection.take()).toBeNull(); expect(clockReads).toBe(readsAfterRound);
+        clock = 399; expect(selection.delay()).toBe(16);
+    });
+
+    it('冷却根选择也在八毫秒预算后让出，下一片从未检查的根继续', () => {
+        const {roots: [a, b], queue} = fixture();
+        queue.dirtyRoots = new Set([a!, b!]); queue.broadRescanRoots.add(a!); queue.broadRescanCooldowns.set(a!, 1000);
+        let clock = 0;
+        const selection = createMutationRescanSelector(queue, () => clock += 4, false);
+        expect(selection.take()).toBeNull(); expect(selection.shouldYield()).toBe(true); expect(selection.delay()).toBe(16);
+        expect([...queue.dirtyRoots]).toEqual([b, a]);
+        expect(createMutationRescanSelector(queue, () => clock, false).take()).toBe(b);
+    });
+
+    it('删除断连根；父级归并提前清空集合和空集合均安全结束', () => {
+        const {roots: [a, b, c], queue} = fixture(); a!.remove();
+        const selection = createMutationRescanSelector(queue, () => 0, false);
+        expect(selection.take()).toBe(b); expect([...queue.dirtyRoots]).toEqual([c]);
+        queue.dirtyRoots.clear(); expect(selection.take()).toBeNull(); expect(selection.delay()).toBe(16);
+        const empty = createMutationRescanSelector(queue, () => 0, false);
+        expect(empty.take()).toBeNull(); expect(empty.delay()).toBe(16); expect(empty.shouldYield()).toBe(false);
+    });
+
+    it.each([false, true])('发现期间同步加入的新根下一片复查，不继承纯冷却长等待：初始发现=%s', active => {
+        const {roots: [cold, ready, late], queue} = fixture();
+        queue.dirtyRoots = new Set(active ? [cold!] : [cold!, ready!]);
+        queue.broadRescanRoots.add(cold!); queue.broadRescanCooldowns.set(cold!, 1000);
+        const selection = createMutationRescanSelector(queue, () => 100, active);
+        if (!active) expect(selection.take()).toBe(ready);
+        queue.dirtyRoots.add(late!);
+        expect(selection.take()).toBeNull(); expect(selection.delay()).toBe(16);
+        expect(createMutationRescanSelector(queue, () => 116, false).take()).toBe(late);
+    });
+
+    it.each([false, true])('非广域根不使用旧期限，广域根无期限可立即发现：广域=%s', broad => {
+        const {roots: [root], queue} = fixture(); queue.dirtyRoots = new Set([root!]);
+        if (broad) queue.broadRescanRoots.add(root!);
+        else queue.broadRescanCooldowns.set(root!, 1000);
+        expect(createMutationRescanSelector(queue, () => 0, false).take()).toBe(root);
+    });
+});
 
 describe('Kagi News content-bearing buttons', () => {
     function fixture(scope: 'content' | 'all' = 'content', settings = normalizeSiteAdaptationSettings(undefined), href = 'https://news.kagi.com/world/latest') {

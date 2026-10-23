@@ -138,6 +138,11 @@ const artifactBytes = Buffer.byteLength(source);
 // 候选为 2,124,262 字节，增加 19,529（0.9279%），未新增依赖；范围校验、唯一定位和队列复用共享实现。
 // 利用主线预算 2,107,100 的余量后，按既有 1 KB 步长最小增加 18 KB，余 838；全部协议、资源及 VM 校验保留。
 // 构建对照与散列见 docs/reports/section-rules-1044-20261022/userscript-size.json。
+// 阅读生命周期修复：同依赖独立主线 0ad3d431 为 2,124,326 字节，候选为 2,126,170，
+// 净增 1,844（0.0868%）；无新增依赖，涵盖语言边界、等待取消和动态扫描。
+// 利用原余量后按既有 1 KB 步长最小增加 2 KB，余 930 字节；全部协议、资源及 VM 断言保留。
+// 构建对照与散列见 docs/reports/reading-consistency-20261023/userscript-size.json。
+// 发布审计整合已进一步缩小产物，继续使用审计开始时的原上限，不沿用上游增加的 2 KB 余量。
 const MAX_USERSCRIPT_BYTES = 2_125_100;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';
 const preludeEndMarker = '/* FluentRead userscript compatibility prelude:end */';
