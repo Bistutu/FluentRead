@@ -8,7 +8,7 @@ import type {LegacyPatternEntry, MessageCatalog, UiLanguageBundle} from '@/src/c
 
 type CatalogColumns = readonly [readonly string[], readonly string[]];
 type PatternColumns = readonly [readonly string[], readonly string[], readonly (readonly number[] | null)[]];
-type LanguageColumns = readonly [keys: CatalogColumns, texts: CatalogColumns, early: PatternColumns, late: PatternColumns];
+type LanguageColumns = readonly [keys: CatalogColumns, early: PatternColumns, late: PatternColumns, texts: CatalogColumns];
 
 /** 只供构建使用；按键排序使输出不受导入和对象展开次序影响。 */
 export function packUiLanguageBundle(bundle: UiLanguageBundle): LanguageColumns {
@@ -20,8 +20,8 @@ export function packUiLanguageBundle(bundle: UiLanguageBundle): LanguageColumns 
         entries.map(([source]) => source), entries.map(([, text]) => text), entries.map(([, , captures]) => captures ?? null),
     ];
     const messages = catalog(bundle.messages), legacy = catalog(bundle.legacyText);
-    // 先集中资源键，再集中译文，使同一种文字在 gzip 窗口内相邻。
-    return [[messages[0], legacy[0]], [messages[1], legacy[1]], patterns(bundle.legacyPatterns.early), patterns(bundle.legacyPatterns.late)];
+    // 资源键与模板相邻，完整译文集中在末尾，减少模板和目录中的相同片段超出 gzip 窗口。
+    return [[messages[0], legacy[0]], patterns(bundle.legacyPatterns.early), patterns(bundle.legacyPatterns.late), [messages[1], legacy[1]]];
 }
 
 /** 恢复本地分列资源；发布过的原始对象格式保持兼容。资源形状继续由加载器统一校验。 */
@@ -30,6 +30,6 @@ export function unpackUiLanguageBundle(value: UiLanguageBundle | LanguageColumns
     const catalog = ([keys, texts]: CatalogColumns): MessageCatalog => Object.fromEntries(keys.map((key, index) => [key, texts[index]]));
     const patterns = ([sources, texts, captures]: PatternColumns): LegacyPatternEntry[] => sources.map((source, index) =>
         captures[index] === null ? [source, texts[index]] : [source, texts[index], captures[index]!]);
-    return {messages: catalog([value[0][0], value[1][0]]), legacyText: catalog([value[0][1], value[1][1]]),
-        legacyPatterns: {early: patterns(value[2]), late: patterns(value[3])}};
+    return {messages: catalog([value[0][0], value[3][0]]), legacyText: catalog([value[0][1], value[3][1]]),
+        legacyPatterns: {early: patterns(value[1]), late: patterns(value[2])}};
 }

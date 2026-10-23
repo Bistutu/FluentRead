@@ -25,8 +25,8 @@ describe('embedded language columns', () => {
             early: [], late: [['^same$', 'localized'], ['^same$', 'fallback', []], ['^(.+)$', '{1}', [1]]],
         }} as const;
         const packed = packUiLanguageBundle(bundle);
-        expect(packed).toEqual([[['a', 'z'], ['旧文案']], [['first', '末尾'], ['legacy']], [[], [], []],
-            [['^same$', '^same$', '^(.+)$'], ['localized', 'fallback', '{1}'], [null, [], [1]]]]);
+        expect(packed).toEqual([[['a', 'z'], ['旧文案']], [[], [], []],
+            [['^same$', '^same$', '^(.+)$'], ['localized', 'fallback', '{1}'], [null, [], [1]]], [['first', '末尾'], ['legacy']]]);
         expect(unpackUiLanguageBundle(JSON.parse(JSON.stringify(packed)))).toEqual(bundle);
         expect(unpackUiLanguageBundle(bundle)).toBe(bundle);
         expect(packUiLanguageBundle({...bundle, messages: {a: 'first', z: '末尾'}})).toEqual(packed);
