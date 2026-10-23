@@ -7,6 +7,7 @@
   "reencounter.current": "今回の原文",
   "reencounter.saved": "保存したときの原文",
   "reencounter.loading": "保存した表現を読み込み中…",
+  "reencounter.readFailed": "保存した表現を読み込めません。再試行してください。",
   "reencounter.noSentence": "保存された原文がありません。",
   "reencounter.reference": "保存した参考情報",
   "reencounter.retry": "再試行",

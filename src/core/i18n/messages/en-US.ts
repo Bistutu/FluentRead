@@ -29,7 +29,13 @@ import {localTtsEnglishMessages} from './localTts';
 import {translationStatsEnglishMessages} from './translationStats';
 import {localTranslationEnglishMessages} from './localTranslation';
 
+import {personalCorrectionMessages} from './personalCorrections';
+
+import countForms from './count-forms.json';
+
 export const enUSMessages = {
+    ...countForms['en-US'],
+    ...personalCorrectionMessages['en-US'],
     "document.config.loadFailed": "Could not load settings. Reload and try again.",
     "popup.compact.translate": "Translate",
     "popup.compact.restore": "Restore",
@@ -2487,7 +2493,6 @@ export const enUSLegacyText: Readonly<Record<string, string>> = {
     '公开网页服务': 'Public web service',
     '实验候选': 'Experimental candidate',
     '免费翻译服务': 'Free translation services',
-    "网络问题通常几分钟后重试；限流按服务提示恢复；拦截可能需要几小时；日额度通常隔天恢复": 'Retry network issues after a few minutes; follow each service guidance for rate limits; blocks may take a few hours; daily limits usually reset the next day.',
     '官方公开 API': 'Official public API',
     '联系邮箱（可选）': 'Contact email (optional)',
     '不填写也可以使用': 'Works without an email',

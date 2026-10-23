@@ -28,7 +28,13 @@ import {localTtsSpanishMessages} from './localTts';
 import {translationStatsSpanishMessages} from './translationStats';
 import {localTranslationSpanishMessages} from './localTranslation';
 
+import {personalCorrectionMessages} from './personalCorrections';
+
+import countForms from './count-forms.json';
+
 export const esESMessages = {
+    ...countForms['es-ES'],
+    ...personalCorrectionMessages['es-ES'],
     "document.config.loadFailed": "No se pudieron cargar los ajustes. Recarga la página e inténtalo de nuevo.",
     "popup.compact.translate": "Traducir",
     "popup.compact.restore": "Restaurar",
@@ -784,7 +790,7 @@ export const esESMessages = {
     'language.settingsLabel': 'Idioma de la aplicación',
     'language.settingsDescription': 'Elige el idioma que se usa en FluentRead.',
     'language.help': 'Los cambios se aplican de inmediato.',
-    'language.saveFailed': 'No se pudo guardar el idioma de la interfaz. Vuelve a abrir los ajustes e inténtalo de nuevo.',
+    'language.saveFailed': 'No se pudo cambiar el idioma de la interfaz. Inténtalo de nuevo.',
     'language.changed': 'Idioma de la interfaz cambiado',
     'language.onboardingWelcomeEyebrow': 'Bienvenido',
     'language.onboardingWelcomeTitle': 'Bienvenido a FluentRead',

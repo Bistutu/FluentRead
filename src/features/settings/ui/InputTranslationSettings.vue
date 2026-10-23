@@ -115,8 +115,8 @@
               :placeholder="defaultUserPrompt"
               :aria-label="t('inputTranslation.userPrompt')"
               :limit-label="t('inputTranslation.promptLimit', {count: 8192})"
-              :token-hint="t('inputTranslation.promptVariablesHelp')"
-              :token-list-aria-label="t('inputTranslation.promptVariablesHelp')"
+              :token-hint="t('inputTranslation.promptVariablesHelp', {origin: '{origin}', to: '{to}'})"
+              :token-list-aria-label="t('inputTranslation.promptVariablesHelp', {origin: '{origin}', to: '{to}'})"
               :token-aria-label="promptTokenAriaLabel"
               :tokens="promptTokens"
             />
@@ -289,10 +289,10 @@ const promptTokenAriaLabel = (token: {value: string; label: string}) => t('input
 const promptWarnings = computed(() => {
   const warnings: string[] = []
   if (inputConfig.value.inputBoxTranslationPrompt?.trim() && !inputConfig.value.inputBoxTranslationPrompt.includes('{{origin}}')) {
-    warnings.push(t('inputTranslation.promptMissingOrigin'))
+    warnings.push(t('inputTranslation.promptMissingOrigin', {origin: '{origin}'}))
   }
   if (inputConfig.value.inputBoxTranslationPrompt?.trim() && !inputConfig.value.inputBoxTranslationPrompt.includes('{{to}}')) {
-    warnings.push(t('inputTranslation.promptMissingTarget'))
+    warnings.push(t('inputTranslation.promptMissingTarget', {to: '{to}'}))
   }
   return warnings
 })

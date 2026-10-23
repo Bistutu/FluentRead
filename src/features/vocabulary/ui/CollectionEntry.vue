@@ -7,7 +7,7 @@
 <template>
   <article ref="root" class="word-row" :class="{'sentence-entry': sentence}">
     <header class="entry-heading">
-      <h3><button type="button" class="entry-open" :title="sentence ? '打开听读与解释' : '打开学习用法'" @click="emit('study')" data-i18n-ignore>{{ entry.term }}</button></h3>
+      <h3><button type="button" class="entry-open" :title="t(sentence ? 'learning.collection.listenLearn' : 'learning.collection.learnUsage')" @click="emit('study')" data-i18n-ignore>{{ entry.term }}</button></h3>
       <div class="entry-actions">
         <button type="button" class="entry-icon" :class="{playing}" :aria-label="playing ? '停止朗读' : '朗读原文'" :title="playing ? '停止朗读' : '朗读原文'" @click="emit('speak')"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 7h4l4-3v12l-4-3H3z"/><path :d="playing ? 'M14 7v6m3-6v6' : 'M14 7a4 4 0 0 1 0 6m2-9a8 8 0 0 1 0 12'"/></svg></button>
         <details ref="menu" class="entry-more" name="fluentread-collection-popover" @keydown.esc.stop.prevent="closeMenu">

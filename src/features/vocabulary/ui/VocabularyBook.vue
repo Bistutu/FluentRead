@@ -1,7 +1,7 @@
 <!--
  * @file src/features/vocabulary/ui/VocabularyBook.vue
  * 文件职责：组织内容优先的学习收藏列表与主动复习，协调句子听读、解释保存、筛选与文件操作。
- * 主要内容：相同译文保留原文且不重复展示；把复习作为列表主操作，收藏开关与文件动作收进管理菜单；搜索与类型筛选合为一行，每条收藏直接提供学习入口，配置、数据和朗读沿用已有消息协议，后台进度保持播放状态、结束或停止才释放；确认开始即占用操作状态，等待、菜单让步及响应后校验生命周期，拒绝迟到请求、文件下载和已卸载界面更新。
+ * 主要内容：相同译文保留原文且不重复展示；把复习作为列表主操作，收藏开关与文件动作收进管理菜单；搜索与类型筛选合为一行，每条收藏直接提供学习入口；界面文案订阅共享语言与资源修订，缓存期间首次加载的语言也能自动更新。配置、数据和朗读沿用已有消息协议，后台进度保持播放状态、结束或停止才释放；确认开始即占用操作状态，等待、菜单让步及响应后校验生命周期，拒绝迟到请求、文件下载和已卸载界面更新。
  * 模块边界：UI 不直接访问 Dexie 或上传学习数据；完整备份进入备份与恢复页，收藏文件只包含本领域数据，数据库操作集中在后台 repository/handler，上下文和来源只有用户明确选择时才导出。
  -->
 <template>
@@ -152,8 +152,8 @@ import UiIcon from '@/src/ui/components/UiIcon.vue'
 import FeatureEnableCard from '@/src/ui/components/FeatureEnableCard.vue';
 import UiSelect from '@/src/ui/components/UiSelect.vue';
 import {applyInterfaceTheme} from '@/src/ui/interfaceAppearance'
+import {useUiI18n} from '@/src/ui/i18n';
 import {ElOption} from 'element-plus';
-function translateControlLabel(value: string): string { return translateLegacyText(value, normalizeUiLanguage(runtimeConfig.uiLanguage)); }
 
 import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, shallowRef, watch } from 'vue';
 import VocabularyStudy from './VocabularyStudy.vue';
@@ -163,7 +163,7 @@ import {vocabularySourceContext, vocabularySourceLink} from '../source';
 import {ReadingAnswer} from '@/src/features/reading-assistant/ui/answer/public';
 import {ElMessageBox} from 'element-plus';
 import browser from 'webextension-polyfill';
-import {normalizeUiLanguage, translate, translateLegacyText, type TranslationParams} from '@/src/core/i18n';
+import {normalizeUiLanguage, translateLegacyText} from '@/src/core/i18n';
 import {browserCapabilities} from '@/src/platform/browser/capabilities';
 import {createSelectionTtsClientRequestId, createSelectionTtsContentController, normalizeSpeechLanguage} from '@/src/features/selection-translation/speech/public';
 import {
@@ -201,8 +201,7 @@ import {
 } from '@/src/features/vocabulary/learningModel';
 
 const emit = defineEmits<{ navigate: [section: string] }>();
-const uiLanguage = ref(normalizeUiLanguage(runtimeConfig.uiLanguage));
-const t = (key: string, params?: TranslationParams): string => translate(key, uiLanguage.value, params);
+const {t, translateLegacy: translateControlLabel} = useUiI18n();
 const reencounterSupported = browserCapabilities.browser !== 'userscript';
 const betaEnabled = ref(false);
 const reencounterEnabled = ref(false);
@@ -794,7 +793,7 @@ function nextReviewLabel(entry: VocabularyEntry): string {
   if (delta <= 0) return '现在可以复习';
   if (delta < 60 * 60 * 1000) return `${Math.max(1, Math.ceil(delta / 60000))} 分钟后`;
   if (delta < 24 * 60 * 60 * 1000) return `${Math.ceil(delta / 3600000)} 小时后`;
-  return translate("learning.dueDays", normalizeUiLanguage(runtimeConfig.uiLanguage), {count: Math.ceil(delta / 86400000)});
+  return t('learning.dueDays', {count: Math.ceil(delta / 86400000)});
 }
 function normalizeLanguageKey(value: unknown): string {
   const normalized = String(value ?? '').trim().replaceAll('_', '-').toLowerCase();
@@ -837,14 +836,12 @@ onMounted(async () => {
   darkMedia = window.matchMedia('(prefers-color-scheme: dark)');
   darkMedia.addEventListener('change', applyTheme);
   await lifecycle.runAfterReady(configReady, async () => {
-    uiLanguage.value = normalizeUiLanguage(runtimeConfig.uiLanguage);
     betaEnabled.value = runtimeConfig.vocabularyBookEnabled;
     reencounterEnabled.value = runtimeConfig.vocabularyReencounterEnabled;
     selectionTranslatorEnabled.value = runtimeConfig.selectionTranslatorMode !== 'disabled' || runtimeConfig.harness?.enabled === true;
     targetLanguageKey.value = normalizeLanguageKey(runtimeConfig.to);
     applyTheme();
     unsubscribeConfig = subscribeConfig(next => {
-      uiLanguage.value = normalizeUiLanguage(next.uiLanguage);
       betaEnabled.value = next.vocabularyBookEnabled;
       reencounterEnabled.value = next.vocabularyReencounterEnabled;
       selectionTranslatorEnabled.value = next.selectionTranslatorMode !== 'disabled' || next.harness?.enabled === true;

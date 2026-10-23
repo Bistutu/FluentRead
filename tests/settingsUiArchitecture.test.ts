@@ -1079,7 +1079,7 @@ describe('options UI composition architecture', () => {
     const services = activeSectionSource(settings, 'settings-services')
     const styles = sourceBody('src/features/settings/ui/settings-sections.css')
 
-    expect(settingsGroupTitles(general)).toEqual(['基础配置', '网页辅助', '基本偏好'])
+    expect(settingsGroupTitles(general)).toEqual(['基础配置', "t('settings.general.assistance')", "t('settings.general.preferences')"])
     expect(general).not.toContain('class="settings-subgroup-heading"')
     expect(general).not.toContain('id="translated-display-heading"')
     expect(general).toContain('data-testid="open-translation-settings"')
@@ -1310,7 +1310,7 @@ describe('options UI composition architecture', () => {
     expect(item).toContain('<FieldHelp v-if="help" :content="help" />')
     expect(item).toContain('<slot name="description"><small v-if="description">{{ description }}</small></slot>')
     expect(settings).toContain(`label="划词触发方式" :help="t('selectionTrigger.modeDescription')">`)
-    expect(settings).toContain('<SettingsItem id="floating-ball-toggle" label="全文翻译悬浮球">')
+    expect(settings).toContain(`<SettingsItem id="floating-ball-toggle" :label="t('settings.general.floatingBall')">`)
     expect(settings).toContain(`:description="t('settings.fullPage.multiSegmentDescription')" :help="t('settings.fullPage.multiSegmentHelp')"`)
   })
 

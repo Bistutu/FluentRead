@@ -56,7 +56,6 @@ export function createUserscriptSettingsDataPlugin(root: string, enabled: boolea
         targets.set(normalizePath(resolve(root, 'src/core/config/driveSync.ts')), {names: ['VISIBLE_FIELDS']});
         targets.set(normalizePath(resolve(root, 'src/features/settings/model/navigation.ts')), {names: ['settingsPagePanels', 'settingsSearchTargets']});
         targets.set(normalizePath(resolve(root, 'src/core/config/translationLoadingStyle.ts')), {names: ['translationLoadingStyleOptions']});
-        targets.set(normalizePath(resolve(root, 'userscript/uiLanguageBundles.ts')), {names: ['recoveryMessages', 'sectionSweepMessages', 'deeplxMessages']});
         targets.set(normalizePath(resolve(root, 'src/core/config/freeTranslation.ts')), {names: ['FREE_TRANSLATION_PROVIDERS']});
         targets.set(normalizePath(resolve(root, 'src/core/language/catalog.ts')), {names: ['translationLanguageOptions']});
         targets.set(normalizePath(resolve(root, 'src/core/language/partOfSpeech.ts')), {names: ['PARTS']});

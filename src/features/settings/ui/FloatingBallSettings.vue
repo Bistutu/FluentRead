@@ -1,24 +1,24 @@
 <!--
  * @file src/features/settings/ui/FloatingBallSettings.vue
  * 文件职责：提供悬浮球的进阶外观与交互设置，把按钮显示方式、展开延迟、点击行为、紧凑尺寸、设置入口、收起不透明度和禁用网站集中在一处编辑。
- * 主要内容：组件以分段控件和设置页统一的紧凑数值框呈现各字段，写入前统一调用 core/config 的归一化函数，悬浮球关闭时禁用全部控件，并复用站点名单编辑器维护不显示悬浮球的域名。
+ * 主要内容：全部标签、选项和辅助说明使用稳定 i18n key；按扩展与脚本的真实入口区分“快捷面板”和“完整设置”，组件以分段控件和设置页统一的紧凑数值框呈现各字段，写入前统一调用 core/config 的归一化函数，悬浮球关闭时禁用全部控件，并复用站点名单编辑器维护不显示悬浮球的域名。
  * 模块边界：它只修改传入的配置对象，不发送标签页消息、不挂载悬浮球也不实现站点匹配；持久化由设置页统一触发，页面侧生效由悬浮球 content runtime 订阅配置完成。
  -->
 <template>
   <SettingsGroup
     class="floating-ball-settings"
-    title="悬浮球进阶设置"
+    :title="t('settings.floatingBall.title')"
     :description="enabled ? undefined : t('settings.floatingBall.disabledNote')"
   >
     <SettingsItem
-      label="按钮显示方式"
-      description="默认悬停时展开，移开后收起；也可始终显示工具，或只保留品牌按钮"
+      :label="t('settings.floatingBall.toolsDisplay')"
+      :description="t('settings.floatingBall.toolsDisplayDescription')"
       :disabled="!enabled"
     >
       <SegmentedControl
         :model-value="props.config.floatingBallToolsDisplay"
         :options="toolsDisplayOptions"
-        label="悬浮球按钮显示方式"
+        :label="t('settings.floatingBall.toolsDisplayAria')"
         :disabled="!enabled"
         @update:model-value="handleToolsDisplayChange"
       />
@@ -26,14 +26,14 @@
 
     <SettingsItem
       v-if="props.config.floatingBallToolsDisplay === 'hover'"
-      label="展开延迟"
-      help="鼠标停留达到设定时间后展开按钮，0 毫秒表示立即展开；增加延迟可减少误触，键盘聚焦时始终立即展开"
+      :label="t('settings.floatingBall.hoverDelay')"
+      :help="t('settings.floatingBall.hoverDelayHelp')"
       :disabled="!enabled"
     >
       <SettingsNumberInput
         :model-value="props.config.floatingBallHoverDelay"
         unit="ms"
-        aria-label="悬浮球展开延迟"
+        :aria-label="t('settings.floatingBall.hoverDelayAria')"
         :min="FLOATING_BALL_HOVER_DELAY_MIN"
         :max="FLOATING_BALL_HOVER_DELAY_MAX"
         :step="FLOATING_BALL_HOVER_DELAY_STEP"
@@ -43,55 +43,55 @@
     </SettingsItem>
 
     <SettingsItem
-      label="点击行为"
-      description="“打开设置”在悬浮球旁显示快捷面板；按住悬浮球可拖动"
+      :label="t('settings.floatingBall.clickAction')"
+      :description="t(isUserscript ? 'settings.floatingBall.clickDescriptionUserscript' : 'settings.floatingBall.clickDescription')"
       :disabled="!enabled"
     >
       <SegmentedControl
         :model-value="props.config.floatingBallClickAction"
         :options="clickActionOptions"
-        label="悬浮球点击行为"
+        :label="t('settings.floatingBall.clickAction')"
         :disabled="!enabled"
         @update:model-value="handleClickActionChange"
       />
     </SettingsItem>
 
     <SettingsItem
-      label="缩小悬浮球"
-      description="以更小的尺寸显示悬浮球，减少对网页内容的遮挡"
+      :label="t('settings.floatingBall.compact')"
+      :description="t('settings.floatingBall.compactDescription')"
       :disabled="!enabled"
     >
       <el-switch
         v-model="props.config.floatingBallCompact"
         class="settings-toggle"
-        aria-label="缩小悬浮球"
+        :aria-label="t('settings.floatingBall.compact')"
         :disabled="!enabled"
       />
     </SettingsItem>
 
     <SettingsItem
-      label="显示设置入口"
-      description="点击齿轮在按钮旁显示快捷面板，完整设置从面板进入；关闭后隐藏齿轮按钮"
+      :label="t('settings.floatingBall.settingsEntry')"
+      :description="t(isUserscript ? 'settings.floatingBall.settingsEntryDescriptionUserscript' : 'settings.floatingBall.settingsEntryDescription')"
       :disabled="!enabled || props.config.floatingBallToolsDisplay === 'hidden'"
     >
       <el-switch
         v-model="props.config.floatingBallSettingsEntryVisible"
         class="settings-toggle"
-        aria-label="悬浮球设置入口"
+        :aria-label="t('settings.floatingBall.settingsEntry')"
         :disabled="!enabled || props.config.floatingBallToolsDisplay === 'hidden'"
       />
     </SettingsItem>
 
     <SettingsItem
       v-if="props.config.floatingBallToolsDisplay !== 'always'"
-      label="收起时不透明度"
-      description="数值越小越透明、越不遮挡网页；鼠标悬停、展开和拖动时始终完全清晰"
+      :label="t('settings.floatingBall.collapsedOpacity')"
+      :description="t('settings.floatingBall.collapsedOpacityDescription')"
       :disabled="!enabled"
     >
       <SettingsNumberInput
         :model-value="props.config.floatingBallCollapsedOpacity"
         unit="%"
-        aria-label="悬浮球收起时不透明度"
+        :aria-label="t('settings.floatingBall.collapsedOpacityAria')"
         :min="FLOATING_BALL_COLLAPSED_OPACITY_MIN"
         :max="FLOATING_BALL_COLLAPSED_OPACITY_MAX"
         :step="FLOATING_BALL_COLLAPSED_OPACITY_STEP"
@@ -134,18 +134,19 @@ const props = defineProps<{config: Config}>();
 
 const {t} = useUiI18n();
 const enabled = computed(() => props.config.disableFloatingBall !== true);
+const isUserscript = import.meta.env.BROWSER === 'userscript';
 
-const toolsDisplayOptions: {label: string; value: FloatingBallToolsDisplay}[] = [
-  {label: '悬停时显示', value: 'hover'},
-  {label: '始终显示', value: 'always'},
-  {label: '不显示', value: 'hidden'},
-];
+const toolsDisplayOptions = computed<{label: string; value: FloatingBallToolsDisplay}[]>(() => [
+  {label: t('settings.floatingBall.tools.hover'), value: 'hover'},
+  {label: t('settings.floatingBall.tools.always'), value: 'always'},
+  {label: t('settings.floatingBall.tools.hidden'), value: 'hidden'},
+]);
 
-const clickActionOptions: {label: string; value: FloatingBallClickAction}[] = [
-  {label: '翻译/显示原文', value: 'translate'},
-  {label: '打开设置', value: 'settings'},
-  {label: '仅拖动', value: 'none'},
-];
+const clickActionOptions = computed<{label: string; value: FloatingBallClickAction}[]>(() => [
+  {label: t('settings.floatingBall.click.translate'), value: 'translate'},
+  {label: t(isUserscript ? 'settings.floatingBall.click.settings' : 'settings.floatingBall.click.quickPanel'), value: 'settings'},
+  {label: t('settings.floatingBall.click.none'), value: 'none'},
+]);
 
 function handleToolsDisplayChange(value: string | number) {
   props.config.floatingBallToolsDisplay = normalizeFloatingBallToolsDisplay(value);

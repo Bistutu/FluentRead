@@ -86,6 +86,28 @@ function assert(condition, message) {
     if (!condition) throw new Error(message);
 }
 
+/** 校验真实产物中的七语安装说明，防止占位符未接线、语言缺失或静态描述漂移。 */
+export async function verifyLocalizedExtensionMetadata(directory, manifest) {
+    assert(manifest.name === '__MSG_extensionName__' && manifest.description === '__MSG_extensionDescription__',
+        '扩展名称和说明必须通过浏览器本地化 metadata 解析');
+    assert(manifest.default_locale === 'en', '扩展安装 metadata 必须提供英文默认语言');
+    const descriptions = JSON.parse(await readFile(path.join(PROJECT_ROOT, 'src/core/i18n/messages/product-descriptions.json'), 'utf8'));
+    const locales = Object.entries(descriptions).map(([language, description]) => ({
+        locale: language === 'zh-CN' ? 'zh_CN' : language.split('-')[0], description,
+    }));
+    const actualLocales = (await readdir(path.join(directory, '_locales'), {withFileTypes: true}))
+        .filter(entry => entry.isDirectory()).map(entry => entry.name).sort();
+    assert(isDeepStrictEqual(actualLocales, locales.map(({locale}) => locale).sort()), '扩展安装 metadata 的语言集合与源目录不一致');
+    for (const {locale, description} of locales) {
+        const messages = JSON.parse(await readFile(path.join(directory, '_locales', locale, 'messages.json'), 'utf8'));
+        const name = messages.extensionName?.message;
+        assert(typeof name === 'string' && name.trim().length > 0, `${locale} 缺少本地化扩展名称`);
+        assert(messages.extensionDescription?.message === description && description.trim().length > 0
+            && description.length <= 132 && !/[\r\n]/u.test(description), `${locale} 扩展说明缺失、漂移或超过 132 字符`);
+    }
+    return actualLocales;
+}
+
 export function verifyChromeOfflineManifest(offlineManifest, localManifest) {
     assert(isDeepStrictEqual(offlineManifest, localManifest), 'Chrome 离线清单必须与本地构建一致');
     assert(typeof offlineManifest.key === 'string' && offlineManifest.key.trim().length > 0,
@@ -199,6 +221,10 @@ async function main() {
         readBackgroundBundle(chromeDir, chromeManifest),
         readBackgroundBundle(firefoxDir, firefoxManifest),
     ]);
+    const [chromeMetadataLocales, firefoxMetadataLocales] = await Promise.all([
+        verifyLocalizedExtensionMetadata(chromeDir, chromeManifest),
+        verifyLocalizedExtensionMetadata(firefoxDir, firefoxManifest),
+    ]);
 
     assert(chromeManifest.manifest_version === 3, 'Chrome 产物必须是 Manifest V3');
     assert(countPermission(chromeManifest, 'offscreen') === 1, 'Chrome MV3 必须且只能声明一次 offscreen 权限');
@@ -281,6 +307,7 @@ async function main() {
             manifestVersion: 3,
             offscreenPermission: true,
             runtimeCapabilityMarker: chromeBuildMarker,
+            metadataLocales: chromeMetadataLocales,
             artifacts: chromeArtifacts,
             ocrAssets: chromeOcrAssets.length,
             archive: chromeArchive,
@@ -289,6 +316,7 @@ async function main() {
             manifestVersion: 2,
             offscreenPermission: false,
             runtimeCapabilityMarker: firefoxBuildMarker,
+            metadataLocales: firefoxMetadataLocales,
             artifacts: firefoxArtifacts,
             ocrAssets: firefoxOcrAssets.length,
             geckoId: firefoxGecko.id,

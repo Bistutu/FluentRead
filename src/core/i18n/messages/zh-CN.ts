@@ -24,7 +24,13 @@ import {localTtsChineseMessages} from './localTts';
 import {translationStatsChineseMessages} from './translationStats';
 import {localTranslationChineseMessages} from './localTranslation';
 
+import {personalCorrectionMessages} from './personalCorrections';
+
+import countForms from './count-forms.json';
+
 export const zhCNMessages = {
+    ...countForms['zh-CN'],
+    ...personalCorrectionMessages['zh-CN'],
     "document.config.loadFailed": "设置未能读取，请重新加载后再试。",
     "popup.compact.translate": "翻译",
     "popup.compact.restore": "还原",

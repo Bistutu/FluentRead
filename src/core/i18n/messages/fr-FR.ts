@@ -28,7 +28,13 @@ import {localTtsFrenchMessages} from './localTts';
 import {translationStatsFrenchMessages} from './translationStats';
 import {localTranslationFrenchMessages} from './localTranslation';
 
+import {personalCorrectionMessages} from './personalCorrections';
+
+import countForms from './count-forms.json';
+
 export const frFRMessages = {
+    ...countForms['fr-FR'],
+    ...personalCorrectionMessages['fr-FR'],
     "document.config.loadFailed": "Impossible de charger les paramètres. Rechargez la page et réessayez.",
     "popup.compact.translate": "Traduire",
     "popup.compact.restore": "Rétablir",
@@ -784,7 +790,7 @@ export const frFRMessages = {
     'language.settingsLabel': 'Langue de l’application',
     'language.settingsDescription': 'Choisissez la langue utilisée dans FluentRead.',
     'language.help': 'Les changements sont appliqués immédiatement.',
-    'language.saveFailed': 'Impossible d’enregistrer la langue de l’interface. Rouvrez les réglages et réessayez.',
+    'language.saveFailed': 'Impossible de changer la langue de l’interface. Réessayez.',
     'language.changed': 'Langue de l’interface modifiée',
     'language.onboardingWelcomeEyebrow': 'Bienvenue',
     'language.onboardingWelcomeTitle': 'Bienvenue dans FluentRead',

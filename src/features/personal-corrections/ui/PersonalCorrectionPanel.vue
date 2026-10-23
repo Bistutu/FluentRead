@@ -1,11 +1,11 @@
 <!--
  * @file src/features/personal-corrections/ui/PersonalCorrectionPanel.vue
  * 文件职责：呈现网页原译文对的主动校订、明确范围预览与个人译法管理。
- * 主要内容：在封闭 Shadow UI 内提供可编辑译文、精确命中预览、近似句差异与个人译法管理；页签右侧显示紧凑语言名称，底部操作栏提供范围、项目创建与预览保存，辅助说明以屏内提示呈现并保留分层 Escape、焦点约束与主题布局。
+ * 主要内容：在封闭 Shadow UI 内提供可编辑译文、精确命中预览、近似句差异与个人译法管理；自有根节点启用旧文案迁移，紧凑语言名与含用户名称的范围标签显式本地化，保留分层 Escape、焦点约束与主题布局。
  * 模块边界：不读取网页历史或存储、不请求翻译服务；动作交给校订控制器，原文和译文始终以纯文本呈现。
  -->
 <template>
-  <div class="correction-ui" :class="{dark}" :style="{'--accent': accent}">
+  <div v-ui-i18n class="correction-ui" :class="{dark}" :style="{'--accent': accent}">
     <button v-if="state.candidate && !state.open" class="correction-entry" data-testid="correction-entry" type="button" @click="controller.open(state.candidate)">
       校订译文 <span>Alt ⇧ E</span>
     </button>
@@ -27,21 +27,21 @@
         <template v-else>
           <p class="hint">这里只保存你确认过的原句和译文。修改或删除后，旧译文会立即停止使用。</p>
           <p v-if="!state.entries.length && !state.loading" class="empty">尚未保存个人校订。</p>
-          <article v-for="record in state.entries" :key="record.id" class="saved-entry" :data-correction-record="record.id"><div class="record-meta"><span data-i18n-ignore>{{ record.scope.kind === 'project' ? '项目：' : '网页：' }}{{ record.scope.label }}</span><small data-i18n-ignore>{{ record.sourceLanguage }} → {{ record.targetLanguage }}</small></div><p class="source" data-i18n-ignore>{{ record.source }}</p><p data-i18n-ignore>{{ record.translation }}</p><details v-if="record.context"><summary>所在章节</summary><p data-i18n-ignore>{{ record.context }}</p></details><p v-if="record.scope.kind === 'material' && record.scope.id !== state.materialId" class="hint">打开对应网页后可编辑。</p><div class="record-actions"><button type="button" :data-correction-edit="record.id" :disabled="state.busy || (record.scope.kind === 'material' && record.scope.id !== state.materialId)" @click="controller.edit(record)">编辑</button><button type="button" class="danger" :data-correction-delete="record.id" :disabled="state.busy" @click="controller.remove(record)">删除</button></div></article>
+          <article v-for="record in state.entries" :key="record.id" class="saved-entry" :data-correction-record="record.id"><div class="record-meta"><span data-i18n-ignore>{{ t(record.scope.kind === 'project' ? 'personalCorrections.projectName' : 'personalCorrections.pageName', {name: record.scope.label}) }}</span><small data-i18n-ignore>{{ record.sourceLanguage }} → {{ record.targetLanguage }}</small></div><p class="source" data-i18n-ignore>{{ record.source }}</p><p data-i18n-ignore>{{ record.translation }}</p><details v-if="record.context"><summary>所在章节</summary><p data-i18n-ignore>{{ record.context }}</p></details><p v-if="record.scope.kind === 'material' && record.scope.id !== state.materialId" class="hint">打开对应网页后可编辑。</p><div class="record-actions"><button type="button" :data-correction-edit="record.id" :disabled="state.busy || (record.scope.kind === 'material' && record.scope.id !== state.materialId)" @click="controller.edit(record)">编辑</button><button type="button" class="danger" :data-correction-delete="record.id" :disabled="state.busy" @click="controller.remove(record)">删除</button></div></article>
         </template>
         <p v-if="state.error" class="error" role="alert" data-testid="correction-error">{{ state.error }}</p>
         <p v-if="state.notice" class="notice" role="status" data-testid="correction-notice">{{ state.notice }}</p>
       </div>
       <footer>
         <button v-if="state.undoToken" type="button" data-testid="correction-undo" :disabled="state.busy" @click="controller.undo">撤销上次操作</button>
-        <div v-if="!state.managing" class="scope-row"><label class="scope-label" for="correction-scope">使用范围</label><select id="correction-scope" data-testid="correction-scope" :title="scopeLabel" :value="state.scopeId" :disabled="state.busy" @change="controller.setScope(($event.target as HTMLSelectElement).value)"><option value="material">仅当前网页</option><option v-for="project in state.projects" :key="project.id" :value="project.id" data-i18n-ignore>项目：{{ project.label }}</option></select><button ref="scopeHelpButton" class="scope-help" type="button" data-testid="correction-scope-help" aria-label="使用范围说明" :aria-expanded="scopeHelpOpen" :aria-describedby="scopeHelpOpen ? 'correction-scope-tooltip' : undefined" @mouseenter="openScopeHelp" @mouseleave="deferScopeHelpClose" @focus="openScopeHelp" @blur="closeScopeHelp"><svg aria-hidden="true" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.25" /><path d="M8 7v4M8 4.5v.5" /></svg></button><details ref="projectCreation" class="new-project"><summary>新建项目</summary><div><input v-model="state.projectName" data-testid="correction-project-name" :disabled="state.busy" maxlength="80" aria-label="项目名称" placeholder="例如：某篇论文的相关网页"><button type="button" data-testid="correction-project-create" :disabled="state.busy" @click="createProject">创建</button></div></details></div>
+        <div v-if="!state.managing" class="scope-row"><label class="scope-label" for="correction-scope">使用范围</label><select id="correction-scope" data-testid="correction-scope" data-i18n-ignore :title="scopeLabel" :value="state.scopeId" :disabled="state.busy" @change="controller.setScope(($event.target as HTMLSelectElement).value)"><option value="material">{{ t('personalCorrections.currentPage') }}</option><option v-for="project in state.projects" :key="project.id" :value="project.id" data-i18n-ignore>{{ t('personalCorrections.projectName', {name: project.label}) }}</option></select><button ref="scopeHelpButton" class="scope-help" type="button" data-testid="correction-scope-help" aria-label="使用范围说明" :aria-expanded="scopeHelpOpen" :aria-describedby="scopeHelpOpen ? 'correction-scope-tooltip' : undefined" @mouseenter="openScopeHelp" @mouseleave="deferScopeHelpClose" @focus="openScopeHelp" @blur="closeScopeHelp"><svg aria-hidden="true" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.25" /><path d="M8 7v4M8 4.5v.5" /></svg></button><details ref="projectCreation" class="new-project"><summary>新建项目</summary><div><input v-model="state.projectName" data-testid="correction-project-name" :disabled="state.busy" maxlength="80" aria-label="项目名称" placeholder="例如：某篇论文的相关网页"><button type="button" data-testid="correction-project-create" :disabled="state.busy" @click="createProject">创建</button></div></details></div>
         <div v-if="!state.managing" class="save-actions"><button type="button" data-testid="correction-preview" :disabled="state.busy || state.loading || !state.draft.trim()" @click="controller.preview">预览受影响句子</button><button class="primary" type="button" data-testid="correction-save" :disabled="state.busy || state.loading || !state.previewed" @click="controller.save">{{ state.busy ? '保存中…' : '确认保存' }}</button></div>
       </footer>
     </section>
     <div v-if="scopeHelpOpen" id="correction-scope-tooltip" ref="scopeHelp" class="scope-tooltip" role="tooltip" data-testid="correction-scope-tooltip" :style="scopeHelpPosition" @mouseenter="openScopeHelp" @mouseleave="deferScopeHelpClose">
       <p>默认只在当前网页使用。项目是一组相关网页，只有主动加入同一项目的网页，才会使用其中保存的译文。</p>
       <p>原句、翻译语言（源语言和目标语言）及所在章节标题须完全相同。同一项目的其他网页会在下次翻译时使用校订。</p>
-      <small>当前章节</small><p class="scope-tooltip-context" data-i18n-ignore>{{ state.context || '此处没有章节标题' }}</p>
+      <small>当前章节</small><p class="scope-tooltip-context" data-i18n-ignore>{{ state.context || t('personalCorrections.noChapter') }}</p>
     </div>
   </div>
 </template>
@@ -51,17 +51,21 @@ import {config, subscribeConfig} from '@/src/services/config/store';
 import {getInterfaceSkinOption} from '@/src/core/config/interfaceAppearance';
 import {translationLanguageOptions} from '@/src/core/language/catalog';
 import {normalizeLanguageCode} from '@/src/core/language/codes';
+import {getMultilingualTargetLanguageLabel} from '@/src/core/config/catalog';
+import {useUiI18n} from '@/src/ui/i18n';
 import type {PersonalCorrectionController} from '../controller';
 
 const props = defineProps<{controller: PersonalCorrectionController}>();
 const state = props.controller.state;
+const {t, language, translateLegacy} = useUiI18n();
 function languageLabel(value: string): string {
-  if (value === 'auto') return '自动检测';
+  if (value === 'auto') return translateLegacy('自动检测');
   const code = normalizeLanguageCode(value);
-  return (translationLanguageOptions.find(item => item.value === code)?.label ?? value).split(' / ')[0]!;
+  const fallback = translationLanguageOptions.find(item => item.value === code)?.label ?? value;
+  return getMultilingualTargetLanguageLabel(code, fallback, language.value).split(' / ')[0]!;
 }
 const languagePair = computed(() => `${languageLabel(state.sourceLanguage)} → ${languageLabel(state.targetLanguage)}`);
-const scopeLabel = computed(() => state.scopeId === 'material' ? '仅当前网页' : state.projects.find(project => project.id === state.scopeId)?.label ?? '项目');
+const scopeLabel = computed(() => state.scopeId === 'material' ? t('personalCorrections.currentPage') : state.projects.find(project => project.id === state.scopeId)?.label ?? t('personalCorrections.project'));
 const panel = ref<HTMLElement>(); const translationInput = ref<HTMLTextAreaElement>();
 const scopeHelpButton = ref<HTMLButtonElement>(); const scopeHelp = ref<HTMLElement>();
 const projectCreation = ref<HTMLDetailsElement>();

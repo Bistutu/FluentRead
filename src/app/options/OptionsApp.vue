@@ -87,7 +87,7 @@
           <header class="about-hero">
             <div class="about-intro">
               <div class="about-identity">
-                <img class="about-logo" :src="iconUrl" alt="流畅阅读图标" />
+                <img class="about-logo" :src="iconUrl" alt="" />
                 <div>
                   <strong>{{ t('common.brand') }}</strong>
                   <span class="about-version">V{{ version }} · {{ t('options.aboutHeroDescription') }}</span>

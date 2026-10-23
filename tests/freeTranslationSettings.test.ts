@@ -395,7 +395,8 @@ describe('free translation settings actual client component', () => {
   it('updates the timeout through the advanced control', async () => {
     await mountAdvanced();
     expect(elements.some(element => element.props['data-fallback-provider'])).toBe(false);
-    const timeout = control('每个服务最多等待（秒）');
+    const timeout = control('settings.services.waitTimeout');
+    expect(elements.some(element => element.props['data-help-content'] === 'settings.services.freeWeights.timeoutHelp')).toBe(true);
     timeout.props['onUpdate:modelValue'](9);
     expect(config.freeTranslationTimeoutMs).toBe(9000);
   });

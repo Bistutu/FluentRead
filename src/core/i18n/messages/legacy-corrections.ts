@@ -6,12 +6,20 @@
  */
 import type {RegisteredUiLanguage} from '../types';
 import {createSiteRuleText} from './siteRules';
+import reencounterEnUS from './reencounter/en-US.json';
+import reencounterJaJP from './reencounter/ja-JP.json';
+import reencounterKoKR from './reencounter/ko-KR.json';
+import reencounterFrFR from './reencounter/fr-FR.json';
+import reencounterRuRU from './reencounter/ru-RU.json';
+import reencounterEsES from './reencounter/es-ES.json';
 
 /** 中文原文，随后依次为 English、日本語、한국어、Français、Русский、Español。 */
 type LegacyCorrectionRow = readonly [source: string, enUS: string, jaJP: string, koKR: string, frFR: string, ruRU: string, esES: string];
 
 /** 设置页、弹窗、文档页和各功能面板中的标签、按钮与说明。 */
 export const correctionRows: readonly LegacyCorrectionRow[] = [
+    // 内容挂载器仍发送旧错误字符串；精确别名复用语义资源，避免反馈边界维护第二份译文。
+    ['收藏暂时无法读取', reencounterEnUS['reencounter.readFailed'], reencounterJaJP['reencounter.readFailed'], reencounterKoKR['reencounter.readFailed'], reencounterFrFR['reencounter.readFailed'], reencounterRuRU['reencounter.readFailed'], reencounterEsES['reencounter.readFailed']],
     // 个人校订、免费基础讲解与阅读失败恢复的现用界面文案。
     ["已保存的校订", "Saved corrections", "保存済みの校訂", "저장한 교정", "Corrections enregistrées", "Сохранённые исправления", "Correcciones guardadas"],
     ["关闭校订", "Close correction", "校訂を閉じる", "교정 닫기", "Fermer la correction", "Закрыть исправление", "Cerrar la corrección"],
@@ -68,7 +76,6 @@ export const correctionRows: readonly LegacyCorrectionRow[] = [
     ["让学习讲解贴近你的水平", "Tailor learning explanations to your level", "学習解説を自分のレベルに合わせる", "학습 설명을 내 수준에 맞추기", "Adapter les explications d’apprentissage à votre niveau", "Адаптируйте учебные объяснения к своему уровню", "Adapta las explicaciones de aprendizaje a tu nivel"],
     ["切换左侧示例了解学习动作；在网页卡片中触发学习动作后，才向所选 AI 服务发送请求", "Switch the examples on the left to explore learning actions. Requests are sent to the selected AI service only when you trigger a learning action in a webpage card.", "左側の例を切り替えて学習操作を確認できます。ウェブページのカードで学習操作を実行したときだけ、選択した AI サービスにリクエストを送信します。", "왼쪽 예시를 바꿔 학습 동작을 살펴보세요. 웹페이지 카드에서 학습 동작을 실행할 때만 선택한 AI 서비스에 요청을 보냅니다.", "Changez les exemples à gauche pour découvrir les actions d’apprentissage. Une requête est envoyée au service IA choisi uniquement lorsque vous déclenchez une action dans une carte de page web.", "Переключайте примеры слева, чтобы изучить учебные действия. Запрос отправляется выбранному сервису ИИ только при запуске учебного действия в карточке на веб-странице.", "Cambia los ejemplos de la izquierda para conocer las acciones de aprendizaje. Solo se envía una solicitud al servicio de IA seleccionado cuando activas una acción en una tarjeta de la página web."],
     ["个人校订", "Personal corrections", "個人の校訂", "개인 교정", "Corrections personnelles", "Личные исправления", "Correcciones personales"],
-    ["修改网页译文，并在你确认的范围内复用。默认关闭。", "Edit webpage translations and reuse them within the scope you confirm. Disabled by default.", "ウェブページの訳文を編集し、確認した範囲内で再利用します。既定では無効です。", "웹페이지 번역문을 수정하고 직접 확인한 범위에서 재사용합니다. 기본적으로 꺼져 있습니다.", "Modifiez les traductions des pages web et réutilisez-les dans la portée que vous confirmez. Désactivé par défaut.", "Редактируйте переводы веб-страниц и используйте их повторно в подтверждённой вами области. По умолчанию отключено.", "Edita las traducciones de las páginas web y reutilízalas dentro del ámbito que confirmes. Desactivado por defecto."],
     ["完整句学习外观", "Sentence learning appearance", "文単位学習の表示", "문장 학습 모양", "Apparence de l’apprentissage par phrase", "Оформление изучения предложений", "Apariencia del aprendizaje por frases"],
     ["官方网页接口，无需密钥", "Official web endpoint, no API key required", "公式ウェブ用インターフェース、API キー不要", "공식 웹 인터페이스, API 키 불필요", "Interface web officielle, sans clé API", "Официальный веб-интерфейс, ключ API не нужен", "Interfaz web oficial, sin clave API"],
     ["阿里翻译", "Alibaba Translate", "Alibaba 翻訳", "Alibaba 번역", "Traduction Alibaba", "Перевод Alibaba", "Traductor Alibaba"],
@@ -391,7 +398,6 @@ export const correctionRows: readonly LegacyCorrectionRow[] = [
     ['正在清除…', 'Clearing…', '削除しています…', '지우는 중…', 'Effacement…', 'Очистка…', 'Borrando…'],
     ['正在解析文件…', 'Reading file…', 'ファイルを解析しています…', '파일을 분석하는 중…', 'Analyse du fichier…', 'Разбор файла…', 'Analizando el archivo…'],
     ['确认清除统计', 'Clear statistics', '統計を削除', '통계 지우기', 'Effacer les statistiques', 'Очистить статистику', 'Borrar estadísticas'],
-    ['流畅阅读图标', 'FluentRead icon', 'FluentRead のアイコン', 'FluentRead 아이콘', 'Icône FluentRead', 'Значок FluentRead', 'Icono de FluentRead'],
     ['多服务对比', 'Compare services', 'サービス比較', '서비스 비교', 'Comparer les services', 'Сравнение сервисов', 'Comparar servicios'],
     ["输入相同文本，对比不同翻译服务的结果，也可重新翻译", "Compare how different services translate the same text, and rerun a translation when needed.", "同じテキストを複数のサービスで翻訳して比較し、必要に応じて翻訳し直せます。", "같은 텍스트를 여러 서비스로 번역해 비교하고 필요하면 다시 번역하세요.", "Comparez les traductions d’un même texte par plusieurs services et relancez une traduction si nécessaire.", "Сравните переводы одного текста в разных сервисах и при необходимости запустите перевод снова.", "Compara las traducciones del mismo texto con distintos servicios y vuelve a traducir cuando lo necesites."],
     ["用同一句话比较不同服务的译文表现", 'Compare how different services translate the same sentence.', '同じ文を異なるサービスがどう翻訳するかを比較します。', '같은 문장을 서비스마다 어떻게 번역하는지 비교합니다.', 'Comparez la façon dont différents services traduisent la même phrase.', 'Сравните, как разные сервисы переводят одно и то же предложение.', 'Compara cómo traducen distintos servicios la misma frase.'],
@@ -669,7 +675,6 @@ export const correctionRows: readonly LegacyCorrectionRow[] = [
     ['划词触发方式', 'Selection trigger', '選択範囲の翻訳の起動方法', '선택 영역 번역 실행 방식', 'Déclenchement de la sélection', 'Способ запуска перевода выделенного текста', 'Activación de la selección'],
     ['划词翻译显示延迟', 'Selection translation display delay', '選択範囲の翻訳の表示遅延', '선택 영역 번역 표시 지연', 'Délai d’affichage de la traduction de la sélection', 'Задержка показа перевода выделенного текста', 'Retraso de la traducción de la selección'],
     ["从选区稳定后开始计时，再显示图标、小点或翻译面板；快捷键在等待结束后按下会立即显示", 'Timing starts once the selection settles, then the icon, dot, or translation panel appears. If you press the shortcut after the delay, it opens immediately.', '選択範囲が確定してから計測を始め、その後アイコン、ドット、翻訳パネルを表示します。待ち時間が過ぎてからショートカットを押すとすぐに表示されます。', '선택 영역이 안정된 뒤부터 시간을 재고 아이콘, 점 또는 번역 패널을 표시합니다. 대기 시간이 지난 뒤 단축키를 누르면 바로 표시됩니다.', 'Le délai démarre une fois la sélection stabilisée, puis l’icône, le point ou le panneau de traduction apparaît. Si vous appuyez sur le raccourci après le délai, il s’ouvre immédiatement.', 'Отсчёт начинается, когда выделение перестаёт меняться; затем появляется значок, точка или панель перевода. Если нажать сочетание клавиш после задержки, панель откроется сразу.', 'El tiempo empieza a contar cuando la selección se estabiliza; después aparece el icono, el punto o el panel de traducción. Si pulsas el atajo tras la espera, se abre al instante.'],
-    ["全文翻译时，在网页右下角显示正在翻译和等待中的任务数量；任务结束后自动隐藏", 'Show the number of active and waiting tasks at the bottom-right during full-page translation; the panel hides automatically when done.', 'ページ全体の翻訳中、右下に翻訳中と待機中のタスク数を表示します。完了すると自動的に非表示になります。', '전체 페이지 번역 중 오른쪽 아래에 진행 중인 작업과 대기 중인 작업 수를 표시하고, 끝나면 자동으로 숨깁니다.', 'Pendant la traduction de la page entière, affiche en bas à droite le nombre de tâches en cours et en attente ; le panneau se masque automatiquement à la fin.', 'Во время перевода всей страницы показывает в правом нижнем углу число выполняемых и ожидающих задач; после завершения панель скрывается.', 'Durante la traducción de página completa muestra abajo a la derecha las tareas en curso y en espera; se oculta automáticamente al terminar.'],
     ['输入框翻译触发方式', 'Input box translation trigger', '入力欄の翻訳の起動方法', '입력란 번역 실행 방식', 'Déclenchement de la traduction des champs de saisie', 'Способ запуска перевода в полях ввода', 'Activación de la traducción en campos de texto'],
     ['输入框翻译目标语言', 'Input box translation target language', '入力欄の翻訳先言語', '입력란 번역 대상 언어', 'Langue cible de la traduction des champs de saisie', 'Язык перевода в полях ввода', 'Idioma de destino en campos de texto'],
     ['点击设置自定义快捷键', 'Click to set a custom shortcut', 'クリックしてカスタムショートカットを設定', '클릭하여 사용자 지정 단축키 설정', 'Cliquez pour définir un raccourci personnalisé', 'Нажмите, чтобы задать пользовательское сочетание клавиш', 'Haz clic para configurar un atajo personalizado'],

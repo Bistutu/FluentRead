@@ -71,8 +71,8 @@ describe('界面语言注册表', () => {
         expect(i18n.translate('common.brand', 'en-US')).toBe(bundles.UI_LANGUAGE_BUNDLES['en-US'].messages['common.brand']);
     });
 
-    it('扩展安装名称复用七语品牌，只生成浏览器 metadata 所需的名称而不复制界面目录', () => {
-        const files = bundles.createExtensionNameLocaleFiles();
+    it('扩展安装 metadata 复用七语品牌和功能说明，不复制界面目录', () => {
+        const files = bundles.createExtensionMetadataLocaleFiles();
         expect(files.map(({relativeDest}) => relativeDest).sort()).toEqual([
             '_locales/en/messages.json', '_locales/es/messages.json', '_locales/fr/messages.json',
             '_locales/ja/messages.json', '_locales/ko/messages.json', '_locales/ru/messages.json',
@@ -86,7 +86,8 @@ describe('界面语言注册表', () => {
         for (const {relativeDest, contents} of files) {
             const locale = relativeDest.split('/')[1] as keyof typeof languageByLocale;
             const message = JSON.parse(contents);
-            expect(message).toEqual({extensionName: {message: i18n.translate('common.brand', languageByLocale[locale])}});
+            expect(Object.keys(message).sort()).toEqual(['extensionDescription', 'extensionName']);
+            expect(message.extensionName).toEqual({message: i18n.translate('common.brand', languageByLocale[locale])});
             expect(message.extensionName.message).toBe(locale === 'zh_CN' ? '流畅阅读' : 'FluentRead');
             expect(contents).not.toContain('\n');
         }

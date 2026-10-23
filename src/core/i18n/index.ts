@@ -10,6 +10,7 @@
  */
 
 import {zhCNMessages} from './messages/zh-CN';
+import {normalizeUiLanguage} from './language';
 import type {
     LegacyPatternEntry,
     MessageCatalog,
@@ -26,6 +27,7 @@ const defaultMessages: MessageCatalog = zhCNMessages;
 const registeredBundles = new Map<UiLanguage, UiLanguageBundle>();
 /** 中文稳定资源也可供旧模板精确复用；反查表只在该语言首次使用旧文案时建立一次。 */
 const messageLegacyCatalogs = new Map<UiLanguage, MessageCatalog>();
+const pluralRules = new Map<UiLanguage, Intl.PluralRules>();
 
 /** 注册一种非中文界面语言的资源包；重复注册会替换旧包并丢弃基于旧包建立的反查表。 */
 export function registerUiLanguageBundle(language: RegisteredUiLanguage, bundle: UiLanguageBundle): void {
@@ -58,14 +60,29 @@ function getMessageLegacyCatalog(language: UiLanguage, bundle: UiLanguageBundle)
 function formatMessage(template: string, params?: TranslationParams): string {
     if (!params) return template;
     return template.replace(/\{([a-zA-Z0-9_]+)\}/g, (placeholder, name: string) => {
-        const value = params[name];
+        const value = Object.hasOwn(params, name) ? params[name] : undefined;
         return value === undefined || value === null ? placeholder : String(value);
     });
 }
 
 /** 翻译稳定资源 key；当前语言缺失或资源包尚未加载时回退到中文，再缺失时返回 key 便于发现漏翻。 */
 export function translate(key: string, language: UiLanguage, params?: TranslationParams): string {
-    const template = ownMessage(registeredBundles.get(language)?.messages, key) ?? ownMessage(defaultMessages, key) ?? key;
+    const count = params && Object.hasOwn(params, 'count') ? params.count : undefined;
+    let category: Intl.LDMLPluralRule | undefined;
+    if (typeof count === 'number' && Number.isFinite(count)) {
+        const locale = normalizeUiLanguage(language);
+        let rules = pluralRules.get(locale);
+        if (!rules) {
+            rules = new Intl.PluralRules(locale);
+            pluralRules.set(locale, rules);
+        }
+        category = rules.select(count);
+    }
+    const message = (catalog: MessageCatalog | undefined): string | undefined => (
+        category === undefined ? undefined : ownMessage(catalog, `${key}.plural.${category}`)
+            ?? ownMessage(catalog, `${key}.plural.other`)
+    ) ?? ownMessage(catalog, key);
+    const template = message(registeredBundles.get(language)?.messages) ?? message(defaultMessages) ?? key;
     return formatMessage(template, params);
 }
 
@@ -158,7 +175,7 @@ function* applyLegacyPatterns(patterns: readonly CompiledLegacyPattern[], value:
 }
 
 /**
- * 将尚未完成 key 化的扩展 UI 文案翻译成 English。
+ * 将尚未完成 key 化的扩展 UI 文案翻译成所选界面语言。
  *
  * 这个适配器是有边界的迁移工具：调用方必须只把扩展自己的文本节点/属性传入，
  * 并且 UI directive 会跳过 textarea、pre、code 和用户内容，避免误伤网页正文或译文。

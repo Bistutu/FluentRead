@@ -1,4 +1,4 @@
-import brandTaglines from '../src/core/i18n/messages/brand-taglines.json';
+import productDescriptions from '../src/core/i18n/messages/product-descriptions.json';
 
 export interface UserscriptMetadataOptions {
     version: string;
@@ -37,9 +37,10 @@ export function createUserscriptMetadata({version, iconDataUrl, requires = []}: 
         '// @name:es      FluentRead',
         '// @namespace    https://fr.unmeta.cn/',
         `// @version      ${version}`,
-        `// @description  ${brandTaglines['en-US']} ${brandTaglines['zh-CN']}`,
-        ...Object.entries(brandTaglines).map(([language, tagline]) =>
-            `// @description:${language === 'zh-CN' ? language : language.split('-')[0]} ${tagline}`),
+        `// @description  ${productDescriptions['en-US']}`,
+        `// @description:zh ${productDescriptions['zh-CN']}`,
+        ...Object.entries(productDescriptions).map(([language, description]) =>
+            `// @description:${language === 'zh-CN' ? language : language.split('-')[0]} ${description}`),
         '// @author       ThinkStu',
         '// @license      GPL-3.0-only',
         '// @homepageURL  https://github.com/FluentRead/FluentRead',

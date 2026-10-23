@@ -1,7 +1,7 @@
 <!--
  * @file src/features/settings/ui/SettingsSections.vue
  * 文件职责：承载 FluentRead Options 页面各业务设置分区，连接运行时配置、服务选择、快捷键、站点规则、翻译中心、OCR、词书以及导入导出和历史恢复。
- * 主要内容：扩展设置入口可通过已校验的 service 查询参数选择服务编辑区，目录浏览不改写默认翻译服务，详情标题栏显式设为默认后复用现有配置补丁持久化并同步其他页面；图片设置优先展示语言、服务与识别选择，资源与入口按需展开；服务能力仅从当前编辑目标派生，翻译设置首先展示带交互示例的阅读辅助，普通页面与网站规则连续展示任务分组并标记顶部导航的滚动定位目标，统计保留按任务切换的视图，集中分配功能服务并将模型用量合并到翻译统计，保留已访问表单实例，自定义快捷键弹窗按显示状态挂载并在离开所属分区时取消草稿；包含正文/全部节点识别范围，网站适配区域复用来源返回条并隔离配置及范围变化后的迟到操作，划词设置顶部提供不带修复说明的来源返回按钮并按所属配置及分区启停；模板按 activeSection 展示业务分区，通用设置首先展示全局翻译开关，再按基础配置、网页辅助、基本偏好组织控件，软件语言控件随分区及缓存活跃状态启停，并保留固定 Language 识别词以便选错语言后恢复，提供当前默认服务的配置入口，将专项服务分配按需展开，并把译文样式与翻译设置跨页入口放入对应分组标题；图片与圈选合并在同页，共享仅在当前分区挂载的 OCR 管理组件；服务连接在主页面的服务目录内编辑，在界面风格页组织译文样式、风格与菜单栏布局，仅在高级选项激活时挂载缓存管理；脚本复用配置编辑会话隔离草稿与权威基线，批量水合时暂停完整草稿扫描，在途与失败编辑保留字段归属，继续同步保存和离页补丁交接，协调网站入口、配置及凭据保存、历史恢复和能力过滤。
+ * 主要内容：扩展设置入口可通过已校验的 service 查询参数选择服务编辑区，目录浏览不改写默认翻译服务，详情标题栏显式设为默认后复用现有配置补丁持久化并同步其他页面；图片设置优先展示语言、服务与识别选择，资源与入口按需展开；服务能力仅从当前编辑目标派生，翻译设置首先展示带交互示例的阅读辅助，普通页面与网站规则连续展示任务分组并标记顶部导航的滚动定位目标，统计保留按任务切换的视图，集中分配功能服务并将模型用量合并到翻译统计，保留已访问表单实例，自定义快捷键弹窗按显示状态挂载并在离开所属分区时取消草稿；包含正文/全部节点识别范围，网站适配区域复用来源返回条并隔离配置及范围变化后的迟到操作，划词设置顶部提供不带修复说明的来源返回按钮并按所属配置及分区启停；模板按 activeSection 展示业务分区，通用设置首先展示全局翻译开关，再按基础配置、网页辅助、基本偏好组织控件，网页辅助和主题说明用稳定 key 直接渲染，软件语言控件随分区及缓存活跃状态启停，并保留固定 Language 识别词以便选错语言后恢复，提供当前默认服务的配置入口，将专项服务分配按需展开，并把译文样式与翻译设置跨页入口放入对应分组标题；图片与圈选合并在同页，共享仅在当前分区挂载的 OCR 管理组件；服务连接在主页面的服务目录内编辑，在界面风格页组织译文样式、风格与菜单栏布局，仅在高级选项激活时挂载缓存管理；脚本复用配置编辑会话隔离草稿与权威基线，批量水合时暂停完整草稿扫描，在途与失败编辑保留字段归属，继续同步保存和离页补丁交接，协调网站入口、配置及凭据保存、历史恢复和能力过滤。
  * 锚点编排：翻译设置保留连续表单，双语逐句阅读辅助与智能高亮各有独立锚点；智能高亮仅在翻译设置分区激活时挂载，定位不隐藏其他分组，既有表单配置保持原归属。新建兼容服务对话框只在首次请求打开时挂载，此后保留实例与关闭动画；加载中或失败时在添加入口旁显示可关闭提示，并停用入口说明气泡以免遮挡反馈，离开后不复活旧提示，草稿仍由原有活跃上下文和关闭流程管理。
  * 交互延迟归属：悬浮与划词延迟只在所属活跃分区确认后提交，外部同步或离开使旧输入失效，保留原步长、范围及空值恢复规则。
  * 请求数值归属：高级页的 AI 超时、重试次数、密钥恢复与退避等待共用活跃配置身份；分区、缓存状态、配置同步或卸载会同步失效旧控件回调，秒/分钟确认后交接毫秒配置，退避上下限一次提交完整快照。
@@ -343,7 +343,7 @@
     </section>
 
     <section v-if="hasVisitedSection('settings-general')" v-show="props.activeSection === 'settings-general'" class="settings-section settings-section-continuation">
-      <SettingsGroup title="网页辅助" data-settings-anchor="assistance" data-settings-anchor-label="网页辅助">
+      <SettingsGroup :title="t('settings.general.assistance')" data-settings-anchor="assistance" :data-settings-anchor-label="t('settings.general.assistance')">
         <template #heading-extra>
           <button
             type="button"
@@ -355,28 +355,28 @@
             <el-icon aria-hidden="true"><ArrowRight /></el-icon>
           </button>
         </template>
-        <SettingsItem :label="t('popup.aiContext.settingsTitle')" :description="t('popup.aiContext.how')" help="可提前开启；仅在支持的 AI 服务下采集网页语境并生效，其他服务会保留此偏好但不会发送上下文">
+        <SettingsItem :label="t('popup.aiContext.settingsTitle')" :description="t('popup.aiContext.how')" :help="t('settings.general.aiContextHelp')">
           <el-switch v-model="config.enableAIContext" class="settings-toggle" :aria-label="t('popup.aiContext.settingsTitle')" />
         </SettingsItem>
-        <SettingsItem id="floating-ball-toggle" label="全文翻译悬浮球">
+        <SettingsItem id="floating-ball-toggle" :label="t('settings.general.floatingBall')">
           <template #description>
-            <small>在屏幕边缘显示悬浮球，点击即可翻译整个网页 <button type="button" class="settings-inline-link" data-testid="open-floating-ball-settings" @click="openSettingsSection('settings-translation', 'floating-ball-settings')">{{ t('settings.general.floatingBallSettingsAction') }}</button></small>
+            <small>{{ t('settings.general.floatingBallDescription') }} <button type="button" class="settings-inline-link" data-testid="open-floating-ball-settings" @click="openSettingsSection('settings-translation', 'floating-ball-settings')">{{ t('settings.general.floatingBallSettingsAction') }}</button></small>
           </template>
-          <el-switch v-model="floatingBallEnabled" class="settings-toggle" aria-label="全文翻译悬浮球" />
+          <el-switch v-model="floatingBallEnabled" class="settings-toggle" :aria-label="t('settings.general.floatingBall')" />
         </SettingsItem>
-        <SettingsItem label="显示翻译进度面板" description="全文翻译时，在网页右下角显示正在翻译和等待中的任务数量；任务结束后自动隐藏">
-          <el-switch v-model="config.translationProgressPanelEnabled" class="settings-toggle" aria-label="显示翻译进度面板" @change="handleTranslationProgressPanelChange" />
+        <SettingsItem :label="t('settings.general.progressPanel')" :description="t('settings.general.progressPanelDescription')">
+          <el-switch v-model="config.translationProgressPanelEnabled" class="settings-toggle" :aria-label="t('settings.general.progressPanel')" @change="handleTranslationProgressPanelChange" />
         </SettingsItem>
       </SettingsGroup>
-      <SettingsGroup title="基本偏好" data-settings-anchor="preferences" data-settings-anchor-label="基本偏好">
+      <SettingsGroup :title="t('settings.general.preferences')" data-settings-anchor="preferences" :data-settings-anchor-label="t('settings.general.preferences')">
         <SettingsItem data-testid="ui-language-setting" :label="t('settings.general.language')">
           <template #copy>
             <strong data-i18n-ignore>{{ t('settings.general.language') }}<span v-if="language !== 'en-US'" lang="en"> / Language</span></strong>
           </template>
           <UiLanguageSelector compact :active="viewActive && props.activeSection === 'settings-general'" />
         </SettingsItem>
-        <SettingsItem label="界面主题" description="只影响扩展界面，不会改变网页本身的配色">
-          <SegmentedControl v-model="config.theme" :options="options.theme" label="界面主题" />
+        <SettingsItem :label="t('settings.general.theme')" :description="t('settings.general.themeDescription')">
+          <SegmentedControl v-model="config.theme" :options="options.theme" :label="t('settings.general.theme')" />
         </SettingsItem>
       </SettingsGroup>
     </section>

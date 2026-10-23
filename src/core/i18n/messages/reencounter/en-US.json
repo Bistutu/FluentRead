@@ -7,6 +7,7 @@
   "reencounter.current": "The sentence you are reading",
   "reencounter.saved": "The sentence you saved",
   "reencounter.loading": "Loading this saved expression…",
+  "reencounter.readFailed": "Unable to load this saved expression. Please retry.",
   "reencounter.noSentence": "This expression has no saved example sentence.",
   "reencounter.reference": "Saved reference",
   "reencounter.retry": "Retry",

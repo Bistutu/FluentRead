@@ -77,7 +77,7 @@ function resetAppearance(): void {Object.assign(appearance.value, DEFAULT_VIDEO_
 .learning-preview-scene[data-position="bottom-right"] .learning-preview-card { top:auto; bottom:12px; }
 .learning-preview-card header { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px var(--fluent-read-video-learning-padding); border-bottom:1px solid rgba(255,255,255,.1); }
 .learning-preview-card header strong { display:flex; align-items:center; gap:6px; min-width:0; font-weight:600; }
-.learning-preview-card header strong span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.learning-preview-card header strong span { min-width:0; overflow-wrap:anywhere; }
 .learning-preview-header-actions { flex:none; }
 .learning-preview-card header i { width:6px; height:6px; flex:none; border-radius:50%; background:#ef4776; }
 .learning-preview-card header > span,.learning-preview-meta { color:#b5b5bd; font-size:.85em; }

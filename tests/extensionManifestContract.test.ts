@@ -912,6 +912,7 @@ describe('extension manifest capability contract', () => {
     it.each(['chrome', 'firefox', 'edge'] as const)('%s 安装名称使用浏览器本地化 metadata，不复用技术包名', (browser) => {
         const manifest = createExtensionManifest({browser, manifestVersion: browser === 'firefox' ? 2 : 3});
         expect(manifest.name).toBe('__MSG_extensionName__');
+        expect(manifest.description).toBe('__MSG_extensionDescription__');
         expect(manifest.default_locale).toBe('en');
         expect(manifest.version).toBeUndefined();
     });
