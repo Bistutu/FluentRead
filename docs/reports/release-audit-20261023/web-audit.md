@@ -238,3 +238,23 @@ S6 的 SQLite 全文输出保留了 `select-stmt:` 旁的 hide 按钮文字。�
 S7准确字节数：Chrome 35,889,270；Edge 35,888,734；Firefox 35,889,880；Safari 35,843,860；Thunderbird 36,032,891；Firefox源码档49,832,096。每个归档的SHA256及解压条目摘要一并保存，不能用另一次重建的ZIP时间戳差异冒充源码变化。Safari工具链检查通过，但本轮未签名、安装或执行真实设备验收。主任务确认S7属于中间快照，后续LocalData新修复须由S8重新绑定，不以S7构建替代最终版本。
 
 审查台账末轮校准实际复核了四个变化文件：ModelUsageDashboard、TranslationStatsDashboard的确认会话闭包、异步查询/清除代次、同步失活及inert释放；UiLanguageOnboarding删除重复确认守卫后的唯一同步入口；translationLoadingIndicator的CSS抽出及原样注入/adopt/fallback调用链。未发现新的已确认问题。抽出CSS与原模板正文在仅去掉新文件头注释和边缘空白后，14142字符完全一致。`ui-extra-review-ledger.json` 保留旧哈希reviewHistory，并明确记录“原全函数审查＋完整后续delta及受影响调用链复审”，不是盲盖当前哈希；独立记录为 `web/ui-extra-checkpoint7-delta-review.json`。
+
+## S8 固定快照构建与同输入压缩对照
+
+`candidate-checkpoint-8` 的同一验收流程扩为17个独立步骤（包括SafariZIP与六归档核对），全部实际exit0；详见 `checkpoint8-web-build-results.json` 与 `checkpoint8-archive-byte-verification.json`。本轮Chrome、Edge、Firefox、Safari、Thunderbird、Firefox源码档的准确字节数分别为35,889,225、35,888,776、35,889,834、35,843,900、36,032,839、49,832,183。所有安装归档文件集合和字节均与对应S8目录完全一致，源码档1913文件也与快照逐字节一致。主任务原生浏览器矩阵从独立的527文件Chrome复制运行，本次重建没有改写该浏览器的加载目录。
+
+为区分压缩设置与整批实现变化，在正式构建结束后用相同527个文件、相同固定ZIP时间戳、相同JSZip版本顺序生成level6/9控制包。两者以及正式level9归档均通过CRC与内容SHA256一致性校验。level6为36,024,047 bytes，level9为35,889,225 bytes，同输入减少134,822 bytes（0.3743%）；生成耗时这次为6.02秒与10.51秒。这是并行发布检查期间的单次打包观测，只说明本次更高压缩等级的打包成本，不是插件运行速度基准。
+
+原始基线同输入level6/9分别为36,022,785与35,887,947 bytes（基线自身的level9收益134,838 bytes）。S8正式包相对基线level6减少133,560 bytes，相对基线level9增加1,278 bytes；未压缩文件总量从84,159,016降到84,126,600 bytes。整体差异包含代码、清单和资源变化，不能全部归功于图片优化；文件名哈希改变也不等于新增功能数量。全部控制ZIP、正式ZIP和基线SHA256及逐项变化保存在 `checkpoint8-compression-comparison.json`，正式发布包未被控制实验覆盖。
+
+S8冻结内容的docs与Storybook构建和校验已通过。本节及最终验收状态属于构建完成后的报告追加，没有重新构建整个文档站；生产文件保持冻结。真实站点、服务和设备的最终验收范围由主报告分别记录，构建成功不代替这些检查。
+
+## S8 浏览器中止归因与 S9 前公共入口补充
+
+S8 串行72路径在焦点保护中止前共21通过、1普通失败、1焦点中止、49未运行。LearnOpenGL 悬浮在翻译前的页面合同等待超时：h1/h2/p 已存在，但必需的数学 script 未出现，未生成任何译文；不能据此认定翻译实现失败。随后该站全文两轮104个译文包装均通过。Qt悬浮及全文均通过，清理和临时profile删除已确认，原生焦点违规均为空。
+
+真正的exit86来自 MkDocs 悬浮，原生监视捕获了所属 Edge 进程激活，随后保护逻辑停止矩阵；最后截图与激活相隔约367ms，只能建立时间关系，不能认定哪一个动作或用户操作造成激活。没有重新启动浏览器或自动重试，现存日志、焦点报告、截图和待运行清单保留。只读归因及证据哈希在 `web/s8-browser-readonly-diagnosis.json`。
+
+S8全源覆盖指出 `src/app/content/runtime.ts` 有8个尚未执行的组合回调。补充了3个公开联动场景：runtime消息经真实字体控制器安装样式并发出通知，停用时撤销；真实Ctrl+Enter经输入控制器发送请求，配置代次变化取消迟到响应，新目标能写回，停用后拒绝新请求；真实悬浮和信息高亮热键执行当前页面许可、后端评分和停用清理。被测runtime及这些生产控制器没有mock，只为浏览器DOM布局、CSS Highlight、Shadow UI和外部后台提供确定性端口；无须新增生产封装或修改门禁。
+
+`content-runtime-public-links.log` 的52项全部通过，`content-runtime-public-compile.log` 类型检查实际exit0。定向 `content-runtime-public-coverage/coverage-summary.json` 确认该入口函数为50/50（100%），语句及行均为214/218（98.16%），分支88/101（87.12%）；这是该测试文件单独执行的精确范围，不声称全仓或该模块四维100。测试将在S9快照中纳入，S8固定产物不被追写。

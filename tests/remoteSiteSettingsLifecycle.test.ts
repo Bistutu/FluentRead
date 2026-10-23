@@ -47,7 +47,8 @@ async function mount(component:Vue.Component,props:Record<string,unknown>){
   const host=dom.document.createElement('main');dom.document.body.append(host);let exposed:any;
   const app=Vue.createApp({render:()=>Vue.h(component,{...props,ref:(value:any)=>{exposed=value}})});
   app.component('el-button',{props:['disabled'],setup:(props:any,{attrs,slots}:any)=>()=>Vue.h('button',{...attrs,type:'button',disabled:props.disabled},slots.default?.())});
-  app.component('el-dialog',{props:['modelValue','beforeClose','showClose'],emits:['closed','update:modelValue'],setup:(props:any,{attrs,slots,emit}:any)=>{Vue.watch(()=>props.modelValue,(value,previous)=>{if(previous&&!value)emit('closed')});const close=()=>{const done=()=>emit('update:modelValue',false);if(props.beforeClose)props.beforeClose(done);else done();};return()=>props.modelValue?Vue.h('section',{...attrs,role:'dialog'},[props.showClose!==false?Vue.h('button',{'data-dialog-close':'',onClick:close},'Close dialog'):null,slots.default?.(),slots.footer?.()]):null}});
+  // 锁定 Element Plus use-dialog.afterLeave：外部 modelValue 关闭后依次回报 closed、update:modelValue(false)。
+  app.component('el-dialog',{props:['modelValue','beforeClose','showClose'],emits:['closed','update:modelValue'],setup:(props:any,{attrs,slots,emit}:any)=>{Vue.watch(()=>props.modelValue,(value,previous)=>{if(previous&&!value){emit('closed');emit('update:modelValue',false)}});const close=()=>{const done=()=>emit('update:modelValue',false);if(props.beforeClose)props.beforeClose(done);else done();};return()=>props.modelValue?Vue.h('section',{...attrs,role:'dialog'},[props.showClose!==false?Vue.h('button',{'data-dialog-close':'',onClick:close},'Close dialog'):null,slots.default?.(),slots.footer?.()]):null}});
   const {ElSwitch}=await import('element-plus');app.component('el-switch',ElSwitch);
   app.component('el-option',{props:['value','label'],setup:(props:any)=>()=>Vue.h('option',{value:props.value},props.label)});
   app.config.warnHandler=()=>{};app.config.errorHandler=error=>ports.errors.push(error);app.mount(host);apps.add(app);await settle();
@@ -64,6 +65,44 @@ function remoteClient(){return {status:vi.fn(async()=>({...status})),prepare:vi.
 async function remote(kind:'google-drive'|'webdav'='webdav',client=remoteClient()){return {...await mount(RemoteConfigSync,{client,kind,provider:'Fixture storage'}),client};}
 
 describe('RemoteConfigSync actual client interactions',()=>{
+  it('requires a fresh direction after returning from first-sync review and commits only the newly reviewed route',async()=>{
+    const client=remoteClient();client.prepare.mockResolvedValue(preview({hasRemote:true,hasBaseline:false,changes:[
+      {id:'theme',label:'Theme',local:'开启',remote:'关闭',recommended:null,sensitive:false,conflict:true},
+    ]}));
+    const view=await remote('webdav',client);await click(view.host,'[data-testid="webdav-sync-now"]');
+    const continueButton=()=>view.host.querySelector<HTMLButtonElement>('[data-testid="webdav-continue"]')!;
+    expect(continueButton().disabled).toBe(true);expect(view.host.querySelector('[data-testid="webdav-confirm"]')).toBeNull();
+    const choose=async(direction:'download'|'upload')=>{const radio=view.host.querySelector<HTMLInputElement>(`[data-testid="webdav-direction-${direction}"]`)!;radio.checked=true;radio.dispatchEvent(new dom.window.Event('change',{bubbles:true}));await settle();};
+    await choose('download');expect(continueButton().disabled).toBe(false);await click(view.host,'[data-testid="webdav-continue"]');
+    expect(view.host.querySelector('.drive-review-title')?.textContent).toContain('settings.drive.downloadTitle');expect(client.commit).not.toHaveBeenCalled();
+    await click(view.host,'[data-testid="webdav-back"]');expect(continueButton().disabled).toBe(true);
+    expect([...view.host.querySelectorAll<HTMLInputElement>('.drive-operation input')].every(radio=>!radio.checked)).toBe(true);
+    expect(view.host.querySelector('[data-testid="webdav-confirm"]')).toBeNull();expect(client.commit).not.toHaveBeenCalled();
+    await choose('upload');await click(view.host,'[data-testid="webdav-continue"]');
+    expect(view.host.querySelector('.drive-review-title')?.textContent).toContain('settings.drive.uploadTitle');
+    await click(view.host,'[data-testid="webdav-confirm"]');expect(client.commit).toHaveBeenCalledOnce();
+    expect(client.commit).toHaveBeenCalledWith('preview-1','upload',{});expect(view.host.querySelector('.drive-dialog')).toBeNull();
+  });
+  it('never deletes on Enter and clears the accepted phrase and details when a deletion dialog reopens',async()=>{
+    const client=remoteClient();client.prepareDelete.mockResolvedValueOnce({id:'delete-first',account,hasRemote:true,canDelete:true,expiresAt:Date.now()+60_000})
+      .mockResolvedValueOnce({id:'delete-current',account,hasRemote:true,canDelete:true,expiresAt:Date.now()+60_000});
+    const view=await remote('webdav',client);await click(view.host,'[data-testid="webdav-delete-backup"]');
+    for(const value of ['wrong phrase','settings.cloud.deletePhrase']){
+      await input(view.host,'#webdav-delete-verification',value);
+      const enter=new dom.window.Event('keydown',{bubbles:true,cancelable:true});Object.defineProperty(enter,'key',{value:'Enter'});
+      view.host.querySelector('#webdav-delete-verification')!.dispatchEvent(enter);await settle();
+      expect(enter.defaultPrevented).toBe(true);expect(client.commitDelete).not.toHaveBeenCalled();
+      expect(view.host.querySelector<HTMLButtonElement>('[data-testid="cloud-delete-confirm"]')!.disabled).toBe(value==='wrong phrase');
+    }
+    await click(view.host,'[data-popover-visibility]');expect(view.host.querySelector('[data-popover-visible]')?.getAttribute('data-popover-visible')).toBe('true');
+    await click(view.host,'.cloud-delete-dialog [data-dialog-close]');expect(client.cancel).toHaveBeenCalledWith('delete-first');
+    await click(view.host,'[data-testid="webdav-delete-backup"]');
+    expect(view.host.querySelector<HTMLInputElement>('#webdav-delete-verification')!.value).toBe('');
+    expect(view.host.querySelector<HTMLButtonElement>('[data-testid="cloud-delete-confirm"]')!.disabled).toBe(true);
+    expect(view.host.querySelector('[data-popover-visible]')?.getAttribute('data-popover-visible')).toBe('false');
+    await input(view.host,'#webdav-delete-verification','settings.cloud.deletePhrase');await click(view.host,'[data-testid="cloud-delete-confirm"]');
+    expect(client.commitDelete).toHaveBeenCalledOnce();expect(client.commitDelete).toHaveBeenCalledWith('delete-current');expect(client.commit).not.toHaveBeenCalled();
+  });
   it('closes each dialog through its UI close contract and clears the delete-details popover with Escape',async()=>{
     const view=await remote();
     await click(view.host,'[data-testid="cloud-include-sensitive"]');

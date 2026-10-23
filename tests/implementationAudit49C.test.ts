@@ -955,6 +955,37 @@ describe('audit49C followup2 restore visibility during the dialog closing transi
 
 describe('audit49C followup1 cache-limit draft and authoritative configuration', () => {
     const stats = {success: true, stats: {bytes: 0, entries: 0, maxBytes: 10 * 1024 * 1024, maxEntries: 10000}};
+    it.each(['success', 'failure', 'unmount'] as const)('keeps cache clearing single-flight and handles its %s receipt', async outcome => {
+        ports.send.mockResolvedValue(stats); const page = await mount(TranslationCacheSettings, {config: normalizeConfig({})});
+        const clear = deferred<any>(); ports.send.mockImplementationOnce(() => clear.promise); ports.send.mockClear();
+        const trigger = namedButton(page.host, 'settings.cache.clear');
+        trigger.click(); await settle();
+        expect(trigger.disabled).toBe(true);
+        trigger.dispatchEvent(new Event('click', {bubbles: true})); await settle();
+        expect(ports.send.mock.calls.map(([message]) => message)).toEqual([{type: 'clearTranslationCache'}]);
+        if (outcome === 'unmount') page.stop();
+        clear.resolve(outcome === 'failure' ? {success: false} : {success: true}); await settle();
+        if (outcome === 'unmount') {
+            expect(ports.send).toHaveBeenCalledOnce(); return;
+        }
+        expect(trigger.disabled).toBe(false);
+        if (outcome === 'failure') {
+            expect(page.host.querySelector('[role="alert"]')!.textContent).toBe('settings.cache.clearFailed');
+            trigger.click(); await settle();
+        }
+        expect(page.host.querySelector('[role="status"]')!.textContent).toBe('settings.cache.cleared');
+        expect(ports.send.mock.calls.map(([message]) => message.type)).toEqual(outcome === 'failure'
+            ? ['clearTranslationCache', 'clearTranslationCache', 'getTranslationCacheStats']
+            : ['clearTranslationCache', 'getTranslationCacheStats']);
+    });
+    it('saves both numeric cache limits from the rendered inputs in one patch', async () => {
+        ports.send.mockResolvedValue(stats); const page = await mount(TranslationCacheSettings, {config: normalizeConfig({})});
+        input(page.host, 'input[aria-label="settings.cache.maxSize"]', '3');
+        input(page.host, 'input[aria-label="settings.cache.maxEntries"]', '500'); await settle();
+        page.host.querySelector('form')!.dispatchEvent(new Event('submit', {bubbles: true, cancelable: true})); await settle();
+        expect(ports.patch.mock.calls.map(([patch]) => patch)).toEqual([{translationCacheMaxBytes: 3 * 1024 * 1024, translationCacheMaxEntries: 500}]);
+        expect(page.host.querySelector('[role="status"]')!.textContent).toBe('settings.cache.saved');
+    });
     it('reconciles limits received from the real parent prop while the cache toggle save is pending', async () => {
         ports.send.mockResolvedValue(stats); const page = await mount(TranslationCacheSettings, {config: normalizeConfig({})});
         const save = deferred<void>(); ports.patch.mockImplementationOnce(() => save.promise);

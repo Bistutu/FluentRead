@@ -62,12 +62,12 @@ it.each(['openai', 'claude', 'gemini'] as const)('executes an authorized %s tool
     if (service === 'gemini') expect(JSON.stringify(second)).toContain('signed-tool');
 });
 
-it('keeps anonymous Bilibili on its fixed endpoint and hides split thinking without publishing empty deltas', async () => {
-    const value = config('bilibili');value.proxy.bilibili = 'https://ignored.test';value.customHeaders.bilibili = '{"x-secret":"ignored"}';
+it.each(['{"x-secret":"ignored"}', '{invalid-unused-header'] as const)('keeps anonymous Bilibili fixed and hides split thinking despite unused headers %s', async headers => {
+    const value = config('bilibili');value.proxy.bilibili = 'https://ignored.test';value.customHeaders.bilibili = headers;
     transport.mockResolvedValue(events([{choices: [{delta: {content: '<thi'}}]}, {choices: [{delta: {content: 'nk>hidden</think>Visible'}}]}, {choices: [{delta: {content: ' answer'}, finish_reason: 'stop'}]}], 1));
     const request = input();const result = await createHarnessGenerator(value, 'bilibili', 'ignored', [])(request);
     expect(result.text).toBe('Visible answer');expect(request.onText).toHaveBeenCalledTimes(2);expect(request.onText).not.toHaveBeenCalledWith('');
-    const [url, init] = transport.mock.calls[0];expect(String(url)).not.toContain('ignored.test');expect(init?.credentials).toBe('omit');expect(new Headers(init?.headers).has('authorization')).toBe(false);expect(JSON.stringify(JSON.parse(init!.body as string))).not.toContain('controlled-key');
+    const [url, init] = transport.mock.calls[0];expect(String(url)).not.toContain('ignored.test');expect(init?.credentials).toBe('omit');expect(new Headers(init?.headers).has('authorization')).toBe(false);expect(new Headers(init?.headers).has('x-secret')).toBe(false);expect(JSON.stringify(JSON.parse(init!.body as string))).not.toContain('controlled-key');
 });
 
 it.each([

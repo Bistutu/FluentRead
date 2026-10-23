@@ -15,6 +15,8 @@ import SpeechFollowText from '@/src/features/selection-translation/ui/SpeechFoll
 import SentenceAnalysis from '@/src/features/reading-assistant/ui/SentenceAnalysis.vue';
 import ReadingEvidence from '@/src/features/reading-assistant/ui/ReadingEvidence.vue';
 import SavedExplanation from '@/src/features/vocabulary/ui/SavedExplanation.vue';
+import CollectionEntry from '@/src/features/vocabulary/ui/CollectionEntry.vue';
+import type {VocabularyEntry} from '@/src/features/vocabulary/learningModel';
 import {normalizeWritingPreferences} from '@/src/core/config/writing';
 import {describePartOfSpeech} from '@/src/core/language/partOfSpeech';
 
@@ -135,6 +137,28 @@ describe('reading source evidence and progress',()=>{
 });
 
 describe('saved explanation',()=>{
+  it('opens the collection editor, cancels its draft and forwards a saved note through both real templates',async()=>{
+    const entry:VocabularyEntry={id:'saved-art',term:'art',normalizedTerm:'art',identityKey:'en:art',sourceLanguage:'en',kind:'expression',
+      translations:{'zh-cn':{text:'艺术',updatedAt:1}},contexts:[],note:'Original',phonetic:'',partOfSpeech:'',createdAt:1,updatedAt:1,lastSeenAt:1,
+      encounterCount:1,masteryLevel:0,status:'new',nextReviewAt:1,lastReviewedAt:null,reviewCount:0,lapseCount:0,schemaVersion:1};
+    const updated=vi.fn(),study=vi.fn(),remove=vi.fn();const ui=mount(CollectionEntry,{entry,translation:'艺术',playing:false,busy:false,status:'New',review:'Now',onUpdated:updated,onStudy:study,onRemove:remove});
+    const focus=vi.spyOn(win.HTMLElement.prototype,'focus');
+    const menu=ui.host.querySelector('details')!;menu.open=true;
+    await click(button(ui.host,'编辑解释'));
+    const editor=ui.host.querySelector('textarea')!;
+    expect(menu.open).toBe(false);expect(focus.mock.contexts).toContain(editor);
+    await input(editor,'Discarded draft');await click(button(ui.host,'取消'));
+    expect(ui.host.querySelector('textarea')).toBeNull();expect(ui.host.querySelector('.entry-note')?.textContent).toBe('Original');expect(ports.send).not.toHaveBeenCalled();
+    await click(button(ui.host,'编辑解释'));expect((ui.host.querySelector('textarea') as HTMLTextAreaElement).value).toBe('Original');
+    const saved={...entry,note:'A saved explanation',updatedAt:2};ports.send.mockResolvedValueOnce({success:true,data:saved});
+    await input(ui.host.querySelector('textarea')!,'A saved explanation');ui.host.querySelector('form')!.dispatchEvent(new win.Event('submit',{cancelable:true,bubbles:true}));await flush();
+    expect(ports.send).toHaveBeenCalledWith({type:'fluentReadVocabularyBook',action:'updateNote',entryId:entry.id,note:saved.note});
+    expect(updated).toHaveBeenCalledOnce();expect(updated).toHaveBeenCalledWith(saved);expect(ui.host.querySelector('textarea')).toBeNull();
+    ui.props.entry=saved;await flush();expect(ui.host.querySelector('.entry-note')?.textContent).toBe(saved.note);
+    await click(ui.host.querySelector('.entry-study')!);expect(study).toHaveBeenCalledOnce();
+    await click(button(ui.host,'删除收藏'));expect(remove).toHaveBeenCalledOnce();expect(ports.send).toHaveBeenCalledOnce();
+  });
+
   it.each(['success','error'] as const)('keeps a switched entry independent of the previous %s save',async outcome=>{
     const gate=deferred<any>(),updated=vi.fn();ports.send.mockReturnValueOnce(gate.promise);
     const ui=mount(SavedExplanation,{entry:{id:'a',note:'First'},onUpdated:updated});

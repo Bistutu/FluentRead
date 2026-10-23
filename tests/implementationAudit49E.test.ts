@@ -50,7 +50,8 @@ import {artifactUrl, getTranslationArtifacts, downloadTranslationArtifact, artif
 import {LOCAL_TRANSLATION_MODEL_IDS as ids} from '@/src/core/config/localTranslation';
 import {createImageOcrLanguageRepository} from '@/src/features/image-translation/background/ocrLanguageRepository';
 import {IMAGE_OCR_LANGUAGE_STATE_KEY} from '@/src/features/image-translation/ocrLanguages';
-import {ImageOcrSettings, MangaSettings} from '@/src/features/image-translation/ui/public';
+import ImageOcrSettings from '@/src/features/image-translation/ui/ImageOcrSettings.vue';
+import MangaSettings from '@/src/features/image-translation/ui/MangaSettings.vue';
 import MangaModelSettings from '@/src/features/image-translation/ui/MangaModelSettings.vue';
 import {Config} from '@/src/core/config/model';
 

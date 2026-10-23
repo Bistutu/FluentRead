@@ -93,19 +93,6 @@
       ],
       "scenario": "实际语言包按钮、下载状态与卸载后响应"
     },
-    "src/features/image-translation/ui/ImageTranslationSettingsPreview.vue": {
-      "kind": "frozen-debt",
-      "sourceSha256": "b576fdfc3c3f5306ad3077ee20faea420110b25345886a820b064380e2ea4d8e",
-      "reason": "用本地示意图说明图片和漫画翻译的原图、译图对照方式。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
-      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
-    },
-    "src/features/image-translation/ui/MangaEntry.vue": {
-      "kind": "behavior",
-      "tests": [
-        "tests/mangaEntryComponentLifecycle.test.ts"
-      ],
-      "scenario": "实际入口按钮、空闲计时器与换章清理"
-    },
     "src/features/image-translation/ui/MangaModelSettings.vue": {
       "kind": "behavior",
       "tests": [

@@ -5,9 +5,7 @@
  * 模块边界：实际 SFC/setup/template、进度 watcher/display 和公共后台 handlers；只控制 DOM、存储、Offscreen 与回包传输端口，无浏览器、网络、GPU、native 或源码私有导出。
  */
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import path from 'node:path';
-import {compileVueInlineFixture} from './helpers/compiledVueFixture';
-import type {App, Component} from 'vue';
+import type {App} from 'vue';
 
 const dom = await vi.hoisted(async () => {
     const {parseHTML} = await import('linkedom');
@@ -22,26 +20,58 @@ const dom = await vi.hoisted(async () => {
     Object.defineProperty(document, 'visibilityState', {configurable: true, value: 'visible'});
     return {window, document};
 });
-const ports = vi.hoisted(() => ({send: vi.fn(), get: vi.fn(), listeners: new Set<(changes: any, area: string) => void>()}));
+const ports = vi.hoisted(() => ({send: vi.fn(), get: vi.fn(), listeners: new Set<(changes: any, area: string) => void>(),
+    renderedEvents: [] as Array<{tag: string; props: Record<string, any>}>,
+}));
 vi.mock('webextension-polyfill', () => ({default: {runtime: {sendMessage: (...args: any[]) => ports.send(...args)}, storage: {
     local: {get: (...args: any[]) => ports.get(...args)}, onChanged: {
         addListener: (listener: any) => ports.listeners.add(listener), removeListener: (listener: any) => ports.listeners.delete(listener),
     },
 }}}));
 
+// Observe the complete events emitted by the actual SFC render API, preserving
+// stale-event tests without setupState, private invokers or compiled-code copies.
+vi.mock('vue', async () => {
+    const actual = await vi.importActual<typeof import('vue')>('vue');
+    const exposed: any = {...actual};
+    for (const key of ['createVNode', 'createBlock', 'createElementVNode', 'createElementBlock'] as const) {
+        exposed[key] = (...args: any[]) => {
+            const [tag, props] = args;
+            if (props && Object.keys(props).some(name => name.startsWith('on'))) {
+                ports.renderedEvents.push({tag: typeof tag === 'string' ? tag : tag.__name || tag.name || 'component', props: {...props}});
+            }
+            return (actual[key] as any)(...args);
+        };
+    }
+    return exposed;
+});
+vi.mock('@/src/platform/browser/capabilities', () => ({browserCapabilities: {extensionDom: true}}));
+vi.mock('@/src/ui/i18n', () => ({useUiI18n: () => ({
+    t: (key: string, parameters?: unknown) => parameters ? `${key}:${JSON.stringify(parameters)}` : key,
+    translateLegacy: (text: string) => text,
+})}));
+vi.mock('@element-plus/icons-vue', async () => {
+    const {h} = await import('vue');
+    return Object.fromEntries(['Cpu', 'Delete', 'Download', 'Loading', 'Check', 'Files'].map(name => [name, {render: () => h('svg')}]));
+});
+vi.mock('element-plus', async () => {
+    const {defineComponent, h} = await import('vue');
+    return {ElTooltip: defineComponent({name: 'TooltipPort', setup: (_, {slots}) => () => h('span', slots.default?.())})};
+});
+
 import * as Vue from 'vue';
+import LocalTtsSettings from '@/src/features/settings/ui/LocalTtsSettings.vue';
+import VideoLocalModelSettings from '@/src/features/settings/ui/VideoLocalModelSettings.vue';
+import DownloadProgress from '@/src/ui/components/DownloadProgress.vue';
 import browser from 'webextension-polyfill';
 import {normalizeConfig} from '@/src/core/config/model';
 import * as ttsModel from '@/src/core/config/localTts';
-import * as selectionTts from '@/src/core/config/selectionTts';
 import * as videoPublic from '@/src/features/video-subtitle/domain/public';
-import * as settingsActionContext from '@/src/features/settings/model/useSettingsActionContext';
 import {createLocalTtsBackgroundHandlers} from '@/src/features/local-tts/background/handlers';
 import {createVideoSubtitleBackgroundHandlers} from '@/src/features/video-subtitle/background/handlers';
 import {getVideoAiModelFileUrl, VIDEO_AI_Q4_MODEL_FILES, VIDEO_AI_SMALL_MODEL_FILES} from '@/src/features/video-subtitle/offscreen/modelCache';
 import {createBackgroundMessageRouter, createBackgroundRuntimeMessageListener} from '@/src/services/messaging/backgroundRouter';
 import {createDownloadProgressHandler} from '@/src/app/background/handlers/downloadProgress';
-import {watchDownloadProgress} from '@/src/platform/storage/downloadProgress';
 import {createDownloadProgressPublisher, downloadProgressKey, LOCAL_TTS_DOWNLOAD_ID, videoModelDownloadId} from '@/src/core/download/progress';
 import type {VideoPreparationResult} from '@/src/core/messaging/video';
 
@@ -54,62 +84,11 @@ function deferred<T>() {
 async function settle() {for (let n = 0; n < 16; n++) {await Promise.resolve(); await Vue.nextTick();}}
 type Kind = 'tts' | 'video';
 type Captured = {tag: string; props: Record<string, any>};
-const renderedEvents: Captured[] = [];
-// Capture the complete functions supplied by the actual compiler to Vue's public
-// render API. No component setupState, private method, invoker.value or copied
-// action is used; this models an already queued event from an older UI render.
-const clientVue: any = {...Vue};
-for (const key of ['createVNode', 'createBlock', 'createElementVNode', 'createElementBlock'] as const) {
-    clientVue[key] = (...args: any[]) => {
-        const [tag, props] = args;
-        if (props && Object.keys(props).some(name => name.startsWith('on'))) {
-            renderedEvents.push({tag: typeof tag === 'string' ? tag : tag.__name || tag.name || 'component', props: {...props}});
-        }
-        return (Vue[key] as any)(...args);
-    };
-}
-const Slot = Vue.defineComponent({name: 'SlotPort', inheritAttrs: false, setup: (_, {attrs, slots}) => () => Vue.h('div', attrs, [...slots.default?.() ?? [], ...slots.description?.() ?? [], ...slots.content?.() ?? []])});
+const renderedEvents: Captured[] = ports.renderedEvents;
 const Select = Vue.defineComponent({name: 'SelectPort', props: ['modelValue', 'disabled'], emits: ['update:modelValue'],
     setup: (props, {attrs, slots, emit}) => () => Vue.h('select', {...attrs, value: props.modelValue, disabled: props.disabled,
         onChange: (event: Event) => emit('update:modelValue', (event.target as HTMLSelectElement).value)}, slots.default?.())});
 const Option = Vue.defineComponent({props: ['value', 'label'], setup: props => () => Vue.h('option', {value: props.value}, props.label)});
-const t = (key: string, parameters?: unknown) => parameters ? `${key}:${JSON.stringify(parameters)}` : key;
-const icons = Object.fromEntries(['Cpu', 'Delete', 'Download', 'Loading', 'Check', 'Files'].map(name => [name, {render: () => Vue.h('svg')} ]));
-function loadClient(relative: string, components: Map<string, Component>): Component {
-    if (components.has(relative)) return components.get(relative)!;
-    const filename = path.resolve(process.cwd(), relative);
-    const compiled = compileVueInlineFixture(filename, {id: relative});
-    expect(compiled.parseErrors).toEqual([]);
-    // Compile the unchanged complete SFC as a client module, not an SSR/no-op
-    // renderer. Only its dependency transport is supplied by this test loader.
-    const dependencies: Record<string, any> = {
-        vue: clientVue, 'webextension-polyfill': {default: browser}, '@element-plus/icons-vue': icons,
-        '@/src/core/config/localTts': ttsModel, '@/src/core/config/selectionTts': selectionTts,
-        '@/src/features/video-subtitle/domain/public': videoPublic,
-        '../model/useSettingsActionContext': settingsActionContext,
-        '@/src/core/download/progress': {LOCAL_TTS_DOWNLOAD_ID, videoModelDownloadId},
-        '@/src/platform/browser/capabilities': {browserCapabilities: {extensionDom: true}},
-        '@/src/platform/storage/downloadProgress': {watchDownloadProgress},
-        '@/src/ui/i18n': {useUiI18n: () => ({t, translateLegacy: (text: string) => text})},
-        './components/SettingsGroup.vue': {default: Slot}, './components/SettingsItem.vue': {default: Slot},
-        './components/FieldHelp.vue': {default: Slot},
-    };
-    if (relative.endsWith('DownloadProgress.vue')) {
-        // The progress display still runs the actual shared byte formatter.
-        dependencies['@/src/core/download/progress'] = progressModule;
-    } else if (!relative.endsWith('SegmentedControl.vue')) {
-        dependencies['@/src/ui/components/DownloadProgress.vue'] = {default: loadClient('src/ui/components/DownloadProgress.vue', components)};
-        dependencies['./components/SegmentedControl.vue'] = {default: loadClient('src/features/settings/ui/components/SegmentedControl.vue', components)};
-    }
-    const module = {exports: {} as any};
-    new Function('require', 'exports', 'module', compiled.code)((id: string) => {
-        if (!(id in dependencies)) throw new Error(`Unexpected client dependency: ${id}`);
-        return dependencies[id];
-    }, module.exports, module);
-    const component = module.exports.default;
-    components.set(relative, component);
-    return component;
-}
 import * as progressModule from '@/src/core/download/progress';
 
 function backend() {
@@ -218,9 +197,7 @@ async function mount(kind: Kind) {
     const state = Vue.reactive({config: normalizeConfig({videoTranslationEnabled: true, videoLocalModel: 'tiny', selectionTtsMode: 'online-first'}), active: true});
     const cached = Vue.ref(false);
     const host = dom.document.createElement('div'); dom.document.body.append(host);
-    // 每个根挂载拥有自己的已执行组件图；同根复用子组件 type，跨根只共享不可变编译字符串。
-    const components = new Map<string, Component>();
-    const component = loadClient(`src/features/settings/ui/${kind === 'tts' ? 'LocalTtsSettings' : 'VideoLocalModelSettings'}.vue`, components);
+    const component = kind === 'tts' ? LocalTtsSettings : VideoLocalModelSettings;
     const empty = Vue.defineComponent({render: () => null});
     const app = Vue.createApp({setup: () => () => Vue.h(Vue.KeepAlive, null, {default: () => cached.value ? Vue.h(empty, {key: 'other'}) : Vue.h(component, {
         config: state.config, active: state.active, context: state.config,
@@ -356,13 +333,13 @@ describe('entire captured public template event belongs to its rendered config',
         const h = await mount('tts'), config = h.state.config;
         const isOnline = (event: Captured) => event.tag === 'SelectPort' && event.props['aria-label'] === '划词翻译备用音色顺序';
         const online = capture(isOnline, 'onUpdate:modelValue');
-        const voices = ['en-US-AriaNeural', 'zh-CN-XiaoxiaoNeural'];
+        const voices = ['en-US-AriaNeural', 'zh-CN-XiaoxiaoMultilingualNeural'];
         online(voices); await settle();
         expect(config.selectionTtsVoices).toEqual(voices);
 
         await hide(h, 'hidden');
         const inactiveOnline = capture(isOnline, 'onUpdate:modelValue');
-        online(['zh-CN-XiaoxiaoNeural']); await settle();
+        online(['zh-CN-XiaoxiaoMultilingualNeural']); await settle();
         expect(config.selectionTtsVoices).toEqual(voices);
         inactiveOnline([]); await settle();
         expect(config.selectionTtsVoices).toEqual(voices);
@@ -370,7 +347,7 @@ describe('entire captured public template event belongs to its rendered config',
         await reopen(h);
         online([]); await settle();
         expect(config.selectionTtsVoices).toEqual(voices);
-        inactiveOnline(['zh-CN-XiaoxiaoNeural']); await settle();
+        inactiveOnline(['zh-CN-XiaoxiaoMultilingualNeural']); await settle();
         expect(config.selectionTtsVoices).toEqual(voices);
         const currentOnline = capture(isOnline, 'onUpdate:modelValue');
         const reordered = [...voices].reverse();
@@ -383,12 +360,26 @@ describe('entire captured public template event belongs to its rendered config',
         const mode = capture(event => event.tag === 'SegmentedControl' && event.props.label === 'settings.localTts.source', 'onUpdate:modelValue');
         const local = capture(event => event.tag === 'SelectPort' && event.props['aria-label'] === 'settings.localTts.voice', 'onUpdate:modelValue');
         const online = capture(event => event.tag === 'SelectPort' && event.props['aria-label'] === '划词翻译备用音色顺序', 'onUpdate:modelValue');
-        h.state.config = normalizeConfig({selectionTtsMode: 'local-first', selectionTtsLocalVoice: 'zm_009', selectionTtsVoices: ['zh-CN-XiaoxiaoNeural']}); await settle();
+        h.state.config = normalizeConfig({selectionTtsMode: 'local-first', selectionTtsLocalVoice: 'zm_009', selectionTtsVoices: ['zh-CN-XiaoxiaoMultilingualNeural']}); await settle();
         const current = h.state.config, before = [original.selectionTtsMode, original.selectionTtsLocalVoice, [...original.selectionTtsVoices], current.selectionTtsMode, current.selectionTtsLocalVoice, [...current.selectionTtsVoices]];
         mode('local-only'); local('zf_001'); online(['en-US-AriaNeural']); await settle();
         expect([original.selectionTtsMode, original.selectionTtsLocalVoice, [...original.selectionTtsVoices], current.selectionTtsMode, current.selectionTtsLocalVoice, [...current.selectionTtsVoices]]).toEqual(before);
         const radio = [...h.host.querySelectorAll<HTMLButtonElement>('.speech-settings [role="radio"]')].find(button => button.textContent === 'settings.localTts.localOnly')!;
         expect(radio).toBeDefined(); radio.click(); await settle(); expect(current.selectionTtsMode).toBe('local-only');
+        expect(h.host.querySelector('[data-testid="speech-online-voices"]')).toBeNull();
+        const localSelect = h.host.querySelector<HTMLSelectElement>('select[aria-label="settings.localTts.voice"]')!;
+        localSelect.value = 'zf_001'; localSelect.dispatchEvent(new dom.window.Event('change', {bubbles: true})); await settle();
+        expect(current.selectionTtsLocalVoice).toBe('zf_001');
+        const onlineOnly = [...h.host.querySelectorAll<HTMLButtonElement>('.speech-settings [role="radio"]')].find(button => button.textContent === 'settings.localTts.onlineOnly')!;
+        onlineOnly.click(); await settle();
+        expect(h.host.querySelector('[data-testid="speech-local-voice"]')).toBeNull();
+        expect(h.host.querySelector('[data-testid="local-tts-model-row"]')).toBeNull();
+        expect(current.selectionTtsLocalVoice).toBe('zf_001');
+        expect(current.selectionTtsVoices).toEqual(['zh-CN-XiaoxiaoMultilingualNeural']);
+        const localFirst = [...h.host.querySelectorAll<HTMLButtonElement>('.speech-settings [role="radio"]')].find(button => button.textContent === 'settings.localTts.localFirst')!;
+        localFirst.click(); await settle();
+        expect(h.host.querySelector<HTMLSelectElement>('select[aria-label="settings.localTts.voice"]')!.value).toBe('zf_001');
+        expect(current.selectionTtsVoices).toEqual(['zh-CN-XiaoxiaoMultilingualNeural']);
     });
     it.each(['radio', 'card', 'download'] as const)('rejects the complete old video %s event before any config write or backend command', async control => {
         const h = await mount('video'), original = h.state.config;
@@ -402,6 +393,61 @@ describe('entire captured public template event belongs to its rendered config',
         const radio = h.host.querySelector<HTMLInputElement>('input[name="video-local-model"][value="base"]')!;
         radio.checked = true; radio.dispatchEvent(new dom.window.Event('change', {bubbles: true})); await settle(); expect(current.videoLocalModel).toBe('base');
     });
+});
+
+it('observes a download started by another page and rereads authoritative completion without sending a duplicate prepare', async () => {
+    const h = await mount('tts');
+    const externalCommand = browser.runtime.sendMessage({type: 'fluentReadPrepareLocalTtsModel'});
+    await settle(); await h.backend.chunk(LOCAL_TTS_DOWNLOAD_ID);
+    expect(progress(h.host, 'tts')?.getAttribute('value')).toBe('200000');
+    expect(h.host.textContent).toContain('25% · 0.2 MB / 0.8 MB');
+    expect(downloadButton(h.host, 'tts').disabled).toBe(true);
+    downloadButton(h.host, 'tts').click(); await settle();
+    expect(h.backend.ttsOffscreen.prepare).toHaveBeenCalledOnce();
+    const reads = uiReads('tts');
+    await h.backend.finish(LOCAL_TTS_DOWNLOAD_ID); await externalCommand; await settle();
+    expect(uiReads('tts')).toBeGreaterThan(reads);
+    expect(progress(h.host, 'tts')).toBeNull();
+    expect(h.host.querySelector('[data-testid="local-tts-remove"]')).not.toBeNull();
+    expect(h.host.querySelector('[role="alert"]')).toBeNull();
+});
+
+it('keeps an installed TTS model available after removal fails and lets the current control retry successfully', async () => {
+    const h = await mount('tts');
+    await h.backend.storage.set({[ttsModel.LOCAL_TTS_MODEL_STATE_KEY]: {
+        model: ttsModel.LOCAL_TTS_MODEL_ID, downloaded: true, downloadSizeMb: ttsModel.LOCAL_TTS_MODEL.downloadSizeMb,
+    }}); await settle();
+    h.backend.ttsOffscreen.remove.mockRejectedValueOnce(new Error('controlled model removal failure'));
+    h.host.querySelector<HTMLButtonElement>('[data-testid="local-tts-remove"]')!.click(); await settle();
+    expect(h.host.querySelector('[role="alert"]')!.textContent).toContain('controlled model removal failure');
+    expect(h.backend.values[ttsModel.LOCAL_TTS_MODEL_STATE_KEY].downloaded).toBe(true);
+    const retry = h.host.querySelector<HTMLButtonElement>('[data-testid="local-tts-remove"]')!;
+    expect(retry.disabled).toBe(false);
+    retry.click(); await settle();
+    expect(h.backend.ttsOffscreen.remove).toHaveBeenCalledTimes(2);
+    expect(h.backend.values[ttsModel.LOCAL_TTS_MODEL_STATE_KEY].downloaded).toBe(false);
+    expect(h.host.querySelector('[data-testid="local-tts-remove"]')).toBeNull();
+    expect(downloadButton(h.host, 'tts').disabled).toBe(false);
+    expect(h.host.querySelector('[role="alert"]')).toBeNull();
+});
+
+it('keeps compact progress accessible and clears a previous percentage when the current transfer has no total', async () => {
+    const state = Vue.reactive<{progress?: progressModule.DownloadProgress; label: string; detail: 'percent' | 'none'}>({
+        progress: {loaded: 200_000, total: 800_000}, label: '本地朗读模型下载', detail: 'percent',
+    });
+    const host = dom.document.createElement('div'); dom.document.body.append(host);
+    const app = Vue.createApp({render: () => Vue.h(DownloadProgress, state)});
+    apps.add(app); app.mount(host); await settle();
+    expect(host.querySelector('progress')!.getAttribute('aria-label')).toBe('本地朗读模型下载');
+    expect(host.querySelector('.download-progress-detail')!.textContent).toBe('25%');
+    expect(host.querySelector('[aria-live]')).toBeNull();
+    state.progress = {loaded: 200_000, total: 0}; await settle();
+    expect(host.querySelector('progress')!.hasAttribute('value')).toBe(false);
+    expect(host.querySelector('progress')!.hasAttribute('max')).toBe(false);
+    expect(host.querySelector('.download-progress-detail')!.textContent).toBe('0.2 MB');
+    state.detail = 'none'; await settle();
+    expect(host.querySelector('.download-progress-detail')).toBeNull();
+    expect(host.querySelector('progress')!.getAttribute('aria-label')).toBe('本地朗读模型下载');
 });
 
 // 回包隔离不能把重新进入的视图永久留在下载中；未发布进度的失败没有 storage 删除事件。

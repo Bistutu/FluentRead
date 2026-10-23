@@ -135,6 +135,28 @@ describe('actual local translation Worker message boundary', () => {
         expect(await reply(scope, {...command, requestId: 2})).toMatchObject({success: true});
     });
 
+    it('suppresses native model logs at every level without changing the public translation result', async () => {
+        const levels = ['debug', 'log', 'warn', 'error'] as const;
+        const consoleSpies = levels.map(level => vi.spyOn(console, level).mockImplementation(() => undefined));
+        try {
+            const engine = hunyuanEngine();
+            mocks.engine.mockImplementation((_paths, options: {logger: Record<typeof levels[number], (...messages: unknown[]) => void>}) => {
+                engine.loadModel.mockImplementation(async () => {
+                    // 模拟原生推理库使用收到的 logger 端口，不调用 Worker 私有函数。
+                    for (const level of levels) options.logger[level]('synthetic private model diagnostic', {modelPath: '/private/controlled-model'});
+                });
+                return engine;
+            });
+            mocks.artifacts.mockReturnValue([{}]);mocks.artifactBlob.mockResolvedValue(new Blob(['model']));
+            const scope = await start();
+            expect(await reply(scope, {...command, model: LOCAL_TRANSLATION_MODEL_IDS.hunyuan, requestId: 1}))
+                .toMatchObject({success: true, result: '你好', backend: 'wasm'});
+            expect(engine.loadModel).toHaveBeenCalledOnce();expect(engine.createChatCompletion).toHaveBeenCalledOnce();
+            for (const spy of consoleSpies) expect(spy).not.toHaveBeenCalled();
+            expect(JSON.stringify(scope.postMessage.mock.calls)).not.toContain('synthetic private model diagnostic');
+        } finally {for (const spy of consoleSpies) spy.mockRestore();}
+    });
+
     it('does not reuse a Hunyuan engine after its exit rejects during a model switch', async () => {
         const engine = hunyuanEngine();engine.exit.mockRejectedValue(new Error('Hunyuan exit failed'));
         mocks.engine.mockReturnValue(engine);mocks.artifacts.mockReturnValue([{}]);mocks.artifactBlob.mockResolvedValue(new Blob(['model']));

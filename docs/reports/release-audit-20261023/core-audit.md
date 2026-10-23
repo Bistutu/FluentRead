@@ -196,3 +196,17 @@ root 独立复审后进一步缩小笔记持久 fence：原实现把全部笔记
 补审台账中 5 处摘要变化：runtime-feedback 删除无运行期消费者的旧 live 捕获文案，两个 OpenAI 执行器仅更新构建归属注释，两处 harness 调用抽取与已独立复核的相同源码一致。保存 S6→当前精确差异 latest-cross-review-delta.patch 后更新摘要，未将简单刷新摘要当作语义审查。再次核对 memoryFence 的适用类别与 latestData 完全一致，完整标记集合仍用于 generation 和提交后失效，没有因减小正文 fence 丢失相关删除/清空保护。
 
 root 随后指出隐藏 file input 的 change 仍缺少本次 chooser 归属。本子任务补两条真实输入事件回归：关闭 A 后打开来源 B 或预览 B，再递送 A 的公开 onChange 与旧 DOM change，旧实现确实启动 file.text（local-import-file-before.log）。输入框现按来源/活跃 revision 的 Symbol key 重建，使用 :onChange 直接绑定捕获归属的 readFile，读取入口补来源可见性校验。不是仅在文件读完后丢弃结果，失效事件在开始读取前即被拒绝。最终 local-import-file-after.log 为 49C 178 + configRestoreOwnership 140 = 318 条通过；完整 vue-tsc 退出 0，两个修改文件 diff check 通过。两轮共 11 条新增回归均保存先红后绿证据。最终组件覆盖为语句/函数/行 100%、分支 93.83%；新增入口前置保护令部分旧防御路径不再由这些公开流程到达，未人工调用私有函数或忽略代码来掩盖缺口。
+
+### S8 全量结果与冻结前补充验证
+
+S8 全源运行退出 1：789 个测试文件中 787 通过、2 失败；28,486 条通过、3 条失败、6 条条件跳过，共 28,495 条，耗时 1,137.11 秒。三条失败分别为本地恢复控件改为归属回调后遗留的源码文本断言、Vue 消费者与严格覆盖例外的登记冲突、7 个已有严格覆盖模块仍留在旧豁免分类。日志没有第四条新功能测试失败。后续定向修复不能把这次 S8 全量运行改称通过；当前工作树复验又发现 DownloadProgress 消费者登记问题，已交主任务处理，与 S8 失败清单分开记录。
+
+S8 的 1,151 份源码覆盖报告保持完整分母：语句/行 **162,555 / 166,658（97.53%）**，函数 **11,706 / 13,152（89.00%）**，分支 **86,177 / 89,026（96.79%）**。仍缺 4,103 条语句/行、1,446 个函数和 2,849 个分支，194 个文件存在至少一项缺口。生成 vendor 占其中 1,300 个函数缺口，自有源码占 146 个；其中 42 个文件没有 AST 函数体，但 V8 报告仍存在函数占位。S8 显式严格清单 828 个文件中，只有 readingGeneration 的 5 个分支和 readingRuntime 的 4 个分支未满；全源四维 100% 目标仍未达到。精确范围、逐文件缺口和失败分类见证据目录的 `checkpoint8-global-gap-summary.json`，没有通过缩小分母或降低阈值改变结论。
+
+冻结前只增加真实外部端口和控件测试，以下结果属于 S8 之后的补充验证，生产源码 SHA 均与 S8 相同：
+
+- 远程同步与站点适配：23 条控件测试和 38 条设置架构检查共 61 条通过。新增两条验证返回同步方向选择后必须重选、最终只提交新确认方向，以及错误/正确删除确认词按 Enter 均不删除、关闭重开清空确认词和详情状态。按锁定 Element Plus 的真实 afterLeave 顺序补齐测试端口的 closed→update:modelValue(false) 回执，复用现有关闭用例；未直接调用组件私有方法。RemoteConfigSync 的语句/行 99.68%、函数 100%、分支 83.87%；SiteAdaptationSettings 的语句/行 99.58%、函数 100%、分支 92.80%。证据为 `core/remote-final-controls*`。
+- 本地翻译 worker：18 条测试通过，语句/行/函数 100%（18 / 18 函数），分支 108 / 110（98.18%）。新增实际 Worker 消息触发 Hunyuan 初始化的用例，由原生模型库端口使用收到的四级 logger，验证 debug/log/warn/error 不泄露诊断内容且正常返回译文。未 mock 自有 worker。剩余两处分支分别是已通过消息协议校验后的私有 translate 重复输入防御，以及只会抛本 realm TypeError 的解析器之非 Error 兜底；没有构造结构化克隆无法传递的 getter 来触达它们，也没有为指标删除生产防御。现有验证归属保持不变，不宣称已经达到严格四维 100%。证据为 `core/local-worker-coverage-final.log` 和 `core/local-worker-final-coverage/`。
+- Userscript 阅读：generation 84 条、runtime 25 条，共 109 条通过。补充固定匿名 Bilibili 忽略无效无关请求头的配置边界，以及真实 sendMessage 历史查询在初始化等待期间遇到导航后拒绝旧请求、新路由查询正常的生命周期边界。两个模块语句/行/函数均 100%；generation 分支 98.98%，runtime 分支 96.34%。剩余 **7** 处分支：同步 JSON 解析与回调之间没有原生异步插口的 abort 检查、由外层条件已保证非空的 partialArgs fallback、两处只接收内部赋值 capture 回调的异常隔离、真实主页面 location 存在的两处 fallback，以及内部生成 sender 必有 tab.url 的 fallback。真实用户统计回调失败由外层隔离且已有测试；未替换 JSON.parse、伪造无 location 页面或调用私有 capture 填充数字。逐项位置和语义见 `core/reading-final-public-gaps-review.json`。
+
+上述补充的完整 vue-tsc 类型检查均退出 0，修改测试的 diff check 通过。它们不替代 S9 全量验收。下一轮全量计划启用已具备资源的 4 个真实 PDF 条件；2 个 Harness 条件仍保留跳过。此处仅记录主任务的运行计划，不预先宣称 S9 结果或真实模型/设备验收完成。

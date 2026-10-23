@@ -57,7 +57,7 @@ const root = ref<HTMLElement>();
 const menu = ref<HTMLDetailsElement>();
 const editing = ref(false);
 function closeMenu(): void {if (menu.value) {menu.value.open = false; menu.value.querySelector<HTMLElement>('summary')?.focus();}}
-function act(action: 'study' | 'mastery' | 'remove'): void {closeMenu(); if (action === 'study') emit('study'); else if (action === 'mastery') emit('mastery'); else emit('remove');}
+function act(action: 'mastery' | 'remove'): void {closeMenu(); if (action === 'mastery') emit('mastery'); else emit('remove');}
 async function editNote(): Promise<void> {closeMenu(); editing.value = true; await nextTick(); root.value?.querySelector('textarea')?.focus();}
 function updated(entry: VocabularyEntry): void {editing.value = false; emit('updated', entry);}
 </script>

@@ -85,3 +85,14 @@ Vue 验证归属门禁补充词法作用域内 const 组件别名追踪，允许
 - 第六份快照真实 Options/Popup 17 项通过，控制台无错误、原生激活事件为零。36 站点/72 路径矩阵仍在收尾：已确认 GitHub 建连中断、Product Hunt 403 与 SQLite 受保护按钮的测试协议差异，另有 NASA 悬浮恢复失败在调查。失败保留原始证据，不删除或改为跳过。
 
 新增证据：`candidate-checkpoint-6-global-coverage/`、`checkpoint6-native-prerequisites.log`、`local-paste-owned-{red,coverage}.log`、`harness-generation-coverage/`、`core/reading-storage-coverage-final.log`、`browser/sites-checkpoint-6/`、`browser/lazy-checkpoint6/`。当前轻量阅读传输和脚本体积正在最终复验，上述定向结果不等同最终发布验收。
+
+## 20:45 阶段增量证据（非最终验收）
+
+- S8 固定 6,756 个源文件哈希，789 个测试文件中 787 通过、2 失败；28,486 项通过、3 失败、6 条外置 PDF 条件跳过。全源 S/L97.53%（162,555/166,658）、F89.00%（11,706/13,152）、B96.79%（86,177/89,026），四维 100% 未通过。三条失败是过期模板断言及验证归属登记，当前已定向修正，尚待 S9 全量确认。
+- S8 Chrome 与另外 17 项顺序发布构建/清单/归档/类型/文档检查全部通过，六份 ZIP/XPI 全文件 CRC/SHA 一致。普通脚本 1,857,226 字节、standalone 3,592,912 字节通过原门槛，GF 2,916,980 字节仍失败。相同 527 文件 level6→9 减少134,822 字节；正式包相对旧基线 level6 减少133,560 字节、相对旧基线 level9 增加1,278 字节，不混淆压缩参数与源码变化。
+- S8 浏览器 72 路径中 21 通过、LearnOpenGL 悬浮在翻译前站点/夹具契约未就绪、MkDocs 悬浮记录所属进程实际激活并由保护中止，余49未执行。未自动重试；只有归属与时序证据，不能确定激活触发者。S6 的无违规记录不能抵消后续事件。
+- 最新恢复文件输入和预览归属均经旧实现失败再验证，LocalDataManagement 的 11 条新增竞态已纳入318项组合。远程同步补真实首次同步方向返回和删除短语确认/重开清空，23项通过，RemoteConfigSync/SiteAdaptation 函数均100%。
+- 收藏条目中 act 只有掌握/删除两个调用者，学习入口直接发事件；删除未用 study 分支。新增实际 CollectionEntry→SavedExplanation 编辑、取消、保存并传回更新与脚注学习/删除合同；另补缓存清空单飞、失败重试、离页成功不再读统计和两个容量输入同补丁。三文件207项通过，两个目标组件函数均100%；CollectionEntry S/L100，缓存S/L96.87%，分支仍未100。
+- 本轮只读审阅 CollectionEntry 完整源码及调用点，并将当前SHA与旧记录并存。七份台账核对S8自有1,149源码均有当前匹配；生成vendor的3,044 AST函数体未宣称人工全体逐函数审阅。
+
+证据：`checkpoint8-global-coverage.log`、`checkpoint8-global-gap-summary.json`、`checkpoint8-{web,media}-build-results.json`、`checkpoint8-compression-comparison.json`、`web/s8-browser-readonly-diagnosis.json`、`root-final-ui-controls.log`、`root-final-ui-coverage/`。S9将启用可取得原始输入的PDF条件用例；缺少Harness原件及两份旧布局时仍明确记为未执行，不制造替代输入。

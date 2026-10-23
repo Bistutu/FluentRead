@@ -150,6 +150,17 @@ it.each(['cancel', 'route', 'dispose'] as const)('does not start a model when %s
     if (reason !== 'dispose') await completed(begin());
 });
 
+it('rejects an old history message when navigation wins initialization and allows a fresh message on the new route', async () => {
+    let ready!: () => void;state.ready = new Promise<void>(resolve => {ready = resolve;});
+    setPlatformMessageHandler(createPlatformMessageHandler(vi.fn()));
+    const previous = browser.runtime.sendMessage({type: 'fluentReadHarness', action: 'sessions-list'});
+    navigate('https://reading.test/after-history-request');ready();
+    await expect(previous).resolves.toMatchObject({success: false, cancelled: true, error: '阅读页面已失活，请重新打开阅读卡'});
+    expect(state.model).not.toHaveBeenCalled();expect(put).not.toHaveBeenCalled();
+    await expect(listHarnessSessions()).resolves.toMatchObject({sessions: []});
+    expect(state.listeners.size).toBe(1);expect(state.model).not.toHaveBeenCalled();
+});
+
 it('retries a failed GM initialization and preserves one owned subscription', async () => {
     setPlatformMessageHandler(createPlatformMessageHandler(vi.fn()));
     (globalThis.GM as UserscriptModernApi).listValues = () => Promise.reject(new Error('Temporary GM read failure'));
