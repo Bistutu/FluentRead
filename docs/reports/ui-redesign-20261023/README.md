@@ -44,14 +44,16 @@
 
 | 专项 | 结果 | 已验证内容 |
 | --- | --- | --- |
-| 皮肤一致性 | 68 项，14 张截图 | 14 种皮肤 × 明暗 × 1440/390px；176 个实际警告/错误样本最低对比度 5.08:1；外描边、圆角、compact 对齐、Tab/Space 焦点 |
+| 皮肤一致性 | 76 项，16 张截图 | 14 种皮肤 × 明暗 × 1440/390px；184 个实际警告/错误样本最低对比度 5.08:1；外描边、圆角、compact 对齐、Tab/Space 焦点 |
 | 服务与学习 | 8 组流程，28 张截图 | 请求限制默认收起、自定义并发保存与重开、恢复全局；免费节点、材料、笔记既有交互；展开悬停顶角 |
 | 文档 | 18 项，15 张截图 | 390px 首次导入及侧栏开合；1440/900/390px 提示和正文首行几何；按需校订及搜索保留；取消重译、实际双语下载；仅 1 次本机请求 |
 | Storybook | 24 组交互，4 张截图 | Controls 和 Settings 两个实际示例，默认/compact/乌金 × 明暗 × 1440/390px；鼠标、Tab/Enter、数值输入、帮助、Esc、折叠草稿 |
 
-第二轮共 118 项浏览器场景、61 张截图。最终浏览器验收使用稳定生产包；没有页面错误、额外标签页或前台焦点占用，独立浏览器和 profile 已清理。代表截图由主任务与独立复核者实际查看，像素疑点经计算样式和再次操作确认后修复。
+第二轮共 126 项浏览器场景、63 张截图。各专项均使用稳定生产包；没有页面错误或前台焦点占用，独立浏览器和 profile 已清理。代表截图由主任务与独立复核者实际查看，像素疑点经计算样式和再次操作确认后修复。
 
 定向测试分组：共享设置、皮肤、功能服务和本地化 330 项；服务配置/编辑/请求限制 127 项；三个实际文档应用宿主 185 项，共 642 项。另通过变更共享组件的严格覆盖率、类型检查、Chrome/Firefox 构建与 manifest、userscript 构建和校验、文档/Storybook 构建及测试归类审计。首次 CI 暴露的旧标题断言、共享组件插槽覆盖和 Vue 验证归属已同步修正；校订按需挂载后的旧测试也改为先经过真实校订入口。
+
+后续 CI 暴露的 24 项失败已逐项修正并定向验证：原 `run-ui-consistency-test.cjs` 公共命令恢复原字节，本轮专项独立命名；提示词/原生合批测试渲染真实折叠组件；冻结的网站名单组件恢复原字节，错误色由共享设置样式覆盖。修正后 76 项皮肤与网站名单专项用新生产包重跑，184 个实际颜色样本通过；其余界面的组件与行为实现未变，保留上一次生产包的服务、学习、文档和 Storybook 证据。完整产物标识见同目录 `verification.json`。
 
 性能结论仅限已验证的工作量变化：阅读时校订器 DOM 为 0，免费节点折叠时停止轮询，不新增窗口 resize 监听。没有以构建通过代替真实性能计时，也不宣称供应商、全格式文档或物理设备已验证。
 
@@ -63,7 +65,7 @@
 node scripts/testing/run-ui-hierarchy-polish.cjs --extension-dir .output/chrome-mv3 --playwright-root "$PLAYWRIGHT_ROOT" --artifacts-dir "$ARTIFACTS/main" --audit-sections true
 node scripts/testing/run-service-learning-hierarchy-test.cjs --extension-dir .output/chrome-mv3 --playwright-root "$PLAYWRIGHT_ROOT" --artifacts-dir "$ARTIFACTS/learning" --display secondary
 node scripts/testing/run-document-action-hierarchy-test.cjs --extension-dir .output/chrome-mv3 --playwright-root "$PLAYWRIGHT_ROOT" --artifacts-dir "$ARTIFACTS/document" --display secondary --widths 1440,900,390
-node scripts/testing/run-ui-consistency-test.cjs --extension-dir .output/chrome-mv3 --playwright-root "$PLAYWRIGHT_ROOT" --artifacts-dir "$ARTIFACTS/consistency" --display secondary
+node scripts/testing/run-settings-skin-consistency-test.cjs --extension-dir .output/chrome-mv3 --playwright-root "$PLAYWRIGHT_ROOT" --artifacts-dir "$ARTIFACTS/consistency" --display secondary
 # pnpm docs:build:site 后运行真实组件示例
 node scripts/testing/run-storybook-controls-test.cjs --storybook-dir docs/.vitepress/dist/storybook --extension-dir .output/chrome-mv3 --playwright-root "$PLAYWRIGHT_ROOT" --artifacts-dir "$ARTIFACTS/storybook" --display secondary
 ```

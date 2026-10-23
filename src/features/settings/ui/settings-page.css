@@ -521,6 +521,10 @@ h1 { margin-bottom: 6px; font-size: 26px; line-height: 1.25; letter-spacing: -.0
 :root.dark .disabled-section { border-color: var(--line); color: var(--muted); background: var(--surface-soft); }
 :root.dark .disabled-section strong { color: var(--ink); }
 
+/* 网站名单的错误反馈统一使用语义色；设置页边界的优先级覆盖旧组件的深色聚焦样式。 */
+.settings-app .workspace .settings-card .site-rules-editor .site-rules-input-wrap input[aria-invalid="true"] { border-color: var(--fr-danger); }
+.settings-app .workspace .settings-card .site-rules-editor .site-rules-feedback.error { color: var(--fr-danger); }
+
 /* 设置中心的层级：导航 / 页内分类 / 内容分组；表单保持适读宽度，工作台保留可用空间。 */
 .settings-app { --settings-content-width: 1080px; }
 .settings-app .sidebar { flex-basis: 224px; width: 224px; padding: 24px 16px 16px; background: var(--surface); backdrop-filter: none; }

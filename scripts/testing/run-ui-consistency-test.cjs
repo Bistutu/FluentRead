@@ -1,286 +1,168 @@
-#!/usr/bin/env node
+/** 验证本轮界面一致性：复用一个隔离后台页签，避免多次创建页签抢占前台。 */
 'use strict';
-
-/**
- * @file scripts/testing/run-ui-consistency-test.cjs
- * 文件职责：定向验收生产设置界面的语义提示色、皮肤卡片一致性与内嵌折叠键盘焦点。
- * 主要内容：从真实皮肤选择器读取全部选项，逐皮肤、亮暗主题和桌面/窄屏验证文字与实际祖先背景的合成对比度、卡片边框圆角、紧凑风格对齐、摘要去重；Tab 到原生 summary 后 Space 开合，真实无效网址表单触发错误提示。
- * 模块边界：使用独立 profile、helper 首 tab、公共配置消息和真实 UI 操作，不注入样式或改变 DOM；仅保存代表性截图，不能证明 Firefox、真实设备、在线供应商或所有页面的完整无障碍。
- */
-const assert = require('node:assert/strict');
+const {waitForAsyncCondition} = require('./wait-for-async-condition.cjs');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
-const crypto = require('node:crypto');
-const {guardBrowserClose, getGuardedBrowserPid} = require('./owned-browser-close.cjs');
-const arg = (name, fallback) => {const index = process.argv.indexOf(`--${name}`); return index < 0 ? fallback : process.argv[index + 1];};
-const timeout = Number(arg('timeout', '30000'));
+const os = require('node:os');
+const arg = (name, fallback) => process.argv.includes(`--${name}`) ? process.argv[process.argv.indexOf(`--${name}`) + 1] : fallback;
 const extensionDir = path.resolve(arg('extension-dir', '.output/chrome-mv3'));
-const artifactsDir = path.resolve(arg('artifacts-dir', '/private/tmp/fluentread-ui-consistency'));
-const helperPath = path.resolve(arg('focus-safe-helper', path.join(__dirname, 'focus-safe-browser.cjs')));
-const playwrightRoot = arg('playwright-root', '/Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules');
-const browserPath = arg('browser-path', '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge');
-const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
-async function until(check, label) {
-  const deadline = Date.now() + timeout;
-  while (Date.now() < deadline) {if (await check()) return; await pause(60);}
-  throw new Error(`Timeout: ${label}`);
-}
-function fingerprint(directory) {
-  const hash = crypto.createHash('sha256'); let files = 0;
-  function walk(folder) {
-    for (const name of fs.readdirSync(folder).sort()) {
-      const file = path.join(folder, name), stat = fs.lstatSync(file);
-      assert(!stat.isSymbolicLink(), 'Production artifact must not contain symlinks');
-      if (stat.isDirectory()) walk(file);
-      else if (stat.isFile()) {hash.update(path.relative(directory, file)); hash.update('\0'); hash.update(fs.readFileSync(file)); files += 1;}
+const artifacts = arg('artifacts-dir', '/private/tmp/fluentread-ui-consistency');
+const {chromium} = require(path.join(arg('playwright-root', ''), 'playwright'));
+const {launchFocusSafePersistentContext, newPageWithoutForeground} = require(arg('focus-safe-helper', ''));
+const assert = (value, message) => { if (!value) throw new Error(message); };
+fs.mkdirSync(artifacts, {recursive: true});
+const report = {ok: false, assertions: [], screenshots: [], consoleErrors: [], extensionDir};
+(async () => {
+ let launched;
+ let launchAttempted = false;
+ const profileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fr-ui-consistency-'));
+ try {
+  launchAttempted = true;
+  launched = await launchFocusSafePersistentContext({chromium, profileDir, browserPath: '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge', background: true, headless: false, browserArgs: [`--disable-extensions-except=${extensionDir}`, `--load-extension=${extensionDir}`, '--no-first-run'], viewport: {width: 1440, height: 1000}, timeout: 30000});
+  Object.assign(report, {launchMode: launched.launchMode, focusPolicy: launched.focusPolicy, windowPlacement: launched.windowPlacement});
+  const context = launched.context;
+  const worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
+  const extensionOrigin = `chrome-extension://${new URL(worker.url()).host}`;
+  const page = await newPageWithoutForeground(context, 30000);
+  page.on('pageerror', error => report.consoleErrors.push(error.message));
+  const check = (value, message) => {assert(value, message); report.assertions.push(message);};
+  const shot = async name => { const file = path.join(artifacts, name+'.png'); await page.screenshot({path: file, fullPage: false}); report.screenshots.push(file); };
+  const goto = async (file, width=1440, height=1000) => {await page.setViewportSize({width, height}); await page.goto(extensionOrigin+'/'+file);};
+  await goto('options.html');
+  await page.locator('.settings-app').waitFor();
+  const patch = async config => {
+    const response = await page.evaluate(async config => { const current = await chrome.runtime.sendMessage({type: 'configStorageRead', key: 'local:config'}); return chrome.runtime.sendMessage({type: 'persistConfig', mode: 'patch', config, expected: Object.fromEntries(Object.keys(config).map(key => [key, current.value[key]])), clientId: 'ui-consistency-fixture', sequence: Date.now(), baseRevision: 0}); }, config);
+    assert(response?.success, 'Fixture configuration saved: '+JSON.stringify(response));
+  };
+  await patch({uiLanguage: 'zh-CN', uiLanguageSetupCompleted: true, on: true, interfaceSkin: 'default'});
+  await goto('popup.html',360,600);
+  await page.locator('.popup-shell[data-config-ready="true"]').waitFor();
+  check(await page.locator('h1').innerText() === '网页翻译', 'Popup uses one-line functional heading');
+  check(await page.locator('select').count() === 0, 'Popup contains no native selects');
+  const metrics = await page.evaluate(() => ({width: document.body.getBoundingClientRect().width, overflow: document.body.scrollWidth > 360, height: document.querySelector('.popup-shell').getBoundingClientRect().height, roots: ['html','body','#app'].map(selector => ({selector,height:document.querySelector(selector).getBoundingClientRect().height,minHeight:getComputedStyle(document.querySelector(selector)).minHeight})), viewport:innerHeight}));
+  check(metrics.width === 360 && !metrics.overflow && metrics.height <= 560, 'Popup is 360px wide with no horizontal overflow'); report.popup = metrics;
+  await page.locator('.popup-shell').screenshot({path:path.join(artifacts,'popup.png')}); report.screenshots.push(path.join(artifacts,'popup.png'));
+  check(metrics.roots.every(root => Math.abs(root.height-metrics.height)<1), 'Popup HTML, body and app match content height without empty space');
+  const originalVisibility = await page.evaluate(async () => (await chrome.runtime.sendMessage({type:'configStorageRead',key:'local:config'})).value.interfaceVisibility);
+  await patch({interfaceVisibility:{...originalVisibility,popupQuickFeatures:false,popupFooter:false}});
+  await page.waitForFunction(previous => document.querySelector('.popup-shell').getBoundingClientRect().height < previous, metrics.height);
+  const compactHeight = await page.locator('.popup-shell').evaluate(el => el.getBoundingClientRect().height);
+  check(compactHeight < metrics.height - 100, 'Hiding optional modules shrinks Popup by more than 100px');
+  check(await page.evaluate(() => Math.abs(document.documentElement.getBoundingClientRect().height-document.querySelector('.popup-shell').getBoundingClientRect().height)<1), 'Popup root shrinks with optional modules');
+  report.popup.compactHeight = compactHeight;
+  await page.locator('.popup-shell').screenshot({path:path.join(artifacts,'popup-compact.png')});
+  await patch({interfaceVisibility:originalVisibility});
+  await page.waitForFunction(previous => Math.abs(document.querySelector('.popup-shell').getBoundingClientRect().height-previous)<1, metrics.height);
+  await page.getByRole('combobox',{name:'目标语言',exact:true}).press('Enter');
+  await page.locator('.el-popper.fluentread-select-popper:visible').waitFor(); await shot('popup-language'); await page.keyboard.press('Escape');
+  await page.locator('.service-field').click();
+  check(await page.locator('.service-picker-heading').count() === 0, 'Service menu begins with search without redundant heading');
+  await shot('popup-services');
+  await goto('options.html#settings-interface'); await page.locator('.settings-app').waitFor();
+  check(await page.locator('.topbar h1').innerText() === '界面风格', 'Interface style navigation is renamed');
+  check(await page.locator('.loading-style-option input').first().getAttribute('value') === 'ring', 'Gentle ring appears first');
+  for (const query of ['lan','language','语言','語言','言語','언어','langue','idioma','язык']) {
+    await page.locator('.search-box input').fill(query);
+    check((await page.locator('.search-results button').first().innerText()).includes('Language'), 'Language recovery search: '+query);
+  }
+  await page.locator('.search-results button').first().click();
+  await page.locator('[data-testid="ui-language-select"] input').waitFor();
+  check(await page.locator('[data-testid="ui-language-select"] input').evaluate(el => el === document.activeElement), 'Search focuses interface-language control');
+  for (const section of ['settings-harness','settings-image-translation','settings-area-translation','settings-video','settings-glossary']) {
+    await page.locator(`button[data-section="${section}"]`).click();
+    const card = page.locator(`#${section} .feature-enable-card`).first(); await card.waitFor();
+    const toggle = card.getByRole('switch');
+    const before = await toggle.getAttribute('aria-checked'); await toggle.click();
+    check(await toggle.getAttribute('aria-checked') !== before, 'Master control toggles: '+section);
+    await shot(section+'-enabled');
+    await toggle.click();
+  }
+  await page.locator('button[data-section="settings-video"]').click();
+  await page.locator('[data-video-subtitle-appearance]').scrollIntoViewIfNeeded();
+  for (const skin of ['classic','clean','glass','contrast','paper','terminal','neon','minimal']) {
+    const radio = page.locator(`.subtitle-skin-option[data-skin="${skin}"]`);
+    if (!await radio.count()) continue;
+    await radio.click();
+    const colors = await page.locator('[data-video-subtitle-preview]').evaluate(el => ({source: getComputedStyle(el.querySelector('span')).color, translation: getComputedStyle(el.querySelector('b')).color, paint: getComputedStyle(el.querySelector('span')).paintOrder}));
+    check(colors.paint === 'stroke', 'Subtitle preview paints text over stroke: '+skin);
+    report['subtitle-'+skin] = colors;
+    await shot('subtitle-'+skin);
+  }
+  for (const section of ['settings-glossary','settings-translation-center','settings-model-usage','settings-vocabulary']) {
+    const nav = page.locator(`button[data-section="${section}"]`); if (!await nav.count()) continue;
+    await nav.click();
+    check(await page.locator(`#${section} select`).count() === 0, 'No native select in '+section);
+    if (section === 'settings-translation-center') {
+      await page.locator('.translation-center-service-picker > button').click();
+      check(await page.locator('.service-picker-search').evaluate(el=>el.getBoundingClientRect().height)>=44,'Translation center service search retains 44px height');
+      await shot('translation-center-services');await page.locator('.service-picker-close').click();
+    }
+    if (section === 'settings-glossary') {
+      const select = page.getByRole('combobox',{name:'源语言',exact:true}).last();
+      await select.scrollIntoViewIfNeeded(); await select.press('Enter'); await page.locator('.el-popper.fluentread-select-popper:visible').waitFor(); await shot('glossary-menu'); await page.keyboard.press('Escape');
     }
   }
-  walk(directory); return {sha256: hash.digest('hex'), files};
-}
-
-// This function runs read-only in the page. OffscreenCanvas resolves browser-supported CSS
-// colors (including color-mix), then alpha-composites every contributing background layer.
-// Non-solid backgrounds, group opacity and blend modes fail explicitly instead of producing
-// a misleading WCAG ratio. The opaque card surface makes the browser canvas fallback irrelevant.
-function contrastReadout(nodes) {
-  const canvas = new OffscreenCanvas(1, 1), context = canvas.getContext('2d', {willReadFrequently: true});
-  const rgba = css => {context.clearRect(0, 0, 1, 1); context.fillStyle = css; context.fillRect(0, 0, 1, 1); return Array.from(context.getImageData(0, 0, 1, 1).data).map((value, index) => index === 3 ? value / 255 : value);};
-  const composite = (front, back) => {const alpha = front[3] + back[3] * (1 - front[3]); return [...front.slice(0, 3).map((value, index) => alpha ? (value * front[3] + back[index] * back[3] * (1 - front[3])) / alpha : 0), alpha];};
-  const luminance = color => color.slice(0, 3).map(channel => {const value = channel / 255; return value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4;}).reduce((sum, value, index) => sum + value * [.2126, .7152, .0722][index], 0);
-  return nodes.map(node => {
-    const layers = [], unsupported = [];
-    for (let current = node; current; current = current.parentElement) {
-      const css = getComputedStyle(current), color = rgba(css.backgroundColor);
-      if (css.backgroundImage !== 'none') unsupported.push(`background-image: ${css.backgroundImage}`);
-      layers.push({tag: current.tagName, className: current.className, color: css.backgroundColor, rgba: color});
-      if (color[3] === 1) break;
-    }
-    // Effects above an opaque surface can still alter the entire rendered group.
-    for (let current = node; current; current = current.parentElement) {
-      const css = getComputedStyle(current);
-      if (Number(css.opacity) !== 1) unsupported.push(`opacity: ${css.opacity}`);
-      if (css.mixBlendMode !== 'normal') unsupported.push(`mix-blend-mode: ${css.mixBlendMode}`);
-      if (css.filter !== 'none') unsupported.push(`filter: ${css.filter}`);
-    }
-    if (layers.at(-1)?.rgba[3] !== 1) unsupported.push('No opaque ancestor surface');
-    let background = [0, 0, 0, 0];
-    for (const layer of [...layers].reverse()) background = composite(layer.rgba, background);
-    const css = getComputedStyle(node), foreground = composite(rgba(css.color), background), a = luminance(foreground), b = luminance(background);
-    return {text: node.textContent.trim(), color: css.color, fontSize: css.fontSize, foreground, background,
-      ratio: (Math.max(a, b) + .05) / (Math.min(a, b) + .05), layers, unsupported};
+  await goto('options.html#settings-video'); await page.locator('.video-model-card').first().waitFor();
+  const modelProof = await page.evaluate(async () => {
+    const tiny='https://modelscope.cn/models/onnx-community/whisper-tiny/resolve/master/onnx/encoder_model_q4.onnx';
+    const base='https://modelscope.cn/models/onnx-community/whisper-base/resolve/master/config.json';
+    const cache=await caches.open('transformers-cache');await cache.put(tiny,new Response('fixture-tiny'));await cache.put(base,new Response('fixture-base'));
+    await chrome.storage.local.set({fluentReadVideoLocalTranscriptionModels:['tiny','base']});
+    return {tiny,base};
   });
-}
-
-async function main() {
-  if (process.argv.includes('--help')) {
-    process.stdout.write('Production UI consistency: --extension-dir PATH --artifacts-dir PATH --playwright-root PATH --focus-safe-helper PATH --browser-path PATH --display secondary --timeout 30000\n'); return;
-  }
-  assert.equal(process.platform, 'darwin');
-  assert(!process.argv.includes('--headed') && !process.argv.includes('--headless'), 'Only visible background mode is supported');
-  assert(!path.basename(extensionDir).endsWith('-dev'), 'Use a production extension');
-  assert(Number.isFinite(timeout) && timeout > 0 && timeout <= 60000);
-  const manifest = JSON.parse(fs.readFileSync(path.join(extensionDir, 'manifest.json'), 'utf8'));
-  const optionsEntry = manifest.options_page || manifest.options_ui?.page;
-  assert(optionsEntry && manifest.background?.service_worker && manifest.action?.default_popup, 'Production MV3 options and worker required');
-  const helper = require(helperPath), {chromium} = require(path.join(playwrightRoot, 'playwright'));
-  for (const name of ['launchFocusSafePersistentContext', 'queryMacFrontmostApplication', 'activateExtensionTabWithoutForeground']) assert.equal(typeof helper[name], 'function');
-  fs.mkdirSync(artifactsDir, {recursive: true});
-  const profileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fluentread-ui-consistency-'));
-  const reportPath = path.join(artifactsDir, 'report.json');
-  const report = {ok: false, artifact: 'production', extensionDir, profileDir, browserPath, startedAt: new Date().toISOString(), productionFingerprint: fingerprint(extensionDir),
-    singlePageReuse: true, pageNavigations: 0, cases: [], contrasts: [], cardStyles: [], alignments: [], focusStates: [], layouts: [], screenshots: [], consoleErrors: [], focusSamples: [], fixtureWrites: [], additionalPages: [], remoteRequests: [],
-    evidenceBoundary: 'One owned background Chromium tab, isolated profile, production build. Public config messages set fixtures; real selectors, Tab/Space and invalid URL form exercise UI. Contrast is computed from rendered CSS foreground and solid alpha-composited ancestor surfaces, not screenshot antialiasing. Browser-page HTTP(S) blocked; no translation, provider request, download, Firefox, native-toolbar or real-device claim.'};
-  let session, context, page, worker, browserPid, origin, currentCase = 'launch', primaryError, launchAttempted = false, focusViolation = false;
-  const save = () => fs.writeFileSync(reportPath, JSON.stringify({...report, currentCase}, null, 2));
-  async function focus(label) {
-    const app = await helper.queryMacFrontmostApplication();
-    report.focusSamples.push({label, application: app, ownedPid: browserPid, at: new Date().toISOString()});
-    if (!app?.pid || !browserPid || app.pid === browserPid) {focusViolation = true; throw new Error(`${label}: foreground identity unavailable or owned browser took focus`);}
-  }
-  function clean(label) {assert.deepEqual(report.consoleErrors, [], `${label}: console/page error`); assert.deepEqual(report.additionalPages, [], `${label}: extra page opened`);}
-  async function settle() {await page.evaluate(() => document.fonts.ready); await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));}
-  async function layout(label) {
-    const metrics = await page.evaluate(() => {
-      const visible = node => node.getClientRects().length && getComputedStyle(node).visibility !== 'hidden';
-      const containers = [...document.querySelectorAll('.workspace,.settings-card,.settings-group,.settings-disclosure,.rule-card,.settings-item,.feature-service-control')].filter(visible).map(node => ({className: node.className, width: node.clientWidth, scrollWidth: node.scrollWidth}));
-      return {viewport: {width: innerWidth, height: innerHeight}, documentWidth: document.documentElement.scrollWidth, bodyWidth: document.body.scrollWidth, scrollX, containers};
-    });
-    report.layouts.push({label, ...metrics});
-    assert(metrics.documentWidth <= metrics.viewport.width + 1 && metrics.bodyWidth <= metrics.viewport.width + 1 && metrics.scrollX === 0, `${label}: document horizontal overflow`);
-    assert(metrics.containers.every(row => row.scrollWidth <= row.width + 1), `${label}: container horizontal overflow ${JSON.stringify(metrics.containers.filter(row => row.scrollWidth > row.width + 1))}`);
-  }
-  async function shot(label) {
-    await settle(); clean(label); await layout(label); await focus(`before:${label}`);
-    const file = path.join(artifactsDir, `${label}.png`); await page.screenshot({path: file, animations: 'disabled'});
-    await focus(`after:${label}`); clean(label); report.screenshots.push(file); save();
-  }
-  async function navigate(target, viewport) {
-    await focus(`navigate:${target.replace(origin, '')}`); if (viewport) await page.setViewportSize(viewport);
-    await page.goto(target, {waitUntil: 'domcontentloaded', timeout}); report.pageNavigations += 1;
-  }
-  async function readConfig() {
-    const result = await page.evaluate(() => chrome.runtime.sendMessage({type: 'configStorageRead', key: 'local:config'}));
-    assert(result?.success && result.value, 'Read authoritative isolated config'); return typeof result.value === 'string' ? JSON.parse(result.value) : result.value;
-  }
-  async function patchFixture(patch) {
-    const config = await readConfig(), expected = Object.fromEntries(Object.keys(patch).map(key => [key, config[key]]));
-    const result = await page.evaluate(({patch, expected}) => chrome.runtime.sendMessage({type: 'persistConfig', mode: 'patch', config: patch, expected}), {patch, expected});
-    assert(result?.success, `Fixture save: ${Object.keys(patch).join(',')}`); report.fixtureWrites.push({fields: Object.keys(patch), revision: result.revision});
-    await until(async () => {const saved = await readConfig(); return Object.entries(patch).every(([key, value]) => JSON.stringify(saved[key]) === JSON.stringify(value));}, 'fixture persistence');
-  }
-  async function openOptions(section, width = 1440, panel) {
-    await navigate(`${origin}/icon/128.png`);
-    await navigate(`${origin}/${optionsEntry}#${section}`, {width, height: width === 390 ? 844 : 960});
-    await page.locator('.settings-app').waitFor(); await page.locator(`#${section}`).waitFor({state: 'visible'});
-    if (panel) {await page.locator(`[data-settings-anchor-link="${panel}"]:visible,[data-settings-category="${panel}"]:visible`).first().click(); await settle();}
-    await settle();
-  }
-  async function contrast(label, locator, minimumCount) {
-    const readings = await locator.evaluateAll(contrastReadout); report.contrasts.push({label, readings});
-    assert(readings.length >= minimumCount, `${label}: expected at least ${minimumCount} visible text samples`);
-    for (const reading of readings) {assert.deepEqual(reading.unsupported, [], `${label}: unsupported background composition`); assert(reading.ratio >= 4.5, `${label}: ${reading.text} contrast ${reading.ratio.toFixed(3)} < 4.5`);}
-  }
-  async function geometry(label, compact) {
-    const result = await page.evaluate(() => {
-      const visible = node => node.getClientRects().length && getComputedStyle(node).visibility !== 'hidden';
-      // Inner SettingsGroup deliberately loses its outline inside a disclosure. Keep every
-      // outer card, including skins that deliberately remove both outer borders.
-      const nodes = [...document.querySelectorAll('.settings-section .settings-group,.settings-section .settings-disclosure')].filter(node => visible(node) && !node.parentElement.closest('.settings-group,.settings-disclosure'));
-      const cards = nodes.map(node => {const css = getComputedStyle(node), summary = node.querySelector(':scope > summary'), summaryCss = summary && getComputedStyle(summary); return {type: node.matches('.settings-disclosure') ? 'disclosure' : 'group',
-        radius: [css.borderTopLeftRadius, css.borderTopRightRadius, css.borderBottomRightRadius, css.borderBottomLeftRadius],
-        summaryTopRadius: summaryCss ? [summaryCss.borderTopLeftRadius, summaryCss.borderTopRightRadius] : null,
-        border: ['Top', 'Right', 'Bottom', 'Left'].map(side => ({width: css[`border${side}Width`], style: css[`border${side}Style`], color: css[`border${side}Color`]}))};});
-      const alignments = nodes.flatMap(node => {
-        const heading = node.querySelector(':scope > .settings-group-heading .settings-card-heading-copy,:scope > summary .settings-disclosure-copy');
-        if (!heading) return [];
-        const rows = [...node.querySelectorAll('.settings-item-copy')].filter(visible);
-        const left = heading.getBoundingClientRect().left;
-        return rows.map(row => ({type: node.matches('.settings-disclosure') ? 'disclosure' : 'group', headingLeft: left, rowLeft: row.getBoundingClientRect().left, delta: row.getBoundingClientRect().left - left}));
-      });
-      return {cards, alignments};
-    });
-    report.cardStyles.push({label, cards: result.cards});
-    const groups = result.cards.filter(card => card.type === 'group'), disclosures = result.cards.filter(card => card.type === 'disclosure');
-    assert(groups.length > 0 && disclosures.length > 0, `${label}: both outer card types must exist`);
-    for (const card of result.cards) {assert.deepEqual(card.radius, groups[0].radius, `${label}: outer card radius`); assert.deepEqual(card.border, groups[0].border, `${label}: outer card border`); if (card.summaryTopRadius) assert.deepEqual(card.summaryTopRadius, card.radius.slice(0, 2), `${label}: disclosure summary top radius`);}
-    if (compact) {
-      report.alignments.push({label, rows: result.alignments});
-      assert(result.alignments.some(row => row.type === 'group') && result.alignments.some(row => row.type === 'disclosure'), `${label}: alignment samples for both card types`);
-      assert(result.alignments.every(row => Math.abs(row.delta) <= 1), `${label}: compact title/row misalignment ${JSON.stringify(result.alignments.filter(row => Math.abs(row.delta) > 1))}`);
-    }
-  }
-  async function keyboardSummary(label, selector) {
-    const disclosure = page.locator(selector), summary = disclosure.locator(':scope > summary'); await summary.waitFor();
-    assert.equal(await disclosure.getAttribute('open'), null, `${label}: default collapsed`);
-    let tabs = 0;
-    while (!await summary.evaluate(node => document.activeElement === node) && tabs < 180) {await page.keyboard.press('Tab'); tabs += 1;}
-    assert(tabs > 0 && tabs < 180, `${label}: summary reachable through real Tab navigation`);
-    await summary.scrollIntoViewIfNeeded();
-    const state = await summary.evaluate(node => {const css = getComputedStyle(node), rect = node.getBoundingClientRect(); return {focused: document.activeElement === node, focusVisible: node.matches(':focus-visible'),
-      outlineWidth: css.outlineWidth, outlineStyle: css.outlineStyle, outlineColor: css.outlineColor, outlineOffset: css.outlineOffset,
-      rect: {left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom}, viewport: {width: innerWidth, height: innerHeight}};});
-    report.focusStates.push({label, tabs, ...state});
-    assert(state.focused && state.focusVisible, `${label}: keyboard focus must be visibly styled`);
-    assert(parseFloat(state.outlineWidth) >= 2 && state.outlineStyle !== 'none' && state.outlineColor !== 'rgba(0, 0, 0, 0)', `${label}: visible outline required`);
-    assert(parseFloat(state.outlineOffset) < 0, `${label}: outline must be inset to avoid clipping`);
-    assert(state.rect.left >= 0 && state.rect.top >= 0 && state.rect.right <= state.viewport.width + 1 && state.rect.bottom <= state.viewport.height + 1, `${label}: focused summary visible in viewport`);
-    await page.keyboard.press('Space'); await until(async () => await disclosure.getAttribute('open') !== null, `${label}: Space expands`);
-    assert(await summary.evaluate(node => document.activeElement === node && node.matches(':focus-visible')), `${label}: expansion retains keyboard focus`);
-    await shot(`${label}-expanded`);
-    await page.keyboard.press('Space'); await until(async () => await disclosure.getAttribute('open') === null, `${label}: Space collapses`);
-    report.cases.push({name: label, tabReachable: true, spaceExpandCollapse: true, insetOutline: true});
-  }
-  try {
-    launchAttempted = true;
-    session = await helper.launchFocusSafePersistentContext({chromium, profileDir, browserPath, timeout, background: true, headless: false,
-      displayTarget: arg('display', 'secondary'), viewport: {width: 1440, height: 960},
-      browserArgs: [`--disable-extensions-except=${extensionDir}`, `--load-extension=${extensionDir}`, '--no-first-run', '--no-default-browser-check']});
-    guardBrowserClose(session, profileDir); browserPid = await getGuardedBrowserPid(session); context = session.context;
-    Object.assign(report, {launchMode: session.launchMode, focusPolicy: session.focusPolicy, windowPlacement: session.windowPlacement, ownedPid: browserPid});
-    assert.equal(session.launchMode, 'macos-background-cdp'); assert.equal(session.focusPolicy, 'launchservices-no-foreground');
-    assert.equal(session.windowPlacement?.mode, 'background-visible-no-focus'); assert.equal(session.windowPlacement?.browserFrontmost, false); await focus('launch');
-    const initialPages = context.pages(); report.initialPageCount = initialPages.length;
-    page = initialPages.find(candidate => candidate.url().startsWith('about:blank#fluentread-background-')) || (initialPages.length === 1 ? initialPages[0] : undefined);
-    assert(page, 'Reuse helper first page without creating a fallback');
-    context.on('page', other => {if (other !== page) report.additionalPages.push({url: other.url()});});
-    page.setDefaultTimeout(timeout); page.on('pageerror', error => report.consoleErrors.push({surface: 'page', case: currentCase, message: error.message}));
-    page.on('console', message => {if (message.type() === 'error') report.consoleErrors.push({surface: 'page', case: currentCase, message: message.text()});});
-    await context.route(/^https?:/u, async route => {const url = new URL(route.request().url()); report.remoteRequests.push({origin: url.origin, path: url.pathname}); await route.abort();});
-    await until(async () => {
-      for (const candidate of context.serviceWorkers()) {
-        if (!candidate.url().endsWith(`/${manifest.background.service_worker}`)) continue;
-        const value = await candidate.evaluate(name => {const m = chrome.runtime.getManifest(), key = /^__MSG_(.+)__$/u.exec(name); return {name: m.name, expected: key ? chrome.i18n.getMessage(key[1]) : name, version: m.version, popup: m.action?.default_popup, key: m.key};}, manifest.name).catch(() => null);
-        if (value && value.name === value.expected && value.version === manifest.version && value.popup === manifest.action.default_popup && value.key === manifest.key) {worker = candidate; report.loadedManifest = {name: value.name, version: value.version}; return true;}
-      }
-      return false;
-    }, 'exact production worker');
-    worker.on('console', message => {if (message.type() === 'error') report.consoleErrors.push({surface: 'worker', case: currentCase, message: message.text()});});
-    origin = `chrome-extension://${new URL(worker.url()).host}`;
-    await navigate(`${origin}/icon/128.png`); await helper.activateExtensionTabWithoutForeground(context, page); await focus('activate-owned-page');
-    await until(async () => {try {return Boolean((await readConfig()).uiLanguage);} catch {return false;}}, 'config initialization');
-    const initial = await readConfig();
-    await patchFixture({on: true, uiLanguageSetupCompleted: true, uiLanguage: 'zh-CN', interfaceFont: 'system', animations: false, interfaceSkin: 'default', theme: 'light', service: 'microsoft',
-      harness: {...initial.harness, enabled: true, service: ''}, writing: {...initial.writing, enabled: true, service: ''}});
-    currentCase = 'discover-skins'; await openOptions('settings-interface', 1440, 'skin');
-    const skins = await page.locator('.interface-skin-option[data-skin]').evaluateAll(nodes => nodes.map(node => node.dataset.skin));
-    assert.equal(skins.length, 14, 'Expected all 14 actual skin options'); assert.equal(new Set(skins).size, skins.length); report.skins = skins;
-    const representative = (skin, theme) => skin === 'default' && theme === 'dark' || ['compact', 'wujin', 'xuanqing'].includes(skin) && theme === 'light';
-    for (const skin of skins) for (const theme of ['light', 'dark']) {
-      await patchFixture({interfaceSkin: skin, theme});
-      for (const width of [1440, 390]) {
-        const label = `${skin}-${theme}-${width}`; currentCase = `general-${label}`; await openOptions('settings-general', width);
-        await page.waitForFunction(({skin, dark}) => document.documentElement.dataset.interfaceSkin === skin && document.documentElement.classList.contains('dark') === dark, {skin, dark: theme === 'dark'});
-        const disclosure = page.locator('details.feature-services'); assert.equal(await disclosure.getAttribute('open'), null);
-        await disclosure.locator(':scope > summary').click(); assert.equal(await disclosure.locator('[data-feature-service]:visible').count(), 9);
-        await page.mouse.move(0, 0); await settle();
-        const summaryTitle = await disclosure.locator('.feature-services-status').getAttribute('title');
-        const warned = await disclosure.locator('.settings-item:has(.feature-service-warning)').evaluateAll(nodes => nodes.map(node => ({name: node.querySelector('.feature-service-heading strong').textContent.trim(), feature: node.querySelector('[data-feature-service]').dataset.featureService})));
-        assert.deepEqual(warned.map(row => row.feature).sort(), ['reading', 'writing']);
-        assert.equal(summaryTitle.split('\n').length, 2, `${label}: two actionable feature warnings`);
-        for (const row of warned) assert.equal(summaryTitle.split(row.name).length - 1, 1, `${label}: summary feature name ${row.name} appears once`);
-        await contrast(label, disclosure.locator('.feature-service-warning:visible,.feature-services-status:visible'), 3);
-        await geometry(label, skin === 'compact'); await layout(label); clean(label);
-        if (representative(skin, theme)) {await disclosure.locator('[data-feature-service="writing"]').scrollIntoViewIfNeeded(); await shot(`general-${label}`);}
-        report.cases.push({name: `general-${label}`, summaryTitle, warningContrast: true, matchingCards: true, compactAlignment: skin === 'compact'});
-      }
-      if (representative(skin, theme)) {
-        for (const width of [1440, 390]) {
-          const label = `danger-${skin}-${theme}-${width}`; currentCase = label; await openOptions('settings-sites', width, 'preview');
-          const form = page.locator('[data-setting="site-rule-preview"] .preview-form');
-          await form.locator('input').fill('not-a-valid-url'); await form.locator('button[type="submit"]').click();
-          const error = page.locator('[data-setting="site-rule-preview"] .rule-error[role="alert"]'); await error.waitFor();
-          assert.equal(await form.locator('input').getAttribute('aria-invalid'), 'true');
-          await contrast(label, error, 1); await layout(label); clean(label);
-          // One error screenshot per width is sufficient; other representative surfaces
-          // still receive the real form and contrast assertions without redundant images.
-          if (skin === 'default') {await error.scrollIntoViewIfNeeded(); await shot(label);}
-          report.cases.push({name: label, actualInvalidUrlForm: true, dangerContrast: true});
-        }
-      }
-    }
-    await patchFixture({interfaceSkin: 'default', theme: 'dark'});
-    for (const width of [1440, 390]) for (const [panel, selector] of [['cache', '[data-cache-limits]'], ['requests', '[data-testid="translation-retry-settings"]']]) {
-      currentCase = `focus-${panel}-${width}`; await openOptions('settings-advanced', width, panel); await keyboardSummary(currentCase, selector); clean(currentCase);
-    }
-    await focus('complete'); clean('complete'); report.ok = true;
-  } catch (error) {
-    primaryError = error; report.failure = {case: currentCase, message: error.message, stack: error.stack};
-    if (!focusViolation && page && !page.isClosed() && browserPid) {
-      try {await focus('before:failure'); const file = path.join(artifactsDir, 'failure.png'); await page.screenshot({path: file, animations: 'disabled'}); await focus('after:failure'); report.screenshots.push(file);} catch (captureError) {report.failureCaptureError = captureError.message;}
-    }
-  } finally {
-    // Closing the verified owned process must happen even if evidence cannot be written.
-    try {
-      if (session) {await session.close(); report.cleanup = {ownedBrowserClosed: true}; fs.rmSync(profileDir, {recursive: true, force: true}); report.cleanup.profileRemoved = true;}
-      else if (!launchAttempted) {fs.rmSync(profileDir, {recursive: true, force: true}); report.cleanup = {profileRemoved: true, browserNotStarted: true};}
-      else report.cleanup = {profileRetained: true, reason: 'Launch did not return a verified owned session'};
-    } catch (error) {report.ok = false; report.cleanup = {profileRetained: true, message: error.message}; primaryError ||= error;}
-    try {report.finalProductionFingerprint = fingerprint(extensionDir); assert.deepEqual(report.finalProductionFingerprint, report.productionFingerprint, 'Production artifact changed during validation');}
-    catch (error) {report.ok = false; report.artifactError = error.message; primaryError ||= error;}
-    report.finishedAt = new Date().toISOString(); save();
-  }
-  if (primaryError) throw primaryError;
-  process.stdout.write(JSON.stringify({ok: report.ok, reportPath, cases: report.cases.length, screenshots: report.screenshots.length, contrastSamples: report.contrasts.reduce((count, item) => count + item.readings.length, 0)}, null, 2) + '\n');
-}
-main().catch(error => {process.stderr.write(`${error.stack || error}\n`); process.exitCode = 1;});
+  await page.reload(); await page.getByRole('button',{name:/清除 Whisper Tiny/}).click();
+  await waitForAsyncCondition(() => page.evaluate(async () => !await (await caches.open('transformers-cache')).match('https://modelscope.cn/models/onnx-community/whisper-tiny/resolve/master/onnx/encoder_model_q4.onnx')), {timeoutMs: 30000, message: "清除 Whisper Tiny 后模型缓存仍存在"});
+  check(await page.evaluate(async ({base}) => Boolean(await (await caches.open('transformers-cache')).match(base)),modelProof), 'Clearing Tiny through UI retains Base cache');
+  check((await page.locator('.video-model-size').allTextContents()).join(' ').includes('100 MB'), 'Whisper cards show estimated download sizes');
+  await shot('video-models');
+  const ocrProof = await page.evaluate(async () => {
+    const database=await new Promise((resolve,reject)=>{const r=indexedDB.open('keyval-store');r.onupgradeneeded=()=>r.result.createObjectStore('keyval');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});
+    await new Promise(resolve=>{const tx=database.transaction('keyval','readwrite');tx.objectStore('keyval').put('fixture-eng','fluent-read-image-ocr/eng.traineddata');tx.objectStore('keyval').put('fixture-jpn','fluent-read-image-ocr/jpn.traineddata');tx.oncomplete=resolve});
+    const response=await chrome.runtime.sendMessage({type:'fluentReadImageOcrRemove',languages:['eng']});
+    const keys=await new Promise(resolve=>{const r=database.transaction('keyval').objectStore('keyval').getAllKeys();r.onsuccess=()=>resolve(r.result)});database.close();return {response,keys};
+  });
+  check(ocrProof.response.success && !ocrProof.keys.includes('fluent-read-image-ocr/eng.traineddata') && ocrProof.keys.includes('fluent-read-image-ocr/jpn.traineddata'), 'Production OCR clear removes selected files and retains other languages');
+  await goto('document.html');
+  await page.locator('.document-app').waitFor();
+  check(await page.locator('.document-header .ui-language-selector').count() === 0, 'Document header has no interface-language selector');
+  await page.locator('input[type="file"]').setInputFiles({name:'sample.md', mimeType:'text/markdown', buffer:Buffer.from('# Example\n\nThis is a document for translation.\n\nAnother paragraph.')});
+  await page.getByRole('combobox',{name:'文档目标语言'}).waitFor();
+  check(await page.locator('select').count() === 0, 'Document has no native selects');
+  await page.getByRole('combobox',{name:'文档目标语言'}).press('Enter');
+  await page.locator('.el-popper.fluentread-select-popper:visible').waitFor(); await shot('document-language');
+  await page.keyboard.press('ArrowDown'); await page.keyboard.press('Enter');
+  await page.emulateMedia({colorScheme:'dark'});
+  await page.getByRole('combobox',{name:'文档翻译服务'}).press('Enter'); await shot('document-dark-menu'); await page.keyboard.press('Escape');
+  await page.setViewportSize({width:390,height:844});
+  check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Document narrow layout has no horizontal overflow'); await shot('document-mobile');
+  await patch({videoTranslationEnabled:true});
+  const fixtureUrl='https://x.com/fluentread-ui-fixture/status/1';
+  await context.route(fixtureUrl, route=>route.fulfill({status:200,contentType:'text/html',body:'<!doctype html><html><body style="margin:24px"><article><div data-testid="videoPlayer" style="position:relative;width:640px;height:360px;background:#152535"><video style="width:100%;height:100%" poster="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22640%22 height=%22360%22/%3E"></video></div></article></body></html>'}));
+  await page.setViewportSize({width:1000,height:700});await page.goto(fixtureUrl);
+  await page.locator('video').hover();
+  await page.evaluate(()=>{window.xPlacementSamples=[];window.xPlacementObserver=new MutationObserver(()=>{for(const button of document.querySelectorAll('.fluent-read-video-subtitle-button'))window.xPlacementSamples.push({parent:button.parentElement.className,first:button.parentElement.firstElementChild===button})});window.xPlacementObserver.observe(document.body,{childList:true,subtree:true})});
+  await page.waitForTimeout(400);
+  check(await page.locator('.fluent-read-video-subtitle-button').count()===0,'X waits for delayed native controls without a corner icon');
+  const mountControls=()=>page.evaluate(()=>{const row=document.createElement('div');row.className='fixture-controls';row.style.cssText='position:absolute;bottom:0;left:0;right:0;display:flex;height:44px;align-items:center';row.innerHTML='<button aria-label="Play">▶</button><span>0:00 / 0:54</span><button aria-label="Settings">Settings</button><button aria-label="Fullscreen">Fullscreen</button>';document.querySelector('[data-testid="videoPlayer"]').appendChild(row)});
+  await mountControls();await page.locator('.fixture-controls .fluent-read-video-subtitle-button').waitFor();
+  await page.locator('.fixture-controls').evaluate(el=>el.remove());await page.waitForTimeout(150);
+  await mountControls();await page.locator('.fixture-controls .fluent-read-video-subtitle-button').waitFor();
+  const placements=await page.evaluate(()=>{window.xPlacementObserver.disconnect();return window.xPlacementSamples});
+  check(placements.length>0 && placements.every(sample=>sample.parent==='fixture-controls' && sample.first),'X first appearance and remount stay at the left of native controls');
+  report.xFixture={url:fixtureUrl,placements};await shot('x-controls');
+  check(report.consoleErrors.length === 0, 'No unhandled browser errors');
+  report.ok = true;
+ } catch(error) { report.error = error.stack || String(error); throw error; }
+ finally {
+  let closed = !launchAttempted;
+  try {if (launched) {await launched.close(); closed = true;}}
+  catch(error) {report.cleanupError = error.stack || String(error); process.exitCode = 1;}
+  if (closed) {
+   try {fs.rmSync(profileDir, {recursive: true, force: true});}
+   catch(error) {report.profileCleanupError = error.stack || String(error); process.exitCode = 1;}
+  } else report.retainedProfile = profileDir;
+  if (process.exitCode) report.ok = false;
+  try {fs.writeFileSync(path.join(artifacts,'report.json'),JSON.stringify(report,null,2));}
+  catch(error) {report.reportWriteError = error.stack || String(error); report.ok = false; console.error(error); process.exitCode = 1;}
+ }
+})().catch(error => {console.error(error);process.exitCode=1;});

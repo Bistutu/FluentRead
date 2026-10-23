@@ -66,13 +66,8 @@
     "refinement": {
       "date": "2026-10-23",
       "artifact": "Chrome MV3 production extension and built Storybook",
-      "productionFingerprint": {
-        "sha256": "d19f2be28ea50937df91694555dc095962ae783245f7d6a9ff9375e624ce5473",
-        "fileCount": 525,
-        "algorithm": "SHA256 of lexicographically sorted relative paths followed by each file bytes"
-      },
-      "totalCases": 118,
-      "totalScreenshots": 61,
+      "totalCases": 126,
+      "totalScreenshots": 63,
       "browser": "Isolated Microsoft Edge",
       "launchMode": "macos-background-cdp",
       "focusPolicy": "launchservices-no-foreground",
@@ -80,14 +75,16 @@
       "suites": {
         "consistency": {
           "ok": true,
-          "cases": 68,
-          "screenshots": 14,
+          "cases": 76,
+          "screenshots": 16,
           "consoleErrors": 0,
           "cleanup": {
             "ownedBrowserClosed": true,
             "profileRemoved": true
           },
-          "finishedAt": "2026-10-23T07:53:36.742Z"
+          "finishedAt": "2026-10-23T08:47:01.464Z",
+          "artifact": "ciContractRepairBuild",
+          "script": "run-settings-skin-consistency-test.cjs"
         },
         "learning": {
           "ok": true,
@@ -98,7 +95,8 @@
             "ownedBrowserClosed": true,
             "profileRemoved": true
           },
-          "finishedAt": "2026-10-23T07:53:55.338Z"
+          "finishedAt": "2026-10-23T07:53:55.338Z",
+          "artifact": "refinementBuild"
         },
         "document": {
           "ok": true,
@@ -106,7 +104,8 @@
           "screenshots": 15,
           "consoleErrors": 0,
           "cleanup": [],
-          "finishedAt": "2026-10-23T07:54:05.399Z"
+          "finishedAt": "2026-10-23T07:54:05.399Z",
+          "artifact": "refinementBuild"
         },
         "storybook": {
           "ok": true,
@@ -117,12 +116,13 @@
             "ownedBrowserClosed": true,
             "profileRemoved": true
           },
-          "finishedAt": "2026-10-23T07:57:44.333Z"
+          "finishedAt": "2026-10-23T07:57:44.333Z",
+          "artifact": "built-storybook"
         }
       },
       "contrast": {
         "skins": 14,
-        "actualSamples": 176,
+        "actualSamples": 184,
         "minimumRatio": 5.075626628846794,
         "defaultDarkWarningRatio": 8.651407511719613
       },
@@ -211,7 +211,30 @@
         "Targeted regression only.",
         "Contrast values derive from computed colors and alpha-composited solid surfaces, not pixel anti-aliasing.",
         "No startup latency or throughput percentage claim."
-      ]
+      ],
+      "productionArtifacts": {
+        "refinementBuild": {
+          "sha256": "d19f2be28ea50937df91694555dc095962ae783245f7d6a9ff9375e624ce5473",
+          "fileCount": 525,
+          "algorithm": "SHA256 of lexicographically sorted relative paths followed by each file bytes"
+        },
+        "ciContractRepairBuild": {
+          "sha256": "f2469bee239437ccb03c6f7fb5254ea4605968fb4113107348a839717179a0d7",
+          "files": 525,
+          "algorithm": "SHA256 of recursively sorted relative paths, NUL delimiters, and file bytes"
+        }
+      },
+      "ciContractRepair": {
+        "publicCliRestoredExactly": true,
+        "frozenSiteComponentRestoredExactly": true,
+        "failedCasesAddressed": 24,
+        "targetedVerification": {
+          "promptSyncLifecycle": 47,
+          "existingCliLifecycleCases": 6,
+          "verificationOwnership": 21
+        },
+        "scope": "Only the website-list semantic error styles moved into shared settings CSS. The 76-case skin and invalid-form suite ran against the new build; other component and behavior implementations remain unchanged from their recorded production runs."
+      }
     }
   }
 }

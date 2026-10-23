@@ -300,7 +300,7 @@ function removeDomain(domain: string) {
 }
 
 .site-rules-input-wrap input[aria-invalid="true"] {
-  border-color: var(--fr-danger);
+  border-color: #d9345e;
 }
 
 .site-rules-input-wrap input::placeholder {
@@ -341,7 +341,7 @@ function removeDomain(domain: string) {
 }
 
 .site-rules-feedback.error {
-  color: var(--fr-danger);
+  color: #d9345e;
 }
 
 .site-rules-list {
