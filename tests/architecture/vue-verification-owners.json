@@ -398,9 +398,9 @@
       "kind": "behavior",
       "tests": [
         "tests/featureMenuSettingsLifecycle.test.ts",
-        "tests/freeTranslationSettings.test.ts"
+        "tests/sharedUiComponentsLifecycle.test.ts"
       ],
-      "scenario": "真实父子模板默认折叠、摘要状态更新与原生 toggle 透传，收起期间保留功能分配和服务配置控件"
+      "scenario": "真实父子模板功能分配；直接挂载折叠容器，原生 toggle 透传，摘要更新保持开合状态与未保存表单实例，defaultOpen 仅决定初始状态"
     },
     "src/features/settings/ui/components/SettingsNumberInput.vue": {
       "kind": "presentation",

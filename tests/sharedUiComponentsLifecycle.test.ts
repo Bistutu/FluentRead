@@ -119,6 +119,7 @@ import InterfaceSkinPreview from '@/src/features/settings/ui/components/Interfac
 import PopupLayoutPreview from '@/src/features/settings/ui/components/PopupLayoutPreview.vue';
 import PopupLayoutPreviewItem from '@/src/features/settings/ui/components/PopupLayoutPreviewItem.vue';
 import SettingsGroup from '@/src/features/settings/ui/components/SettingsGroup.vue';
+import SettingsDisclosure from '@/src/features/settings/ui/components/SettingsDisclosure.vue';
 import SettingsItem from '@/src/features/settings/ui/components/SettingsItem.vue';
 import TranslationColorField from '@/src/features/settings/ui/components/TranslationColorField.vue';
 import TranslationStylePreview from '@/src/features/settings/ui/components/TranslationStylePreview.vue';
@@ -205,11 +206,42 @@ beforeEach(() => {dom.document.body.replaceChildren(); dom.frames.clear(); ports
 afterEach(async () => {for (const app of apps) app.unmount(); apps.clear(); await settle(); dom.frames.clear(); vi.restoreAllMocks();});
 
 describe('shared UI actual client SFC lifecycle', () => {
-  it('loads all sixteen actual SFC client render functions without any server render replacement', () => {
+  it('loads all seventeen actual SFC client render functions without any server render replacement', () => {
     for (const component of [UiSelect, GlossaryLibrarySelect, ServiceIcon, TranslationLoadingPreview, UiIcon, FeatureEnableCard, FieldHelp,
-      InterfaceSkinPreview, PopupLayoutPreview, PopupLayoutPreviewItem, SettingsGroup, SettingsItem, TranslationColorField, TranslationStylePreview, WritingStylePreview, SegmentedControl]) {
+      InterfaceSkinPreview, PopupLayoutPreview, PopupLayoutPreviewItem, SettingsGroup, SettingsDisclosure, SettingsItem, TranslationColorField, TranslationStylePreview, WritingStylePreview, SegmentedControl]) {
       expect((component as any).render).toBeTypeOf('function');expect((component as any).ssrRender).toBeUndefined();
     }
+  });
+  it('preserves an edited disclosure form and native open state across summary updates', async () => {
+    // Linkedom lacks HTMLDetailsElement.open; supply its native boolean reflection
+    // so runtime-dom writes false as a property rather than an open="false" attribute.
+    const createElement = dom.document.createElement.bind(dom.document);
+    vi.spyOn(dom.document, 'createElement').mockImplementation((tagName: string, options?: ElementCreationOptions) => {
+      const element = createElement(tagName, options);
+      if (tagName === 'details') Object.defineProperty(element, 'open', {configurable: true,
+        get: () => element.hasAttribute('open'), set: (value: boolean) => element.toggleAttribute('open', value)});
+      return element;
+    });
+    const toggled = vi.fn((value: Event) => (value.currentTarget as HTMLElement).hasAttribute('open'));
+    const editorSetup = vi.fn(() => () => h('input', {'aria-label': 'Draft', value: 'original'}));
+    const Editor = defineComponent({setup: editorSetup});
+    const mounted = await mount(SettingsDisclosure, {title: 'Request limits', status: 'Inherited', defaultOpen: false},
+      {listeners: {onToggle: toggled}, slots: {default: () => h(Editor)}});
+    const details = mounted.root.querySelector('details')!, input = mounted.root.querySelector<HTMLInputElement>('input')!;
+    expect(details.hasAttribute('open')).toBe(false);expect(input).not.toBeNull();
+    // Linkedom does not implement native summary activation; the DOM port supplies
+    // that browser-owned attribute transition before dispatching the real event.
+    details.setAttribute('open', '');event(details, 'toggle');input.value = 'unsaved draft';event(input, 'input');
+    mounted.props.status = 'Customized';mounted.props.statusTone = 'warning';await settle();
+    expect(details.hasAttribute('open')).toBe(true);
+    expect(mounted.root.querySelector('.settings-disclosure-status.is-warning')!.textContent).toBe('Customized');
+    expect(mounted.root.querySelector('input')).toBe(input);expect(input.value).toBe('unsaved draft');
+    details.removeAttribute('open');event(details, 'toggle');
+    mounted.props.title = 'Updated limits';mounted.props.defaultOpen = true;await settle();
+    expect(details.hasAttribute('open')).toBe(false);expect(mounted.root.querySelector('summary strong')!.textContent).toBe('Updated limits');
+    expect(mounted.root.querySelector('input')).toBe(input);expect(input.value).toBe('unsaved draft');
+    expect(editorSetup).toHaveBeenCalledOnce();expect(toggled.mock.results.map(result => result.value)).toEqual([true, false]);
+    mounted.unmount();expect(input.isConnected).toBe(false);
   });
   it('preserves segmented arrow, Home and End semantics, disabled-option skipping and string or number values', async () => {
     let mounted: Awaited<ReturnType<typeof mount>>;
