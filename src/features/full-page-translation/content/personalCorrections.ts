@@ -1,14 +1,14 @@
 /**
  * @file src/features/full-page-translation/content/personalCorrections.ts
  * 文件职责：把读者主动确认的校订记忆接入安全的网页翻译单元，提供双语编辑、预览及两种显示模式下撤销后的可逆渲染端口。
- * 主要内容：按材料摘要、源目标语言及最近标题构造匹配身份，在 provider 请求前查找精确校订；以弱映射保留服务底稿，复用活动所有者索引与当前模式重绘端口，删除且无底稿时恢复原文；标题、移动或 SPA 材料变化时以无 IO 观察立即恢复旧语境的个人结果。
+ * 主要内容：按材料摘要、源目标语言及最近标题构造匹配身份，在 provider 请求前查找精确校订；以弱映射保留服务底稿，复用活动所有者索引与当前模式重绘端口，删除且无底稿时恢复原文；标题、移动或 SPA 材料变化时以无 IO 观察立即恢复旧语境的个人结果，普通结构变更先有界探查局部索引，避免逐节点枚举全页译文。
  * 模块边界：只处理全文功能内部的 DOM 所有权与公共记忆服务适配，不持久化阅读历史、不改变请求队列、不把个人结果写入供应商缓存；含代码、公式等不能安全拍平的单元不开放编辑。
  */
 import {createMaterialId, type CorrectionQuery} from '@/src/core/personal-corrections/public';
 import {personalCorrections} from '@/src/services/personal-corrections/public';
 import {config} from '@/src/services/config/store';
 import {buildWholeBlockTranslationSource, createTranslationSourceSnapshot, getCurrentTranslationCore} from '@/src/core/translation/public';
-import {getTranslationOwnersWithin, getTranslationState, setBilingualContent, restoreTranslation, type TranslationState} from './state';
+import {getTranslationOwnersForIndexedNode, getTranslationOwnersWithin, getTranslationState, setBilingualContent, restoreTranslation, subscribeTranslationStateChanges, type TranslationState} from './state';
 import {statefulSourceAndTextSlotsAreCurrent, isTranslationArtifactCurrent} from './translationStability';
 import {refreshTranslationPresentation} from './displayMode';
 import {withFullPageViewportAnchor} from './viewportStability';
@@ -27,6 +27,8 @@ export interface PersonalCorrectionPair extends CorrectionQuery {
     isCurrent(): boolean;
 }
 const metadata = new WeakMap<TranslationState, PersonalCorrectionSnapshot>();
+const metadataOwnerRefs = new Set<WeakRef<HTMLElement>>();
+const metadataRefsByOwner = new WeakMap<HTMLElement, WeakRef<HTMLElement>>();
 let enableGeneration = 0;
 let refreshRevision = 0;
 export function isPersonalCorrectionEnabled(): boolean {return config.on === true && config.personalCorrectionsEnabled === true;}
@@ -84,6 +86,12 @@ export function registerPersonalCorrectionResult(node: HTMLElement, state: Trans
     if (import.meta.env.BROWSER === 'userscript' || !isPersonalCorrectionEnabled()) return;
     if (!snapshot || (snapshot.enableGeneration !== undefined && snapshot.enableGeneration !== enableGeneration)) return;
     metadata.set(state, snapshot);
+    let reference = metadataRefsByOwner.get(node);
+    if (!reference) {
+        reference = new WeakRef(node);
+        metadataRefsByOwner.set(node, reference);
+    }
+    metadataOwnerRefs.add(reference);
     if (state.bilingualReplay) state.bilingualReplay.personalCorrectionId = snapshot.recordId;
     const content = state.bilingualContent;
     if (content) {
@@ -113,6 +121,50 @@ function* correctionOwners(root: Node = document) {
     }
 }
 
+function isWithinComposedRoot(root: Node, owner: HTMLElement): boolean {
+    for (let ancestor: Node | null = owner; ancestor; ancestor = ancestor.parentNode ?? (ancestor as ShadowRoot).host ?? null) {
+        if (ancestor === root) return true;
+    }
+    return false;
+}
+
+/** 宿主可以把已有 owner 移入 closed 根；每批次按当前根筛选一次，弱引用不延长 owner 或 metadata 生命周期。 */
+function closedCorrectionOwners(): HTMLElement[] {
+    const owners: HTMLElement[] = [];
+    for (const reference of metadataOwnerRefs) {
+        const owner = reference.deref();
+        if (!owner || !metadata.has(getTranslationState(owner)!)) {metadataOwnerRefs.delete(reference); continue;}
+        let root = owner.getRootNode();
+        while (root.nodeType === 11 && (root as ShadowRoot).host) {
+            const shadow = root as ShadowRoot;
+            if (shadow.mode === 'closed') {owners.push(owner); break;}
+            root = shadow.host.getRootNode();
+        }
+    }
+    return owners;
+}
+
+/** 小变更只探查已有节点索引；大子树至多读取 64 个节点后沿用活动 owner 判断，不展开全部宿主 DOM。 */
+function hasCorrectionOwnerWithin(root: Node, readClosedOwners: () => readonly HTMLElement[]): boolean {
+    const stack = [root];
+    let visited = 0;
+    while (stack.length) {
+        if (visited++ === 64) return !correctionOwners(root).next().done;
+        const node = stack.pop()!;
+        const ownsCorrection = getTranslationOwnersForIndexedNode(node).some(owner => {
+            // 索引也登记布局祖先；仅有祖先租约不能把另一分支的个人译文判为本子树所有。
+            return metadata.has(getTranslationState(owner)!) && isWithinComposedRoot(root, owner);
+        });
+        if (ownsCorrection) return true;
+        const sibling = node !== root ? node.nextSibling : null;
+        if (sibling) stack.push(sibling);
+        if (node.firstChild) stack.push(node.firstChild);
+        const shadow = node.nodeType === 1 ? (node as Element).shadowRoot : null;
+        if (shadow) stack.push(shadow);
+    }
+    return readClosedOwners().some(owner => isWithinComposedRoot(root, owner));
+}
+
 function applyCorrection(node: HTMLElement, state: TranslationState, snapshot: PersonalCorrectionSnapshot,
     translation: string, recordId?: string): boolean {
     if (!translation.trim() || !currentPair(node, state, snapshot)) return false;
@@ -136,6 +188,8 @@ export function watchPersonalCorrectionContext(signal: AbortSignal): () => void 
     if (signal.aborted) return () => {};
     const headings = 'h1,h2,h3,h4,h5,h6';
     const observer = new MutationObserver(mutations => {
+        let closedOwners: readonly HTMLElement[] | undefined;
+        const readClosedOwners = () => closedOwners ??= closedCorrectionOwners();
         const relevant = mutations.some(mutation => {
             const target = mutation.target.nodeType === 1 ? mutation.target as Element : mutation.target.parentElement;
             if (target?.closest('[data-fr-translation-owned="true"]')) return false;
@@ -144,15 +198,21 @@ export function watchPersonalCorrectionContext(signal: AbortSignal): () => void 
                 if (node.nodeType !== 1) return false;
                 const element = node as Element;
                 if (element.matches('[data-fr-translation-owned="true"]')) return false;
-                return element.matches(headings) || Boolean(element.querySelector(headings)) || !correctionOwners(element).next().done;
+                return element.matches(headings) || Boolean(element.querySelector(headings)) || hasCorrectionOwnerWithin(element, readClosedOwners);
             });
         });
         if (relevant) invalidateStalePersonalCorrectionContexts();
     });
     observer.observe(document, {subtree: true, childList: true, characterData: true});
+    const unsubscribeStates = subscribeTranslationStateChanges((node, state) => {
+        if (state && metadata.has(state)) return;
+        const reference = metadataRefsByOwner.get(node);
+        if (reference) metadataOwnerRefs.delete(reference);
+    });
     document.addEventListener('fluentread-route-change', invalidateStalePersonalCorrectionContexts);
     const dispose = () => {
         observer.disconnect();
+        unsubscribeStates();
         document.removeEventListener('fluentread-route-change', invalidateStalePersonalCorrectionContexts);
         signal.removeEventListener('abort', dispose);
     };
@@ -226,6 +286,7 @@ export function disableVisiblePersonalCorrections(): void {
         }
         metadata.delete(state);
     }
+    metadataOwnerRefs.clear();
 }
 /** 修改或删除后即时回滚可见个人译文；没有服务底稿的重用单元恢复原文，留给现有翻译入口重译。 */
 export async function refreshVisiblePersonalCorrections(): Promise<void> {

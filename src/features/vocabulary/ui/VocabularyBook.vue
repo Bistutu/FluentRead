@@ -1,7 +1,7 @@
 <!--
  * @file src/features/vocabulary/ui/VocabularyBook.vue
  * 文件职责：组织内容优先的学习收藏列表与主动复习，协调句子听读、解释保存、筛选与文件操作。
- * 主要内容：相同译文保留原文且不重复展示；把复习作为列表主操作，收藏开关与文件动作收进管理菜单；搜索与类型筛选合为一行，每条收藏直接提供学习入口；界面文案订阅共享语言与资源修订，缓存期间首次加载的语言也能自动更新。配置、数据和朗读沿用已有消息协议，后台进度保持播放状态、结束或停止才释放，页面音频失败按在线与浏览器两级有限回退并合并重复错误通知；确认开始即占用操作状态，等待、菜单让步及响应后校验生命周期，拒绝迟到请求、文件下载和已卸载界面更新。
+ * 主要内容：相同译文保留原文且不重复展示；把复习作为列表主操作，收藏开关与文件动作收进管理菜单；搜索与类型筛选合为一行，每条收藏直接提供学习入口；筛选排序独立于搜索输入，正文索引按需建立并限制文本字符总量，超预算词条继续完整匹配；界面文案订阅共享语言与资源修订，缓存期间首次加载的语言也能自动更新。配置、数据和朗读沿用已有消息协议，后台进度保持播放状态、结束或停止才释放，页面音频失败按在线与浏览器两级有限回退并合并重复错误通知；确认开始即占用操作状态，等待、菜单让步及响应后校验生命周期，拒绝迟到请求、文件下载和已卸载界面更新。
  * 模块边界：UI 不直接访问 Dexie 或上传学习数据；完整备份进入备份与恢复页，收藏文件只包含本领域数据，数据库操作集中在后台 repository/handler，上下文和来源只有用户明确选择时才导出。
  -->
 <template>
@@ -281,22 +281,13 @@ const statusCounts = computed(() => entries.value.reduce((counts, entry) => {
   counts[entry.status] += 1;
   return counts;
 }, { new: 0, learning: 0, familiar: 0, mastered: 0 }));
-const filteredEntries = computed(() => {
-  const keyword = query.value.toLocaleLowerCase();
+const orderedEntries = computed(() => {
   const filtered = entries.value.filter(entry => {
     if (kindFilter.value === 'sentence' && !isVocabularySentence(entry)) return false;
     if (kindFilter.value === 'expression' && isVocabularySentence(entry)) return false;
     if (statusFilter.value === 'due' && !(entry.nextReviewAt !== null && entry.nextReviewAt <= currentTime.value)) return false;
     if (statusFilter.value !== 'all' && statusFilter.value !== 'due' && entry.status !== statusFilter.value) return false;
-    if (!keyword) return true;
-    const searchable = [
-      entry.term,
-      entry.normalizedTerm,
-      entry.note || '',
-      ...Object.values(entry.translations).map(item => item.text),
-      ...entry.contexts.map(context => `${context.text} ${context.pageTitle || ''}`),
-    ].join(' ').toLocaleLowerCase();
-    return searchable.includes(keyword);
+    return true;
   });
   return filtered.sort((left, right) => {
     if (sortOrder.value === 'term') return left.normalizedTerm.localeCompare(right.normalizedTerm);
@@ -304,6 +295,38 @@ const filteredEntries = computed(() => {
     return (left.nextReviewAt ?? Number.MAX_SAFE_INTEGER) - (right.nextReviewAt ?? Number.MAX_SAFE_INTEGER)
       || left.createdAt - right.createdAt;
   });
+});
+function entrySearchText(entry: VocabularyEntry): string {
+  return [
+    entry.term,
+    entry.normalizedTerm,
+    entry.note || '',
+    ...Object.values(entry.translations).map(item => item.text),
+    ...entry.contexts.map(context => `${context.text} ${context.pageTitle || ''}`),
+  ].join(' ').toLocaleLowerCase();
+}
+// 只限制额外保留的小写文本，不限制可搜索的数据。UTF-16 文本载荷最多约 8 MiB，Map 自身另计。
+const SEARCH_INDEX_CHARACTER_LIMIT = 4 * 1024 * 1024;
+const searchActive = computed(() => Boolean(query.value));
+const searchIndex = computed(() => {
+  const indexed = new Map<VocabularyEntry, string>();
+  if (!searchActive.value) return indexed;
+  let remaining = SEARCH_INDEX_CHARACTER_LIMIT;
+  for (const entry of orderedEntries.value) {
+    if (remaining === 0) break;
+    const text = entrySearchText(entry);
+    if (text.length > remaining) break;
+    indexed.set(entry, text);
+    remaining -= text.length;
+  }
+  return indexed;
+});
+const filteredEntries = computed(() => {
+  const keyword = query.value.toLocaleLowerCase();
+  // 空搜索也读取空索引，释放上一次搜索保留的文本和词条引用；非空输入仅依赖布尔态。
+  const indexed = searchIndex.value;
+  if (!keyword) return orderedEntries.value;
+  return orderedEntries.value.filter(entry => (indexed.get(entry) ?? entrySearchText(entry)).includes(keyword));
 });
 const pageCount = computed(() => Math.max(1, Math.ceil(filteredEntries.value.length / pageSize)));
 const pagedEntries = computed(() => filteredEntries.value.slice((page.value - 1) * pageSize, page.value * pageSize));

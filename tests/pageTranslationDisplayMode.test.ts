@@ -17,6 +17,7 @@ import {beginTranslation, createBilingualTranslationReplay, getTranslationState,
     restoreAllTranslations, restoreTranslation, setBilingualContent, setLiveTranslationSourceSnapshot,
     setRenderedStyleAttribute, setSingleTextSlotHosts, type BilingualTranslationReplay} from '@/src/features/full-page-translation/content/state';
 import {isTranslationArtifactCurrent, statefulSourceAndTextSlotsAreCurrent} from '@/src/features/full-page-translation/content/translationStability';
+import * as translationState from '@/src/features/full-page-translation/content/state';
 
 let document: Document;
 beforeEach(() => {
@@ -32,7 +33,7 @@ beforeEach(() => {
         return parseHTML(`<html><head></head><body>${source}</body></html>`).document;
     }});
 });
-afterEach(() => {restoreAllTranslations(); vi.unstubAllGlobals();});
+afterEach(() => {restoreAllTranslations(); disableVisiblePersonalCorrections(); vi.unstubAllGlobals();});
 
 function committed(mode: 'bilingual' | 'single' = 'bilingual', overrides: Partial<BilingualTranslationReplay> = {},
     html = ' First sentence. <a href="https://example.com/before">Read details.</a><code>protected()</code> ', synthetic = false) {
@@ -74,6 +75,144 @@ describe('已提交网页译文显示切换', () => {
         expect(syncTranslationDisplayMode(fixture.owner, fixture.state, 0)).toBe(true);
         return {...fixture, heading};
     }
+
+    it.each([false, true])('无关动态节点不枚举全页译文，已有个人校订=%s', hasCorrection => {
+        const correctedPair = hasCorrection ? corrected() : undefined;
+        const main = document.querySelector('main')!;
+        for (let index = 0; index < 300; index++) {
+            const owner = document.createElement('p'); owner.textContent = `Ordinary translated paragraph ${index}.`;
+            main.appendChild(owner);
+            expect(beginTranslation(owner, 'bilingual')).not.toBeNull();
+        }
+        let mutations!: (records: MutationRecord[]) => void;
+        vi.stubGlobal('MutationObserver', class {
+            constructor(callback: typeof mutations) {mutations = callback;}
+            observe() {} disconnect() {}
+        });
+        const controller = new AbortController(); watchPersonalCorrectionContext(controller.signal);
+        const addedNodes = Array.from({length: 40}, () => document.createElement('div'));
+        const deref = vi.spyOn(WeakRef.prototype, 'deref');
+        try {
+            mutations([{type: 'childList', target: document.body, addedNodes, removedNodes: []} as unknown as MutationRecord]);
+            console.info(JSON.stringify({metric: 'personal-correction-unrelated-owner-dereferences', hasCorrection,
+                activeOwners: 300 + Number(hasCorrection), changedElements: addedNodes.length, actual: deref.mock.calls.length}));
+            expect(deref.mock.calls.length).toBe(Number(hasCorrection));
+            if (correctedPair) expect(getTranslationState(correctedPair.owner)).toBe(correctedPair.state);
+            expect(corrections.lookup).not.toHaveBeenCalled();
+        } finally {deref.mockRestore(); controller.abort();}
+    });
+
+    it.each([false, true])('五万节点变更的索引探针有界，个人单元在子树内=%s', containsCorrection => {
+        const correctedPair = corrected();
+        const root = document.createElement('section'); root.innerHTML = '<i></i>'.repeat(50_000);
+        const heading = document.createElement('h2'); heading.textContent = 'Another team';
+        document.querySelector('main')!.append(heading, root);
+        if (containsCorrection) root.appendChild(correctedPair.owner);
+        let mutations!: (records: MutationRecord[]) => void;
+        vi.stubGlobal('MutationObserver', class {
+            constructor(callback: typeof mutations) {mutations = callback;}
+            observe() {} disconnect() {}
+        });
+        const controller = new AbortController(); watchPersonalCorrectionContext(controller.signal);
+        const indexed = vi.spyOn(translationState, 'getTranslationOwnersForIndexedNode');
+        const deref = vi.spyOn(WeakRef.prototype, 'deref');
+        try {
+            mutations([{type: 'childList', target: document.body, addedNodes: [root], removedNodes: []} as unknown as MutationRecord]);
+            console.info(JSON.stringify({metric: 'personal-correction-large-subtree-probe', changedElements: 50_001,
+                containsCorrection, indexedProbes: indexed.mock.calls.length, ownerDereferences: deref.mock.calls.length}));
+            expect(indexed).toHaveBeenCalledTimes(64);
+            if (containsCorrection) expect(getTranslationState(correctedPair.owner)).toBeUndefined();
+            else {expect(deref).toHaveBeenCalledTimes(1); expect(getTranslationState(correctedPair.owner)).toBe(correctedPair.state);}
+            expect(corrections.lookup).not.toHaveBeenCalled();
+        } finally {deref.mockRestore(); indexed.mockRestore(); controller.abort();}
+    });
+
+    it('三百个已登记校订单元只按批次检查当前根，不随四十个无关节点重复', () => {
+        const main = document.querySelector('main')!;
+        for (let index = 0; index < 300; index++) {
+            const owner = document.createElement('p'); owner.textContent = `Translated paragraph ${index}.`;
+            main.appendChild(owner);
+            const attempt = beginTranslation(owner, 'bilingual')!;
+            expect(markTranslationComplete(owner, attempt.state, attempt.generation, false)).toBe(true);
+            registerPersonalCorrectionResult(owner, attempt.state, {query: {source: owner.textContent,
+                sourceLanguage: 'en', targetLanguage: 'zh-Hans', context: '', materialId: createMaterialId(location.href)}});
+        }
+        let mutations!: (records: MutationRecord[]) => void;
+        vi.stubGlobal('MutationObserver', class {
+            constructor(callback: typeof mutations) {mutations = callback;}
+            observe() {} disconnect() {}
+        });
+        const controller = new AbortController(); watchPersonalCorrectionContext(controller.signal);
+        const deref = vi.spyOn(WeakRef.prototype, 'deref');
+        try {
+            mutations([{type: 'childList', target: document.body,
+                addedNodes: Array.from({length: 40}, () => document.createElement('div')), removedNodes: []} as unknown as MutationRecord]);
+            console.info(JSON.stringify({metric: 'personal-correction-dense-metadata', activeOwners: 300,
+                metadataOwners: 300, changedElements: 40, ownerDereferences: deref.mock.calls.length}));
+            expect(deref.mock.calls.length).toBe(300);
+            expect(corrections.lookup).not.toHaveBeenCalled();
+        } finally {deref.mockRestore(); controller.abort();}
+    });
+
+    it.each(['closed', 'open-to-closed', 'closed-to-closed', 'nested-open'] as const)('%s 根内既有个人译文随当前 host 移动失效', placement => {
+        const {owner, state, sourceHTML} = corrected();
+        const main = document.querySelector('main')!;
+        const shadow = (mode: ShadowRootMode, parent: ParentNode = main) => {
+            const host = document.createElement('x-reader'); parent.appendChild(host);
+            const root = host.attachShadow({mode});
+            // linkedom 隐藏 closed root，但未提供标准 mode 属性；补齐真实浏览器的只读字段。
+            Object.defineProperty(root, 'mode', {value: mode});
+            return {host, root};
+        };
+        if (placement === 'open-to-closed') shadow('open').root.appendChild(owner);
+        if (placement === 'closed-to-closed') shadow('closed').root.appendChild(owner);
+        const target = shadow('closed');
+        if (placement === 'nested-open') shadow('open', target.root).root.appendChild(owner);
+        else target.root.appendChild(owner);
+        if (placement === 'closed') registerPersonalCorrectionResult(owner, state, {query: {source: 'The team is ready.',
+            sourceLanguage: 'en', targetLanguage: 'zh-Hans', context: 'Team', materialId: createMaterialId(location.href)}, recordId: 'saved'});
+        let mutations!: (records: MutationRecord[]) => void;
+        vi.stubGlobal('MutationObserver', class {
+            constructor(callback: typeof mutations) {mutations = callback;}
+            observe() {} disconnect() {}
+        });
+        const controller = new AbortController(); watchPersonalCorrectionContext(controller.signal);
+        const record = (element: Element) => [{type: 'childList', target: main, addedNodes: [element], removedNodes: []}] as unknown as MutationRecord[];
+        mutations(record(document.createElement('div')));
+        expect(getTranslationState(owner)).toBe(state);
+        mutations(record(target.host));
+        expect(getTranslationState(owner)).toBeUndefined(); expect(owner.innerHTML).toBe(sourceHTML);
+        expect(corrections.lookup).not.toHaveBeenCalled(); controller.abort();
+    });
+
+    it('持续翻译、状态替换与恢复不积累弱引用壳，自有DOM短路也即时注销', () => {
+        let mutations!: (records: MutationRecord[]) => void;
+        vi.stubGlobal('MutationObserver', class {
+            constructor(callback: typeof mutations) {mutations = callback;}
+            observe() {} disconnect() {}
+        });
+        const controller = new AbortController(); watchPersonalCorrectionContext(controller.signal);
+        const main = document.querySelector('main')!;
+        const owned = document.createElement('span'); owned.setAttribute('data-fr-translation-owned', 'true');
+        for (let index = 0; index < 200; index++) {
+            const owner = document.createElement('p'); owner.textContent = 'Temporary translation.'; main.appendChild(owner);
+            const first = beginTranslation(owner, 'bilingual')!;
+            const snapshot = {query: {source: owner.textContent, sourceLanguage: 'en', targetLanguage: 'zh-Hans',
+                context: '', materialId: createMaterialId(location.href)}};
+            registerPersonalCorrectionResult(owner, first.state, snapshot);
+            markTranslationComplete(owner, first.state, first.generation, false);
+            const replacement = beginTranslation(owner, 'bilingual')!;
+            registerPersonalCorrectionResult(owner, replacement.state, snapshot);
+            restoreTranslation(owner); owner.remove();
+            mutations([{type: 'childList', target: owned, addedNodes: [], removedNodes: []} as unknown as MutationRecord]);
+        }
+        const deref = vi.spyOn(WeakRef.prototype, 'deref');
+        try {
+            mutations([{type: 'childList', target: main, addedNodes: [document.createElement('div')], removedNodes: []} as unknown as MutationRecord]);
+            expect(deref).not.toHaveBeenCalled();
+            expect(corrections.lookup).not.toHaveBeenCalled();
+        } finally {deref.mockRestore(); controller.abort();}
+    });
 
     it.each([true, false])('仅译文期间关闭个人校订，底稿存在=%s，恢复双语不重放旧记忆', baseline => {
         const {owner, state, sourceHTML, nodes} = corrected(baseline);
