@@ -1,7 +1,7 @@
 <!--
  * @file src/features/vocabulary/ui/MaterialWorkspace.vue
  * 文件职责：以阅读材料和收藏原句为主要内容，提供主题整理、回到出处、连续学习和本地笔记。
- * 主要内容：保留轻量材料列表，空库隐藏无效搜索与主题筛选但保留管理和恢复入口，详情按来源聚合原句、实时收藏和问答；窄屏引用正文预留覆盖式滚动条空间，保持滚动时行尾可读；加载、重试、编辑、归档恢复均保护异步代次和卸载边界，笔记焦点只回到仍属于当前材料的自有输入框，保存成功只清理所属材料中与提交快照相同的草稿。
+ * 主要内容：保留轻量材料列表，空库隐藏无效搜索与主题筛选但保留管理和恢复入口，详情按来源聚合原句、实时收藏和问答；非空搜索只为当前主题保留有界小写正文，深层字段变化使缓存失效，超预算材料完整匹配且每轮只构造一次；窄屏引用正文预留覆盖式滚动条空间，保持滚动时行尾可读；加载、重试、编辑、归档恢复均保护异步代次和卸载边界，笔记焦点只回到仍属于当前材料的自有输入框，保存成功只清理所属材料中与提交快照相同的草稿。
  * 模块边界：只通过本地材料与既有学习客户端读写，不访问数据库或供应商；来源恢复由公共适配器处理，个人内容不进入配置同步。
  -->
 <template>
@@ -141,9 +141,49 @@ const materialDrafts = new Map<string, {
 const selected = computed(() => materials.value.find(item => item.id === selectedId.value));
 const visibleReferences = computed(() => selected.value?.references.slice(0, referenceLimit.value) || []);
 const topics = computed(() => [...new Set(materials.value.flatMap(item => item.topics))].sort((a, b) => a.localeCompare(b)));
+function materialSearchParts(item: MaterialRecord): (string | undefined)[] {
+    return [item.title, item.source.url, ...item.topics, ...item.references.flatMap(reference => [reference.excerpt, reference.note])];
+}
+const topicMaterials = computed(() => materials.value.filter(item => !topic.value || item.topics.includes(topic.value)));
+const searchActive = computed(() => Boolean(query.value.trim()));
+// 限制额外保留的小写文本为 4 Mi 字符（UTF-16 载荷至多约 8 MiB，Map 与对象另计）。
+const SEARCH_TEXT_CHARACTER_LIMIT = 4 * 1024 * 1024;
+type MaterialSearchMemo = {items: MaterialRecord[]; texts: Map<MaterialRecord, string>; remaining: number};
+let retainedSearchMemo: MaterialSearchMemo | undefined;
+function clearSearchMemo(): void {
+    if (!retainedSearchMemo) return;
+    retainedSearchMemo.texts.clear();
+    retainedSearchMemo.items = [];
+    retainedSearchMemo = undefined;
+}
+const searchMemo = computed(() => {
+    const items = topicMaterials.value;
+    clearSearchMemo();
+    // 只登记当前主题的全部可搜索深层依赖，不在这里拼接或保留正文；原地编辑也须清除旧缓存。
+    if (searchActive.value) for (const item of items) materialSearchParts(item);
+    const memo = {items, texts: new Map<MaterialRecord, string>(), remaining: SEARCH_TEXT_CHARACTER_LIMIT};
+    retainedSearchMemo = memo;
+    return memo;
+});
+// 空库模板不消费 lazy computed；同步释放旧缓存的正文和材料列表引用，不强制建立新索引。
+watch([topicMaterials, searchActive], clearSearchMemo, {flush: 'sync'});
 const filtered = computed(() => {
     const search = query.value.trim().toLocaleLowerCase();
-    return materials.value.filter(item => (!topic.value || item.topics.includes(topic.value)) && (!search || [item.title, item.source.url, ...item.topics, ...item.references.flatMap(reference => [reference.excerpt, reference.note])].join(' ').toLocaleLowerCase().includes(search)));
+    // 空搜索也读取新容器，释放上一轮正文及材料引用，不改变原有主题和顺序。
+    const memo = searchMemo.value;
+    if (!search) return memo.items;
+    return memo.items.filter(item => {
+        let text = memo.texts.get(item);
+        if (text === undefined) {
+            text = materialSearchParts(item).join(' ').toLocaleLowerCase();
+            if (text.length <= memo.remaining) {
+                memo.texts.set(item, text);
+                memo.remaining -= text.length;
+            }
+        }
+        // 超预算正文只在当前过滤中使用一次，不截断、不持有，也不妨碍后续小材料入缓存。
+        return text.includes(search);
+    });
 });
 const visibleMaterials = computed(() => filtered.value.slice(0,materialLimit.value));
 watch([query,topic], () => {materialLimit.value = 30;});
@@ -463,7 +503,7 @@ const onChanged = (message: unknown): undefined => {
     return undefined;
 };
 onMounted(() => { void reload(); browser.runtime.onMessage.addListener(onChanged); });
-onBeforeUnmount(() => { active = false; generation++; detailGeneration++; browser.runtime.onMessage.removeListener(onChanged); });
+onBeforeUnmount(() => { active = false; generation++; detailGeneration++; clearSearchMemo(); browser.runtime.onMessage.removeListener(onChanged); });
 </script>
 <style scoped>
 .fr-materials {

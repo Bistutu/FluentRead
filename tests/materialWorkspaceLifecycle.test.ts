@@ -249,3 +249,148 @@ it('keeps source text visible when stored source or learning memories cannot be 
   await activate(ui,namedButton(ui,'重试'));expect(ui.document.body.textContent).toContain('Restored memory.');expect(ui.document.body.textContent).not.toContain('部分学习内容读取失败');
   ui.api.materialList.mockResolvedValueOnce([record('new')]);ui.notify();await ui.flush();expect(ui.document.querySelector('[data-material-id="new"]')).toBeTruthy();expect(ui.document.querySelector('.fr-material-detail')).toBeNull();
 });
+
+describe('material workspace search workload and bounded memo',()=>{
+  type Ui=Awaited<ReturnType<typeof mount>>;
+  type Reads={excerpt:number;note:number};
+  type Operations={bodyLower:number;bodyCharacters:number;queryLower:number;queryTrim:number;excerpt:number;note:number};
+  type SearchMemo={items:MaterialRecord[];texts:Map<MaterialRecord,string>;remaining:number};
+  const budget=4*1024*1024;
+  const zero=():Operations=>({bodyLower:0,bodyCharacters:0,queryLower:0,queryTrim:0,excerpt:0,note:0});
+  const difference=(after:Operations,before:Operations):Operations=>Object.fromEntries(Object.keys(after).map(key=>[key,after[key as keyof Operations]-before[key as keyof Operations]])) as Operations;
+  function measured(id:string,reads:Reads,count=8,excerptLength=300,noteLength=0):MaterialRecord{
+    return {...record(id),title:`MAT-BODY-${id}`,references:Array.from({length:count},(_,index)=>{
+      let excerpt=`MAT-EXCERPT-${id}-${index}-`.padEnd(excerptLength,'x');
+      const suffix=index===count-1?'TAIL-NEEDLE':'';
+      let note=noteLength?`MAT-NOTE-${id}-${index}-`.padEnd(noteLength-suffix.length,'y')+suffix:undefined;
+      return {kind:noteLength?'note' as const:'vocabulary' as const,id:`ref-${index}`,
+        get excerpt(){reads.excerpt++;return excerpt;},set excerpt(value:string){excerpt=value;},
+        get note(){reads.note++;return note;},set note(value:string|undefined){note=value;}};
+    })};
+  }
+  function track(reads:Reads){
+    const operations={bodyLower:0,bodyCharacters:0,queryLower:0,queryTrim:0},localeArguments:unknown[][]=[];
+    const originalLower=String.prototype.toLocaleLowerCase,originalTrim=String.prototype.trim;
+    const lower=vi.spyOn(String.prototype,'toLocaleLowerCase').mockImplementation(function(this:string,...args:Parameters<typeof originalLower>){
+      const value=String(this);let counted=true;
+      if(value.startsWith('MAT-BODY-')){operations.bodyLower++;operations.bodyCharacters+=value.length;}
+      else if(value.startsWith('MAT-QUERY-'))operations.queryLower++;else counted=false;
+      if(counted)localeArguments.push(args);return originalLower.apply(this,args);
+    });
+    const trim=vi.spyOn(String.prototype,'trim').mockImplementation(function(this:string){if(String(this).startsWith('  MAT-QUERY-'))operations.queryTrim++;return originalTrim.call(this);});
+    return {snapshot:():Operations=>({...operations,...reads}),localeArguments,restore:()=>{lower.mockRestore();trim.mockRestore();}};
+  }
+  const ids=(ui:Ui):string[]=>(ui.panel.filtered as MaterialRecord[]).map(item=>item.id);
+  const memo=(ui:Ui):SearchMemo=>ui.panel.searchMemo;
+  const retained=(value:SearchMemo):number=>[...value.texts.values()].reduce((count,text)=>count+text.length,0);
+  async function search(ui:Ui,value:string){await editField(ui,ui.document.querySelector('input[type="search"]')!,value);}
+  function report(scenario:string,data:object){if(process.env.FLUENTREAD_MATERIAL_SEARCH_METRICS==='1')console.info(`MATERIAL_SEARCH_OPERATIONS ${JSON.stringify({scenario,...data})}`);}
+
+  it('reuses thousand-material text across twenty immediate inputs while exposing first-input dependency reads',async()=>{
+    const reads={excerpt:0,note:0},probe=track(reads);
+    try{
+      const list=Array.from({length:1000},(_,index)=>measured(`fixture-${index}`,reads));
+      const ui=await mount({list:async()=>list}),mounted=probe.snapshot();expect(ui.document.querySelectorAll('[data-material-id]')).toHaveLength(30);
+      await search(ui,'  MAT-QUERY-0  ');const first=difference(probe.snapshot(),mounted),afterFirst=probe.snapshot();
+      for(let index=1;index<20;index++)await search(ui,`  MAT-QUERY-${index}  `);
+      const afterInputs=probe.snapshot(),following=difference(afterInputs,afterFirst),total=difference(afterInputs,mounted);
+      await search(ui,'  MAT-QUERY-19  ');const repeated=difference(probe.snapshot(),afterInputs);
+      const cached=ui.panel.searchMemo as SearchMemo|undefined;
+      report('1000-materials-8-references-300-characters-20-queries',{mounted,firstInput:first,following19Inputs:following,totalInputs:total,repeatedSameInput:repeated,cachedEntries:cached?.texts.size??null,cachedCharacters:cached?retained(cached):null,remaining:cached?.remaining??null});
+      expect(mounted).toEqual(zero());expect(first).toMatchObject({bodyLower:1000,queryLower:1,queryTrim:2,excerpt:16000,note:16000});
+      expect(following).toEqual({bodyLower:0,bodyCharacters:0,queryLower:19,queryTrim:38,excerpt:0,note:0});
+      expect(total).toMatchObject({bodyLower:1000,queryLower:20,queryTrim:40,excerpt:16000,note:16000});expect(repeated).toEqual(zero());
+      expect(memo(ui).texts.size).toBe(1000);expect(retained(memo(ui))).toBeLessThanOrEqual(budget);expect(memo(ui).remaining).toBe(budget-retained(memo(ui)));
+      const beforeClear=probe.snapshot();await search(ui,'');expect(difference(probe.snapshot(),beforeClear)).toEqual(zero());expect(ui.document.querySelectorAll('[data-material-id]')).toHaveLength(30);expect(memo(ui).texts.size).toBe(0);
+      expect(probe.localeArguments.every(args=>args.length===0)).toBe(true);expect(ui.api.materialList).toHaveBeenCalledOnce();
+    }finally{probe.restore();}
+  });
+
+  it('preserves joined field matching, empty slots, default locale and query normalization without expanding the searched data',async()=>{
+    const primary:MaterialRecord={...record('primary'),title:'TitleTail',source:{kind:'article',url:'https://search.example/PathEnd',title:'excluded-source-title'},topics:['TopicAlpha','TopicBeta'],locator:{kind:'text',quote:'excluded-locator-quote'},references:[{kind:'note',id:'first',excerpt:'First\nLine',note:'NoteTail'},{kind:'vocabulary',id:'last',excerpt:'LastExcerpt'},{kind:'session',id:'session-ref'}]};
+    const accent:MaterialRecord={...record('accent'),title:'Café IİΣΟΣ',topics:[],references:[]};
+    const document:MaterialRecord={...record('document'),kind:'document',title:'DocTail',source:{kind:'document',fingerprint:'local'},identityKey:'document:fingerprint:local',topics:['DocTopic'],references:[{kind:'note',id:'doc',note:'DocNote'}]};
+    const ui=await mount({list:async()=>[primary,accent,document]});await ui.panel.select('primary');await ui.flush();ui.panel.startEdit();ui.panel.draft.title='excluded-unsaved-title';ui.panel.note='excluded-unsaved-note';const draft=ui.panel.draft;
+    ui.panel.resolved={'session:session-ref':{session:{text:'excluded-session-body',turns:[{id:'turn',answer:'excluded-answer'}]}},'vocabulary:last':{entry:{term:'excluded-saved-term',translations:{en:{text:'excluded-translation'}}}},'memory:unused':{memory:'excluded-memory'}};
+    const cases:[string,string[]][]=[['\u00a0 TITLETAIL \t',['primary']],['search.example/pathend',['primary']],['topicbeta',['primary']],['first\nline',['primary']],['notetail',['primary']],['lastexcerpt',['primary']],['titletail https://search.example/pathend',['primary']],['pathend topicalpha',['primary']],['notetail lastexcerpt',['primary']],['doctail  doctopic',['document']],['doctail doctopic',[]],['CAFÉ',['accent']],['CAFE\u0301',[]],['IİΣΟΣ',['accent']]];
+    for(const [value,expected] of cases){await search(ui,value);expect(ids(ui),JSON.stringify(value)).toEqual(expected);}
+    for(const value of ['excluded-source-title','excluded-locator-quote','excluded-unsaved-title','excluded-unsaved-note','excluded-session-body','excluded-answer','excluded-saved-term','excluded-translation','excluded-memory']){await search(ui,value);expect(ids(ui),value).toEqual([]);}
+    await search(ui,'İ'.toLocaleLowerCase());expect(ids(ui)).toEqual(['accent']);expect(ui.panel.selectedId).toBe('primary');expect(ui.panel.draft).toBe(draft);expect(ui.panel.note).toBe('excluded-unsaved-note');
+  });
+
+  it('invalidates same-array title, source, topic and nested reference mutations and preserves material ordering',async()=>{
+    const ui=await mount({list:async()=>[{...record('mutable'),references:[{kind:'note',id:'ref'}]}]});await search(ui,'needle');const items=ui.panel.materials as MaterialRecord[],item=items[0];expect(ids(ui)).toEqual([]);
+    item.title='needle title';await ui.flush();expect(ids(ui)).toEqual(['mutable']);item.title='changed';item.source.url='https://needle.example/';await ui.flush();expect(ids(ui)).toEqual(['mutable']);
+    delete item.source.url;item.topics.push('needle');await ui.flush();expect(ids(ui)).toEqual(['mutable']);item.topics.splice(1,1);item.references[0].excerpt='needle excerpt';await ui.flush();expect(ids(ui)).toEqual(['mutable']);
+    delete item.references[0].excerpt;item.references[0].note='needle note';await ui.flush();expect(ids(ui)).toEqual(['mutable']);delete item.references[0].note;await ui.flush();expect(ids(ui)).toEqual([]);
+    item.references.push({kind:'note',id:'new',note:'needle last'});item.references.reverse();await ui.flush();expect(ids(ui)).toEqual(['mutable']);item.references[0]={kind:'note',id:'replacement',excerpt:'needle replacement'};await ui.flush();expect(ids(ui)).toEqual(['mutable']);item.references.splice(0,1);await ui.flush();expect(ids(ui)).toEqual([]);
+    item.title='needle mutable';items.push({...record('next'),title:'needle next'});await ui.flush();expect(ids(ui)).toEqual(['mutable','next']);items.reverse();await ui.flush();expect(ids(ui)).toEqual(['next','mutable']);items.splice(1,1);await ui.flush();expect(ids(ui)).toEqual(['next']);expect(ui.panel.materials).toBe(items);
+  });
+
+  it('never reads reference bodies excluded by the exact topic filter and reuses eligible text',async()=>{
+    const keepReads={excerpt:0,note:0},otherReads={excerpt:0,note:0};
+    const ui=await mount({list:async()=>[{...measured('keep',keepReads,2),topics:['Keep']},{...measured('other',otherReads,2),topics:['Other']}]});ui.panel.topic='Keep';await ui.flush();await search(ui,'MAT-EXCERPT');
+    expect(ids(ui)).toEqual(['keep']);expect(keepReads).toEqual({excerpt:4,note:4});expect(otherReads).toEqual({excerpt:0,note:0});
+    await search(ui,'mat-excerpt');expect(keepReads).toEqual({excerpt:4,note:4});expect(otherReads).toEqual({excerpt:0,note:0});
+    ui.panel.topic='Other';await ui.flush();expect(ids(ui)).toEqual(['other']);expect(otherReads).toEqual({excerpt:4,note:4});ui.panel.topic='other';await ui.flush();expect(ids(ui)).toEqual([]);expect(otherReads).toEqual({excerpt:4,note:4});
+  });
+
+  it('matches the tail of one legal oversized row without double lowercase and still caches later small rows',async()=>{
+    const reads={excerpt:0,note:0},probe=track(reads);
+    try{
+      const large=measured('oversized',reads,250,6000,12000),small:MaterialRecord={...record('small'),title:'MAT-BODY-small',references:[{kind:'note',id:'small',note:'TAIL-NEEDLE'}]};
+      const ui=await mount({list:async()=>[large,small]}),before=probe.snapshot();await search(ui,'TAIL-NEEDLE');expect(ids(ui)).toEqual(['oversized','small']);const first=difference(probe.snapshot(),before),afterFirst=probe.snapshot();
+      await search(ui,'tail-needle');expect(ids(ui)).toEqual(['oversized','small']);const following=difference(probe.snapshot(),afterFirst),cached=ui.panel.searchMemo as SearchMemo|undefined;
+      report('oversized-first-row-250-references-and-later-small-row',{firstInput:first,secondInput:following,cachedEntries:cached?.texts.size??null,cachedCharacters:cached?retained(cached):null});
+      expect(first).toMatchObject({bodyLower:2,excerpt:500,note:500});expect(following).toMatchObject({bodyLower:1,excerpt:250,note:250});
+      expect(memo(ui).texts.has(ui.panel.materials[0])).toBe(false);expect(memo(ui).texts.has(ui.panel.materials[1])).toBe(true);expect(retained(memo(ui))).toBeLessThanOrEqual(budget);expect(memo(ui).remaining).toBe(budget-retained(memo(ui)));
+    }finally{probe.restore();}
+  });
+
+  it('bounds aggregate text and refreshes uncached reference edits, deletion and reordered records',async()=>{
+    const reads={excerpt:0,note:0},first=measured('prefix',reads,120,6000,12000),overflow=measured('overflow',reads,120,6000,12000),small={...record('small'),title:'MAT-BODY-small',references:[{kind:'note' as const,id:'small',note:'TAIL-NEEDLE'}]};
+    const ui=await mount({list:async()=>[first,overflow,small]});await search(ui,'TAIL-NEEDLE');expect(ids(ui)).toEqual(['prefix','overflow','small']);
+    expect(memo(ui).texts.has(ui.panel.materials[0])).toBe(true);expect(memo(ui).texts.has(ui.panel.materials[1])).toBe(false);expect(memo(ui).texts.has(ui.panel.materials[2])).toBe(true);expect(retained(memo(ui))).toBeLessThanOrEqual(budget);
+    await search(ui,'new-needle');expect(ids(ui)).toEqual([]);ui.panel.materials[1].references[119].note='new-needle';await ui.flush();expect(ids(ui)).toEqual(['overflow']);
+    delete ui.panel.materials[1].references[119].note;await ui.flush();expect(ids(ui)).toEqual([]);ui.panel.materials[1].references.push({kind:'note',id:'extra',note:'new-needle'});await ui.flush();expect(ids(ui)).toEqual(['overflow']);
+    ui.panel.materials.reverse();await ui.flush();expect(ids(ui)).toEqual(['overflow']);ui.panel.materials.splice(1,1);await ui.flush();expect(ids(ui)).toEqual([]);expect(retained(memo(ui))).toBeLessThanOrEqual(budget);
+  });
+
+  it('resets thirty-row pagination for changed queries and topics without reordering equal matches',async()=>{
+    const list=Array.from({length:35},(_,index)=>({...record(String(index)),title:`Common ${index}`})),ui=await mount({list:async()=>list});
+    await activate(ui,namedButton(ui,'显示更多材料（30 / 35）'));expect(ui.document.querySelectorAll('[data-material-id]')).toHaveLength(35);await search(ui,'common');expect(ui.document.querySelectorAll('[data-material-id]')).toHaveLength(30);
+    await activate(ui,namedButton(ui,'显示更多材料（30 / 35）'));await search(ui,'COMMON');expect(ui.document.querySelectorAll('[data-material-id]')).toHaveLength(30);expect(ids(ui)).toEqual(list.map(item=>item.id));
+    await activate(ui,namedButton(ui,'显示更多材料（30 / 35）'));ui.panel.topic='Design';await ui.flush();expect(ui.document.querySelectorAll('[data-material-id]')).toHaveLength(30);expect(ids(ui)).toEqual(list.map(item=>item.id));
+  });
+
+  it.each(['',' \t\n\u00a0 '])('releases cached text and record keys for blank query %j across authoritative replacement',async value=>{
+    const ui=await mount();await search(ui,'article');expect(memo(ui).texts.size).toBe(2);const previous=memo(ui);await search(ui,value);
+    expect(previous.texts.size).toBe(0);expect(previous.items).toEqual([]);expect(memo(ui)).not.toBe(previous);expect(memo(ui).texts.size).toBe(0);expect(memo(ui).remaining).toBe(budget);expect(ids(ui)).toEqual(['a','b']);
+    ui.api.materialList.mockResolvedValueOnce([record('replacement')]);ui.notify();await ui.flush();expect(ids(ui)).toEqual(['replacement']);expect(memo(ui).texts.size).toBe(0);expect(memo(ui).items[0].id).toBe('replacement');
+  });
+
+  it('refreshes broadcast and archive lists while search changes preserve selected material drafts',async()=>{
+    const ui=await mount();await ui.panel.select('a');ui.panel.startEdit();ui.panel.draft.title='unsubmitted title';ui.panel.note='unsubmitted note';const draft=ui.panel.draft;
+    await search(ui,'article');await search(ui,'personal');expect(ui.panel.selectedId).toBe('a');expect(ui.panel.draft).toBe(draft);expect(ui.panel.note).toBe('unsubmitted note');
+    ui.api.materialList.mockResolvedValueOnce([{...record('a'),references:[{kind:'note',id:'remote',note:'remote-needle'}]},record('remote')]);ui.notify();await ui.flush();await search(ui,'remote-needle');expect(ids(ui)).toEqual(['a']);expect(ui.panel.selectedId).toBe('a');expect(ui.panel.draft).toBe(draft);expect(ui.panel.note).toBe('unsubmitted note');
+    ui.api.materialList.mockResolvedValueOnce([{...record('archived'),archivedAt:4}]);ui.panel.toggleArchive();await ui.flush();expect(ui.panel.query).toBe('');expect(ui.panel.topic).toBe('');expect(ids(ui)).toEqual(['archived']);expect(memo(ui).texts.size).toBe(0);
+    await search(ui,'article');expect(ids(ui)).toEqual(['archived']);ui.api.materialList.mockResolvedValueOnce([record('a')]);ui.panel.toggleArchive();await ui.flush();await ui.panel.select('a');expect(ui.panel.draft.title).toBe('unsubmitted title');expect(ui.panel.note).toBe('unsubmitted note');
+    await search(ui,'article');await ui.panel.clearMaterials();expect(ids(ui)).toEqual([]);expect(memo(ui).texts.size).toBe(0);expect(ui.panel.selectedId).toBe('');
+  });
+
+  it.each(['clear-materials','archive-last','reload-empty','splice-empty','unmount'] as const)('actively clears a captured text Map on %s without reading a new memo',async action=>{
+    const reads={excerpt:0,note:0},probe=track(reads);
+    try{
+      const ui=await mount({list:async()=>[measured('only',reads)]});await search(ui,'mat-body');
+      if(action==='archive-last'){await ui.panel.select('only');await ui.flush();}
+      const previous=memo(ui),captured=previous.texts;expect(captured.size).toBe(1);expect(previous.items).toHaveLength(1);const before=probe.snapshot();
+      if(action==='clear-materials')await ui.panel.clearMaterials();
+      else if(action==='archive-last')await ui.panel.archiveSelected();
+      else if(action==='reload-empty'){ui.api.materialList.mockResolvedValueOnce([]);await ui.panel.reload();}
+      else if(action==='splice-empty')ui.panel.materials.splice(0);
+      else ui.unmount();
+      // 不读 searchMemo/filtered/visibleMaterials，避免测试自身触发 lazy computed 掩盖旧 Map。
+      expect(captured.size).toBe(0);expect(previous.items).toEqual([]);expect(difference(probe.snapshot(),before).bodyLower).toBe(0);
+    }finally{probe.restore();}
+  });
+});
