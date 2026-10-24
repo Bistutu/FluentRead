@@ -540,6 +540,31 @@ describe('selection TTS background handlers', () => {
         }));
     });
 
+    it.each(['stop', 'replace'] as const)('Google 等待旧播放停止期间被 %s 后不会迟到启动', async action => {
+        const oldStop = deferred<void>();
+        const stopWithOffscreen = vi.fn(async (): Promise<void> => undefined).mockImplementationOnce(() => oldStop.promise);
+        const {dependencies, router} = createSubject({stopWithOffscreen});
+        const context = {sender: {tab: {id: 6}}};
+        const message = (id: string) => ({type: SELECTION_TTS_GOOGLE_MESSAGE_TYPE, text: id, clientRequestId: id});
+        await router.dispatch(message('old-playing'), context);
+
+        const waiting = router.dispatch(message('waiting-google'), context);
+        await vi.waitFor(() => expect(stopWithOffscreen).toHaveBeenCalledWith(expect.objectContaining({tabId: 6, clientRequestId: 'old-playing'})));
+        expect(dependencies.playWithOffscreen).toHaveBeenCalledOnce();
+        if (action === 'stop') {
+            await router.dispatch({type: SELECTION_TTS_STOP_MESSAGE_TYPE, clientRequestId: 'waiting-google'}, context);
+        } else {
+            await expect(router.dispatch(message('replacement-google'), context)).resolves.toMatchObject({
+                handled: true, response: {success: true, transport: 'offscreen'},
+            });
+        }
+        oldStop.resolve();
+
+        await expect(waiting).resolves.toEqual({handled: true, response: {success: false, error: '语音播放已取消'}});
+        expect(vi.mocked(dependencies.playWithOffscreen).mock.calls.map(([request]) => request.clientRequestId))
+            .toEqual(action === 'stop' ? ['old-playing'] : ['old-playing', 'replacement-google']);
+    });
+
     it('Edge offscreen 当前请求失败时回退 page audio，并记录 warn', async () => {
         const failure = new Error('offscreen unavailable');
         const {dependencies, router} = createSubject({

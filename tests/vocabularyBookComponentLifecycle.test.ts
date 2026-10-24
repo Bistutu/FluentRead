@@ -618,14 +618,25 @@ function speechBookPorts(book: Awaited<ReturnType<typeof mountBook>>) {
   return {spoken,audios,cancel};
 }
 it('releases page audio on completion and falls back once on error, ignoring callbacks from old audio and utterances',async()=>{
-  const book=await mountBook(undefined,async message=>message.type==='selectionTts'?{success:true,transport:'page',audioBase64:'AA=='}:{success:true});const media=speechBookPorts(book);
+  const book=await mountBook(undefined,async message=>message.type==='selectionTts'
+    ? {success:true,transport:'page',audioBase64:'AA=='}
+    : message.type==='selectionTtsGoogle' ? {success:false,error:'Google unavailable'} : {success:true});
+  const media=speechBookPorts(book),browserError={error:'synthesis-failed'};
   const click=()=>clickBook(book,book.host.querySelector('.entry-icon')!);
   await click();const first=media.audios[0],oldEnded=first.onended;first.onended();await book.flush();expect(first.pause).toHaveBeenCalledOnce();expect(first.removeAttribute).toHaveBeenCalledWith('src');expect(book.panel.playingEntryId).toBe('');
   await click();const second=media.audios[1];oldEnded();await book.flush();expect(book.host.querySelector('.entry-icon')?.getAttribute('aria-label')).toBe('停止朗读');
   second.onerror();await book.flush();expect(media.spoken).toHaveLength(1);expect(second.pause).toHaveBeenCalledOnce();expect(media.spoken[0].text).toBe('art');
-  second.onerror();await book.flush();expect(media.spoken).toHaveLength(1);media.spoken[0].onend();await book.flush();expect(book.panel.playingEntryId).toBe('');
-  await click();media.audios[2].onerror();await book.flush();expect(media.spoken).toHaveLength(2);media.spoken[0].onerror();await book.flush();expect(book.panel.playingEntryId).toBe('saved-a');
-  media.spoken[1].onerror();await book.flush();expect(book.host.textContent).toContain('朗读未完成');expect(book.panel.playingEntryId).toBe('');expect(URL.revokeObjectURL).toHaveBeenCalledTimes(3);
+  expect(book.messages.filter(message=>message.type==='selectionTtsGoogle')).toHaveLength(1);
+  second.onerror();await book.flush();expect(media.spoken).toHaveLength(1);
+  expect(book.messages.filter(message=>message.type==='selectionTtsGoogle')).toHaveLength(1);
+  media.spoken[0].onend();await book.flush();expect(book.panel.playingEntryId).toBe('');
+  await click();media.audios[2].onerror();await book.flush();expect(media.spoken).toHaveLength(2);
+  expect(book.messages.filter(message=>message.type==='selectionTtsGoogle')).toHaveLength(2);
+  media.spoken[0].onerror(browserError);await book.flush();expect(book.panel.playingEntryId).toBe('saved-a');
+  media.spoken[1].onerror(browserError);await book.flush();
+  expect(book.host.textContent).toContain('浏览器语音启动失败：synthesis-failed');
+  expect(book.host.textContent).toContain('Google 回退：Google unavailable');
+  expect(book.panel.playingEntryId).toBe('');expect(URL.revokeObjectURL).toHaveBeenCalledTimes(3);
 });
 it('handles remote playback failure and visibility changes through mounted listeners, and refreshes only for the correct book message',async()=>{
   const book=await mountBook(undefined,async message=>message.type==='selectionTts'?{success:true,transport:'offscreen'}:{success:true});const media=speechBookPorts(book);
@@ -685,7 +696,10 @@ it('opens a saved entry from its visible row, receives study edits, speaks and n
   fail=true;await clickBook(book,bookButton(book,'重新学习'));expect(book.host.textContent).toContain('Temporary update failure');fail=false;await clickBook(book,bookButton(book,'重新学习'));expect(book.messages.at(-1)).toMatchObject({action:'relearn'});expect(bookButton(book,'标记掌握')).toBeTruthy();
 });
 it('rates a forgotten entry through the answer form, keeps failure retryable, and enters study from the answer without losing the saved row',async()=>{
-  let failure=true;const book=await mountBook(undefined,async()=>failure?{success:false,error:{message:'Review unavailable'}}:{success:true,data:{entry:{...book.entry,status:'learning'},log:{}}});
+  let failure=true;const book=await mountBook(undefined,async message=>{
+    if(message.type==='selectionTts')return {success:true,transport:'offscreen'};
+    return failure?{success:false,error:{message:'Review unavailable'}}:{success:true,data:{entry:{...book.entry,status:'learning'},log:{}}};
+  });
   await clickBook(book,book.host.querySelector('.start-review')!);await clickBook(book,book.host.querySelector('.reveal-button')!);
   await clickBook(book,book.host.querySelector('.review-answer .vocabulary-speak')!);expect(book.messages.at(-1)).toMatchObject({type:'selectionTts',text:'art'});
   await clickBook(book,book.host.querySelector('.review-actions .again')!);expect(book.host.textContent).toContain('Review unavailable');expect(book.host.querySelector('.review-actions .again')?.hasAttribute('disabled')).toBe(false);
