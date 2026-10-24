@@ -819,7 +819,8 @@
       "tests/fullPageAttributeBoundary.test.ts",
       "tests/hnFirstTargetReadiness.test.ts",
       "tests/targetLanguageAdversarial.test.ts",
-      "tests/materialWorkspaceLifecycle.test.ts"
+      "tests/materialWorkspaceLifecycle.test.ts",
+      "tests/materialWorkspaceKeepAlive.test.ts"
     ]
   }
 }

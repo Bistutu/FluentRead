@@ -1,10 +1,11 @@
 /**
  * @file src/features/full-page-translation/content/sentenceHighlight.ts
  * 文件职责：在双语段落中定位鼠标下的句子，并同步绘制原文和译文的文字范围。
- * 主要内容：分帧只读遍历并提前限制文字量，排除空文本、按坐标索引句子范围，逐帧合并指针事件并使用原生 Highlight 绘制；离开、选择、滚动、节点变化和卸载时取消收集并释放范围与监听器。
- * 模块边界：仅消费 renderer 已有的双语容器，不拆分宿主文本、不更改排版、不调用 provider；旧浏览器缺少绘制能力时安全停用。
+ * 主要内容：沿命中节点祖先读取共享状态索引，避免每帧扫描文章的兄弟段落；每次复核已提交双语工件的身份与在位关系，恢复、模式切换和重挂后不沿用旧映射；分帧只读遍历并提前限制文字量，排除空文本、按坐标索引句子范围，逐帧合并指针事件并使用原生 Highlight 绘制；离开、选择、滚动、节点变化和卸载时取消收集并释放范围与监听器。
+ * 模块边界：仅消费 state 登记、renderer 创建的双语容器，不拆分宿主文本、不更改排版、不调用 provider；旧浏览器缺少绘制能力时安全停用。
  */
 import {alignBilingualSentences, type SentenceSpan} from '@/src/core/translation/sentenceAlignment';
+import {getTranslationState} from './state';
 
 export const BILINGUAL_HIGHLIGHT_NAME = 'fluentread-bilingual-sentence';
 const wrapperSelector = '.fluent-read-bilingual-content[data-fr-translation-owned="true"]';
@@ -75,14 +76,25 @@ function rangesFor(map: TextMap, span: SentenceSpan): Range[] {
     return ranges;
 }
 
-function ownerFor(target: Element): Element | null {
+/** 只认真实状态持有的直属工件；DOM 上复制的公开标记不能建立翻译所有权。 */
+function ownedBilingualContent(owner: Element): HTMLElement | undefined {
+    const state = getTranslationState(owner as HTMLElement);
+    if (!state || state.phase !== 'translated' || state.mode !== 'bilingual' || state.kind !== 'content') return;
+    const wrapper = state.bilingualContent;
+    return wrapper?.parentElement === owner && wrapper.matches(wrapperSelector) ? wrapper : undefined;
+}
+
+function ownerFor(target: Element): {owner: Element; wrapper: HTMLElement} | null {
     const translation = target.closest(wrapperSelector);
-    if (translation) return translation.parentElement;
+    if (translation) {
+        const owner = translation.parentElement;
+        if (!owner || ownedBilingualContent(owner) !== translation) return null;
+        return {owner, wrapper: translation as HTMLElement};
+    }
     if (target.closest(excludedSelector)) return null;
     for (let owner: Element | null = target; owner; owner = owner.parentElement) {
-        for (let child = owner.firstElementChild; child; child = child.nextElementSibling) {
-            if (child.matches(wrapperSelector)) return owner;
-        }
+        const wrapper = ownedBilingualContent(owner);
+        if (wrapper) return {owner, wrapper};
     }
     return null;
 }
@@ -93,7 +105,7 @@ export function installBilingualSentenceHighlight(document: Document): () => voi
     if (!view?.Highlight || !registry) return () => undefined;
     const paint = new view.Highlight();
     let owner: Element | null = null;
-    let ownerTarget: Element | null = null;
+    let ownerWrapper: HTMLElement | null = null;
     let installed = true;
     let pairs: Pair[] = [];
     let collecting: {wrapper: Element; source: () => TextMap | null | undefined; sourceMap?: TextMap;
@@ -110,7 +122,7 @@ export function installBilingualSentenceHighlight(document: Document): () => voi
         paint.clear();
         active = undefined;
         owner = null;
-        ownerTarget = null;
+        ownerWrapper = null;
         ownerAncestors.length = 0;
         pairs = [];
         collecting = undefined;
@@ -124,14 +136,15 @@ export function installBilingualSentenceHighlight(document: Document): () => voi
         const point = pending;
         if (!point || point.event.buttons || document.getSelection()?.isCollapsed === false) return clear();
         const {event, target: hit} = point;
-        const nextOwner = hit && (hit === ownerTarget ? owner : ownerFor(hit));
-        if (!nextOwner?.isConnected) return clear();
-        if (nextOwner !== owner) {
+        const next = hit && ownerFor(hit);
+        if (!next?.owner.isConnected) return clear();
+        if (next.owner !== owner || next.wrapper !== ownerWrapper) {
             clear();
-            owner = nextOwner;
+            owner = next.owner;
+            ownerWrapper = next.wrapper;
             const wrappers = Array.from(owner.children).filter(child => child.matches(wrapperSelector));
             if (wrappers.length !== 1) return clear();
-            collecting = {wrapper: wrappers[0], source: textCollector(owner, 100_000)};
+            collecting = {wrapper: ownerWrapper, source: textCollector(owner, 100_000)};
             pending = point;
             // 收集期间也观察，避免跨帧使用已经变更或脱离页面的节点。
             // document 的观察不穿透 Shadow DOM；同时观察每层实际根及其宿主祖先。
@@ -145,7 +158,6 @@ export function installBilingualSentenceHighlight(document: Document): () => voi
                 ancestor = (root as ShadowRoot).host;
             }
         }
-        ownerTarget = hit;
         if (collecting) {
             const source = collecting.sourceMap ?? collecting.source();
             if (source === null) return clear();

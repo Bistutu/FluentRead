@@ -303,6 +303,47 @@ describe('局部翻译选择模式', () => {
         expect(h.shadow().querySelectorAll('.fr-section-box.is-confirmed')).toHaveLength(2);
     });
 
+    it('同次划选采样复用命中解析，下一次事件重新读取布局与父级', async () => {
+        const h = await createHarness(); h.picker.startSectionPicker(h.options as never); h.flushFrames();
+        h.emit('pointerdown', {pointerId: 1, clientX: 50, clientY: 70});
+        const paragraph = h.byId('second');
+        const display = vi.spyOn(h.document.defaultView!, 'getComputedStyle');
+        const bounds = vi.spyOn(paragraph, 'getBoundingClientRect');
+        const elementAtPoint = vi.fn(() => paragraph);
+        h.document.elementFromPoint = elementAtPoint;
+        h.emit('pointermove', {pointerId: 1, buttons: 1, clientX: 50, clientY: 838});
+        expect(elementAtPoint).toHaveBeenCalledTimes(64);
+        expect(display.mock.calls.filter(([element]) => element === paragraph)).toHaveLength(1);
+        expect(bounds).toHaveBeenCalledOnce();
+        // 缓存只属于当前事件；页面下一次把原命中块改成行内后，必须重新找到父级。
+        const parent = h.document.createElement('section');
+        parent.getBoundingClientRect = () => rect(25, 110, 500, 100) as DOMRect;
+        paragraph.replaceWith(parent); parent.append(paragraph);
+        display.mockImplementation(element => ({display: element === paragraph ? 'inline' : 'block'}) as CSSStyleDeclaration);
+        display.mockClear();
+        h.emit('pointermove', {pointerId: 1, buttons: 1, clientX: 50, clientY: 70});
+        expect(display.mock.calls.filter(([element]) => element === paragraph)).toHaveLength(1);
+        expect(display.mock.calls.filter(([element]) => element === parent)).toHaveLength(1);
+        h.emit('pointerup', {pointerId: 1, clientX: 50, clientY: 70}); h.flushFrames(); vi.advanceTimersByTime(90);
+        clickButton(h, 'confirm');
+        // 已选中的具体段落不会因后续命中更宽父级而被扩大。
+        expect(h.onPick).toHaveBeenCalledWith([h.byId('para'), paragraph]);
+    });
+
+    it('同次事件保留途经的不同段落、间隙与折返命中', async () => {
+        const h = await createHarness(); h.picker.startSectionPicker(h.options as never); h.flushFrames();
+        const third = h.document.createElement('p'); third.textContent = 'Third paragraph';
+        third.getBoundingClientRect = () => rect(30, 180, 400, 40) as DOMRect;
+        h.byId('readme').append(third);
+        h.emit('pointerdown', {pointerId: 1, clientX: 50, clientY: 70});
+        h.document.elementFromPoint = (_x, y) => y < 100 ? h.byId('para') : y < 120 ? null
+            : y < 160 ? h.byId('second') : y < 180 ? h.byId('readme') : y < 220 ? third : h.byId('para');
+        h.emit('pointermove', {pointerId: 1, buttons: 1, clientX: 50, clientY: 300});
+        h.emit('pointerup', {pointerId: 1, clientX: 50, clientY: 300}); h.flushFrames(); vi.advanceTimersByTime(90);
+        clickButton(h, 'confirm');
+        expect(h.onPick).toHaveBeenCalledWith([h.byId('para'), h.byId('second'), third]);
+    });
+
     it('划选整组支持扩大、缩回原来的两个区域和重新选择', async () => {
         const h = await createHarness(); h.picker.startSectionPicker(h.options as never); h.flushFrames();
         h.emit('pointerdown', {pointerId: 1, clientX: 50, clientY: 70});

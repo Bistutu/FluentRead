@@ -143,9 +143,12 @@ function deferred<T>() {
     return {promise, resolve, reject};
 }
 async function settle() {for (let index = 0; index < 12; index++) {await Promise.resolve(); await nextTick();}}
-async function mount(component: Component, props: Record<string, unknown> = {}) {
+async function mount(component: Component, props: Record<string, unknown> = {}, keepAlive = false) {
     const host = dom.document.createElement('div'); dom.document.body.append(host);
-    const state = reactive(props); const app = createApp({setup: () => () => h(component, state)});
+    const state = reactive(props), shown = ref(true);
+    const app = createApp({setup: () => () => keepAlive
+        ? h(KeepAlive, null, {default: () => shown.value ? h(component, state) : h('div', {key: 'other'})})
+        : h(component, state)});
     const elementPlus = await import('element-plus');
     app.component('el-select', elementPlus.ElSelect); app.component('el-option', elementPlus.ElOption); app.component('el-dialog', elementPlus.ElDialog);
     app.component('el-button', elementPlus.ElButton); app.component('el-input-number', elementPlus.ElInputNumber); app.component('el-switch', elementPlus.ElSwitch);
@@ -154,7 +157,7 @@ async function mount(component: Component, props: Record<string, unknown> = {}) 
         ...attrs, rows: props.rows, value: props.modelValue, onInput: (event: Event) => emit('update:modelValue', (event.target as HTMLTextAreaElement).value),
     })}));
     apps.add(app); app.mount(host); await settle();
-    return {host, state, stop: () => {app.unmount(); apps.delete(app);}};
+    return {host, state, shown, stop: () => {app.unmount(); apps.delete(app);}};
 }
 function input(host: HTMLElement, selector: string, value: string, change = true) {
     const field = host.querySelector<HTMLInputElement | HTMLTextAreaElement>(selector)!;
@@ -955,6 +958,116 @@ describe('audit49C followup2 restore visibility during the dialog closing transi
 
 describe('audit49C followup1 cache-limit draft and authoritative configuration', () => {
     const stats = {success: true, stats: {bytes: 0, entries: 0, maxBytes: 10 * 1024 * 1024, maxEntries: 10000}};
+    it('[cache-recovery] clear timeout is unconfirmed and releases the button', async () => {
+        vi.useFakeTimers({toFake: ['setTimeout', 'clearTimeout', 'performance']});
+        ports.send.mockResolvedValue(stats); const page = await mount(TranslationCacheSettings, {config: normalizeConfig({})});
+        const clear = deferred<unknown>();ports.send.mockReturnValueOnce(clear.promise);
+        const trigger = namedButton(page.host, 'settings.cache.clear');trigger.click();await settle();
+        await vi.advanceTimersByTimeAsync(15000);await settle();
+        expect(trigger.disabled).toBe(false);
+        expect(page.host.querySelector('[role="status"]')!.textContent).toBe('settings.cache.clearUnconfirmed');
+        expect(page.host.querySelector('[role="alert"]')).toBeNull();
+        clear.resolve({success: true});await settle();
+        expect(page.host.querySelector('[role="status"]')!.textContent).toBe('settings.cache.clearUnconfirmed');
+    });
+    it('[cache-recovery] clear ACK and following statistics share one deadline', async () => {
+        vi.useFakeTimers({toFake: ['setTimeout', 'clearTimeout', 'performance']});
+        ports.send.mockResolvedValue(stats); const page = await mount(TranslationCacheSettings, {config: normalizeConfig({})});
+        const clear = deferred<unknown>(), read = deferred<unknown>();ports.send.mockReturnValueOnce(clear.promise).mockReturnValueOnce(read.promise);
+        const trigger = namedButton(page.host, 'settings.cache.clear');trigger.click();await settle();
+        await vi.advanceTimersByTimeAsync(9000);clear.resolve({success: true});await settle();
+        await vi.advanceTimersByTimeAsync(5999);expect(trigger.disabled).toBe(true);
+        await vi.advanceTimersByTimeAsync(1);await settle();expect(trigger.disabled).toBe(false);
+        expect(page.host.querySelector('[role="status"]')!.textContent).toBe('settings.cache.cleared');
+        expect(page.host.querySelector('[role="alert"]')!.textContent).toBe('settings.cache.readFailed');
+        read.resolve(stats);await settle();expect(page.host.querySelector('[role="alert"]')!.textContent).toBe('settings.cache.readFailed');
+    });
+    it('[cache-recovery] reports pending pages without claiming full completion', async () => {
+        ports.send.mockResolvedValue(stats); const page = await mount(TranslationCacheSettings, {config: normalizeConfig({})});
+        ports.send.mockResolvedValueOnce({success: true, invalidationPending: true});
+        namedButton(page.host, 'settings.cache.clear').click();await settle();
+        expect(page.host.querySelector('[role="status"]')!.textContent).toBe('settings.cache.clearedPendingPages');
+    });
+    it.each(['success', 'failure'] as const)('[cache-recovery] timed-out %s cannot release or complete a new clear', async outcome => {
+        vi.useFakeTimers({toFake: ['setTimeout', 'clearTimeout', 'performance']});
+        ports.send.mockResolvedValue(stats); const page = await mount(TranslationCacheSettings, {config: normalizeConfig({})});
+        const first = deferred<unknown>(), second = deferred<unknown>();ports.send.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+        const trigger = namedButton(page.host, 'settings.cache.clear');trigger.click();await settle();
+        await vi.advanceTimersByTimeAsync(15000);await settle();expect(trigger.disabled).toBe(false);
+        trigger.click();await settle();expect(trigger.disabled).toBe(true);
+        if (outcome === 'success') first.resolve({success: true});else first.reject(new Error('late fixture'));
+        await settle();expect(trigger.disabled).toBe(true);expect(page.host.querySelector('[role="status"]')).toBeNull();
+        second.resolve({success: true});await settle();expect(trigger.disabled).toBe(false);
+        expect(page.host.querySelector('[role="status"]')!.textContent).toBe('settings.cache.cleared');
+        expect(ports.send.mock.calls.map(([message]) => message.type)).toEqual(['getTranslationCacheStats', 'clearTranslationCache', 'clearTranslationCache', 'getTranslationCacheStats']);
+    });
+    it.each(['read', 'clear', 'following-stats'] as const)('[cache-recovery] unmount releases the pending %s timer', async phase => {
+        vi.useFakeTimers({toFake: ['setTimeout', 'clearTimeout', 'performance']});
+        const pending = deferred<unknown>();ports.send.mockResolvedValue(stats);
+        if (phase === 'read') ports.send.mockReturnValueOnce(pending.promise);
+        const page = await mount(TranslationCacheSettings, {config: normalizeConfig({})});
+        if (phase !== 'read') {
+            if (phase === 'following-stats') ports.send.mockResolvedValueOnce({success: true});
+            ports.send.mockReturnValueOnce(pending.promise);namedButton(page.host, 'settings.cache.clear').click();await settle();
+        }
+        expect(vi.getTimerCount()).toBe(1);page.stop();await settle();expect(vi.getTimerCount()).toBe(0);
+        const calls = ports.send.mock.calls.length;pending.reject(new Error('late unmounted fixture'));await settle();expect(ports.send).toHaveBeenCalledTimes(calls);
+    });
+    it.each(['panel', 'keep-alive'] as const)('[cache-recovery] %s inactivity preserves draft limits and rejects old clear/save followups', async reason => {
+        vi.useFakeTimers({toFake: ['setTimeout', 'clearTimeout', 'performance']});
+        for (const phase of ['clear', 'clear-stats', 'save', 'save-stats'] as const) {
+            ports.send.mockReset();ports.send.mockResolvedValue(stats);
+            const page = await mount(TranslationCacheSettings, {config: normalizeConfig({}), active: true}, true);
+            input(page.host, 'input[aria-label="settings.cache.maxEntries"]', '300');await settle();
+            const old = deferred<unknown>(), latest = deferred<unknown>();
+            if (phase === 'clear' || phase === 'clear-stats') {
+                if (phase === 'clear-stats') ports.send.mockResolvedValueOnce({success: true});
+                ports.send.mockReturnValueOnce(old.promise);namedButton(page.host, 'settings.cache.clear').click();
+            } else {
+                if (phase === 'save') ports.patch.mockReturnValueOnce(old.promise);
+                else ports.send.mockReturnValueOnce(old.promise);
+                page.host.querySelector('form')!.dispatchEvent(new Event('submit', {bubbles: true, cancelable: true}));
+            }
+            await settle();
+            if (reason === 'panel') page.state.active = false;else page.shown.value = false;
+            await settle();expect(vi.getTimerCount()).toBe(0);
+            const before = ports.send.mock.calls.length;ports.send.mockReturnValueOnce(latest.promise);
+            if (reason === 'panel') page.state.active = true;else page.shown.value = true;
+            await settle();expect(ports.send).toHaveBeenCalledTimes(before + 1);
+            old.resolve(phase === 'clear' ? {success: true} : phase === 'save' ? undefined : {...stats, stats: {...stats.stats, entries: 99}});
+            await settle();expect(ports.send).toHaveBeenCalledTimes(before + 1);
+            expect(namedButton(page.host, 'settings.cache.clear').disabled).toBe(true);
+            expect(page.host.querySelector('[role="status"]')).toBeNull();
+            latest.resolve({...stats, stats: {...stats.stats, entries: 7}});await settle();
+            expect(page.host.querySelector('[data-cache-entries]')!.textContent).toContain('7');
+            expect(page.host.querySelector<HTMLInputElement>('input[aria-label="settings.cache.maxEntries"]')!.value).toBe('300');
+            expect(namedButton(page.host, 'settings.cache.clear').disabled).toBe(false);page.stop();
+        }
+    });
+    it('[cache-recovery] an ACK already queued before leaving cannot launch a late stats read', async () => {
+        ports.send.mockResolvedValue(stats);const page = await mount(TranslationCacheSettings, {config: normalizeConfig({}), active: true});
+        const clear = deferred<unknown>();ports.send.mockReturnValueOnce(clear.promise);
+        namedButton(page.host, 'settings.cache.clear').click();await settle();
+        clear.resolve({success: true});await Promise.resolve();page.state.active = false;await settle();
+        expect(ports.send.mock.calls.map(([message]) => message.type)).toEqual(['getTranslationCacheStats', 'clearTranslationCache']);
+    });
+    it('[cache-recovery] renders measured KiB usage and adopts idle external limit updates', async () => {
+        ports.send.mockResolvedValue({...stats, stats: {...stats.stats, bytes: 2048, entries: 2}});
+        const page = await mount(TranslationCacheSettings, {config: normalizeConfig({})});
+        expect(page.host.querySelector('[data-cache-bytes]')!.textContent).toContain('2 KiB');
+        Object.assign(page.state.config as object, {translationCacheMaxBytes: 3 * 1024 * 1024, translationCacheMaxEntries: 300});await settle();
+        expect(Array.from(page.host.querySelectorAll<HTMLInputElement>('input[type="number"]')).map(field => field.value)).toEqual(['3', '300']);
+    });
+    it('[cache-recovery] delayed disabled-control events cannot overlap a pending cache read', async () => {
+        const read = deferred<unknown>();ports.send.mockReturnValueOnce(read.promise);
+        const page = await mount(TranslationCacheSettings, {config: normalizeConfig({})});
+        namedButton(page.host, 'settings.cache.refresh').dispatchEvent(new Event('click', {bubbles: true}));
+        page.host.querySelector('input[type="checkbox"]')!.dispatchEvent(new Event('change', {bubbles: true}));
+        page.host.querySelector('form')!.dispatchEvent(new Event('submit', {bubbles: true, cancelable: true}));await settle();
+        expect(ports.patch).not.toHaveBeenCalled();expect(ports.send).toHaveBeenCalledOnce();
+        expect(ports.send).toHaveBeenCalledWith({type: 'getTranslationCacheStats'});
+        read.resolve(stats);await settle();expect(namedButton(page.host, 'settings.cache.refresh').disabled).toBe(false);
+    });
     it.each(['success', 'failure', 'unmount'] as const)('keeps cache clearing single-flight and handles its %s receipt', async outcome => {
         ports.send.mockResolvedValue(stats); const page = await mount(TranslationCacheSettings, {config: normalizeConfig({})});
         const clear = deferred<any>(); ports.send.mockImplementationOnce(() => clear.promise); ports.send.mockClear();

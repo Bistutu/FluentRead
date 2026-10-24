@@ -170,13 +170,86 @@ function verifySharedFrameEntrypoint(manifest, files, browser) {
         `${browser} 共用子 frame 入口的匹配范围变化`);
     assert(shared[0].all_frames === true && shared[0].match_about_blank !== true
         && shared[0].run_at === 'document_end', `${browser} 共用子 frame 注入条件变化`);
-    assert(files.includes('content-scripts/supportedFrame.js') && files.includes('content-scripts/supportedFrame.css'),
-        `${browser} 缺少共用子 frame 脚本或样式`);
+    assert(files.includes('content-scripts/supportedFrame.js'), `${browser} 缺少共用子 frame 脚本`);
     assert(!files.some(file => /^content-scripts\/(?:qqMailFrame|embeddedArticleFrame)\.(?:js|css)$/u.test(file)),
         `${browser} 保留了冗余的旧子 frame 产物`);
     const netease = entries.find(entry => entry.js?.includes('content-scripts/neteaseMailFrame.js'));
     assert(netease?.all_frames === true && netease.match_about_blank === true,
         `${browser} 网易邮箱必须继续匹配 about:blank 正文子 frame`);
+}
+
+const FRAME_SCRIPT_FILES = ['content', 'neteaseMailFrame', 'supportedFrame'].map(name => `content-scripts/${name}.js`);
+const NETEASE_FRAME_MATCHES = ['https://*.mail.126.com/*', 'https://*.mail.163.com/*', 'https://*.mail.yeah.net/*'];
+
+async function readFrameScripts(directory) {
+    return Object.fromEntries(await Promise.all(FRAME_SCRIPT_FILES.map(async file =>
+        [file, await readFile(path.join(directory, file), 'utf8')])));
+}
+
+function resourcePatternMatches(pattern, resource) {
+    if (typeof pattern !== 'string') return false;
+    const escaped = pattern.replace(/[.+?^${}()|[\]\\]/gu, '\\$&').replaceAll('*', '.*');
+    return new RegExp(`^${escaped}$`, 'u').test(resource);
+}
+
+/** 校验实际入口的 Shadow UI CSS 依赖；无 UI 的共用 frame 不应生成或公开多余样式。 */
+export function verifyFrameUiStyles(manifest, files, scripts, browser) {
+    verifySharedFrameEntrypoint(manifest, files, browser);
+    const entries = manifest.content_scripts ?? [];
+    const resources = manifest.web_accessible_resources;
+    assert(Array.isArray(resources), `${browser} 缺少 UI CSS 可访问资源声明`);
+    const cssRules = resource => resources.filter(rule => typeof rule === 'string'
+        ? resourcePatternMatches(rule, resource)
+        : rule?.resources?.some(pattern => resourcePatternMatches(pattern, resource)));
+    const expected = [
+        {name: 'content', matches: ['<all_urls>'], allFrames: false, aboutBlank: false, runAt: 'document_start'},
+        {name: 'neteaseMailFrame', matches: NETEASE_FRAME_MATCHES, allFrames: true, aboutBlank: true, runAt: 'document_end'},
+    ];
+    for (const {name, matches, allFrames, aboutBlank, runAt} of expected) {
+        const js = `content-scripts/${name}.js`;
+        const css = `content-scripts/${name}.css`;
+        const entry = entries.filter(candidate => candidate.js?.includes(js));
+        assert(entry.length === 1 && Array.isArray(entry[0].matches)
+            && isDeepStrictEqual([...entry[0].matches].sort(), matches)
+            && (entry[0].all_frames === true) === allFrames
+            && (entry[0].match_about_blank === true) === aboutBlank
+            && entry[0].match_origin_as_fallback !== true && entry[0].run_at === runAt,
+        `${browser} ${name} UI 入口注入范围或时机变化`);
+        assert(!entry[0].css?.length, `${browser} ${name} UI CSS 不应改为页面自动注入`);
+        assert(files.includes(js) && files.includes(css), `${browser} 缺少 ${name} UI 脚本或 CSS 文件`);
+        const source = scripts[js];
+        assert(typeof source === 'string' && source.includes('WXT Shadow Root Reset')
+            && source.includes('Failed to load styles @'), `${browser} ${name} 缺少 WXT UI CSS 加载器`);
+        // 只依赖 WXT 的稳定 API 名和资源字面量，不依赖压缩后的函数或变量名。
+        const urls = [...source.matchAll(/\.getURL\s*\(\s*(["'`])(\/?content-scripts\/[^"'`\s]+\.css)\1\s*\)/gu)]
+            .map(match => match[2].replace(/^\//u, ''));
+        const literals = [...source.matchAll(/(["'`])(\/?content-scripts\/[^"'`\s]+\.css)\1/gu)]
+            .map(match => match[2].replace(/^\//u, ''));
+        assert(urls.length > 0 && urls.every(url => url === css)
+            && literals.length > 0 && literals.every(url => url === css), `${browser} ${name} WXT CSS URL 错误或缺失`);
+        const rules = cssRules(css);
+        assert(rules.length === 1, `${browser} ${name} UI CSS 必须只公开一次`);
+        if (manifest.manifest_version === 3) {
+            const rule = rules[0];
+            assert(typeof rule === 'object' && rule.resources.includes(css)
+                && Array.isArray(rule.matches) && isDeepStrictEqual([...rule.matches].sort(), matches)
+                && !rule.extension_ids?.length, `${browser} ${name} UI CSS 可访问范围变化`);
+            assert(rule.use_dynamic_url === false, `${browser} ${name} UI CSS 必须保留稳定 URL`);
+        } else {
+            assert(manifest.manifest_version === 2 && rules[0] === css,
+                `${browser} ${name} MV2 UI CSS 必须保留精确资源路径`);
+        }
+    }
+    const supportedCss = 'content-scripts/supportedFrame.css';
+    const supported = entries.find(entry => entry.js?.includes('content-scripts/supportedFrame.js'));
+    assert(!supported.css?.length && supported.match_origin_as_fallback !== true,
+        `${browser} 共用子 frame 不应自动注入 CSS 或扩大来源匹配`);
+    assert(!files.includes(supportedCss) && cssRules(supportedCss).length === 0,
+        `${browser} 共用子 frame 保留了无消费的 UI CSS 文件或资源声明`);
+    const source = scripts['content-scripts/supportedFrame.js'];
+    assert(typeof source === 'string' && !/["'`]\/?content-scripts\/[^"'`\s]+\.css["'`]/u.test(source)
+        && !source.includes('WXT Shadow Root Reset') && !source.includes('wxt-shadow-root-document-styles')
+        && !source.includes('Failed to load styles @'), `${browser} 共用子 frame 仍引入 Shadow UI CSS 加载路径`);
 }
 
 export function findUnexpectedCurrentVersionArchives(outputFiles, version, expectedArchives) {
@@ -217,9 +290,11 @@ async function main() {
         readJavaScriptBundle(chromeDir),
         readJavaScriptBundle(firefoxDir),
     ]);
-    const [chromeBackground, firefoxBackground] = await Promise.all([
+    const [chromeBackground, firefoxBackground, chromeFrameScripts, firefoxFrameScripts] = await Promise.all([
         readBackgroundBundle(chromeDir, chromeManifest),
         readBackgroundBundle(firefoxDir, firefoxManifest),
+        readFrameScripts(chromeDir),
+        readFrameScripts(firefoxDir),
     ]);
     const [chromeMetadataLocales, firefoxMetadataLocales] = await Promise.all([
         verifyLocalizedExtensionMetadata(chromeDir, chromeManifest),
@@ -260,8 +335,8 @@ async function main() {
     assert(firefoxBackground.includes(firefoxBuildMarker), 'Firefox 后台脚本缺少 firefox/MV2 runtime capability 构建标记');
     assert(!chromeBackground.includes('import.meta'), 'Chrome classic MV3 background 不得残留 import.meta 语法');
     assert(!firefoxBackground.includes('import.meta'), 'Firefox classic MV2 background 不得残留 import.meta 语法');
-    verifySharedFrameEntrypoint(chromeManifest, chromeFiles, 'Chrome');
-    verifySharedFrameEntrypoint(firefoxManifest, firefoxFiles, 'Firefox');
+    verifyFrameUiStyles(chromeManifest, chromeFiles, chromeFrameScripts, 'Chrome');
+    verifyFrameUiStyles(firefoxManifest, firefoxFiles, firefoxFrameScripts, 'Firefox');
 
     let chromeArchive = null;
     if (requireChromeArchive) {

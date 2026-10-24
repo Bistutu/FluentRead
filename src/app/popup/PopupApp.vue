@@ -3,6 +3,7 @@
  文件职责：实现浏览器 Popup 的主交互界面，连接当前标签页状态、翻译配置、可插拔皮肤、功能抽屉和高频操作，让现场开关与显示操作保持简短，将长期偏好引导到对应设置页，并为从划词抽屉打开的设置保留明确返回原网页的入口。
  主要内容：Aa 按钮读取当前文档的字体状态，直接切换仅当前页的网页字体与浏览器默认字体，以按下状态和悬停提示反馈选择，并在导航、关闭与失活时撤销旧操作；翻译卡片右下角的双语/仅译文图标与网站规则同行，模式回调随服务和操作变化失效；品牌官网入口保留稳定点击区域，内部图标在悬停和键盘聚焦时缓慢单次摇摆并遵循动画偏好，停留后显示可用 Escape 关闭的官网提示；复用真实全文完成状态呈现首次翻译指引和就地自助诊断，配置修复定位当前服务，本地报告由用户预览并手动导出；在配置 hydration 后汇总翻译服务，直接展示网页默认服务与适用的配置模型；翻译与局部同排，主操作用短标题合并平台快捷键并保留加载状态，长组合在悬停提示中完整显示，站点开关保留独立按钮；赞赏码在当前弹窗内切换放大与还原，关闭后重置；悬停、划词与图片抽屉优先展示开关和操作示意，首次单屏语言选择独占内容，保存后立即显示主菜单；页面操作、抽屉和导航绑定活跃会话，等待期间独占请求，关闭和配置切换使旧回复失效；网站规则写前复验标签页，等待后台确认并呈现保存忙碌、暂停与失败反馈；Safari 免费池精确授权，焦点复查保留已就绪按钮，点击接管旧读取并重新确认实际许可，撤权取消待发操作，授权事件合并刷新，错误随语言资源更新；打开的实际 teleport 抽屉复用平台可见视口订阅跟随键盘与缩放，极矮区域由同一订阅派生紧凑布局，整页遮罩保持背景拦截，可见高度扩大时仅修正当前聚焦服务搜索被吸顶标题遮住的外框，关闭、缓存失活和卸载立即释放，根画布保持固有尺寸。
  信息层级：服务摘要只保留当前服务与模型；悬停和划词的快捷开关与标题同排，独立快捷方案的作用范围仍明确说明，圈选快捷键只在操作示意中展示。
+ 缓存清理：每次清理拥有独立的可取消等待，失活或卸载释放旧等待，超时恢复按钮并提示结果未确认，后台确认清除但页面仍同步时展示中性状态；全局暂停不取消清理，旧回复不能覆盖新请求。
  模块边界：组件编排 UI、浏览器导航事件与生命周期；页内面板通过授权来源固定发起网页，页面消息归属由 pageActions 管理，不实现翻译 provider、缓存存储或 content 挂载；公共配置由 services/config 管理；配置草稿复用共享编辑会话，保留 post 合并和关闭补丁交接。
 -->
 <!-- Popup 页面归 app 层所有；WXT 入口只负责调用挂载函数。 -->
@@ -466,6 +467,7 @@ import {waitForSettingsTask} from '@/src/features/settings/model/taskWait';
 import {useConfigEditor} from '@/src/features/settings/model/useConfigEditor';
 import {applyInterfaceFont, applyInterfaceSkin} from '@/src/ui/interfaceAppearance';
 import { requestTranslationCacheClear } from './cache';
+import {TranslationCacheRequestTimeoutError} from '@/src/services/translation/cacheRequest';
 import ServiceIcon from '@/src/ui/components/ServiceIcon.vue';
 import {popupQuickFeatureIconPaths, popupQuickFeatureIconTones, type PopupQuickFeatureIconTone} from '@/src/ui/popupQuickFeatureIcons';
 import {useUiI18n} from '@/src/ui/i18n';
@@ -534,7 +536,7 @@ function readPageResult(value: unknown) {
   if (pageResultStatus.value === 'error' && !pageDiagnostic.value) pageDiagnostic.value = diagnoseFailure(undefined);
 }
 const notice = ref('');
-const noticeType = ref<'success' | 'error'>('success');
+const noticeType = ref<'success' | 'error' | 'pending'>('success');
 const hydrated = ref(false);
 const showLanguageOnboarding = ref(false);
 let pageExitSaveStarted = false;
@@ -871,6 +873,7 @@ onUnmounted(() => {
   document.removeEventListener('visibilitychange', freePoolPageVisible);
 });
 const cacheContext = useSettingsActionContext(() => popupContext.active.value, () => []);
+let cacheController: AbortController | undefined;
 const tabSource = createPopupTabSource(window.location?.search || '', {
   get: id => browser.tabs.get(id), query: () => browser.tabs.query({active: true, currentWindow: true}),
 }, getEmbeddedPopupTabId());
@@ -1043,7 +1046,14 @@ watch([drawerVisible, drawerSurface, popupContext.active], ([visible, surface, a
   };
 }, {flush: 'sync'});
 watch(() => config.value.on, enabled => {if (!enabled && activeDrawer.value !== 'services' && activeDrawer.value !== 'aiContext') drawerVisible.value = false}, {flush: 'sync'});
-watch(cacheContext.active, enabled => {if (!enabled) clearingCache.value = false}, {flush: 'sync'});
+watch(cacheContext.active, enabled => {
+  if (!enabled) {
+    const controller = cacheController;
+    cacheController = undefined;
+    controller?.abort();
+    clearingCache.value = false;
+  }
+}, {flush: 'sync'});
 
 function applyTheme(theme: string) {
   document.documentElement.classList.toggle('dark', theme === 'dark' || (theme === 'auto' && darkMode.matches));
@@ -1237,12 +1247,12 @@ function persistOnPageExit() {
     .catch((error) => console.warn('[FluentRead] popup 关闭前交接设置失败', error));
 }
 
-function showNotice(message: string, type: 'success' | 'error' = 'success') {
+function showNotice(message: string, type: 'success' | 'error' | 'pending' = 'success') {
   if (!popupContext.active.value) return;
   notice.value = message;
   noticeType.value = type;
   if (noticeTimer) clearTimeout(noticeTimer);
-  noticeTimer = setTimeout(() => { notice.value = ''; }, type === 'error' ? 5000 : 2800);
+  noticeTimer = setTimeout(() => { notice.value = ''; }, type === 'success' ? 2800 : 5000);
 }
 
 // 配置订阅是内容功能的唯一状态来源；避免无 revision 的广播晚到后覆盖新快照。
@@ -1283,13 +1293,26 @@ async function openDocumentTranslation() {
 async function clearCache() {
   if (!popupContext.active.value || clearingCache.value) return;
   const current = cacheContext.capture();
+  const controller = new AbortController();
+  cacheController = controller;
   clearingCache.value = true;
   try {
-    await requestTranslationCacheClear((message) => browser.runtime.sendMessage(message));
-    if (current()) showNotice('全部翻译缓存已清除');
+    const result = await requestTranslationCacheClear((message) => browser.runtime.sendMessage(message), {signal: controller.signal});
+    if (current() && cacheController === controller) {
+      if (result.invalidationPending) showNotice(t('settings.cache.clearedPendingPages'), 'pending');
+      else showNotice('全部翻译缓存已清除');
+    }
   } catch (error) {
-    if (current()) {console.error(error);showNotice('缓存清除失败', 'error');}
-  } finally { if (current()) clearingCache.value = false; }
+    if (current() && cacheController === controller) {
+      if (error instanceof TranslationCacheRequestTimeoutError) showNotice(t('settings.cache.clearUnconfirmed'), 'pending');
+      else {console.error(error);showNotice('缓存清除失败', 'error');}
+    }
+  } finally {
+    if (cacheController === controller) {
+      cacheController = undefined;
+      if (current()) clearingCache.value = false;
+    }
+  }
 }
 
 function quickTranslationConflictMessage(hotkey: string): string {
@@ -1333,3 +1356,7 @@ function setAreaEnabled(enabled: boolean) {
   config.value.selectionAreaEnabled = enabled;
 }
 </script>
+
+<style scoped>
+.notice.pending { color: var(--muted); }
+</style>

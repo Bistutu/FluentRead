@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
         writing: {enabled: false}, inputBoxTranslationTrigger: 'disabled', paragraphCopyEnabled: false, vocabularyReencounterEnabled: false,
     },
     configReady: Promise.resolve(), subscribeConfig: vi.fn(),
+    ensureLanguageBundle: vi.fn(), languageBundleWait: undefined as Promise<boolean> | undefined,
     installPageStyles: vi.fn(), removeStyles: vi.fn(), syncHighlight: vi.fn(), mountParagraphCopyContentFeature: vi.fn(),
     mountInput: vi.fn(), invalidateInput: vi.fn(), restoreOriginal: vi.fn(),
     resetRouteState: vi.fn(), autoTranslate: vi.fn(), fullPageActive: false,
@@ -35,6 +36,12 @@ vi.mock('webextension-polyfill', () => ({default: {
     get runtime() {return (globalThis as any).browser?.runtime;},
 }}));
 vi.mock('@/src/features/vocabulary/material/content/public', () => ({mountMaterialContent: mocks.mountMaterial}));
+vi.mock('@/src/features/vocabulary/content/public', () => ({mountVocabularyReencounter: mocks.mountReencounter, unmountVocabularyReencounter: mocks.unmountReencounter}));
+vi.mock('@/src/features/share-card/public', () => ({
+    mountShareCard: () => { mocks.shareCardMounted = true; mocks.mountShareCard(); },
+    unmountShareCard: () => { mocks.shareCardMounted = false; },
+    isShareCardMounted: () => mocks.shareCardMounted,
+}));
 vi.mock('@/src/features/writing-assistant/public', () => ({
     mountWritingAssistant: () => {mocks.writingMounted = true; mocks.mountWriting();},
     unmountWritingAssistant: () => {mocks.writingMounted = false; mocks.unmountWriting();},
@@ -49,6 +56,13 @@ vi.mock('@/src/app/content/personalCorrections', () => ({
 vi.mock('@/src/services/config/store', () => ({
     config: mocks.config, get configReady() { return mocks.configReady; }, subscribeConfig: mocks.subscribeConfig,
 }));
+vi.mock('@/src/platform/i18n/uiLanguageBundles', async importOriginal => {
+    const actual = await importOriginal<typeof import('@/src/platform/i18n/uiLanguageBundles')>();
+    return {...actual, ensureUiLanguageBundle: (language: unknown) => {
+        mocks.ensureLanguageBundle(language);
+        return mocks.languageBundleWait ?? actual.ensureUiLanguageBundle(language);
+    }};
+});
 vi.mock('wxt/utils/content-script-ui/shadow-root', () => ({createShadowRootUi: mocks.createUi}));
 vi.mock('@/src/app/content/features', async () => {
     const input = await import('@/src/features/input-translation/public');
@@ -66,11 +80,6 @@ vi.mock('@/src/app/content/features', async () => {
         'unmountImageTranslator', 'unmountSelectionTranslator', 'unmountTranslationProgressPanel',
     ].map(name => [name, vi.fn()])),
     mountParagraphCopyContentFeature: mocks.mountParagraphCopyContentFeature,
-    mountVocabularyReencounter: mocks.mountReencounter,
-    unmountVocabularyReencounter: mocks.unmountReencounter,
-    mountShareCard: () => { mocks.shareCardMounted = true; mocks.mountShareCard(); },
-    unmountShareCard: () => { mocks.shareCardMounted = false; },
-    isShareCardMounted: () => mocks.shareCardMounted,
     isFloatingBallAllowedOnPage: () => mocks.floatingBallAllowed,
     createPageTranslationDisplayModeSync: (_initial: unknown, apply: (next: any) => void) => apply,
     restoreOriginalContent: mocks.restoreOriginal,
@@ -435,6 +444,7 @@ describe('content composition root 冷启动与暂停恢复', () => {
     beforeEach(() => {
         vi.resetModules();
         vi.clearAllMocks();
+        mocks.languageBundleWait = undefined;
         mocks.realComposition = false;
         mocks.config.on = true;
         mocks.pageFontEnabled = false;
@@ -666,16 +676,49 @@ describe('content composition root 冷启动与暂停恢复', () => {
         expect(mocks.shareCardMounted).toBe(false);
     });
 
-    it.each(['pagehide', 'invalidate'] as const)('配置读取期间 %s 后不允许迟到初始化挂载', async reason => {
+    it.each(['pagehide', 'invalidate', 'invalid-flag'] as const)('配置读取期间 %s 后不允许迟到初始化挂载', async reason => {
         const {startContentApp} = await import('@/src/app/content/runtime');
         const starting = startContentApp(context as never);
         if (reason === 'pagehide') transition(page, 'pagehide');
-        else { context.isInvalid = true; invalidated(); }
+        else { context.isInvalid = true; if (reason === 'invalidate') invalidated(); }
         ready();
         await starting;
         transition(page, 'pageshow', true);
+        expect(mocks.ensureLanguageBundle).not.toHaveBeenCalled();
         expect(mocks.installPageStyles).not.toHaveBeenCalled();
         expect(mocks.mountInput).not.toHaveBeenCalled();
+        expect(mocks.addRuntimeListener).not.toHaveBeenCalled();
+        expect(mocks.subscribeConfig).not.toHaveBeenCalled();
+    });
+
+    it('有效页面配置就绪后仍等待界面语言包再挂载，完成后只初始化一次', async () => {
+        let bundleReady!: (loaded: boolean) => void;
+        mocks.languageBundleWait = new Promise(resolve => { bundleReady = resolve; });
+        const {startContentApp} = await import('@/src/app/content/runtime');
+        const starting = startContentApp(context as never);
+        expect(mocks.ensureLanguageBundle).not.toHaveBeenCalled();
+        ready();
+        await vi.waitFor(() => expect(mocks.ensureLanguageBundle).toHaveBeenCalledOnce());
+        expect(mocks.installPageStyles).not.toHaveBeenCalled();
+        expect(mocks.subscribeConfig).not.toHaveBeenCalled();
+        bundleReady(true);
+        await starting;
+        expect(mocks.installPageStyles).toHaveBeenCalledOnce();
+        expect(mocks.subscribeConfig).toHaveBeenCalledOnce();
+    });
+
+    it.each(['pagehide', 'invalidate'] as const)('语言包已开始等待时 %s，迟到资源仍不能挂载页面', async reason => {
+        let bundleReady!: (loaded: boolean) => void;
+        mocks.languageBundleWait = new Promise(resolve => { bundleReady = resolve; });
+        const {startContentApp} = await import('@/src/app/content/runtime');
+        const starting = startContentApp(context as never);
+        ready();
+        await vi.waitFor(() => expect(mocks.ensureLanguageBundle).toHaveBeenCalledOnce());
+        if (reason === 'pagehide') transition(page, 'pagehide');
+        else { context.isInvalid = true; invalidated(); }
+        bundleReady(true);
+        await starting;
+        expect(mocks.installPageStyles).not.toHaveBeenCalled();
         expect(mocks.addRuntimeListener).not.toHaveBeenCalled();
         expect(mocks.subscribeConfig).not.toHaveBeenCalled();
     });
@@ -686,6 +729,7 @@ describe('content composition root 冷启动与暂停恢复', () => {
         transition(page, 'pagehide', true);
         ready();
         await starting;
+        expect(mocks.ensureLanguageBundle).toHaveBeenCalledOnce();
         expect(mocks.installPageStyles).not.toHaveBeenCalled();
         const state = mocks.createMessageHandler.mock.calls[0][1];
         expect(state.isPageSuspended()).toBe(true);
@@ -852,6 +896,7 @@ describe('content composition root 的真实页面入口联动', () => {
     };
     beforeEach(async () => {
         vi.resetModules(); vi.clearAllMocks(); vi.useFakeTimers(); mocks.realComposition = true;
+        mocks.languageBundleWait = undefined;
         Object.assign(mocks.config, new Config());
         Object.assign(mocks.config, {on: true, autoTranslate: false, alwaysTranslateDomains: [], disabledExtensionDomains: [],
             disableFloatingBall: true, disableSelectionTranslator: true, disableImageTranslator: true, selectionAreaEnabled: false,

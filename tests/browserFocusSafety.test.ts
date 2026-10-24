@@ -92,6 +92,240 @@ describe('原生焦点事件观察器诊断端口（不启动浏览器）', () =
     });
 });
 
+type CacheTraceRecord = Record<string, unknown>;
+type CacheTraceSession = {send: (...args: unknown[]) => unknown};
+type CacheTraceBrowser = {newBrowserCDPSession: (...args: unknown[]) => Promise<CacheTraceSession>};
+type CacheTrace = {
+    setCase: (name: string) => void;
+    observeActivation: (event: {pid: number; name: string; time: number; monotonicMs: number}) => void;
+    bindPage: (page: object) => void;
+    pageIdentity: (page: object) => Record<string, unknown>;
+    action: <T>(name: string, invoke: () => T | Promise<T>, page?: object) => Promise<T>;
+    instrumentBrowser: (browser: CacheTraceBrowser) => CacheTraceBrowser;
+};
+const CACHE_RECOVERY_CLI = 'scripts/testing/run-cache-clear-recovery-test.cjs';
+function cacheTraceFixture() {
+    const source = readScript(CACHE_RECOVERY_CLI);
+    const ast = ts.createSourceFile(CACHE_RECOVERY_CLI, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+    const declaration = ast.statements.find((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && node.name?.text === 'createCacheFocusTrace');
+    if (!declaration) throw Error('Missing actual cache CLI trace factory');
+    const factory = new Script(`${declaration.getText(ast)}; createCacheFocusTrace;`).runInNewContext({performance}) as (ports: {
+        records: CacheTraceRecord[]; errors: CacheTraceRecord[]; readForeground: () => Promise<unknown>;
+        getBrowserPid: () => number; getFocusFailure: () => Error | undefined;
+        onOwnedActivation: (error: Error) => void; onObservationFailure: (error: Error) => void;
+    }) => CacheTrace;
+    const records: CacheTraceRecord[] = [], errors: CacheTraceRecord[] = [];
+    let failure: Error | undefined;
+    const readForeground = vi.fn(async (): Promise<unknown> => ({pid: 1, name: 'Editor', privateValue: 'PRIVATE_FOREGROUND'}));
+    const trace = factory({records, errors, readForeground, getBrowserPid: () => 42, getFocusFailure: () => failure,
+        onOwnedActivation: error => {failure ||= error;}, onObservationFailure: error => {failure ||= error;}});
+    const send = vi.fn(function (this: CacheTraceSession, ...args: unknown[]): unknown {
+        const [method] = args;
+        if (method === 'Target.createTarget') return Promise.resolve({targetId: 'owned-target', secret: 'PRIVATE_RESULT'});
+        if (method === 'Browser.getWindowForTarget') return Promise.resolve({windowId: 7, bounds: {left: 1500, top: 30, width: 1440, height: 1000, windowState: 'normal', secret: 'PRIVATE_BOUNDS'}});
+        if (method === 'Browser.getWindowBounds') return Promise.resolve({bounds: {left: 1500, top: 30, width: 1440, height: 1000}});
+        return Promise.resolve({success: true});
+    });
+    const cdp = {send};
+    const nativeSession = vi.fn(async () => cdp);
+    const browser = {newBrowserCDPSession: nativeSession};
+    trace.instrumentBrowser(browser);
+    return {trace, records, errors, readForeground, send, cdp, browser, nativeSession, failure: () => failure};
+}
+
+// Execute the complete CLI in a VM; ports model only the first normal case and
+// stop at the next newPage boundary. No browser, native app or real I/O is used.
+async function probeCacheRecoveryCli(mode: 'native-reject' | 'activation' | 'unavailable' | 'diagnostics-failure' = 'native-reject') {
+    const filename = resolve(PROJECT_ROOT, CACHE_RECOVERY_CLI), helperPath = '/virtual/cache-focus-helper.cjs';
+    const rawFailure = new Error('original native newPage failure');
+    const runtimeFailure = new Error('original runtime diagnostics failure');
+    const calls: string[] = [], logs: unknown[][] = [], capturedErrors: unknown[] = [];
+    const snapshots: Record<string, unknown>[] = [];
+    let foreground: unknown = {pid: 1, name: 'Editor'}, target = 0;
+    let onEvent!: (event: {pid: number; name: string; time: number; monotonicMs: number}) => void;
+    let finish!: () => void;
+    const complete = new Promise<void>(done => {finish = done;});
+    const monitor = {ready: Promise.resolve(), events: [] as {pid: number; name: string; time: number; monotonicMs: number}[], error: undefined,
+        stop: vi.fn(async () => {calls.push('monitor.stop');})};
+    const nativeSend = vi.fn(function (method: string, params?: Record<string, unknown>) {
+        calls.push(method);
+        if (method === 'Target.createTarget') {
+            target++;
+            if (target === 5) return Promise.reject(rawFailure);
+            return Promise.resolve({targetId: `owned-${target}`, privateValue: 'PRIVATE_CDP_RESULT'});
+        }
+        if (method === 'Browser.getWindowForTarget') return Promise.resolve({windowId: 7, bounds: {left: 1500, top: 30, width: 1440, height: 1000, windowState: 'normal'}});
+        if (method === 'Browser.getWindowBounds') return Promise.resolve({bounds: {left: 1500, top: 30, width: 1440, height: 1000}});
+        if (method === 'Browser.setWindowBounds') expect(params?.bounds).toBeTruthy();
+        return Promise.resolve({success: true});
+    });
+    const browser = {newBrowserCDPSession: async () => ({send: nativeSend})};
+    const chromium = {connectOverCDP: vi.fn(async () => browser)};
+    let cdp!: Awaited<ReturnType<typeof browser.newBrowserCDPSession>>;
+    const makeTarget = async () => {
+        cdp = await browser.newBrowserCDPSession();
+        const result = await cdp.send('Target.createTarget', {url: 'PRIVATE_URL', background: true}) as {targetId: string};
+        await cdp.send('Browser.getWindowForTarget', {targetId: result.targetId});
+        await cdp.send('Browser.getWindowBounds', {windowId: 7});
+        await cdp.send('Browser.setWindowBounds', {windowId: 7, bounds: {left: 1500, top: 30, width: 1440, height: 1000}});
+        return result.targetId;
+    };
+    const probe = {receipts: [{type: 'clearTranslationCache', invalidationPending: false}], requests: [], holds: [], longTimers: []};
+    function pagePort() {
+        const locator = {count: async () => 1, isVisible: async () => true, waitFor: async () => {}, click: async () => {},
+            filter: () => locator, screenshot: async () => {
+                calls.push('screenshot.component');
+                if (mode === 'activation') {
+                    const event = {pid: 42, name: 'Owned browser', time: Date.now(), monotonicMs: 100};
+                    monitor.events.push(event);onEvent(event);
+                }
+                return Buffer.from('image');
+            }, innerText: async () => 'failure DOM', getAttribute: async () => 'status'};
+        return {on: () => {}, addInitScript: async () => {}, goto: async () => {}, locator: () => locator,
+            waitForFunction: async () => {}, evaluate: async () => probe, isClosed: () => false,
+            screenshot: async () => {calls.push('screenshot.page');return Buffer.from('image');}, close: async () => {calls.push('page.close');}};
+    }
+    const worker = {url: () => 'chrome-extension://owned/background.js', evaluate: async () => ({entries: 0, totals: null})};
+    const context = {serviceWorkers: () => [worker]};
+    const session = {context, launchMode: 'macos-background-cdp', focusPolicy: 'launchservices-no-foreground',
+        windowPlacement: {mode: 'background-visible-no-focus', browserFrontmost: false},
+        close: async () => {calls.push('owned.close');await cdp.send('Target.closeTarget', {targetId: 'owned-1'});}};
+    const helper = {
+        startFocusEventMonitor: (options: {onEvent: typeof onEvent}) => {onEvent = options.onEvent;return monitor;},
+        queryMacFrontmostApplication: async () => foreground,
+        launchFocusSafePersistentContext: async (options: {chromium: typeof chromium}) => {
+            expect(options.chromium).toBe(chromium);await chromium.connectOverCDP();await makeTarget();
+            if (mode === 'unavailable') foreground = null;
+            return session;
+        },
+        newPageWithoutForeground: async () => {await makeTarget();return pagePort();},
+        activateExtensionTabWithoutForeground: async () => {},
+    };
+    const diagnostics = {setPhase: () => {}, attachPage: async () => {}, start: async () => {}, setExtensionId: () => {},
+        flush: async () => {if (mode === 'diagnostics-failure') throw runtimeFailure;}, snapshot: () => ({errors: [], warnings: []}),
+        stop: async () => {calls.push('diagnostics.stop');}, assertClean: () => {}};
+    const fakeFs = {mkdirSync: () => {}, mkdtempSync: () => '/tmp/owned-cache-profile', rmSync: () => {calls.push('profile.remove');}, rmdirSync: () => {},
+        readFileSync: (file: string) => file.endsWith('manifest.json') ? JSON.stringify({version: 'fixture', action: {default_popup: 'popup.html'}, options_ui: {page: 'options.html'}}) : Buffer.from('PRIVATE_SOURCE'),
+        readdirSync: () => [{name: 'manifest.json', isDirectory: () => false}],
+        writeFileSync: (file: string, value: string) => {if (file.endsWith('/report.json')) snapshots.push(JSON.parse(value));}};
+    const server = {listening: false, once: () => {}, listen: (_port: number, _host: string, ready: () => void) => {server.listening = true;ready();},
+        address: () => ({port: 49152}), closeAllConnections: () => {}, close: (closed: () => void) => {server.listening = false;closed();}};
+    const cliModule = {exports: {}};
+    const cliRequire = Object.assign((specifier: string): unknown => {
+        if (specifier === 'node:fs') return fakeFs;
+        if (specifier === 'node:os') return {tmpdir: () => '/tmp'};
+        if (specifier === 'node:http') return {createServer: () => server};
+        if (specifier === './owned-browser-close.cjs') return {guardBrowserClose: () => session, getGuardedBrowserPid: async () => 42};
+        if (specifier === '/virtual/diagnostics.cjs') return {createRuntimeDiagnostics: () => diagnostics};
+        if (specifier === '/virtual/packages/playwright') return {chromium};
+        if (specifier === helperPath) return helper;
+        if (['node:path', 'node:crypto', 'node:assert/strict'].includes(specifier)) return require(specifier);
+        throw Error(`Unexpected offline CLI port ${specifier}`);
+    }, {main: cliModule});
+    const cliProcess = {argv: [process.execPath, filename, '--extension-dir', '/virtual/chrome-mv3', '--artifacts-dir', '/virtual/evidence',
+        '--runtime-diagnostics', '/virtual/diagnostics.cjs', '--playwright-root', '/virtual/packages', '--focus-safe-helper', helperPath], exitCode: 0};
+    new Script(readScript(CACHE_RECOVERY_CLI), {filename}).runInNewContext({require: cliRequire, module: cliModule, exports: cliModule.exports,
+        __dirname: dirname(filename), __filename: filename, process: cliProcess, performance, Buffer, URL,
+        console: {error: (...args: unknown[]) => {capturedErrors.push(...args);}, log: (...args: unknown[]) => {logs.push(args);if (args.length === 1 && String(args[0]).startsWith('{')) finish();}}}, {timeout: 1000});
+    await complete;
+    return {report: snapshots.at(-1)!, calls, logs, capturedErrors, rawFailure, runtimeFailure, nativeSend, exitCode: cliProcess.exitCode};
+}
+
+describe('缓存恢复 CLI 焦点时序诊断（完整离线端口，无浏览器）', () => {
+    it('精确白名单保留参数、接收者和原生对象身份，记录 case/target/window/bounds 而不记录消息正文', async () => {
+        const f = cacheTraceFixture();
+        expect(f.trace.instrumentBrowser(f.browser)).toBe(f.browser);
+        const cdp = await f.browser.newBrowserCDPSession();expect(cdp).toBe(f.cdp);
+        f.trace.setCase('case-normal');
+        const params = {url: 'PRIVATE_URL', background: true, config: 'PRIVATE_CONFIG'};
+        const created = await cdp.send('Target.createTarget', params) as {targetId: string};
+        expect(f.send).toHaveBeenCalledWith('Target.createTarget', params);expect(f.send.mock.contexts[0]).toBe(cdp);
+        await cdp.send('Browser.getWindowForTarget', {targetId: created.targetId});
+        await cdp.send('Browser.getWindowBounds', {windowId: 7});
+        await cdp.send('Browser.setWindowBounds', {windowId: 7, bounds: {left: 1600, top: 40, width: 1400, height: 900, privateValue: 'PRIVATE_REQUEST'}});
+        const page = {};f.trace.bindPage(page);const result = {privateMessage: 'PRIVATE_ACTION_RESULT'};
+        expect(await f.trace.action('readProbe', () => result, page)).toBe(result);
+        const untouched = Promise.resolve({body: 'PRIVATE_UNLISTED'});f.send.mockReturnValueOnce(untouched);
+        expect(cdp.send('Runtime.evaluate', {expression: 'PRIVATE_EXPRESSION'})).toBe(untouched);
+        expect(f.trace.pageIdentity(page)).toEqual({targetId: 'owned-target', windowId: 7, bounds: {left: 1500, top: 30, width: 1440, height: 1000}});
+        const completed = f.records.filter(record => record.phase === 'completed');expect(completed).toHaveLength(5);
+        expect(completed.at(-1)).toMatchObject({scope: 'action', name: 'readProbe', case: 'case-normal', targetId: 'owned-target', windowId: 7,
+            browserPid: 42, foreground: {pid: 1, name: 'Editor', sampledAt: {time: expect.any(Number), monotonicMs: expect.any(Number)}}});
+        expect(completed[3]).toMatchObject({request: {windowId: 7, bounds: {left: 1600, top: 40, width: 1400, height: 900}}});
+        expect(JSON.stringify(f.records)).not.toContain('PRIVATE');expect(f.errors).toEqual([]);
+        expect(f.records.map(record => record.sequence)).toEqual(Array.from({length: 10}, (_, index) => index + 1));
+    });
+    it('CDP 原始拒绝保留身份，原生激活关联尚未完成调用并永久阻止后续动作，允许自建 target 清理', async () => {
+        const f = cacheTraceFixture(), cdp = await f.browser.newBrowserCDPSession();await cdp.send('Target.createTarget');
+        const original = new Error('PRIVATE_NATIVE_REJECTION');
+        f.send.mockImplementationOnce(() => {f.trace.observeActivation({pid: 42, name: 'Owned', time: 200, monotonicMs: 100});return Promise.reject(original);});
+        await expect(cdp.send('Browser.setWindowBounds', {windowId: 7, bounds: {left: 5}})).rejects.toBe(original);
+        const failure = f.failure();expect(failure).toBeTruthy();
+        f.trace.observeActivation({pid: 1, name: 'Editor', time: 201, monotonicMs: 101});
+        const invoke = vi.fn();
+        for (const name of ['screenshot.component', 'screenshot.page', 'readProbe', 'page.close', 'newPage']) await expect(f.trace.action(name, invoke)).rejects.toBe(failure);
+        await expect(cdp.send('Target.createTarget', {url: 'PRIVATE_URL'})).rejects.toBe(failure);
+        await expect(cdp.send('Target.closeTarget', {targetId: 'not-owned'})).rejects.toBe(failure);
+        expect(invoke).not.toHaveBeenCalled();expect(f.send).toHaveBeenCalledTimes(2);
+        await expect(cdp.send('Target.closeTarget', {targetId: 'owned-target'})).resolves.toEqual({success: true});
+        expect(f.records.find(record => record.scope === 'native')).toMatchObject({activeOperations: [2], case: 'bootstrap'});
+        expect(f.records.filter(record => record.phase === 'rejected')).toEqual([expect.objectContaining({name: 'Browser.setWindowBounds', errorName: 'Error'})]);
+        expect(JSON.stringify(f.records)).not.toContain('PRIVATE_NATIVE_REJECTION');expect(f.errors).toEqual([]);
+    });
+    it.each(['null', 'reject'])('前置前台采样 %s 永久拦截 mutator，后置失败保留原始成功结果和拒绝', async unavailable => {
+        const f = cacheTraceFixture(), cdp = await f.browser.newBrowserCDPSession();await cdp.send('Target.createTarget');
+        const originalResult = {windowId: 7};f.send.mockReturnValueOnce(Promise.resolve(originalResult));
+        f.readForeground.mockResolvedValueOnce({pid: 1, name: 'Editor'});
+        if (unavailable === 'null') f.readForeground.mockResolvedValueOnce(null);else f.readForeground.mockRejectedValueOnce(new Error('PRIVATE_SAMPLE_ERROR'));
+        expect(await cdp.send('Browser.getWindowForTarget', {targetId: 'owned-target'})).toBe(originalResult);
+        const failure = f.failure();expect(failure?.message).toContain('Foreground trace observation unavailable');
+        await expect(cdp.send('Target.createTarget')).rejects.toBe(failure);
+        await expect(cdp.send('Browser.setWindowBounds', {windowId: 7, bounds: {left: 1}})).rejects.toBe(failure);
+        expect(f.send).toHaveBeenCalledTimes(2);
+        await cdp.send('Target.closeTarget', {targetId: 'owned-target'});expect(f.send).toHaveBeenCalledTimes(3);
+        expect(f.errors).toHaveLength(1);expect(JSON.stringify(f.records)).not.toContain('PRIVATE_SAMPLE_ERROR');
+        const before = cacheTraceFixture(), beforeCdp = await before.browser.newBrowserCDPSession();before.readForeground.mockResolvedValue(null);
+        await expect(beforeCdp.send('Target.createTarget')).rejects.toThrow('Foreground trace observation unavailable');
+        await expect(beforeCdp.send('Browser.setWindowBounds', {windowId: 7})).rejects.toBe(before.failure());expect(before.send).not.toHaveBeenCalled();
+        const rejected = cacheTraceFixture(), rejectedCdp = await rejected.browser.newBrowserCDPSession(), nativeError = new Error('original CDP error');
+        rejected.send.mockRejectedValueOnce(nativeError);rejected.readForeground.mockResolvedValueOnce({pid: 1}).mockResolvedValueOnce(null);
+        await expect(rejectedCdp.send('Target.createTarget')).rejects.toBe(nativeError);expect(rejected.failure()).toBeTruthy();
+    });
+    it('完整 CLI 在导航前安装 trace，保持 case/动作/CDP 顺序和原始失败元数据', async () => {
+        const f = await probeCacheRecoveryCli();expect(f.exitCode).toBe(1);expect(f.capturedErrors[0]).toBe(f.rawFailure);
+        expect(f.report.failure).toBe(f.rawFailure.stack);expect(f.report.ok).toBe(false);
+        expect(f.report.cases).toEqual([expect.objectContaining({name: 'options-normal-clear', passed: true})]);
+        const trace = f.report.focusTrace as CacheTraceRecord[];
+        expect(trace[0]).toMatchObject({scope: 'cdp', name: 'Target.createTarget', phase: 'started', case: 'bootstrap', browserPid: null});
+        expect(trace.filter(record => record.scope === 'action' && record.case === 'options-normal-clear' && record.phase === 'started').map(record => record.name))
+            .toEqual(['newPage', 'readProbe', 'screenshot.component', 'screenshot.page', 'page.close']);
+        expect(trace.find(record => record.scope === 'action' && record.name === 'newPage' && record.case === 'options-normal-clear' && record.phase === 'completed'))
+            .toMatchObject({targetId: 'owned-4', windowId: 7, bounds: {left: 1500, top: 30, width: 1440, height: 1000}});
+        expect(trace.filter(record => record.phase === 'rejected').map(record => record.name)).toEqual(['Target.createTarget', 'newPage']);
+        expect(f.report.focusTraceErrors).toEqual([]);expect(JSON.stringify(trace)).not.toContain('PRIVATE');
+        expect(f.calls).toContain('owned.close');expect(f.report.profileRemoved).toBe(true);
+        expect(f.report.runtimeDiagnostics).toEqual({errors: [], warnings: []});
+    });
+    it('完整 CLI 截图中观察激活后不再截图/读 probe/关页/建页，只保留 owned cleanup 与原始事件', async () => {
+        const f = await probeCacheRecoveryCli('activation');const index = f.calls.indexOf('screenshot.component');
+        expect(f.calls.slice(index + 1)).toEqual(['diagnostics.stop', 'owned.close', 'Target.closeTarget', 'monitor.stop', 'profile.remove']);
+        expect(f.report.cases).toEqual([]);expect(f.report.focusEvents).toMatchObject({browserActivations: [{pid: 42}]});
+        expect(f.report.failure).toContain('Owned test browser became frontmost');expect(f.report.failureCaptureError).toBe(f.report.failure);
+        const trace = f.report.focusTrace as CacheTraceRecord[];
+        expect(trace.find(record => record.scope === 'native')).toMatchObject({case: 'options-normal-clear', activeOperations: [expect.any(Number)]});
+        expect(trace.filter(record => record.phase === 'completed' && record.name === 'Target.closeTarget')).toHaveLength(1);
+        expect(f.report.profileRemoved).toBe(true);
+    });
+    it('完整 CLI 观测不可用在新页前停下，runtime diagnostics 失败独立保留且清理不被 trace 阻断', async () => {
+        const f = await probeCacheRecoveryCli('unavailable');expect(f.calls.filter(call => call === 'Target.createTarget')).toHaveLength(1);
+        expect(f.report.failure).toContain('Foreground trace observation unavailable');expect(f.report.focusTraceErrors).toHaveLength(3);
+        expect(f.report.cleanupErrors).toEqual(expect.arrayContaining([expect.objectContaining({label: 'focus-trace'})]));expect(f.report.profileRemoved).toBe(true);
+        const diagnostic = await probeCacheRecoveryCli('diagnostics-failure');expect(diagnostic.report.failure).toBe(diagnostic.rawFailure.stack);
+        expect(diagnostic.report.cleanupErrors).toEqual([expect.objectContaining({label: 'runtime-diagnostics', error: diagnostic.runtimeFailure.stack})]);
+        expect(diagnostic.calls).toContain('owned.close');expect(diagnostic.calls).toContain('diagnostics.stop');expect(diagnostic.report.profileRemoved).toBe(true);
+    });
+});
+
 describe('后台翻译夹具资源隔离', () => {
     it('保留扩展相对资源，仅把翻译与外部网络交给本地夹具', async () => {
         const {installTranslationFixtureOnWorker} = require(resolve(PROJECT_ROOT, 'scripts/run-full-page-translation-test.cjs'));

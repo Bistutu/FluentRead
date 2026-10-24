@@ -92,6 +92,173 @@ describe('stable public content UI resources', () => {
     });
 });
 
+describe('frame UI CSS artifact contract', () => {
+    type FrameFixture = {
+        manifest: {
+            manifest_version: 2 | 3;
+            content_scripts: {matches: string[]; js: string[]; run_at: string; all_frames?: boolean;
+                match_about_blank?: boolean; match_origin_as_fallback?: boolean; css?: string[]}[];
+            web_accessible_resources: (string | {resources: string[]; matches?: string[];
+                use_dynamic_url?: boolean; extension_ids?: string[]})[];
+        };
+        files: string[];
+        scripts: Record<string, string>;
+    };
+    const neteaseMatches = ['https://*.mail.126.com/*', 'https://*.mail.163.com/*', 'https://*.mail.yeah.net/*'];
+    const sharedMatches = ['https://*.hf.space/*', 'https://disqus.com/embed/comments/*',
+        'https://mail.qq.com/cgi-bin/readmail*', 'https://www.kaggleusercontent.com/kf/*/__results__.html*'];
+    const jsFile = (name: string) => `content-scripts/${name}.js`;
+    const cssFile = (name: string) => `content-scripts/${name}.css`;
+
+    async function verifier() {
+        return import(/* @vite-ignore */ pathToFileURL(resolve(PROJECT_ROOT, 'scripts/testing/verify-extension-manifests.mjs')).href);
+    }
+
+    function fixture(version: 2 | 3 = 3): FrameFixture {
+        const ui = ['content', 'neteaseMailFrame'];
+        const script = (name: string) => `/* WXT Shadow Root Reset */ async function a(){const z=q.runtime.getURL("/${cssFile(name)}");try{return await (await fetch(z)).text()}catch(e){console.warn(\`Failed to load styles @ \${z}\`,e);return ""}}`;
+        return {
+            manifest: {
+                manifest_version: version,
+                content_scripts: [
+                    {matches: ['<all_urls>'], js: [jsFile('content')], run_at: 'document_start'},
+                    {matches: [...neteaseMatches], js: [jsFile('neteaseMailFrame')], all_frames: true,
+                        match_about_blank: true, run_at: 'document_end'},
+                    {matches: [...sharedMatches], js: [jsFile('supportedFrame')], all_frames: true, run_at: 'document_end'},
+                ],
+                web_accessible_resources: version === 2 ? ui.map(cssFile) : ui.map(name => ({
+                    resources: [cssFile(name)], matches: name === 'content' ? ['<all_urls>'] : [...neteaseMatches], use_dynamic_url: false,
+                })),
+            },
+            files: [...ui.flatMap(name => [jsFile(name), cssFile(name)]), jsFile('supportedFrame')],
+            scripts: {...Object.fromEntries(ui.map(name => [jsFile(name), script(name)])),
+                [jsFile('supportedFrame')]: '(()=>{browser.runtime.getURL("icon/32.png");})();'},
+        };
+    }
+
+    it.each([['Chrome', 3], ['Edge', 3], ['Firefox', 2]] as const)('%s MV%s 保留真正消费的 CSS，并允许 supported frame 无 CSS', async (browser, version) => {
+        const {verifyFrameUiStyles} = await verifier();
+        const {manifest, files, scripts} = fixture(version);
+        expect(() => verifyFrameUiStyles(manifest, files, scripts, browser)).not.toThrow();
+    });
+
+    it('不依赖压缩变量、引号或声明顺序，MV3 资源 scope 按集合比较', async () => {
+        const {verifyFrameUiStyles} = await verifier();
+        const {manifest, files, scripts} = fixture();
+        manifest.content_scripts.reverse();
+        for (const rule of manifest.web_accessible_resources) if (typeof rule !== 'string') rule.matches?.reverse();
+        scripts[jsFile('content')] = scripts[jsFile('content')].replace('q.runtime.getURL("/content-scripts/content.css")',
+            "anotherName.runtime.getURL ( 'content-scripts/content.css' )");
+        scripts[jsFile('neteaseMailFrame')] = scripts[jsFile('neteaseMailFrame')].replace('q.runtime.getURL("/content-scripts/neteaseMailFrame.css")',
+            'b.runtime.getURL(`/content-scripts/neteaseMailFrame.css`)');
+        expect(() => verifyFrameUiStyles(manifest, files, scripts, 'Chrome')).not.toThrow();
+    });
+
+    it.each(['content', 'neteaseMailFrame'] as const)('%s 缺失 CSS、脚本或 JS 源码时拒绝', async name => {
+        const {verifyFrameUiStyles} = await verifier();
+        for (const absent of [cssFile(name), jsFile(name), 'source']) {
+            const {manifest, files, scripts} = fixture();
+            if (absent === 'source') delete scripts[jsFile(name)];
+            else files.splice(files.indexOf(absent), 1);
+            expect(() => verifyFrameUiStyles(manifest, files, scripts, 'Chrome')).toThrow();
+        }
+    });
+
+    it.each(['content', 'neteaseMailFrame'] as const)('%s 不接受错误 URL、仅保留字符串或丢失 WXT 加载器', async name => {
+        const {verifyFrameUiStyles} = await verifier();
+        for (const edit of [
+            (source: string) => source.replace(cssFile(name), cssFile('other-entry')),
+            (source: string) => source.replace(`q.runtime.getURL("/${cssFile(name)}")`, `"/${cssFile(name)}"`),
+            (source: string) => source.replace('WXT Shadow Root Reset', 'removed reset'),
+            (source: string) => source.replace('Failed to load styles @', 'removed loader'),
+            (source: string) => `${source};q.runtime.getURL("/content-scripts/extra.css")`,
+        ]) {
+            const {manifest, files, scripts} = fixture();
+            scripts[jsFile(name)] = edit(scripts[jsFile(name)]);
+            expect(() => verifyFrameUiStyles(manifest, files, scripts, 'Chrome')).toThrow(/加载器|CSS URL/u);
+        }
+    });
+
+    it.each(['content', 'neteaseMailFrame'] as const)('%s 必须有唯一、稳定且精确 scope 的 MV3 WAR', async name => {
+        const {verifyFrameUiStyles} = await verifier();
+        const edits: ((rules: FrameFixture['manifest']['web_accessible_resources'], index: number) => void)[] = [
+            (rules, index) => {rules.splice(index, 1);},
+            (rules, index) => {rules.push(structuredClone(rules[index]));},
+            (rules, index) => {const rule = rules[index]; if (typeof rule !== 'string') rule.use_dynamic_url = true;},
+            (rules, index) => {const rule = rules[index]; if (typeof rule !== 'string') delete rule.use_dynamic_url;},
+            (rules, index) => {const rule = rules[index]; if (typeof rule !== 'string') rule.matches = ['https://wrong.example/*'];},
+            (rules, index) => {const rule = rules[index]; if (typeof rule !== 'string') rule.matches?.push('https://extra.example/*');},
+            (rules, index) => {const rule = rules[index]; if (typeof rule !== 'string') rule.extension_ids = ['*'];},
+            (rules, index) => {rules[index] = cssFile(name);},
+        ];
+        for (const edit of edits) {
+            const {manifest, files, scripts} = fixture();
+            edit(manifest.web_accessible_resources, name === 'content' ? 0 : 1);
+            expect(() => verifyFrameUiStyles(manifest, files, scripts, 'Chrome')).toThrow(/公开一次|范围变化|稳定 URL/u);
+        }
+    });
+
+    it('MV2 精确路径不能被缺失、重复、对象或通配符资源替代', async () => {
+        const {verifyFrameUiStyles} = await verifier();
+        for (const rules of [
+            [cssFile('content')],
+            [cssFile('content'), cssFile('neteaseMailFrame'), cssFile('neteaseMailFrame')],
+            [cssFile('content'), {resources: [cssFile('neteaseMailFrame')]}],
+            [cssFile('content'), 'content-scripts/netease*.css'],
+        ]) {
+            const {manifest, files, scripts} = fixture(2);
+            manifest.web_accessible_resources = rules;
+            expect(() => verifyFrameUiStyles(manifest, files, scripts, 'Firefox')).toThrow();
+        }
+    });
+
+    it('supported frame 不得保留 CSS 文件、精确或通配 WAR、Shadow CSS 加载器', async () => {
+        const {verifyFrameUiStyles} = await verifier();
+        const edits: ((value: FrameFixture) => void)[] = [
+            value => {value.files.push(cssFile('supportedFrame'));},
+            value => {value.manifest.web_accessible_resources.push({resources: [cssFile('supportedFrame')], matches: [...sharedMatches]});},
+            value => {value.manifest.web_accessible_resources.push({resources: ['content-scripts/supported*.css'], matches: [...sharedMatches]});},
+            value => {value.scripts[jsFile('supportedFrame')] += ';q.runtime.getURL("/content-scripts/supportedFrame.css")';},
+            value => {value.scripts[jsFile('supportedFrame')] += ';q.runtime.getURL("/content-scripts/other.css")';},
+            ...['WXT Shadow Root Reset', 'wxt-shadow-root-document-styles', 'Failed to load styles @'].map(marker =>
+                (value: FrameFixture) => {value.scripts[jsFile('supportedFrame')] += JSON.stringify(marker);}),
+            value => {delete value.scripts[jsFile('supportedFrame')];},
+        ];
+        for (const edit of edits) {
+            const value = fixture(); edit(value);
+            expect(() => verifyFrameUiStyles(value.manifest, value.files, value.scripts, 'Chrome')).toThrow(/共用子 frame/u);
+        }
+        const value = fixture(2);
+        value.manifest.web_accessible_resources.push(cssFile('supportedFrame'));
+        expect(() => verifyFrameUiStyles(value.manifest, value.files, value.scripts, 'Firefox')).toThrow(/共用子 frame/u);
+    });
+
+    it('保留旧入口范围门禁并拒绝 UI CSS 自动注入与来源回退', async () => {
+        const {verifyFrameUiStyles} = await verifier();
+        const edits: ((value: FrameFixture) => void)[] = [
+            value => {value.manifest.content_scripts.push(structuredClone(value.manifest.content_scripts[2]));},
+            value => {value.manifest.content_scripts[2].matches.push('https://extra.example/*');},
+            value => {value.manifest.content_scripts[2].all_frames = false;},
+            value => {value.manifest.content_scripts[2].match_about_blank = true;},
+            value => {value.manifest.content_scripts[2].run_at = 'document_start';},
+            value => {value.files.push('content-scripts/qqMailFrame.js');},
+            value => {value.files.push('content-scripts/embeddedArticleFrame.css');},
+            value => {value.manifest.content_scripts[1].match_about_blank = false;},
+            value => {value.manifest.content_scripts[1].matches = ['<all_urls>'];},
+            value => {value.manifest.content_scripts[1].run_at = 'document_start';},
+            value => {value.manifest.content_scripts[0].all_frames = true;},
+            ...[0, 1, 2].flatMap(index => [
+                (value: FrameFixture) => {value.manifest.content_scripts[index].css = [cssFile('content')];},
+                (value: FrameFixture) => {value.manifest.content_scripts[index].match_origin_as_fallback = true;},
+            ]),
+        ];
+        for (const edit of edits) {
+            const value = fixture(); edit(value);
+            expect(() => verifyFrameUiStyles(value.manifest, value.files, value.scripts, 'Chrome')).toThrow();
+        }
+    });
+});
+
 describe('Safari unsigned delivery contract', () => {
     async function safariTools() {
         return import(/* @vite-ignore */ pathToFileURL(resolve(PROJECT_ROOT, 'scripts/safari/package.mjs')).href);

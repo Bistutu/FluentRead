@@ -1,4 +1,4 @@
-import {describe, expect, it, vi} from 'vitest';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {
     CONFIG_HISTORY_MESSAGE_TYPE,
@@ -74,7 +74,7 @@ describe('background core message handlers', () => {
             sendTabMessage,
             warn,
         });
-        await expect(failedBroadcast()).resolves.toBeUndefined();
+        await expect(failedBroadcast()).resolves.toBe(true);
         expect(warn).toHaveBeenCalledWith(
             '[FluentRead] 翻译缓存清理完成广播失败',
             queryFailure,
@@ -132,5 +132,82 @@ describe('background core message handlers', () => {
             type: CONFIG_HISTORY_MESSAGE_TYPE,
             action: 'undo',
         }, undefined)).rejects.toBe(failure);
+    });
+});
+
+describe('缓存清理后的页面失效宽限', () => {
+    beforeEach(() => {vi.useFakeTimers();});
+    afterEach(() => {
+        expect(vi.getTimerCount()).toBe(0);
+        vi.useRealTimers();
+    });
+
+    it('清库挂起不启动广播或宽限，底层完成后才开始等待页面', async () => {
+        let finishClear!: () => void;
+        let finishBroadcast!: () => void;
+        const clear = new Promise<void>(resolve => {finishClear = resolve;});
+        const broadcast = vi.fn(() => new Promise<void>(resolve => {finishBroadcast = resolve;}));
+        const settled = vi.fn();
+        const handler = createTranslationCacheHandler(() => clear, broadcast);
+        const request = Promise.resolve(handler.handle({type: CLEAR_TRANSLATION_CACHE_MESSAGE}, undefined)).then(settled);
+        try {
+            await vi.advanceTimersByTimeAsync(60_000);
+            expect(settled).not.toHaveBeenCalled();
+            expect(broadcast).not.toHaveBeenCalled();
+            expect(vi.getTimerCount()).toBe(0);
+            finishClear();
+            await vi.advanceTimersByTimeAsync(0);
+            expect(broadcast).toHaveBeenCalledOnce();
+            await vi.advanceTimersByTimeAsync(999);
+            expect(settled).not.toHaveBeenCalled();
+            await vi.advanceTimersByTimeAsync(1);
+            expect(settled).toHaveBeenCalledWith({success: true, invalidationPending: true});
+        } finally {
+            finishClear();
+            finishBroadcast();
+            await request;
+        }
+    });
+
+    it.each([undefined, false, true])('广播在宽限内返回 %s 时保留明确的完成状态', async result => {
+        const handler = createTranslationCacheHandler(async () => undefined, async () => result);
+        await expect(handler.handle({type: CLEAR_TRANSLATION_CACHE_MESSAGE}, undefined)).resolves.toEqual(
+            result === true ? {success: true, invalidationPending: true} : {success: true},
+        );
+    });
+
+    it('广播在第999毫秒完成时返回完整成功并释放宽限计时器', async () => {
+        let finish!: () => void;
+        const handler = createTranslationCacheHandler(async () => undefined, () => new Promise<void>(resolve => {finish = resolve;}));
+        const request = handler.handle({type: CLEAR_TRANSLATION_CACHE_MESSAGE}, undefined);
+        await vi.advanceTimersByTimeAsync(999);
+        finish();
+        await expect(request).resolves.toEqual({success: true});
+    });
+
+    it.each(['sync', 'async'] as const)('注入广播在宽限内%s拒绝时仍把原错误交给router', async kind => {
+        const failure = new Error('injected broadcast failed');
+        const broadcast = () => {
+            if (kind === 'sync') throw failure;
+            return Promise.reject(failure);
+        };
+        const router = createBackgroundMessageRouter([createTranslationCacheHandler(async () => undefined, broadcast)]);
+        await expect(router.dispatch({type: CLEAR_TRANSLATION_CACHE_MESSAGE}, undefined)).rejects.toBe(failure);
+    });
+
+    it('宽限后注入广播的迟到拒绝已被观察，不能二次回复', async () => {
+        let fail!: (error: Error) => void;
+        const settled = vi.fn();
+        const handler = createTranslationCacheHandler(async () => undefined, () => new Promise<void>((_, reject) => {fail = reject;}));
+        const request = Promise.resolve(handler.handle({type: CLEAR_TRANSLATION_CACHE_MESSAGE}, undefined)).then(settled);
+        try {
+            await vi.advanceTimersByTimeAsync(1_000);
+            expect(settled).toHaveBeenCalledWith({success: true, invalidationPending: true});
+        } finally {
+            fail(new Error('late injected broadcast failure'));
+            await request;
+        }
+        await vi.advanceTimersByTimeAsync(10_000);
+        expect(settled).toHaveBeenCalledTimes(1);
     });
 });

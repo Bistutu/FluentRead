@@ -62,6 +62,8 @@ async function main() {
   const extensionDir = path.resolve(argument('extension-dir', '.output/chrome-mv3'));
   const artifactsDir = path.resolve(argument('artifacts-dir', '/private/tmp/fluentread-bilingual-highlight'));
   const packages = argument('playwright-root'); const helperPath = argument('focus-safe-helper');
+  const diagnosticsPath = argument('runtime-diagnostics');
+  const diagnostics = diagnosticsPath ? require(path.resolve(diagnosticsPath)).createRuntimeDiagnostics() : undefined;
   assert(packages && helperPath); assert(fs.existsSync(path.join(extensionDir, 'manifest.json')));
   const {chromium} = require(path.join(packages, 'playwright'));
   const {launchFocusSafePersistentContext, newPageWithoutForeground, activateExtensionTabWithoutForeground} = require(helperPath);
@@ -70,6 +72,7 @@ async function main() {
   let fixture;
   const report = {ok: false, extensionDir, profileDir, artifactsDir, checks: [], consoleErrors: [], screenshots: [],
     evidenceBoundary: 'Local deterministic HTML/provider; no external provider quality or Firefox runtime claim.'};
+  if (!diagnostics) report.diagnosticLimitations = ['未传入 --runtime-diagnostics，页面监听不覆盖内容脚本隔离世界、后台和全部告警。'];
   let launched; let page; let worker;
   try {
     profileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fluentread-sentence-edge-'));
@@ -83,7 +86,9 @@ async function main() {
     assert.equal(report.launchMode, 'macos-background-cdp'); assert.equal(report.focusPolicy, 'launchservices-no-foreground');
     assert.equal(report.windowPlacement.browserFrontmost, false);
     const context = launched.context;
+    await diagnostics?.start(context);
     worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker', {timeout: 30000});
+    diagnostics?.setExtensionId(new URL(worker.url()).host);
     await worker.evaluate(() => {
       globalThis.__highlightPersistenceDiagnostics = [];
       chrome.runtime.onMessage.addListener(message => {
@@ -98,6 +103,8 @@ async function main() {
     const origin = /^chrome-extension:\/\/[^/]+/u.exec(worker.url())[0];
     const createPage = async url => {
       const result = await newPageWithoutForeground(context, 30000);
+      await diagnostics?.attachPage(result, 'sentence-highlight');
+      diagnostics?.setPhase(`load ${new URL(url).pathname}`);
       result.on('pageerror', error => report.consoleErrors.push(error.message));
       result.on('console', message => {if (message.type() === 'warning') (report.consoleWarnings ||= []).push(message.text());});
       await result.goto(url, {waitUntil: 'domcontentloaded'}); return result;
@@ -237,9 +244,9 @@ async function main() {
     await shot(page, 'rich-text');
     await page.evaluate(() => document.querySelector('#rich').remove()); await wait(100); assert.equal(await highlights(), '');
     report.checks.push('linked and bold sentences, original node identity, detached owner cleanup');
-    // 逐句高亮开关与交互预览位于翻译设置首项“阅读辅助”。
+    // 阅读辅助展示当前样式与预览；通过真实入口进入样式页，用“无”关闭、预设开启。
     const options = await createPage(`${origin}/options.html#settings-translation`);
-    const control = options.locator('.el-switch:has(input[aria-label="双语逐句高亮"])'); await control.waitFor({state: 'visible'});
+    const openStyles = options.getByTestId('open-sentence-highlight-styles'); await openStyles.waitFor({state: 'visible'});
     const preview = options.locator('.reading-assistance-example').getByTestId('bilingual-highlight-preview');
     await preview.locator('[data-testid="bilingual-highlight-preview-source"] span').nth(1).hover();
     assert.equal(await preview.locator('.is-sentence-highlighted').count(), 2);
@@ -249,9 +256,15 @@ async function main() {
     assert.equal(await preview.locator('.is-sentence-highlighted').count(), 2);
     assert((await preview.locator('.is-sentence-highlighted').first().innerText()).includes('Reading should'));
     await shot(options, 'settings-light');
-    await control.click(); await untilConfig(config => !config.bilingualSentenceHighlightEnabled);
-    await options.reload(); await control.waitFor({state: 'visible'}); assert.equal(await control.locator('input').getAttribute('aria-checked'), 'false');
-    await control.click(); await untilConfig(config => config.bilingualSentenceHighlightEnabled);
+    await openStyles.click();
+    const readingStylePanel = options.locator('#translation-sentence-highlight-style');
+    await readingStylePanel.locator('[data-highlight-style="none"]').click(); await untilConfig(config => !config.bilingualSentenceHighlightEnabled);
+    await options.reload(); await readingStylePanel.waitFor({state: 'visible'});
+    assert.equal(await readingStylePanel.locator('[data-highlight-style="none"]').getAttribute('aria-checked'), 'true');
+    await readingStylePanel.locator('[data-highlight-style]:not([data-highlight-style="none"])').first().click();
+    await untilConfig(config => config.bilingualSentenceHighlightEnabled);
+    await options.goto(`${origin}/options.html#settings-translation`, {waitUntil: 'domcontentloaded'});
+    await openStyles.waitFor({state: 'visible'});
     // 从真实设置控件配置自定义外观，检查立即关闭后的保存与已有译文的实时绘制。
     let customOptions = await createPage(`${origin}/options.html#settings-interface`);
     let stylePanel = customOptions.locator('#translation-sentence-highlight-style');
@@ -260,6 +273,12 @@ async function main() {
     await freezeFirstSaveAck(customOptions);
     await stylePanel.locator('[data-highlight-style="mint"]').click();
     const colorInput = field => stylePanel.locator(`[data-color-field="sentence-highlight-${field}"] input[type="text"]`);
+    const chooseLineStyle = async value => {
+      const control = stylePanel.getByRole('combobox', {name: '下划线形态', exact: true});
+      await control.locator('xpath=ancestor::div[contains(concat(" ", normalize-space(@class), " "), " el-select__wrapper ")]').click();
+      const list = await control.getAttribute('aria-controls');
+      await customOptions.locator(`#${list}`).getByRole('option', {name: {dashed: '虚线', none: '无下划线', wavy: '波浪线'}[value], exact: true}).click();
+    };
     await colorInput('background').fill('#123456'); await colorInput('background').press('Enter');
     await colorInput('line').fill('#abcdef'); await colorInput('line').press('Enter');
     const setRange = async (label, value, min = 0) => {
@@ -269,7 +288,7 @@ async function main() {
     };
     await setRange('底色不透明度', 34); await setRange('下划线不透明度', 67);
     await setRange('线条粗细', 3, 1);
-    await stylePanel.getByRole('combobox', {name: '下划线形态', exact: true}).selectOption('dashed');
+    await chooseLineStyle('dashed');
     report.appearanceDraftBeforeClose = await stylePanel.evaluate(element => [...element.querySelectorAll('input, select')].map(input => ({label: input.getAttribute('aria-label'), value: input.value})));
     await customOptions.waitForFunction(() => window.__heldHighlightSaveAck === true);
     await customOptions.close({runBeforeUnload: true});
@@ -282,7 +301,8 @@ async function main() {
     assert.equal(await colorInput('background').inputValue(), custom.backgroundColor);
     assert.equal(await colorInput('line').inputValue(), custom.lineColor);
     assert.equal(await stylePanel.getByRole('slider', {name: '底色不透明度', exact: true}).inputValue(), '34');
-    assert.equal(await stylePanel.getByRole('combobox', {name: '下划线形态', exact: true}).inputValue(), 'dashed');
+    assert.equal((await stylePanel.getByRole('combobox', {name: '下划线形态', exact: true})
+      .locator('xpath=ancestor::div[contains(concat(" ", normalize-space(@class), " "), " el-select__wrapper ")]').innerText()).trim(), '虚线');
     const customPreview = stylePanel.getByTestId('bilingual-highlight-preview');
     const previewSentence = customPreview.locator('[data-testid="bilingual-highlight-preview-source"] span').first();
     await previewSentence.hover();
@@ -309,10 +329,10 @@ async function main() {
     assert.equal(await colorInput('background').getAttribute('aria-invalid'), 'true');
     assert.equal((await readConfig()).bilingualSentenceHighlightAppearance.backgroundColor, '#123456');
     await colorInput('background').fill('#123456'); await colorInput('background').press('Enter');
-    await stylePanel.getByRole('combobox', {name: '下划线形态', exact: true}).selectOption('none');
+    await chooseLineStyle('none');
     await page.waitForFunction(() => getComputedStyle(document.querySelector('#primary'), '::highlight(fluentread-bilingual-sentence)').textDecorationLine === 'none');
     await setRange('底色不透明度', 0);
-    await stylePanel.getByRole('combobox', {name: '下划线形态', exact: true}).selectOption('wavy');
+    await chooseLineStyle('wavy');
     await page.waitForFunction(() => getComputedStyle(document.querySelector('#primary'), '::highlight(fluentread-bilingual-sentence)').textDecorationStyle === 'wavy');
     assert.equal((await nativePaint()).background, 'rgba(18, 52, 86, 0)');
     await stylePanel.getByRole('button', {name: '恢复预设外观', exact: true}).click();
@@ -433,6 +453,7 @@ async function main() {
     await page.waitForFunction(() => getComputedStyle(document.querySelector('#primary'), '::highlight(fluentread-bilingual-sentence)').textDecorationLine === 'none');
     assert.equal((await nativePaint()).background, 'rgba(10, 180, 100, 0.2)');
     await profileOptions.reload(); await profilePanel.waitFor({state: 'visible'});
+    await profilePanel.locator('.sentence-highlight-custom-disclosure').click();
     assert.equal(await nameInput().inputValue(), '清爽备用');
     assert.equal(await cssInput().inputValue(), cssB);
     assert.equal(await profilePanel.locator(`[data-profile-id="${idB}"]`).getAttribute('aria-checked'), 'true');
@@ -455,7 +476,7 @@ async function main() {
     await preview.scrollIntoViewIfNeeded(); await preview.locator('[data-testid="bilingual-highlight-preview-translation"] .fluent-read-translation-text > span').nth(1).hover();
     await shot(options, 'settings-dark-390');
     assert.equal(await options.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-    report.checks.push('settings multiple pairs, keyboard focus, saved toggle after reload, dark 390px');
+    report.checks.push('settings multiple pairs, keyboard focus, reading assistance navigation, saved none/preset choice after reload, dark 390px');
     assert.deepEqual(report.consoleErrors, []);
     report.requests = fixture.requests; report.ok = true;
   } catch (error) {
@@ -465,6 +486,15 @@ async function main() {
     throw error;
   } finally {
     report.cleanupErrors = [];
+    if (diagnostics) {
+      try {
+        await diagnostics.flush();
+        report.runtimeDiagnostics = diagnostics.snapshot();
+        fs.writeFileSync(path.join(artifactsDir, 'runtime-diagnostics.json'), JSON.stringify(report.runtimeDiagnostics, null, 2));
+        if (report.ok) diagnostics.assertClean();
+      } catch (error) {report.ok = false; report.diagnosticError = error.message; process.exitCode = 1;}
+      try {await diagnostics.stop();} catch (error) {report.ok = false; report.cleanupErrors.push(`diagnostics: ${error.message}`); process.exitCode = 1;}
+    }
     let closed = !launchAttempted;
     if (launched) {
       try {await launched.close(); closed = true;}

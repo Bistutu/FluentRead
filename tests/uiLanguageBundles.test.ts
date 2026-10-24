@@ -120,19 +120,28 @@ describe('界面语言注册表', () => {
         expect(i18n.translate('document.translationRecovery.unavailable', 'en-US')).toBe('Service unavailable');
     });
 
-    it('默认中文入口只消费 PDF 阅读和信息高亮的独立中文常量', () => {
+    it('默认中文入口只消费共享文案的独立中文常量', () => {
         const source = readFileSync(resolve('src/core/i18n/messages/zh-CN.ts'), 'utf8');
         expect(source).toContain("import {pdfReadingChineseMessages} from './pdfReading'");
         expect(source).toContain("import {informationHighlightChineseMessages} from './informationHighlight'");
-        expect(source).not.toMatch(/\b(?:pdfReadingMessages|informationHighlightMessages)\b/u);
+        expect(source).toContain("import {compositeTranslationChineseMessages} from './compositeTranslation'");
+        expect(source).toContain("import {aiRequestTimeoutChineseMessages} from './aiRequestTimeout'");
+        expect(source).toContain("import {personalCorrectionChineseMessages} from './personalCorrections'");
+        expect(source).not.toMatch(/\b(?:pdfReadingMessages|informationHighlightMessages|compositeTranslationMessages|aiRequestTimeoutMessages|personalCorrectionMessages)\b/u);
     });
 
     it('独立的七语常量保持完整目录和资源生成的语言映射一致', async () => {
-        const [pdf, highlight, chinese] = await Promise.all([
+        const [pdf, highlight, chinese, composite, timeout, corrections] = await Promise.all([
             import('@/src/core/i18n/messages/pdfReading'),
             import('@/src/core/i18n/messages/informationHighlight'),
             import('@/src/core/i18n/messages/zh-CN'),
+            import('@/src/core/i18n/messages/compositeTranslation'),
+            import('@/src/core/i18n/messages/aiRequestTimeout'),
+            import('@/src/core/i18n/messages/personalCorrections'),
         ]);
+        expect(composite.compositeTranslationMessages['zh-CN']).toBe(composite.compositeTranslationChineseMessages);
+        expect(timeout.aiRequestTimeoutMessages['zh-CN']).toBe(timeout.aiRequestTimeoutChineseMessages);
+        expect(corrections.personalCorrectionMessages['zh-CN']).toBe(corrections.personalCorrectionChineseMessages);
         const languages = [
             ['zh-CN', pdf.pdfReadingChineseMessages, highlight.informationHighlightChineseMessages],
             ['en-US', pdf.pdfReadingEnglishMessages, highlight.informationHighlightEnglishMessages],
@@ -146,7 +155,9 @@ describe('界面语言注册表', () => {
             expect(pdf.pdfReadingMessages[language]).toBe(pdfMessages);
             expect(highlight.informationHighlightMessages[language]).toBe(highlightMessages);
             const catalog = language === 'zh-CN' ? chinese.zhCNMessages : bundles.UI_LANGUAGE_BUNDLES[language].messages;
-            for (const [key, value] of Object.entries({...pdfMessages, ...highlightMessages})) {
+            for (const [key, value] of Object.entries({...pdfMessages, ...highlightMessages,
+                ...composite.compositeTranslationMessages[language], ...timeout.aiRequestTimeoutMessages[language],
+                ...corrections.personalCorrectionMessages[language]})) {
                 expect(catalog[key as keyof typeof catalog], `${language}: ${key}`).toBe(value);
             }
         }

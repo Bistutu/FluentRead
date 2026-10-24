@@ -16,6 +16,8 @@ const runs = Number(arg('runs', '5'));
 assert(Number.isSafeInteger(runs) && runs >= 2 && runs <= 20);
 const kinds = arg('kinds', 'popup,options,content').split(',');
 assert(kinds.length > 0 && new Set(kinds).size === kinds.length && kinds.every(kind => ['popup', 'options', 'content'].includes(kind)));
+const diagnosticsPath = arg('runtime-diagnostics');
+const diagnostics = diagnosticsPath ? require(path.resolve(diagnosticsPath)).createRuntimeDiagnostics() : undefined;
 const {chromium} = require(path.join(arg('playwright-root',
   '/Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules'), 'playwright'));
 const {launchFocusSafePersistentContext, newPageWithoutForeground} = require(arg('focus-safe-helper',
@@ -25,6 +27,7 @@ const profileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fluentread-startup-per
 const report = {extensionDir, version: manifest.version, runs, kinds,
   method: 'Fresh temporary profile; first document then repeated new documents in one browser. Local files may be OS-cached. Timings are descriptive, not a cross-device guarantee.',
   samples: [], errors: []};
+if (!diagnostics) report.diagnosticLimitations = ['未传入 --runtime-diagnostics，pageerror 不覆盖内容脚本隔离世界、后台和全部告警。'];
 fs.mkdirSync(artifactsDir, {recursive: true});
 const server = http.createServer((_request, response) => {
   response.writeHead(200, {'Content-Type': 'text/html; charset=utf-8'});
@@ -33,7 +36,9 @@ const server = http.createServer((_request, response) => {
 });
 
 async function measure(context, kind, url, selector, iteration) {
+  diagnostics?.setPhase(`${kind}-${iteration}`);
   const page = await newPageWithoutForeground(context);
+  await diagnostics?.attachPage(page, kind);
   page.on('pageerror', error => report.errors.push({kind, iteration, error: error.message}));
   const client = await context.newCDPSession(page);
   const loadedUrls = new Set();
@@ -104,6 +109,7 @@ async function measure(context, kind, url, selector, iteration) {
       browserArgs: ['--no-first-run', '--no-default-browser-check',
         `--disable-extensions-except=${extensionDir}`, `--load-extension=${extensionDir}`]});
     const {context} = session;
+    await diagnostics?.start(context);
     report.launchMode = session.launchMode;
     report.focusPolicy = session.focusPolicy;
     report.windowPlacement = session.windowPlacement;
@@ -112,8 +118,10 @@ async function measure(context, kind, url, selector, iteration) {
     const origin = new URL(worker.url()).origin;
     // URL.origin 对扩展 scheme 返回 null，直接从已观察到的 worker URL 提取扩展地址。
     const extensionOrigin = origin === 'null' ? worker.url().match(/^chrome-extension:\/\/[^/]+/)[0] : origin;
+    diagnostics?.setExtensionId(new URL(worker.url()).host);
     // 首次安装欢迎页另有专项；启动对照使用已完成语言选择的真实后台配置。
     const setup = await newPageWithoutForeground(context);
+    await diagnostics?.attachPage(setup, 'startup-setup');
     await setup.goto(`${extensionOrigin}/icon/128.png`);
     await setup.evaluate(async () => {
       const current = await chrome.runtime.sendMessage({type: 'configStorageRead', key: 'local:config'});
@@ -149,6 +157,15 @@ async function measure(context, kind, url, selector, iteration) {
     process.exitCode = 1;
   } finally {
     report.cleanupErrors = [];
+    if (diagnostics) {
+      try {
+        await diagnostics.flush();
+        report.runtimeDiagnostics = diagnostics.snapshot();
+        fs.writeFileSync(path.join(artifactsDir, 'runtime-diagnostics.json'), JSON.stringify(report.runtimeDiagnostics, null, 2));
+        if (report.ok) diagnostics.assertClean();
+      } catch (error) {report.ok = false; report.diagnosticError = error.message; process.exitCode = 1;}
+      try {await diagnostics.stop();} catch (error) {report.ok = false; report.cleanupErrors.push(`diagnostics: ${error.message}`); process.exitCode = 1;}
+    }
     try {
       if (session) {
         await session.close();
@@ -165,8 +182,10 @@ async function measure(context, kind, url, selector, iteration) {
       process.exitCode = 1;
     } finally {
       try {
-        server.closeAllConnections();
-        await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+        if (server.listening) {
+          server.closeAllConnections();
+          await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+        }
       } catch (error) {
         report.ok = false;
         report.cleanupErrors.push(error.stack);

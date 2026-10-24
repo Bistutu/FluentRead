@@ -8,8 +8,8 @@
  */
 import videoLearningText from './video-learning/zh-CN.json';
 import selfHelpText from './self-help/zh-CN.json';
-import {compositeTranslationMessages} from './compositeTranslation';
-import {aiRequestTimeoutMessages} from './aiRequestTimeout';
+import {compositeTranslationChineseMessages} from './compositeTranslation';
+import {aiRequestTimeoutChineseMessages} from './aiRequestTimeout';
 import {sectionTranslationRulesChineseMessages} from './sectionTranslationRules';
 import {pdfReadingChineseMessages} from './pdfReading';
 import {informationHighlightChineseMessages} from './informationHighlight';
@@ -24,19 +24,19 @@ import {localTtsChineseMessages} from './localTts';
 import {translationStatsChineseMessages} from './translationStats';
 import {localTranslationChineseMessages} from './localTranslation';
 
-import {personalCorrectionMessages} from './personalCorrections';
+import {personalCorrectionChineseMessages} from './personalCorrections';
 
 import countForms from './count-forms.json';
 
 export const zhCNMessages = {
     ...countForms['zh-CN'],
-    ...personalCorrectionMessages['zh-CN'],
+    ...personalCorrectionChineseMessages,
     "document.config.loadFailed": "设置未能读取，请重新加载后再试。",
     "popup.compact.translate": "翻译",
     "popup.compact.restore": "还原",
     ...videoLearningText,
     ...selfHelpText,
-    ...compositeTranslationMessages['zh-CN'],
+    ...compositeTranslationChineseMessages,
     ...pdfReadingChineseMessages,
     ...informationHighlightChineseMessages,
     ...reencounterText,
@@ -542,7 +542,7 @@ export const zhCNMessages = {
     "settings.requestLimits.modelTitle": "模型请求限制",
     "settings.requestLimits.globalTitle": "请求限制",
     "settings.requestLimits.globalHelp": "未单独设置的服务和模型共用这些限制",
-    ...aiRequestTimeoutMessages["zh-CN"],
+    ...aiRequestTimeoutChineseMessages,
     ...sectionTranslationRulesChineseMessages,
     "settings.requestLimits.retryIntervals": "重试间隔",
     "settings.requestLimits.apiKeyRecovery": "失败 Key 冷却时间",
@@ -873,6 +873,8 @@ export const zhCNMessages = {
     "settings.cache.limitPolicy": "默认容量为 {size}，最多 {entries} 条；调小上限会立即清理超额缓存，优先删除最久未使用的结果（LRU）",
     "settings.cache.readFailed": "暂时无法读取缓存用量，请点击“刷新”重试",
     "settings.cache.clearFailed": "缓存未能确认清空，请点击“清空缓存”重试",
+    "settings.cache.clearUnconfirmed": "暂未确认清除结果，请稍后刷新",
+    "settings.cache.clearedPendingPages": "后台缓存已清除，部分页面仍在同步",
     "settings.cache.saveFailed": "设置保存失败，请重新保存或切换开关重试",
     "settings.cache.cleared": "翻译缓存已清空",
     "settings.cache.saved": "缓存设置已保存",

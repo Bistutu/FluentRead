@@ -616,9 +616,10 @@
     "src/features/vocabulary/ui/MaterialWorkspace.vue": {
       "kind": "behavior",
       "tests": [
-        "tests/materialWorkspaceLifecycle.test.ts"
+        "tests/materialWorkspaceLifecycle.test.ts",
+        "tests/materialWorkspaceKeepAlive.test.ts"
       ],
-      "scenario": "真实材料客户端的草稿、归档恢复、清空、迟到响应和卸载边界；生产浏览器补充文章/视频/PDF/DOCX/EPUB恢复与视觉证据",
+      "scenario": "真实材料客户端的草稿、归档恢复、清空、迟到响应与卸载边界；真实学习中心的 KeepAlive 隐藏广播合并、异步迟到挂载、普通读隔离和已接受写入归属；生产浏览器补充文章/视频/PDF/DOCX/EPUB恢复与视觉证据",
       "browser": {
         "runner": "scripts/testing/run-material-workspace-test.cjs",
         "scope": "生产学习材料界面、权威记录关联与独立清空、文章定位、视频时间、本地PDF/DOCX/EPUB与宽窄屏深色",

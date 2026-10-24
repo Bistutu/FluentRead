@@ -1,7 +1,7 @@
 <!--
  * @file src/features/vocabulary/ui/MaterialWorkspace.vue
  * 文件职责：以阅读材料和收藏原句为主要内容，提供主题整理、回到出处、连续学习和本地笔记。
- * 主要内容：保留轻量材料列表，空库隐藏无效搜索与主题筛选但保留管理和恢复入口，详情按来源聚合原句、实时收藏和问答；窄屏引用正文预留覆盖式滚动条空间，保持滚动时行尾可读；加载、重试、编辑、归档恢复均保护异步代次和卸载边界，笔记焦点只回到仍属于当前材料的自有输入框，保存成功只清理所属材料中与提交快照相同的草稿。
+ * 主要内容：保留轻量材料列表，空库隐藏无效搜索与主题筛选但保留管理和恢复入口，详情按来源聚合原句、实时收藏和问答；非空搜索只为当前主题保留有界小写正文，深层字段变化使缓存失效，超预算材料完整匹配且每轮只构造一次；刷新按顺序比较引用的完整协议字段，不为未变正文生成 JSON 快照；窄屏引用正文预留覆盖式滚动条空间，保持滚动时行尾可读；加载、重试、编辑、归档恢复均保护异步代次和卸载边界，笔记焦点只回到仍属于当前材料的自有输入框，保存成功只清理所属材料中与提交快照相同的草稿；隐藏期间合并普通刷新而保留已接受写入，以独立可见性代次隔离旧读取和焦点，异步迟到挂载读取上游当前可见性。
  * 模块边界：只通过本地材料与既有学习客户端读写，不访问数据库或供应商；来源恢复由公共适配器处理，个人内容不进入配置同步。
  -->
 <template>
@@ -11,7 +11,7 @@
       <select v-if="materials.length && (topics.length || topic)" v-model="topic" aria-label="按主题筛选"><option value="">全部主题</option><option v-for="item in topics" :key="item" :value="item">{{ item }}</option></select>
       <details class="fr-material-menu" @keydown.esc.stop.prevent="closeMenu">
         <summary aria-label="材料管理"><UiIcon name="sliders" :size="16" /></summary>
-        <div @click="closeMenu"><button type="button" :disabled="loading || busy" @click="reload">刷新材料</button><button type="button" :disabled="busy" @click="toggleArchive">{{ archived ? '返回阅读材料' : '查看已移除材料' }}</button><button type="button" :disabled="busy" @click="exportMaterials">导出材料备份</button><button type="button" :disabled="busy" @click="importInput?.click()">恢复材料备份</button><button type="button" :disabled="busy" @click="confirmClear = true">清空全部材料</button></div>
+        <div @click="closeMenu"><button type="button" :disabled="loading || busy" @click="reload()">刷新材料</button><button type="button" :disabled="busy" @click="toggleArchive">{{ archived ? '返回阅读材料' : '查看已移除材料' }}</button><button type="button" :disabled="busy" @click="exportMaterials">导出材料备份</button><button type="button" :disabled="busy" @click="importInput?.click()">恢复材料备份</button><button type="button" :disabled="busy" @click="confirmClear = true">清空全部材料</button></div>
       </details>
       <input ref="importInput" type="file" accept=".json,application/json" hidden aria-label="恢复材料备份" @change="importMaterials" />
     </div>
@@ -19,7 +19,7 @@
       <strong>清空全部材料？</strong><p>材料主题、阅读位置和材料中的个人笔记将永久删除。原有收藏、阅读问答和学习笔记仍保留。可以先导出材料备份。</p>
       <div class="fr-material-actions"><button type="button" :disabled="busy" @click="clearMaterials">确认清空</button><button type="button" :disabled="busy" @click="confirmClear = false">取消</button></div>
     </section>
-    <p v-if="error" class="fr-material-feedback error" role="alert">{{ error }} <button type="button" :disabled="busy" @click="reload">重试</button></p>
+    <p v-if="error" class="fr-material-feedback error" role="alert">{{ error }} <button type="button" :disabled="busy" @click="reload()">重试</button></p>
     <p v-if="feedback" class="fr-material-feedback" role="status">{{ feedback }}</p>
     <p v-if="archived" class="fr-material-feedback">已移除的材料仍保留原句与笔记，恢复后可继续阅读。原有收藏与问答不受影响。</p>
     <div v-if="loading && !materials.length" class="fr-material-empty" role="status">正在读取材料…</div>
@@ -91,7 +91,7 @@
   </section>
 </template>
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue';
 import browser from 'webextension-polyfill';
 import UiIcon from '@/src/ui/components/UiIcon.vue';
 import { ReadingAnswer } from '@/src/features/reading-assistant/ui/answer/public';
@@ -112,6 +112,9 @@ const emit = defineEmits<{
         tab: string
     ];
 }>();
+const props = defineProps<{isVisible?: () => boolean}>();
+const keptAliveVisible = ref(true);
+const viewVisible = computed(() => (props.isVisible?.() ?? true) && keptAliveVisible.value);
 const materials = ref<MaterialRecord[]>([]), selectedId = ref(''), query = ref(''), topic = ref(''), archived = ref(false);
 const loading = ref(false), busy = ref(false), error = ref(''), feedback = ref(''), editing = ref(false), note = ref('');
 const draft = ref({ title: '', topics: '', url: '' });
@@ -128,7 +131,17 @@ type ResolvedReference = {
     missing?: boolean;
 };
 const resolved = ref<Record<string, ResolvedReference>>({});
-let active = true, generation = 0, detailGeneration = 0, changedWhileBusy = false;
+let active = true, generation = 0, detailGeneration = 0, visibilityEpoch = 0;
+let pendingRefresh = false, pendingReferences = false;
+function focusGuard(): () => boolean {
+    const visible = viewVisible.value, epoch = visibilityEpoch;
+    return () => active && visible && viewVisible.value && epoch === visibilityEpoch;
+}
+function flushVisibleReads(): void {
+    if (!active || !viewVisible.value || busy.value || loading.value) return;
+    if (pendingRefresh) void reload(true);
+    else if (pendingReferences && !detailLoading.value) void loadReferences();
+}
 const noteDrafts = new Map<string, {
     text: string;
     editingId: string;
@@ -141,9 +154,49 @@ const materialDrafts = new Map<string, {
 const selected = computed(() => materials.value.find(item => item.id === selectedId.value));
 const visibleReferences = computed(() => selected.value?.references.slice(0, referenceLimit.value) || []);
 const topics = computed(() => [...new Set(materials.value.flatMap(item => item.topics))].sort((a, b) => a.localeCompare(b)));
+function materialSearchParts(item: MaterialRecord): (string | undefined)[] {
+    return [item.title, item.source.url, ...item.topics, ...item.references.flatMap(reference => [reference.excerpt, reference.note])];
+}
+const topicMaterials = computed(() => materials.value.filter(item => !topic.value || item.topics.includes(topic.value)));
+const searchActive = computed(() => Boolean(query.value.trim()));
+// 限制额外保留的小写文本为 4 Mi 字符（UTF-16 载荷至多约 8 MiB，Map 与对象另计）。
+const SEARCH_TEXT_CHARACTER_LIMIT = 4 * 1024 * 1024;
+type MaterialSearchMemo = {items: MaterialRecord[]; texts: Map<MaterialRecord, string>; remaining: number};
+let retainedSearchMemo: MaterialSearchMemo | undefined;
+function clearSearchMemo(): void {
+    if (!retainedSearchMemo) return;
+    retainedSearchMemo.texts.clear();
+    retainedSearchMemo.items = [];
+    retainedSearchMemo = undefined;
+}
+const searchMemo = computed(() => {
+    const items = topicMaterials.value;
+    clearSearchMemo();
+    // 只登记当前主题的全部可搜索深层依赖，不在这里拼接或保留正文；原地编辑也须清除旧缓存。
+    if (searchActive.value) for (const item of items) materialSearchParts(item);
+    const memo = {items, texts: new Map<MaterialRecord, string>(), remaining: SEARCH_TEXT_CHARACTER_LIMIT};
+    retainedSearchMemo = memo;
+    return memo;
+});
+// 空库模板不消费 lazy computed；同步释放旧缓存的正文和材料列表引用，不强制建立新索引。
+watch([topicMaterials, searchActive], clearSearchMemo, {flush: 'sync'});
 const filtered = computed(() => {
     const search = query.value.trim().toLocaleLowerCase();
-    return materials.value.filter(item => (!topic.value || item.topics.includes(topic.value)) && (!search || [item.title, item.source.url, ...item.topics, ...item.references.flatMap(reference => [reference.excerpt, reference.note])].join(' ').toLocaleLowerCase().includes(search)));
+    // 空搜索也读取新容器，释放上一轮正文及材料引用，不改变原有主题和顺序。
+    const memo = searchMemo.value;
+    if (!search) return memo.items;
+    return memo.items.filter(item => {
+        let text = memo.texts.get(item);
+        if (text === undefined) {
+            text = materialSearchParts(item).join(' ').toLocaleLowerCase();
+            if (text.length <= memo.remaining) {
+                memo.texts.set(item, text);
+                memo.remaining -= text.length;
+            }
+        }
+        // 超预算正文只在当前过滤中使用一次，不截断、不持有，也不妨碍后续小材料入缓存。
+        return text.includes(search);
+    });
 });
 const visibleMaterials = computed(() => filtered.value.slice(0,materialLimit.value));
 watch([query,topic], () => {materialLimit.value = 30;});
@@ -182,10 +235,10 @@ function replace(item: MaterialRecord) {
     if (!matches && selectedId.value === item.id) resetSelection();
 }
 function backToList() {
-    const id = selectedId.value;
+    const id = selectedId.value, ownsFocus = focusGuard();
     resetSelection();
     void nextTick(() => {
-        if (active && !selectedId.value) Array.from(materialListElement.value?.querySelectorAll<HTMLButtonElement>('[data-material-id]') || []).find(button => button.dataset.materialId === id)?.focus();
+        if (ownsFocus() && !selectedId.value) Array.from(materialListElement.value?.querySelectorAll<HTMLButtonElement>('[data-material-id]') || []).find(button => button.dataset.materialId === id)?.focus();
     });
 }
 function resetSelection() {
@@ -205,34 +258,51 @@ function resetSelection() {
     editingNoteId.value = '';
     referenceLimit.value = 24;
     detailGeneration++;
+    pendingReferences = false;
     detailLoading.value = false;
     resolved.value = {};
     detailError.value = '';
 }
-async function reload() {
-    if (busy.value)
-        return;
-    const ticket = ++generation;
+/** 比较全部引用的同序字段；缺省与 undefined 等价，不受对象键插入顺序影响。 */
+function sameReferences(previous: readonly MaterialReference[] | undefined, next: readonly MaterialReference[] | undefined): boolean {
+    if (previous === next) return true;
+    if (!previous || !next || previous.length !== next.length) return false;
+    for (let index = 0; index < previous.length; index++) {
+        const left = previous[index], right = next[index];
+        if (left.kind !== right.kind || left.id !== right.id || left.excerpt !== right.excerpt
+            || left.note !== right.note || left.createdAt !== right.createdAt || left.updatedAt !== right.updatedAt) return false;
+    }
+    return true;
+}
+async function reload(preserveError = false) {
+    if (!active) return;
+    if (!viewVisible.value || busy.value) {pendingRefresh = true; return;}
+    pendingRefresh = false;
+    const ticket = ++generation, epoch = visibilityEpoch;
     loading.value = true;
-    error.value = '';
+    // 广播和恢复触发的补读不能抹去刚完成操作的失败；用户显式刷新才清理旧错误。
+    if (!preserveError) error.value = '';
     try {
         const items = await materialList({ archived: archived.value });
         if (!active || ticket !== generation)
             return;
-        const previousReferences = JSON.stringify(selected.value?.references);
+        if (!viewVisible.value || epoch !== visibilityEpoch) {pendingRefresh = true; return;}
+        const previousReferences = selected.value?.references;
         materials.value = items;
         if (selectedId.value && !items.some(item => item.id === selectedId.value))
             resetSelection();
-        else if (selectedId.value && previousReferences !== JSON.stringify(selected.value?.references))
-            void loadReferences();
+        else if (selectedId.value && !sameReferences(previousReferences, selected.value?.references)) {
+            pendingReferences = true;
+            detailGeneration++;
+            detailLoading.value = false;
+        }
     }
     catch (failure) {
-        if (active && ticket === generation)
+        if (active && ticket === generation && viewVisible.value && epoch === visibilityEpoch && (!preserveError || !error.value))
             error.value = failure instanceof Error ? failure.message : '材料读取失败，请重试。';
     }
     finally {
-        if (active && ticket === generation)
-            loading.value = false;
+        if (active && ticket === generation) {loading.value = false; flushVisibleReads();}
     }
 }
 function toggleArchive() { if (busy.value)
@@ -240,6 +310,7 @@ function toggleArchive() { if (busy.value)
 async function select(id: string) {
     if (busy.value || selectedId.value === id)
         return;
+    const ownsFocus = focusGuard();
     resetSelection();
     selectedId.value = id;
     feedback.value = '';
@@ -255,20 +326,24 @@ async function select(id: string) {
     }
     void loadReferences();
     await nextTick();
-    if (active && selectedId.value === id)
+    if (ownsFocus() && selectedId.value === id)
         detailHeading.value?.focus({ preventScroll: true });
 }
 async function loadReferences() {
+    if (!active) return;
+    if (!viewVisible.value || busy.value) {pendingReferences = Boolean(selected.value); return;}
     const item = selected.value;
-    if (!item)
-        return;
-    const ticket = ++detailGeneration;
+    pendingReferences = false;
+    if (!item) return;
+    const ticket = ++detailGeneration, epoch = visibilityEpoch;
     detailLoading.value = true;
     detailError.value = '';
     resolved.value = {};
     try {
         const references = visibleReferences.value;
         const memories = references.some(reference => reference.kind === 'memory') ? await listLearningMemories() : [];
+        if (!active || ticket !== detailGeneration || selectedId.value !== item.id) return;
+        if (!viewVisible.value || epoch !== visibilityEpoch) {pendingReferences = true; return;}
         const results = await Promise.allSettled(references.map(async (reference) => {
             let value: ResolvedReference = {};
             if (reference.kind === 'vocabulary') {
@@ -287,25 +362,25 @@ async function loadReferences() {
             }
             return [referenceKey(reference), value] as const;
         }));
-        if (active && ticket === detailGeneration && selectedId.value === item.id) {
+        if (active && ticket === detailGeneration && selectedId.value === item.id && viewVisible.value && epoch === visibilityEpoch) {
             resolved.value = Object.fromEntries(results.flatMap(result => result.status === 'fulfilled' ? [result.value] : []));
             if (results.some(result => result.status === 'rejected'))
                 detailError.value = '部分学习内容读取失败，原句仍保留。请重试。';
         }
     }
     catch {
-        if (active && ticket === detailGeneration)
+        if (active && ticket === detailGeneration && viewVisible.value && epoch === visibilityEpoch)
             detailError.value = '部分学习内容读取失败，原句仍保留。请重试。';
     }
     finally {
-        if (active && ticket === detailGeneration)
-            detailLoading.value = false;
+        if (active && ticket === detailGeneration) {detailLoading.value = false; flushVisibleReads();}
     }
 }
 function showMoreReferences() { referenceLimit.value += 24; void loadReferences(); }
 async function mutate(operation: () => Promise<MaterialRecord | void>, done: (item?: MaterialRecord) => void) {
     if (busy.value)
         return;
+    if (loading.value) pendingRefresh = true;
     busy.value = true;
     loading.value = false;
     error.value = '';
@@ -322,15 +397,16 @@ async function mutate(operation: () => Promise<MaterialRecord | void>, done: (it
     }
     finally {
         if (active && ticket === generation)
-            {busy.value = false; if (changedWhileBusy) {changedWhileBusy = false; void reload();}}
+            {busy.value = false; flushVisibleReads();}
     }
 }
 function startEdit() { const item = selected.value; if (!item)
-    return; draft.value = { title: item.title, topics: item.topics.join(', '), url: item.source.url || '' }; editing.value = true; void nextTick(() => {if (active && selectedId.value === item.id) titleInput.value?.focus();}); }
-function cancelEdit() {if (busy.value) return; const id = selectedId.value; editing.value = false; void nextTick(() => {if (active && selectedId.value === id) organizeButton.value?.focus();});}
+    return; const ownsFocus = focusGuard(); draft.value = { title: item.title, topics: item.topics.join(', '), url: item.source.url || '' }; editing.value = true; void nextTick(() => {if (ownsFocus() && selectedId.value === item.id) titleInput.value?.focus();}); }
+function cancelEdit() {if (busy.value) return; const id = selectedId.value, ownsFocus = focusGuard(); editing.value = false; void nextTick(() => {if (ownsFocus() && selectedId.value === id) organizeButton.value?.focus();});}
 async function saveEdit() {
     const item = selected.value;
     if (!item) return;
+    const ownsFocus = focusGuard();
     const submitted = { ...draft.value };
     const matchesSubmitted = (value: typeof submitted | undefined) => value?.title === submitted.title
         && value.topics === submitted.topics && value.url === submitted.url;
@@ -341,7 +417,7 @@ async function saveEdit() {
         if (matchesSubmitted(materialDrafts.get(item.id))) materialDrafts.delete(item.id);
         if (selectedId.value === item.id && matchesSubmitted(draft.value)) {
             editing.value = false;
-            void nextTick(() => {if (active && selectedId.value === item.id && !editing.value) organizeButton.value?.focus();});
+            void nextTick(() => {if (ownsFocus() && selectedId.value === item.id && !editing.value) organizeButton.value?.focus();});
         }
         feedback.value = '材料已整理。';
     });
@@ -353,10 +429,11 @@ async function restoreSelected() { const item = selected.value; if (!item)
 function editNote(reference: MaterialReference) {
     const id = selectedId.value;
     if (!id || archived.value) return;
+    const ownsFocus = focusGuard();
     editingNoteId.value = reference.id;
     note.value = reference.note || '';
     void nextTick(() => {
-        if (active && selectedId.value === id && editingNoteId.value === reference.id) noteInput.value?.focus();
+        if (ownsFocus() && selectedId.value === id && editingNoteId.value === reference.id) noteInput.value?.focus();
     });
 }
 async function saveNote() {
@@ -386,6 +463,7 @@ async function clearMaterials() { await mutate(async () => { await materialClear
 async function exportMaterials() {
     if (busy.value)
         return;
+    if (loading.value) pendingRefresh = true;
     busy.value = true;
     const ticket = ++generation;
     loading.value = false;
@@ -412,7 +490,7 @@ async function exportMaterials() {
     }
     finally {
         if (active && ticket === generation)
-            {busy.value = false; if (changedWhileBusy) {changedWhileBusy = false; void reload();}}
+            {busy.value = false; flushVisibleReads();}
     }
 }
 async function importMaterials(event: Event) {
@@ -424,6 +502,7 @@ async function importMaterials(event: Event) {
         error.value = '材料备份超过 20 MB，请选择较小的备份文件。';
         return;
     }
+    if (loading.value) pendingRefresh = true;
     busy.value = true;
     const ticket = ++generation;
     loading.value = false;
@@ -452,18 +531,30 @@ async function importMaterials(event: Event) {
     }
     finally {
         if (active && ticket === generation)
-            {busy.value = false; if (changedWhileBusy) {changedWhileBusy = false; void reload();}}
+            {busy.value = false; flushVisibleReads();}
     }
 }
 const onChanged = (message: unknown): undefined => {
     if (active && typeof message === 'object' && message !== null && (message as {type?: string}).type === MATERIAL_CHANGED_MESSAGE) {
-        if (busy.value) changedWhileBusy = true;
-        else void reload();
+        pendingRefresh = true;
+        flushVisibleReads();
     }
     return undefined;
 };
+watch(viewVisible, visible => {
+    if (!active) return;
+    if (visible) {flushVisibleReads(); return;}
+    visibilityEpoch++;
+    if (loading.value) pendingRefresh = true;
+    loading.value = false;
+    if (detailLoading.value) pendingReferences = Boolean(selected.value);
+    detailGeneration++;
+    detailLoading.value = false;
+}, {flush: 'sync'});
+onActivated(() => {keptAliveVisible.value = true;});
+onDeactivated(() => {keptAliveVisible.value = false;});
 onMounted(() => { void reload(); browser.runtime.onMessage.addListener(onChanged); });
-onBeforeUnmount(() => { active = false; generation++; detailGeneration++; browser.runtime.onMessage.removeListener(onChanged); });
+onBeforeUnmount(() => { active = false; generation++; detailGeneration++; clearSearchMemo(); browser.runtime.onMessage.removeListener(onChanged); });
 </script>
 <style scoped>
 .fr-materials {

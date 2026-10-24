@@ -82,8 +82,11 @@ function configureSectionPorts(data: Record<string, any>, {template = false, req
         '@/src/features/settings/ui/QuickTranslationProfiles.vue', '@/src/features/settings/ui/ContextMenuSettings.vue',
         '@/src/features/settings/ui/components/FieldHelp.vue',
     ]) componentPort(path);
+    componentPort('@/src/features/settings/ui/TranslationCacheSettings.vue', {props: ['active', 'config'],
+        setup(props: any) {data.cacheSettings = props;return () => null;}});
     vi.doMock('@/src/features/translation-center/public', () => ({TranslationCenter: empty}));
-    vi.doMock('@/src/features/glossary/public', () => ({GlossarySettings: empty}));
+    vi.doMock('@/src/features/glossary/public', () => ({GlossarySettings: {props: ['active'],
+        setup(props: any) {data.glossarySettings = props;runtime.onMounted(data.glossaryMounted);return () => null;}}}));
     vi.doMock('@/src/features/image-translation/ui/public', () => ({ImageOcrSettings: empty, MangaSettings: empty}));
     vi.doMock('@/src/features/model-usage/public', () => ({ModelUsageDashboard: empty}));
     vi.doMock('@/src/features/translation-stats/public', () => ({TranslationStatsDashboard: empty}));
@@ -186,13 +189,14 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
     let providerState: Record<string, any> | undefined;
     const providerReady = deferred<void>();
     const catalogReady = deferred<void>();
+    const glossaryReady = deferred<void>();
     const loadProvider = vi.fn(async () => {
         await providerGate;
         const component = (await vi.importActual<typeof import('@/src/features/settings/ui/services/CustomOpenAIProviderDialog.vue')>('@/src/features/settings/ui/services/CustomOpenAIProviderDialog.vue')).default;
         providerReady.resolve();return component;
     });
     let notifyConfig: (value: unknown) => void = () => {};
-    const data = {uiPorts: new Map<string, ChildEventPort>(), serviceCatalog:undefined as undefined | {props:Record<string,any>;emit:(event:string,...args:any[])=>void},serviceConfiguration:undefined as undefined | {props:Record<string,any>;emit:(event:string,...args:any[])=>void},loadProvider, catalogMounted: () => catalogReady.resolve(), config: configSnapshot ?? {}, configReady: ready,
+    const data = {glossaryMounted: () => glossaryReady.resolve(), glossarySettings: undefined as undefined | Record<string, any>, cacheSettings: {} as Record<string, any>, uiPorts: new Map<string, ChildEventPort>(), serviceCatalog:undefined as undefined | {props:Record<string,any>;emit:(event:string,...args:any[])=>void},serviceConfiguration:undefined as undefined | {props:Record<string,any>;emit:(event:string,...args:any[])=>void},loadProvider, catalogMounted: () => catalogReady.resolve(), config: configSnapshot ?? {}, configReady: ready,
         subscribeConfig: (listener: (value: unknown) => void) => {
             notifyConfig = listener;
             if (configSnapshot) listener(configSnapshot);
@@ -207,7 +211,7 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
     const imported = (await import('@/src/features/settings/ui/SettingsSections.vue')).default;
     const component = imported;
     const renderer = createDomRenderer(dom.document as unknown as Document, focus);
-    const visible = runtime.ref(true);const props = runtime.reactive({activeSection, onNavigateSection: undefined as undefined | ((section: string, target?: string) => void)});
+    const visible = runtime.ref(true);const props = runtime.reactive({activeSection, activePanel: undefined as string | undefined, onNavigateSection: undefined as undefined | ((section: string, target?: string) => void)});
     let state!: Record<string, any>;
     app = renderer.createApp({setup: () => () => runtime.h(runtime.KeepAlive, null, {default: () => visible.value
         ? runtime.h(component as runtime.Component, {...props, ref: (vm: any) => {if (vm) state = vm.$.setupState;}})
@@ -245,11 +249,32 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
     if (template && activeSection === 'settings-services') {await catalogReady.promise;await settle();}
     return {state, props, visible, document: dom?.document, domWindow: dom?.window, setVisibility, pageEvent, numericPorts, loadProvider, focus, providerMounted, providerUnmounted,
         get providerState() {return providerState;}, get dialogPort() {return dialogPort;},
+        async finishGlossaryLoad() {await glossaryReady.promise;await settle();},
         async finishProviderLoad() {await providerReady.promise;await new Promise(resolve => setTimeout(resolve, 0));await settle();}, query, send, patch, theme, media, unsubscribe, frames, findTarget, location, data,
         notifyConfig: (value: unknown) => notifyConfig(value)};
 }
 
 describe('设置主表单实际组件异步归属', () => {
+    it('术语库首次访问才挂载，离开和 KeepAlive 隐藏时失活但保留同一组件实例', async () => {
+        const {props, visible, data, finishGlossaryLoad} = await mountSections({activeSection: 'settings-general'});
+        expect(data.glossarySettings).toBeUndefined();
+        props.activeSection = 'settings-glossary';await finishGlossaryLoad();
+        const instance = data.glossarySettings!;expect(instance.active).toBe(true);
+        props.activeSection = 'settings-general';await settle();expect(instance.active).toBe(false);
+        props.activeSection = 'settings-glossary';await settle();expect(data.glossarySettings).toBe(instance);expect(instance.active).toBe(true);
+        visible.value = false;await settle();expect(instance.active).toBe(false);
+        visible.value = true;await settle();expect(data.glossarySettings).toBe(instance);expect(instance.active).toBe(true);
+    });
+    it('缓存面板保留实例并由高级页、页内分类和 KeepAlive 活跃状态共同授权', async () => {
+        const {props, visible, data} = await mountSections({activeSection: 'settings-advanced'});await settle();
+        expect(data.cacheSettings.active).toBe(true);
+        props.activePanel = 'requests';await settle();expect(data.cacheSettings.active).toBe(false);
+        props.activePanel = 'cache';await settle();expect(data.cacheSettings.active).toBe(true);
+        props.activeSection = 'settings-general';await settle();expect(data.cacheSettings.active).toBe(false);
+        props.activeSection = 'settings-advanced';await settle();expect(data.cacheSettings.active).toBe(true);
+        const instance = data.cacheSettings;visible.value = false;await settle();expect(instance.active).toBe(false);
+        visible.value = true;await settle();expect(data.cacheSettings).toBe(instance);expect(instance.active).toBe(true);
+    });
     it('普通划词实际面板仅展示明确来源返回按钮，挂载不请求标签或修复焦点', async () => {
         const h = await mountSections({template: true, repairReturn: true, activeSection: 'settings-selection', search: '?returnTabId=7'});
         const section = h.document!.querySelector('#settings-selection')!;
@@ -368,23 +393,32 @@ describe('设置主表单实际组件异步归属', () => {
         app?.unmount();app = undefined;ready.resolve();await settle();
         expect(theme).not.toHaveBeenCalled();expect(patch).not.toHaveBeenCalled();expect(unsubscribe).toHaveBeenCalledOnce();
     });
-    it('同步订阅与后续批量水合只重建一次完整草稿观察，随后编辑仍同步保存', async () => {
-        const {state, patch, notifyConfig} = await mountSections({configSnapshot: {to: 'en', theme: 'dark'}});
+    it('批量水合重建字段签名，后续编辑只重扫对应分支且仍同步保存', async () => {
+        const {state, patch, notifyConfig} = await mountSections({configSnapshot: {to: 'en', theme: 'dark', glossaryLibraries: [{
+            id: 'library', name: 'Library', enabled: true, sourceLanguage: 'en', targetLanguage: 'zh-Hans', domains: [],
+            entries: Array.from({length: 500}, (_, index) => ({id: `term-${index}`, source: `term ${index}`, target: `术语${index}`, caseSensitive: false})),
+        }]}});
         expect(state.config.to).toBe('en');expect(state.config.theme).toBe('dark');expect(patch).not.toHaveBeenCalled();
         const stringify = JSON.stringify;
-        let draftScans = 0;
+        const draftScans: unknown[] = [];
         vi.spyOn(JSON, 'stringify').mockImplementation((value, replacer, space) => {
-            if (value === state.config) draftScans++;
+            if (runtime.isReactive(value)) draftScans.push(value);
             return stringify(value, replacer, space);
         });
         notifyConfig({...state.config, to: 'ja', theme: 'light', hotkey: 'Shift', customHotkey: 'Alt+J'});
-        expect(draftScans).toBe(1);
+        expect(draftScans).not.toContain(state.config);
+        expect(draftScans.filter(value => value === state.config.harness)).toHaveLength(1);
+        expect(draftScans.filter(value => value === state.config.glossaryLibraries)).toHaveLength(1);
         expect(patch).not.toHaveBeenCalled();expect(state.config.to).toBe('ja');
+        draftScans.length = 0;
         state.config.to = 'fr';
         expect(patch).toHaveBeenCalledOnce();expect(patch).toHaveBeenCalledWith(expect.objectContaining({to: 'fr'}), expect.any(Function));
+        expect(draftScans).not.toContain(state.config.harness);expect(draftScans).not.toContain(state.config.glossaryLibraries);
         state.config.harness.enabled = true;
         expect(patch).toHaveBeenCalledTimes(2);
         expect(patch).toHaveBeenLastCalledWith(expect.objectContaining({harness: expect.objectContaining({enabled: true})}), expect.any(Function));
+        expect(draftScans.filter(value => value === state.config.harness)).toHaveLength(1);
+        expect(draftScans).not.toContain(state.config.glossaryLibraries);expect(draftScans).not.toContain(state.config);
     });
     it('水合结束后立即关闭捕获最新编辑，后续编辑仍允许另一轮关闭交接', async () => {
         const {state, patch, data, notifyConfig} = await mountSections({configSnapshot: {to: 'en'}});
@@ -416,14 +450,18 @@ describe('设置主表单实际组件异步归属', () => {
             expect(() => state.configEditor.hydrate(invalid)).toThrow(error);
             expect(state.config.to).toBe('en');
         } else {
-            const stringify = JSON.stringify;let rejectDraft = true;
+            const stringify = JSON.stringify, previousHarness = runtime.toRaw(state.config.harness);let rejectDraft = true;
+            const warnings = vi.fn();app!.config.warnHandler = warnings;
             vi.spyOn(JSON, 'stringify').mockImplementation((value, replacer, space) => {
-                if (value === state.config && rejectDraft) {rejectDraft = false;throw error;}
+                if (value && typeof value === 'object' && runtime.isReactive(value) && runtime.toRaw(value) !== previousHarness
+                    && 'hoverDelay' in value && rejectDraft) {rejectDraft = false;throw error;}
                 return stringify(value, replacer, space);
             });
             expect(() => notifyConfig({...state.config, to: 'ja'})).toThrow(error);
             expect(state.config.to).toBe('ja');
+            expect(warnings.mock.calls.map(([message]) => message)).toEqual(['Unhandled error during execution of watcher getter']);
         }
+        expect(state.configEditor.applying).toBe(false);
         expect(patch).not.toHaveBeenCalled();
         state.config.to = 'fr';expect(patch).toHaveBeenCalledOnce();
         expect(patch).toHaveBeenLastCalledWith(expect.objectContaining({to: 'fr'}), expect.any(Function));

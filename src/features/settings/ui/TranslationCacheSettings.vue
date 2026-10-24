@@ -1,7 +1,7 @@
 <!--
  * @file src/features/settings/ui/TranslationCacheSettings.vue
  * 文件职责：在高级选项原有位置提供紧凑的翻译缓存管理卡，展示用量、开关、清空和可调整的容量与条数上限。
- * 主要内容：从后台读取统计，折叠展示上限编辑，通过字段级补丁保存；保存终态同步忙时暂缓的父级上限更新，保留无外部更新的失败草稿，提供重试及离页保护。
+ * 主要内容：从后台读取统计，折叠展示上限编辑，通过字段级补丁保存；清理与后续统计共用一次有界等待预算，面板失活、缓存停用或卸载结束自己的等待，重新激活刷新统计并保留限额草稿，旧清理或保存回复不触发新会话查询；区分未确认、页面仍同步和真正清理完成；保存终态同步忙时暂缓的父级上限更新，保留无外部更新的失败草稿，提供重试及离页保护。
  * 模块边界：界面不访问 IndexedDB、不决定淘汰顺序，不直接修改父组件配置；缓存管理经 services/translation，持久化及跨页同步经 services/config。
  -->
 <template>
@@ -77,7 +77,7 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, onUnmounted, ref, watch} from 'vue';
+import {computed, onMounted, ref, watch} from 'vue';
 import browser from 'webextension-polyfill';
 import type {Config} from '@/src/core/config/model';
 import {
@@ -95,25 +95,38 @@ import {
   getTranslationCacheStats,
   type TranslationCacheStats,
 } from '@/src/services/translation/cacheManagement';
+import {CACHE_REQUEST_TIMEOUT_MS, TranslationCacheRequestTimeoutError, type CacheRequestOptions} from '@/src/services/translation/cacheRequest';
+import {useSettingsActionContext} from '@/src/features/settings/model/useSettingsActionContext';
 import {useUiI18n} from '@/src/ui/i18n';
 import SettingsGroup from './components/SettingsGroup.vue';
 import SettingsItem from './components/SettingsItem.vue';
 import FieldHelp from './components/FieldHelp.vue';
 
-const props = defineProps<{config: Config}>();
+const props = withDefaults(defineProps<{config: Config; active?: boolean}>(), {active: true});
 const {language, t} = useUiI18n();
 const MIB = 1024 * 1024;
 const stats = ref<TranslationCacheStats | null>(null);
 const loading = ref(false);
 const clearing = ref(false);
 const saving = ref(false);
-const busy = computed(() => loading.value || clearing.value || saving.value);
+const busy = computed(() => loading.value || clearing.value || saving.value || !cacheContext.active.value);
 const errorKey = ref('');
 const statusKey = ref('');
 const draftMiB = ref<number | undefined>(props.config.translationCacheMaxBytes / MIB);
 const draftEntries = ref<number | undefined>(props.config.translationCacheMaxEntries);
-let disposed = false;
 let pendingLimitsRefresh = false;
+let cacheController: AbortController | undefined;
+const cacheContext = useSettingsActionContext(() => props.active !== false, () => []);
+
+watch(cacheContext.active, active => {
+  if (active) {void refreshStats();return;}
+  const controller = cacheController;
+  cacheController = undefined;
+  controller?.abort();
+  loading.value = false;
+  clearing.value = false;
+  saving.value = false;
+}, {flush: 'sync'});
 
 const limitsValid = computed(() => Number.isInteger(draftMiB.value)
   && Number(draftMiB.value) * MIB >= MIN_TRANSLATION_CACHE_MAX_BYTES
@@ -152,58 +165,77 @@ function formatBytes(value: number): string {
   return `${new Intl.NumberFormat(language.value, {maximumFractionDigits: 2}).format(amount)} ${unit}`;
 }
 
-async function readStats(): Promise<void> {
+async function runCacheRequest(operation: (options: CacheRequestOptions, current: () => boolean) => Promise<void>): Promise<void> {
+  const controller = new AbortController();
+  cacheController = controller;
+  const context = cacheContext.capture();
+  try {
+    await operation({signal: controller.signal, deadline: performance.now() + CACHE_REQUEST_TIMEOUT_MS},
+      () => context() && cacheController === controller);
+  } finally {
+    if (cacheController === controller) cacheController = undefined;
+  }
+}
+
+async function readStats(options: CacheRequestOptions, current: () => boolean): Promise<void> {
   loading.value = true;
   try {
-    const snapshot = await getTranslationCacheStats();
-    if (!disposed) stats.value = snapshot;
+    const snapshot = await getTranslationCacheStats(options);
+    if (current()) stats.value = snapshot;
   } catch {
-    if (!disposed) {
+    if (current()) {
       stats.value = null;
       errorKey.value = 'settings.cache.readFailed';
     }
   } finally {
-    if (!disposed) loading.value = false;
+    if (current()) loading.value = false;
   }
 }
 
 async function refreshStats(): Promise<void> {
-  if (busy.value || disposed) return;
+  if (busy.value) return;
   errorKey.value = '';
   statusKey.value = '';
-  await readStats();
+  await runCacheRequest(readStats);
 }
 
 async function clearCache(): Promise<void> {
-  if (busy.value || disposed) return;
+  if (busy.value) return;
+  const current = cacheContext.capture();
   clearing.value = true;
   errorKey.value = '';
   statusKey.value = '';
   try {
-    await clearManagedTranslationCache();
-    if (disposed) return;
-    statusKey.value = 'settings.cache.cleared';
-    await readStats();
-  } catch {
-    if (!disposed) errorKey.value = 'settings.cache.clearFailed';
+    await runCacheRequest(async (options, currentRequest) => {
+      const result = await clearManagedTranslationCache(options);
+      if (!currentRequest()) return;
+      statusKey.value = result.invalidationPending ? 'settings.cache.clearedPendingPages' : 'settings.cache.cleared';
+      await readStats(options, currentRequest);
+    });
+  } catch (error) {
+    if (current()) {
+      if (error instanceof TranslationCacheRequestTimeoutError) statusKey.value = 'settings.cache.clearUnconfirmed';
+      else errorKey.value = 'settings.cache.clearFailed';
+    }
   } finally {
-    if (!disposed) clearing.value = false;
+    if (current()) clearing.value = false;
   }
 }
 
 async function persistPatch(patch: Partial<Config>): Promise<void> {
+  const current = cacheContext.capture();
   saving.value = true;
   errorKey.value = '';
   statusKey.value = '';
   try {
     await requestConfigPatch(patch, browser.runtime.sendMessage.bind(browser.runtime));
-    if (disposed) return;
+    if (!current()) return;
     statusKey.value = 'settings.cache.saved';
-    await readStats();
+    await runCacheRequest(readStats);
   } catch {
-    if (!disposed) errorKey.value = 'settings.cache.saveFailed';
+    if (current()) errorKey.value = 'settings.cache.saveFailed';
   } finally {
-    if (!disposed) {
+    if (current()) {
       saving.value = false;
       // 输入在保存期间禁用；被暂缓的父级权威更新应在终态同步一次。
       // 没有外部更新时保留失败的用户草稿，便于原值重试。
@@ -217,12 +249,12 @@ async function persistPatch(patch: Partial<Config>): Promise<void> {
 }
 
 async function changeEnabled(value: string | number | boolean): Promise<void> {
-  if (busy.value || disposed || typeof value !== 'boolean') return;
+  if (busy.value || typeof value !== 'boolean') return;
   await persistPatch({useCache: value});
 }
 
 async function saveLimits(): Promise<void> {
-  if (busy.value || disposed || !limitsValid.value || !limitsChanged.value) return;
+  if (busy.value || !limitsValid.value || !limitsChanged.value) return;
   await persistPatch({
     translationCacheMaxBytes: Number(draftMiB.value) * MIB,
     translationCacheMaxEntries: Number(draftEntries.value),
@@ -230,7 +262,6 @@ async function saveLimits(): Promise<void> {
 }
 
 onMounted(() => { void refreshStats(); });
-onUnmounted(() => { disposed = true; });
 </script>
 
 <style scoped>

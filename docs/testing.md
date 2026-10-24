@@ -12,11 +12,61 @@
 
 ### 扩展重载后的界面资源
 
-Chrome/Edge MV3 的公开图标和三份内容入口样式使用稳定扩展地址，避免扩展重载后动态 UUID 轮换使旧页面保存的 CSS、图标地址失效。范围仅为 `icon/32.png`、`icon/48.png`、`icon/128.png` 及 `content-scripts/content.css`、`neteaseMailFrame.css`、`supportedFrame.css`；文件、站点匹配、权限和 CSP 不增加。语言包继续使用动态地址。稳定地址会使这些已公开界面资产可按固定扩展 ID 探测。
+Chrome/Edge MV3 的公开图标和实际消费的两份内容入口样式使用稳定扩展地址，避免扩展重载后动态 UUID 轮换使旧页面保存的 CSS、图标地址失效。当前产物为 `icon/32.png`、`icon/48.png`、`icon/128.png` 及 `content-scripts/content.css`、`content-scripts/neteaseMailFrame.css`。共用受限 frame 不显示 Shadow UI，裁剪静态 UI 依赖后不再生成 `supportedFrame.css`；网页翻译样式仍由原四份 inline 样式安装和清理。稳定资源配置继续识别旧文件名，但不会创建文件或清单项。站点匹配、权限和 CSP 不增加，语言包继续使用动态地址。稳定地址会使这些已公开界面资产可按固定扩展 ID 探测。
 
-`extensionManifestContract` 验证最终清单调整的文件集合、原站点边界、语言包动态地址及其他目标行为。浏览器专项须分别验证首次加载、同源 frame、软导航、扩展重载后旧地址与新页面，检查实际 CSS 内容/计算样式、图标尺寸和 Runtime/Log 诊断。旧上下文仍按原生命周期清理；稳定资源地址不代表旧脚本可继续调用失效的扩展 API。动态 UUID 资源不能仅因 host 不同于实际扩展 ID 就自动当成其他扩展噪声排除，未证明归属的安全日志应保留并阻断。
+`extensionManifestContract` 验证最终清单调整的文件集合、原站点边界、语言包动态地址及其他目标行为；产物校验同时检查真实 UI 脚本的 CSS 地址、文件和公开范围，以及共用 frame 没有未消费的 Shadow UI 样式。源码边界、CSS 有序 AST 与字节比较的维护约束见 [受限 frame 的 UI 样式依赖裁剪](maintainers/frame-ui-css-20261024.md)。浏览器专项须分别验证首次加载、同源 frame、软导航、扩展重载后旧地址与新页面，检查实际 CSS 内容/计算样式、图标尺寸和 Runtime/Log 诊断。旧上下文仍按原生命周期清理；稳定资源地址不代表旧脚本可继续调用失效的扩展 API。动态 UUID 资源不能仅因 host 不同于实际扩展 ID 就自动当成其他扩展噪声排除，未证明归属的安全日志应保留并阻断。
 
 网页兼容维护集与生命周期验收见 [网页翻译稳定性维护](maintainers/web-stability.md)。该入口显式选择十个独立站点，复用已有正文与保护区契约，并将宿主 DOM 探针、原生站点操作、在线供应商和不同浏览器的证据分开记录。`fullPageVisibilityScheduling` 新增路由观察选项刷新、断连 ShadowRoot 回收/重新插入，以及重连观察器时保留待投递保护区变化；`contentFeatureMounting` 与划词 `--lifecycle-only` 验证入口被移除后的恢复、取消、错误重试、禁用和窄屏键盘操作。
+
+`contentRuntimeLifecycle` 与 `qqMailFrameRuntime` 验证冷启动的两次取消边界：配置就绪后先检查文档销毁或扩展上下文失效，避免为已经退出的顶层、QQ、网易及受支持正文 frame 开始读取和解析界面语言包；语言资源已经开始等待时，完成后仍须复核，禁止迟到挂载。有效页面继续等待语言包，失败仍沿用中文回退；往返缓存中的暂停不是销毁，恢复继续复用原生命周期。本层不取消已经共享的资源请求，也不改变后台 frame 授权时序。
+
+## 缓存清理等待与恢复
+
+`translationCacheManagement`、`popupCache`、`popupAppLifecycle`、`implementationAudit49C`、`backgroundCoreHandlers` 和 `safariTabBroadcastIntegration` 验证缓存操作的真实消费者。覆盖清库确认前的等待、十五秒截止与重试、迟到成功/拒绝、弹窗失活、设置分类切换和 KeepAlive、容量草稿保留，以及清理与后续统计共用截止。清库成功后统计读取失败必须保留清库结果；超时不能报告清库失败或完成。
+
+后台的清库屏障仍完整等待旧写入排空与持久存储清理。只有这些完成后才给页面通知一秒宽限；超时恢复界面等待，原广播继续投递，并通过 `invalidationPending` 区分已清库和页面同步未确认。`translationBroker` 与共享 `tabBroadcast`、缓存存储测试守护串行清库和通知所有权。
+
+生产 Chrome 产物的聚焦浏览器验证：
+
+```bash
+node scripts/testing/run-cache-clear-recovery-test.cjs \
+  --extension-dir .output/chrome-mv3 --playwright-root <捆绑 Node 包目录> \
+  --focus-safe-helper scripts/testing/focus-safe-browser.cjs \
+  --runtime-diagnostics <browser-translation-test-skill>/scripts/runtime-diagnostics.cjs \
+  --artifacts-dir <证据目录>
+```
+
+使用临时 Edge profile 和第二屏后台正常窗口，页面导航前采集扩展页、内容隔离世界及后台诊断。延迟和未决回复只注入本次隔离配置，真实后台路由和数据库清理仍执行。报告分别记录注入边界、等待耗时、状态、重试、截图、焦点事件及诊断缺口；普通扩展标签页的 Popup 验证不代表原生工具栏弹窗、Firefox 实机或外部供应商验收。
+
+脚本还记录 `focusTrace`：截图、页面探针、关闭和新建页签的开始/完成边界，以及五种白名单 CDP 命令的 target、window 和 bounds。记录不包含 URL、页面正文、配置或消息载荷。前台采样不可用或已确认测试浏览器激活时会锁存失败并阻止后续普通操作，只允许清理脚本已登记的 target；原始 CDP 拒绝、运行时诊断和清理错误分别保留。启动时浏览器 PID 尚未确认的事件先保存，再由启动后的焦点检查判定归属。
+
+这些采样会改变测试时序，仅用于定位问题。Node `performance.now()` 与原生事件的 `systemUptime` 有不同原点，不能直接相减；跨来源须用 epoch 时间和采样区间关联。公开 CDP session 的五类命令记录不涵盖 Playwright 私有 page session 的全部协议；离线 `browserFocusSafety` 用例只验证报告接线、返回/拒绝身份和失败锁存，不能证明真实浏览器焦点问题已修复。
+
+## 术语库排队保存
+
+运行 `pnpm test tests/glossarySettingsComponent.test.ts tests/configApplication.test.ts` 验证术语库操作的真实 SFC 与配置传输边界。新建、内置库添加、排序和导入捕获用户操作，在组件保存队列执行时合并共享 store 的最新列表；排序携带库 ID，按当前顺序移动一格，导入固定已确认内容并重新检查容量。覆盖排队期间的外部增删、同 ID 与同名、无写入的 no-op、隐藏及组件卸载、容量恢复、旧回执对新选择/新导入草稿的保护，以及确认框与延迟焦点的草稿归属。
+
+`configApplication` 的 glossary list CAS 用例让两个独立 application 通过真实客户端及持久化 handler 交互；发送期间修改同一数组字段应拒绝、回读最新值且只发送一次，无关字段变化则正常确认。这不证明跨设备或真实浏览器关闭的持久化：组件卸载后共享 store 仍运行，整个页面销毁会终止尚未交给配置客户端的本地任务。实现边界及证据入口见[术语库排队保存与草稿归属](maintainers/glossary-save-concurrency-20261024.md)。
+
+### 术语库连续搜索
+
+`glossarySettingsComponent` 同时验证真实 SFC 搜索与分页：空/纯空白查询不处理正文，连续非空查询复用当前库的小写字符串；数组原地编辑、增删、排序、对象替换、切库及外部配置更新必须重新匹配。保持原有默认 locale、换行拼接与不额外 Unicode 正规化的语义，查询结果长度相同的变化也要重置页码。计数使用合法 500 条单库与 10 库轮换夹具，透传原生字符串方法并区分正文处理、查询规范化、挂载与 hydration；不得把计数减少解释为实际帧耗时或实机验收。
+
+## 阅读材料连续搜索
+
+运行 `pnpm test tests/materialWorkspaceLifecycle.test.ts` 验证材料搜索的真实 SFC。主题过滤先于正文索引，空白查询不处理正文；非空查询复用至多 4 Mi 字符的小写文本，超预算材料完整匹配且当轮只构造一次，之后的小项仍可缓存。覆盖全部引用和跨字段短语、深层引用及来源/主题变更、同 ID 重载、分页和选择/草稿归属，以及清空查询、归档和清库后的失效。首次字段读取登记依赖与正文构造分开计数，不能把首次额外读取或原有空查询短路隐藏成收益。设计、证据和限制见[阅读材料搜索的正文复用](maintainers/performance-material-search-20261024.md)。
+
+### 阅读材料隐藏与恢复
+
+运行 `pnpm test tests/materialWorkspaceKeepAlive.test.ts tests/materialWorkspaceLifecycle.test.ts tests/optionsAppNavigationLifecycle.test.ts tests/learningCenterLifecycle.test.ts`。材料页藏在外层 KeepAlive 时，把普通列表和详情读取合并为待刷新，恢复且操作空闲后再执行；内层学习标签切换仍卸载材料页。独立显示代次拒绝跨隐藏的旧读取与延迟焦点，组件存活和原操作代次继续接收已接受保存、导入、导出的结果，保留 busy 收尾与草稿身份。两级稳定 `isVisible` getter 还覆盖学习中心或材料组件在离开后才挂载的情况。
+
+自动补刷须保留保存、导入或导出失败的首因，不能因读取成功清空它或因读取失败覆盖它；用户主动刷新/重试会清理旧错误并呈现新读取结果。已发出的请求和已接受操作仍可在隐藏期间完成，不能将普通读取合并描述为全部隐藏 I/O 为零。
+
+实际父子 SFC 的 16 项与不可变基线配对，外层只复现 Options 异步组件/KeepAlive 结构；实际 Options SFC 的导航用例另以学习中心端口检查捕获的可见性 getter。直接材料组负责接受中的操作、各等待点、补刷错误及读取期间产生的文件校验错误，最新数量包含下节新增的引用比较用例；隐藏调度阶段另验证 Options 59 项与原学习中心 39 项。均为离线 Vue 与受控客户端端口验证，没有真实浏览器或持久存储验收。设计、分项结果和证据入口见[阅读材料的可见性与延后刷新](maintainers/material-visibility-20261024.md)。
+
+### 阅读材料刷新时的引用比较
+
+`materialWorkspaceLifecycle` 的 72 项与 `materialWorkspaceKeepAlive` 的 16 项同时验证刷新后的完整引用比较：全部引用按顺序检查 `kind`、`id`、`excerpt`、`note`、`createdAt`、`updatedAt`，缺省与 `undefined` 等价，不受对象键插入顺序影响。去除前后两份正文 JSON 输出，仍保留引用变化时的权威详情补读、旧详情失效、选择/草稿及隐藏恢复调度。正式 SFC 上限夹具三次刷新从 6 次正文 JSON、108,521,346 个输出字符降至零；这不是端到端工作量或堆测量。边界及最终证据入口见[阅读材料刷新时的引用比较](maintainers/material-reference-equality-20261024.md)。
 
 ## man7 Linux 手册正文
 
@@ -326,7 +376,9 @@ node scripts/testing/run-webdav-backup-ui-test.cjs \
 
 `tests/bilingualSentenceHighlight.test.ts` 覆盖字符坐标、缩写、小数、中英文标点、无原生分句能力的回退、拆句与合句分组，以及双向悬停、内联结构、动态变化和关闭清理。定向覆盖率命令仅包含 `sentenceAlignment.ts`、`sentenceHighlight.ts` 和 `bilingualSentenceHighlight.ts` 三个模块。
 
-生产扩展构建后执行 `node scripts/testing/run-bilingual-sentence-highlight-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper <focus-safe-browser.cjs路径> --artifacts-dir /private/tmp/fluentread-bilingual-highlight`。专项使用临时 Edge、第二屏正常尺寸后台窗口，验证真实 Control 翻译—恢复—再翻译、双向逐句定位、富文本、动态 DOM、关闭和配置持久化、多句设置预览、窄屏与深色。报告记录悬停期间的 DOM 变化、几何偏移和请求计数。
+生产扩展构建后执行 `node scripts/testing/run-bilingual-sentence-highlight-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper <focus-safe-browser.cjs路径> --runtime-diagnostics <runtime-diagnostics.cjs路径> --artifacts-dir /private/tmp/fluentread-bilingual-highlight`。专项使用临时 Edge、第二屏正常尺寸后台窗口，验证真实 Control 翻译—恢复—再翻译、双向逐句定位、富文本、动态 DOM、关闭和配置持久化、多句设置预览、窄屏与深色；阅读辅助通过当前样式入口进入界面风格页，以“无”和预设验证停用、启用与重载后的保存。报告记录悬停期间的 DOM 变化、几何偏移、请求计数及隔离世界、扩展页面和后台诊断。未传入诊断采集器时报告会注明采集缺口，不能据页面断言宣称运行时干净。
+
+启动性能对照使用 `node scripts/testing/run-startup-performance.cjs --extension-dir <正式产物目录> --kinds popup,options,content --runs 5 --playwright-root <Node包目录> --focus-safe-helper <focus-safe-browser.cjs路径> --runtime-diagnostics <runtime-diagnostics.cjs路径> --artifacts-dir <证据目录>`，同条件分别测试基线与候选产物。它记录实际加载的脚本字节、就绪时间、脚本及空闲任务耗时；计时包含浏览器、操作系统缓存和采集开销，不将单次对照描述为稳定加速。针对配置编辑、未译长列表和划选的操作计数回归及本批结果见[性能与交互热路径优化](./maintainers/performance-interaction-20261024.md)。
 
 页面与翻译响应为本地确定性夹具，不能代表真实服务的语义对齐质量或 Firefox 实机行为。参考 [duo-translator](https://github.com/linuxscreen/duo-translator/tree/f3abdd18a0e20687222ab338b367edf5476cf746/main/dom) 的文字范围绘制与相邻句分组设计；FluentRead 独立实现，未复制其 GPL-3.0 源码。
 

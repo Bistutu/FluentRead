@@ -659,6 +659,93 @@ async function chooseBook(book:Awaited<ReturnType<typeof mountBook>>,label:strin
   const select=book.host.querySelector<HTMLSelectElement>(`select[aria-label="${label}"]`)!;expect(select).toBeTruthy();
   Object.defineProperty(select,'value',{configurable:true,value});select.dispatchEvent(new book.window.Event('change',{bubbles:true}));await book.flush();
 }
+async function searchBook(book:Awaited<ReturnType<typeof mountBook>>,value:string):Promise<void>{
+  const search=book.host.querySelector<HTMLInputElement>('input[type="search"]')!;
+  search.value=value;search.dispatchEvent(new book.window.Event('input',{bubbles:true}));await book.flush();
+}
+it('does not reread unchanged collection bodies or sort again for each immediate search input',async()=>{
+  const reads={body:0,sort:0};let entries:VocabularyEntry[]=[];
+  const book=await mountBook(undefined,undefined,undefined,{
+    entries:entry=>entries=Array.from({length:5000},(_,index)=>({...entry,id:`search-${index}`,term:`reading-${index}`,normalizedTerm:`reading-${index}`,
+      translations:{'zh-cn':{text:'阅读',updatedAt:2},en:{get text(){reads.body++;return 'reading reference';},updatedAt:1}},
+      contexts:Array.from({length:8},()=>({text:'We practice reading.',pageTitle:'Reading practice',capturedAt:1})),
+      get lastSeenAt(){reads.sort++;return index;}})),list:async()=>({success:true,data:entries}),
+  });
+  expect(reads.body).toBe(0);expect(book.host.querySelectorAll('.word-row')).toHaveLength(50);
+  await searchBook(book,'rea');expect(book.panel.filteredEntries).toHaveLength(5000);
+  const warm={...reads};
+  for(const value of ['read','readi','readin','reading'])await searchBook(book,value);
+  expect({body:reads.body-warm.body,sort:reads.sort-warm.sort}).toEqual({body:0,sort:0});
+  expect(book.host.querySelector('.entry-open')?.textContent).toBe('reading-4999');
+  expect(book.host.querySelectorAll('.word-row')).toHaveLength(50);
+});
+it('matches every saved search field and cross-field phrases, and refreshes nested additions, changes and deletions',async()=>{
+  const book=await mountBook(undefined,undefined,undefined,{entries:(entry):VocabularyEntry[]=>[
+    {...entry,id:'fields',term:'Displayed',normalizedTerm:'normalizedToken',note:'noteNeedle',
+      translations:{'zh-cn':{text:'Primary translation',updatedAt:2},en:{text:'Second translation',updatedAt:1}},
+      contexts:[{text:'First context',pageTitle:'First title',capturedAt:1},{text:'Deep context',pageTitle:'Deep title',capturedAt:2}]},
+    {...entry,id:'other',term:'other',normalizedTerm:'other',note:'',translations:{},contexts:[]},
+  ]});
+  const matches=()=>book.panel.filteredEntries.map((entry:VocabularyEntry)=>entry.id);
+  for(const value of ['DISPLAYED','normalizedToken','noteNeedle','primary translation','second translation','first context','deep context','Deep Title','displayed normalizedToken']){
+    await searchBook(book,value);expect(matches(),value).toEqual(['fields']);
+  }
+  await searchBook(book,'new-needle');expect(matches()).toEqual([]);
+  const entry=book.panel.entries[0] as VocabularyEntry;
+  entry.note='new-needle';await book.flush();expect(matches()).toEqual(['fields']);
+  delete entry.note;await book.flush();expect(matches()).toEqual([]);
+  entry.translations.fr={text:'new-needle',updatedAt:3};await book.flush();expect(matches()).toEqual(['fields']);
+  entry.translations.fr.text='changed';await book.flush();expect(matches()).toEqual([]);
+  entry.translations.fr.text='new-needle';await book.flush();expect(matches()).toEqual(['fields']);
+  delete entry.translations.fr;await book.flush();expect(matches()).toEqual([]);
+  entry.contexts.push({text:'new-needle',capturedAt:3});await book.flush();expect(matches()).toEqual(['fields']);
+  entry.contexts.at(-1)!.text='changed';await book.flush();expect(matches()).toEqual([]);
+  entry.contexts.at(-1)!.pageTitle='new-needle';await book.flush();expect(matches()).toEqual(['fields']);
+  delete entry.contexts.at(-1)!.pageTitle;await book.flush();expect(matches()).toEqual([]);
+  entry.contexts[0].text='new-needle';await book.flush();expect(matches()).toEqual(['fields']);
+  entry.contexts.splice(0,1);await book.flush();expect(matches()).toEqual([]);
+  book.panel.entries=[{...entry,term:'new-needle',normalizedTerm:'replacement'}];await book.flush();expect(matches()).toEqual(['fields']);
+  book.panel.entries=[];await book.flush();expect(matches()).toEqual([]);
+});
+it('keeps stable ordering, due and kind filters, and page reset while query matching uses cached text',async()=>{
+  const book=await mountBook(undefined,undefined,undefined,{entries:entry=>Array.from({length:60},(_,index)=>({...entry,id:`stable-${index}`,term:`reading-${index}`,normalizedTerm:'same',
+    kind:index%2?'sentence':'expression',status:index%3?'learning':'mastered',lastSeenAt:1,createdAt:index,nextReviewAt:index<30?1:null}))});
+  const matches=()=>book.panel.filteredEntries.map((entry:VocabularyEntry)=>entry.id);
+  await clickBook(book,bookButton(book,'下一页'));expect(book.panel.page).toBe(2);
+  await searchBook(book,'reading');expect(book.panel.page).toBe(1);expect(matches()).toEqual(Array.from({length:60},(_,index)=>`stable-${index}`));
+  await chooseBook(book,'排序方式','term');expect(matches().slice(0,3)).toEqual(['stable-0','stable-1','stable-2']);
+  await chooseBook(book,'排序方式','due');expect(matches().slice(0,3)).toEqual(['stable-0','stable-1','stable-2']);
+  await chooseBook(book,'掌握状态','due');expect(matches()).toHaveLength(30);
+  const type=book.host.querySelector('select.collection-type')!;await chooseBook(book,type.getAttribute('aria-label')!,'sentence');
+  expect(matches()).toEqual(Array.from({length:15},(_,index)=>`stable-${index*2+1}`));
+  book.panel.entries[1].nextReviewAt=Date.now()+60_000;await book.flush();expect(matches()).not.toContain('stable-1');
+  await chooseBook(book,'掌握状态','mastered');expect(matches()).toEqual(Array.from({length:10},(_,index)=>`stable-${index*6+3}`));
+  await chooseBook(book,type.getAttribute('aria-label')!,'all');await chooseBook(book,'掌握状态','all');await chooseBook(book,'排序方式','recent');
+  book.panel.entries[59].lastSeenAt=2;await book.flush();expect(matches()[0]).toBe('stable-59');
+  await chooseBook(book,'排序方式','term');book.panel.entries[59].normalizedTerm='aaa';await book.flush();expect(matches()[0]).toBe('stable-59');
+});
+it('bounds retained search text and completely matches reactive overflow entries without truncating their last context',async()=>{
+  const book=await mountBook(undefined,undefined,undefined,{entries:entry=>Array.from({length:1200},(_,index)=>({...entry,id:`overflow-${index}`,term:`reading-${index}`,normalizedTerm:`reading-${index}`,lastSeenAt:index,
+    translations:{'zh-cn':{text:'阅读',updatedAt:1}},contexts:Array.from({length:8},()=>({text:'r'.repeat(500),pageTitle:'Reading page',capturedAt:1}))}))});
+  // Recent ordering caches the newest prefix. The oldest entry remains searchable through the full fallback.
+  await searchBook(book,'needle-tail');expect(book.panel.filteredEntries).toHaveLength(0);
+  const indexed=book.panel.searchIndex as Map<VocabularyEntry,string>;
+  expect(indexed.size).toBeGreaterThan(0);expect(indexed.size).toBeLessThan(1200);
+  expect([...indexed.values()].reduce((total,text)=>total+text.length,0)).toBeLessThanOrEqual(4*1024*1024);
+  const oldest=book.panel.entries[0] as VocabularyEntry;expect(indexed.has(oldest)).toBe(false);
+  oldest.contexts[7].pageTitle='needle-tail';await book.flush();expect(book.panel.filteredEntries.map((entry:VocabularyEntry)=>entry.id)).toEqual(['overflow-0']);
+  delete oldest.contexts[7].pageTitle;await book.flush();expect(book.panel.filteredEntries).toHaveLength(0);
+  oldest.translations.en={text:'needle-tail',updatedAt:2};await book.flush();expect(book.panel.filteredEntries).toHaveLength(1);
+  delete oldest.translations.en;await book.flush();expect(book.panel.filteredEntries).toHaveLength(0);
+  oldest.contexts[7].text='needle-tail';await book.flush();expect(book.panel.filteredEntries).toHaveLength(1);
+  oldest.contexts.pop();await book.flush();expect(book.panel.filteredEntries).toHaveLength(0);
+  await searchBook(book,'reading');expect(book.panel.filteredEntries).toHaveLength(1200);expect(book.host.querySelectorAll('.word-row')).toHaveLength(50);
+  book.panel.entries=[oldest];await book.flush();expect(book.panel.filteredEntries).toHaveLength(1);expect(book.panel.searchIndex.size).toBe(1);
+  await searchBook(book,'');expect(book.panel.searchIndex.size).toBe(0);
+  book.panel.entries=[{...book.entry,id:'replacement',term:'replacement',normalizedTerm:'replacement'}];await book.flush();expect(book.panel.searchIndex.size).toBe(0);
+  await searchBook(book,'replacement');expect(book.panel.filteredEntries.map((entry:VocabularyEntry)=>entry.id)).toEqual(['replacement']);expect(book.panel.searchIndex.size).toBe(1);
+  await searchBook(book,'');book.panel.entries=[];await book.flush();expect(book.panel.searchIndex.size).toBe(0);expect(book.panel.filteredEntries).toHaveLength(0);
+});
 it('paginates a full collection, combines type/status/order filters, and clamps the page after authoritative removal',async()=>{
   const book=await mountBook(undefined,undefined,undefined,{entries:entry=>Array.from({length:60},(_,i)=>({...entry,id:`entry-${i}`,term:`word${String(i).padStart(3,'0')}`,normalizedTerm:`word${String(i).padStart(3,'0')}`,kind:i%3===0?'sentence':'expression',status:i%4===0?'mastered':'learning',nextReviewAt:i%4===0?null:1,lastSeenAt:i,createdAt:i}))});
   expect(book.host.querySelectorAll('.word-row')).toHaveLength(50);expect(book.host.querySelector('.entry-open')?.textContent).toBe('word059');

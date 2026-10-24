@@ -1,4 +1,4 @@
-import {nextTick, reactive, watch} from 'vue';
+import {isReactive, nextTick, reactive, ref, toRaw, watch} from 'vue';
 import {describe, expect, it, vi} from 'vitest';
 import {Config, normalizeConfig} from '@/src/core/config/model';
 import {customModelString} from '@/src/core/config/catalog';
@@ -153,7 +153,7 @@ describe('Vue configuration editor adapter', () => {
     }
     async function settle() {await nextTick(); for (let i = 0; i < 5; i++) await Promise.resolve(); await nextTick();}
 
-    it('supports immediate subscriptions, sync saving and one scan after batched hydration', async () => {
+    it('supports immediate subscriptions, sync saving and hydration without serializing the whole reactive draft', async () => {
         const f = vueFixture('sync'); await settle(); expect(f.onReady).toHaveBeenCalledOnce(); expect(f.editor.ready).toBe(true);
         f.notify({to: 'ja', theme: 'dark'}); expect(f.saveDraft).not.toHaveBeenCalled();
         f.draft.to = 'fr'; expect(f.saveDraft).toHaveBeenCalledOnce();
@@ -162,7 +162,7 @@ describe('Vue configuration editor adapter', () => {
             if (value === f.draft) scans++;
             return stringify(value, replacer, space);
         });
-        f.notify({...f.draft, to: 'de', theme: 'light'}); expect(scans).toBe(1); spy.mockRestore();
+        f.notify({...f.draft, to: 'de', theme: 'light'}); expect(scans).toBe(0); spy.mockRestore();
         expect(f.editor.applying).toBe(false); f.editor.dispose(); f.notify({to: 'en'});
         expect(f.draft.to).toBe('fr'); f.editor.dispose(); expect(f.unsubscribe).toHaveBeenCalledOnce();
     });
@@ -177,6 +177,81 @@ describe('Vue configuration editor adapter', () => {
         f.editor.dispose();
     });
 
+    it.each(['sync', 'post'] as const)('observes nested keys, arrays and removed/readded top-level fields with %s timing', async flush => {
+        const f = vueFixture(flush); await settle();
+        const changes = [
+            () => {f.draft.customBody.openai = '{"temperature":0.1}';},
+            () => {f.draft.customBody.deepseek = '{"temperature":0.2}';},
+            () => {delete f.draft.customBody.deepseek;},
+            () => {f.draft.excludedLanguages.push('en');},
+            () => {f.draft.excludedLanguages.splice(0, 1, 'fr');},
+            () => {f.draft.excludedLanguages.pop();},
+            () => {delete (f.draft as Partial<Config>).customBody;},
+            () => {f.draft.customBody = {openai: '{"temperature":0.3}'};},
+        ];
+        for (const [index, change] of changes.entries()) {
+            change();
+            expect(f.saveDraft).toHaveBeenCalledTimes(flush === 'sync' ? index + 1 : index);
+            await nextTick(); expect(f.saveDraft).toHaveBeenCalledTimes(index + 1);
+        }
+        expect(f.saveDraft.mock.lastCall?.[0]).toMatchObject({excludedLanguages: [], customBody: {openai: '{"temperature":0.3}'}});
+        f.editor.dispose();
+    });
+
+    it('coalesces several post edits into one synchronous snapshot handoff', async () => {
+        const f = vueFixture('post'); await settle();
+        f.draft.to = 'fr'; f.draft.theme = 'dark'; f.draft.customBody.openai = '{"temperature":0.1}';
+        expect(f.saveDraft).not.toHaveBeenCalled();
+        await nextTick(); expect(f.saveDraft).toHaveBeenCalledOnce();
+        expect(f.saveDraft.mock.lastCall?.[0]).toMatchObject({to: 'fr', theme: 'dark', customBody: {openai: '{"temperature":0.1}'}});
+        f.editor.dispose();
+    });
+
+    it('ignores replacement by an equivalent root and tracks the replacement branches', async () => {
+        const draft = ref(new Config()), saveDraft = vi.fn(async () => {});
+        const editor = useConfigEditor({copySnapshot: normalizeConfig, readDraft: () => draft.value,
+            writeDraft: snapshot => {draft.value = snapshot;}, saveDraft, ready: Promise.resolve(), readAuthority: () => new Config(),
+            subscribe: () => () => {}, flush: 'sync', onEdited: vi.fn(), onSaved: vi.fn(), onSaveError: vi.fn(), onReady: vi.fn(), onReadyError: vi.fn()});
+        await settle();
+        draft.value = normalizeConfig(draft.value); expect(saveDraft).not.toHaveBeenCalled();
+        draft.value.customBody.openai = '{"temperature":0.1}'; expect(saveDraft).toHaveBeenCalledOnce();
+        editor.dispose();
+    });
+
+    it.each(['sync', 'post'] as const)('does not rescan an unchanged 5000-entry glossary while typing with %s timing', async flush => {
+        const f = vueFixture(flush); await settle();
+        f.notify({...f.draft, glossaryLibraries: Array.from({length: 10}, (_, library) => ({
+            id: `library-${library}`, name: `Library ${library}`, enabled: true, sourceLanguage: 'en', targetLanguage: 'zh-Hans', domains: [],
+            entries: Array.from({length: 500}, (_, entry) => ({id: `term-${entry}`, source: `term ${entry}`, target: `术语${entry}`, caseSensitive: false})),
+        }))});
+        await settle();
+        let sourceReads = 0, watcherSourceReads = 0, watcherSerializations = 0;
+        for (const library of f.draft.glossaryLibraries) for (const entry of library.entries) {
+            const source = entry.source;
+            Object.defineProperty(toRaw(entry), 'source', {enumerable: true, configurable: true, get() {sourceReads++; return source;}});
+        }
+        const stringify = JSON.stringify, glossary = f.draft.glossaryLibraries;
+        const spy = vi.spyOn(JSON, 'stringify').mockImplementation((value, replacer, space) => {
+            const watcherScan = value === f.draft || value === glossary;
+            if (watcherScan) watcherSerializations++;
+            const before = sourceReads, result = stringify(value, replacer, space);
+            if (watcherScan) watcherSourceReads += sourceReads - before;
+            return result;
+        });
+        try {
+            for (let index = 0; index < 20; index++) {
+                f.draft.customBody.openai = `{"temperature":${index}}`;
+                await nextTick();
+            }
+            expect(f.saveDraft).toHaveBeenCalledTimes(20);
+            // 保存端仍捕获完整独立快照：计数明确保留的成本，不能把 watcher 优化表述为整条链路零遍历。
+            expect({watcherSerializations, watcherSourceReads, snapshotSourceReads: sourceReads - watcherSourceReads})
+                .toEqual({watcherSerializations: 0, watcherSourceReads: 0, snapshotSourceReads: 20 * 5000});
+        } finally {
+            spy.mockRestore(); f.editor.dispose();
+        }
+    });
+
     it('does not initialize or notify after disposal, reports readiness rejection and hydration exceptions', async () => {
         const ready = deferred(); const f = vueFixture('sync', ready.promise); f.editor.dispose(); ready.resolve(); await settle();
         expect(f.onReady).not.toHaveBeenCalled(); expect(f.editor.ready).toBe(false);
@@ -189,13 +264,20 @@ describe('Vue configuration editor adapter', () => {
 
     it('recovers its reactive watcher when a hydration getter throws once', async () => {
         const f = vueFixture('sync'); await settle();
-        const stringify = JSON.stringify; let failed = false;
+        const stringify = JSON.stringify, previousHarness = toRaw(f.draft.harness); let failed = false;
+        const warn = vi.spyOn(console, 'warn').mockImplementationOnce(() => {});
         const spy = vi.spyOn(JSON, 'stringify').mockImplementation((value, replacer, space) => {
-            if (value === f.draft && !failed) {failed = true; throw new Error('draft getter');}
+            if (value && typeof value === 'object' && isReactive(value) && toRaw(value) !== previousHarness && 'hoverDelay' in value && !failed) {failed = true; throw new Error('draft getter');}
             return stringify(value, replacer, space);
         });
-        expect(() => f.notify({to: 'ja'})).toThrow('draft getter');
-        expect(f.editor.applying).toBe(false); spy.mockRestore();
-        f.draft.to = 'fr'; expect(f.saveDraft).toHaveBeenCalledOnce(); f.editor.dispose();
+        try {
+            expect(() => f.notify({to: 'ja'})).toThrow('draft getter');
+            expect(f.editor.applying).toBe(false); spy.mockRestore();
+            expect(warn).toHaveBeenCalledOnce();
+            expect(warn).toHaveBeenCalledWith('[Vue warn]: Unhandled error during execution of watcher getter');
+            f.draft.to = 'fr'; expect(f.saveDraft).toHaveBeenCalledOnce();
+        } finally {
+            spy.mockRestore(); warn.mockRestore(); f.editor.dispose();
+        }
     });
 });
