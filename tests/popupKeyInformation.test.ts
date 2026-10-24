@@ -72,8 +72,14 @@ vi.mock('@/src/app/popup/PopupServices.vue', () => ({__esModule: true, default: 
 beforeEach(() => {
   vi.clearAllMocks();listeners.clear();tabUpdated.clear();language.value = 'zh-CN';bundleRevision.value = 0;
   queryTabs.mockReset().mockResolvedValue([{id: 7, windowId: 3, url: 'https://example.test/a'}]);
-  send.mockReset().mockImplementation(async (_id, message) => message.type === 'getFullPageTranslationState'
-    ? {isTranslated: false} : {status: 'success', isTranslated: message.action === 'fullPage'});
+  send.mockReset().mockImplementation(async (id, message) => {
+    if (message.type === 'getPageTranslationFontState') {
+      const tab = (await queryTabs()).find((item: PopupActiveTab) => item.id === id);
+      return {status: 'success', browserDefault: false, documentToken: 'font-fixture-document', pageUrl: tab?.pendingUrl || tab?.url};
+    }
+    return message.type === 'getFullPageTranslationState'
+      ? {isTranslated: false} : {status: 'success', isTranslated: message.action === 'fullPage'};
+  });
   Object.assign(config, normalizeConfig({...new Config(), uiLanguageSetupCompleted: true, on: true,
     service: 'openai', model: {...new Config().model, openai: 'saved-model'}, token: {openai: 'test-only-key'}}));
   const dom = parseHTML('<html><body><div id="app"></div></body></html>');
@@ -181,11 +187,14 @@ describe('Popup 首页关键信息', () => {
     expect(button.querySelector('.translate-label')?.textContent).toBe(`Translate (${shortcut})`);
     expect(document.querySelector('[data-testid="section-translation"]')).not.toBeNull();
     expect(createTab).not.toHaveBeenCalled();
-    expect(send.mock.calls).toEqual([[7, {type: 'getFullPageTranslationState'}, {frameId: 0}]]);
+    const articleReads = [[7, {type: 'getFullPageTranslationState'}, {frameId: 0}],
+      [7, {type: 'getPageTranslationFontState'}, {frameId: 0}]];
+    expect(send.mock.calls).toEqual(articleReads);
+    expect(document.querySelector('[data-testid="page-font-entry"]')?.getAttribute('aria-pressed')).toBe('false');
 
     button.dispatchEvent(new window.Event('click'));await settle();
     expect(createTab).not.toHaveBeenCalled();
-    expect(send.mock.calls).toEqual([[7, {type: 'getFullPageTranslationState'}, {frameId: 0}], [7, {type: 'contextMenuTranslate', action: 'fullPage'}, {frameId: 0}]]);
+    expect(send.mock.calls).toEqual([...articleReads, [7, {type: 'contextMenuTranslate', action: 'fullPage'}, {frameId: 0}]]);
     expect(button.getAttribute('aria-pressed')).toBe('true');
     expect(button.querySelector('.translate-label')?.textContent).toBe(`Restore (${shortcut})`);
     expect(button.getAttribute('title')).toBe(`Restore this page · ${shortcut}`);

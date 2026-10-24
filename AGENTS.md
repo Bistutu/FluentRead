@@ -47,12 +47,13 @@
 ## 验证
 
 - 测试分组、覆盖率定义和一键回归以 [测试与回归](docs/testing.md) 为准。
+- 测试与回归须检查 FluentRead 自身的运行时错误和告警，覆盖本次相关的内容脚本隔离世界、扩展页面与后台；在导航/加载前开始采集，重载后继续采集新后台。发现错误或告警须定位、修复并重跑相关用例，不能仅凭功能断言或构建成功判为通过。诊断归属、负向用例预期和采集缺口按 `docs/testing.md` 的门禁记录，禁止宽泛忽略、吞异常或删除日志掩盖问题。
 - 使用 `pnpm test:audit` 检查测试唯一归类、重复用例、`.only`、无说明 `.skip` 和覆盖率忽略。
 - 按改动选择 `pnpm test:architecture`、`pnpm test:unit`、`pnpm test:functional`、`pnpm test:regression`。
 - 迁入 `src` 的可执行业务模块使用 `pnpm test:coverage`，statements/branches/functions/lines 四维均须 100%。
 - 使用 `pnpm compile` 做 TypeScript/Vue 类型检查。
 - 涉及扩展构建或入口行为时同时运行 `pnpm build` 与 `pnpm build:firefox`；共享翻译或平台代码还要运行 `pnpm build:userscript` 和 userscript verifier。
 - 涉及文档时运行 `pnpm docs:build`。
-- `pnpm test:regression:all` 执行确定性的一键回归。真实浏览器层必须显式开启，使用临时 profile、屏幕外正常尺寸窗口和 focus-safe helper；不得连接用户日常 profile、最小化窗口或调用 `bringToFront()`。
+- `pnpm test:regression:all` 执行确定性的一键回归。真实浏览器层必须显式开启，使用临时 profile、第二屏可见但不抢焦点的正常尺寸窗口和 focus-safe helper；不得连接用户日常 profile、最小化窗口或调用 `bringToFront()`。
 - 自动化按键名称使用标准 `Control`，不要使用 `CTRL`；浏览器报告必须说明 launch mode、focus policy、window placement、执行范围与证据目录。
 - 不把参考项目自身的测试通过视为 FluentRead 的验证结果。

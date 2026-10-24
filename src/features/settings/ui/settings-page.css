@@ -1,6 +1,6 @@
 /**
  * @file src/features/settings/ui/settings-page.css
- * 文件职责：定义 Options 设置应用的全局页面骨架与 Element Plus 外观覆盖，包括分组侧边栏与搜索、辅助技术页面标题和直接置顶的页内导航、滚动工作区、设置卡片和特殊全宽业务视图。
+ * 文件职责：定义 Options 设置应用的全局页面骨架与 Element Plus 外观覆盖，包括分组侧边栏与搜索、直接置顶的页内导航、滚动工作区、设置卡片和特殊全宽业务视图。
  * 主要内容：样式引入共享 token，将品牌名称与小字宣传语排列在固定尺寸图标右侧；关于页使用宽幅品牌介绍，下方以项目链接卡片、跨两列微信交流按钮、独立赞赏区和自适应二维码弹窗利用内容空间；配置桌面与窄屏响应式布局、焦点态、导航分组、顶部同页定位导航、数字输入的独立操作区、支持多语言换行的表单与操作控件、服务/翻译中心视图、深色主题及固定标签列和控件列；触屏编辑输入使用 16px，避免 Safari 聚焦搜索或配置字段时自动放大并裁切操作按钮。
  * 模块边界：该文件只作用于扩展设置页面的整体布局，不承载配置逻辑或 feature 内部组件细节；分区专属样式在 settings-sections.css，通用设计变量位于 src/ui/styles/tokens.css。
  */
@@ -539,7 +539,7 @@ h1 { margin-bottom: 6px; font-size: 26px; line-height: 1.25; letter-spacing: -.0
 .nav-chevron { font-size: 18px; line-height: 1; transform: rotate(0deg); transition: transform 150ms ease; }
 .nav-chevron.open { transform: rotate(90deg); }
 .mobile-settings-navigation { display: none; }
-.settings-app .workspace { padding: 28px 32px 20px; }
+.settings-app .workspace { --settings-navigation-inset: 32px; padding: 12px 32px 20px; }
 .settings-app .topbar { flex: none; gap: 24px; margin-bottom: 24px; }
 .settings-app .search-box { width: 260px; height: 38px; padding: 0 12px; border-radius: 8px; box-shadow: none; }
 .settings-app .search-box:focus-within { border-color: var(--brand); outline: 2px solid var(--brand-soft); }
@@ -549,10 +549,6 @@ h1 { margin-bottom: 6px; font-size: 26px; line-height: 1.25; letter-spacing: -.0
 .settings-app .search-results button { gap: 16px; color: var(--ink); }
 .settings-app .search-results small { margin-top: 4px; font-size: 11px; line-height: 1.4; }
 .settings-app .search-results b { flex: none; }
-.settings-page-tabs { display: flex; flex: none; gap: 6px; min-width: 0; margin: 0 6px 20px; padding: 4px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); overflow-x: auto; scrollbar-width: thin; }
-.settings-page-tabs button { flex: none; padding: 9px 12px; border: 0; border-radius: 8px; color: var(--muted); background: transparent; font: inherit; font-size: 13px; cursor: pointer; }
-.settings-page-tabs button:hover { color: var(--ink); }
-.settings-page-tabs button[aria-current] { color: var(--brand-strong); background: var(--brand-soft); font-weight: 650; }
 .settings-app .topbar, .settings-app .settings-page-tabs { width: 100%; max-width: var(--settings-content-width); margin-right: auto; margin-left: auto; }
 .settings-app .workspace:has(.services-view), .settings-app .workspace:has(.translation-center-view), .settings-app .workspace:has(.vocabulary-view) { --settings-content-width: 100%; }
 .settings-app .workspace:has(.about-page) { --settings-content-width: 1320px; }
@@ -568,7 +564,7 @@ h1 { margin-bottom: 6px; font-size: 26px; line-height: 1.25; letter-spacing: -.0
 @media (max-width: 1100px) and (min-width: 701px) {
   .settings-app .sidebar { flex-basis: 196px; width: 196px; }
   .settings-app .sidebar .brand { padding-inline: 0; }
-  .settings-app .workspace { padding: 24px; }
+  .settings-app .workspace { --settings-navigation-inset: 24px; padding: 12px 24px 20px; }
   .settings-app .topbar { flex-direction: row; align-items: center; gap: 16px; }
   .settings-app .search-box { width: 210px; }
   .settings-app .settings-card.services-view, .settings-app .settings-card.translation-center-view { width: calc(100% + 48px); margin-right: -24px; margin-left: -24px; }
@@ -581,26 +577,22 @@ h1 { margin-bottom: 6px; font-size: 26px; line-height: 1.25; letter-spacing: -.0
   .settings-app .sidebar .brand small { display: none; }
   .settings-app .sidebar nav { display: none; }
   .mobile-settings-navigation { display: block; flex: 1; width: 100%; min-width: 0; box-sizing: border-box; min-height: 46px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); font: inherit; font-size: 16px; }
-  .settings-app .workspace { padding: 18px 14px 12px; }
+  .settings-app .workspace { padding: 12px 14px; }
   .settings-app .topbar { flex-direction: column; align-items: stretch; gap: 14px; margin-bottom: 18px; }
   .settings-app .search-box { width: 100%; }
   .settings-app .topbar-tools { width: 100%; flex-direction: row; }
   .settings-app .settings-card { padding: 0 0 16px; border-radius: 0; }
   .settings-app .settings-card.services-view, .settings-app .settings-card.translation-center-view { width: 100%; margin-right: 0; margin-left: 0; }
-  .settings-page-tabs { gap: 20px; margin-bottom: 16px; }
-  .settings-page-tabs button { font-size: 12px; padding-bottom: 10px; }
 
 
 }
 
-/* 页面直接从页内导航或设置内容开始；标题仅保留辅助技术语义，不占用任何布局高度。 */
-.settings-content-title { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* 页面直接从页内导航或设置内容开始，当前页面名称由 main 的辅助技术标签提供。 */
 .settings-app .sidebar .brand { padding-bottom: 18px; }
 .settings-app .sidebar .search-box { flex: none; width: 100%; height: 38px; margin-bottom: 22px; padding: 0 10px; border-radius: 8px; background: var(--surface-soft); }
 .settings-app .sidebar .search-box input { min-width: 0; font-size: 11px; }
 .settings-app .topbar { min-height: 40px; margin-bottom: 18px; align-items: center; flex-direction: row; gap: 12px; }
-.settings-app .topbar .settings-page-tabs { flex: 1; margin: 0; padding: 4px; }
-.settings-app .topbar .settings-page-tabs button { padding: 8px 12px; font-weight: 550; }
+.settings-app .topbar .settings-page-tabs { flex: 1; margin: 0; }
 .settings-app .userscript-settings-close { margin-left: auto; width: 36px; height: 36px; flex-basis: 36px; border-radius: 8px; }
 /* 折叠标题保持清晰命中区域，用右侧箭头表达层级；常规设置不使用大面积强调色。 */
 .settings-app .workspace .settings-card details:not(.settings-disclosure, .fr-memory-content) > summary {
@@ -646,12 +638,6 @@ h1 { margin-bottom: 6px; font-size: 26px; line-height: 1.25; letter-spacing: -.0
 /* 设置中的操作文案与选项允许随语言伸展，保持完整文字和点击范围。 */
 .settings-app .settings-card .el-button { height: auto; min-height: 32px; max-width: 100%; padding-block: 7px; }
 .settings-app .settings-card .el-button > span { white-space: normal; overflow-wrap: anywhere; line-height: 1.4; }
-.settings-app .settings-page-tabs { flex-wrap: wrap; gap: 4px; }
-.settings-app .settings-page-tabs button { white-space: normal; overflow-wrap: anywhere; line-height: 1.4; }
-/* 连续表单的分区入口保持一行，窄屏只滚动导航本身，保留设置内容的阅读高度。 */
-.settings-app .settings-section-navigation { flex-wrap: nowrap; gap: 4px; overscroll-behavior-x: contain; }
-.settings-app .settings-section-navigation button { white-space: nowrap; overflow-wrap: normal; }
-.settings-app .settings-section-navigation button:focus-visible { outline-offset: -3px; border-radius: 4px; }
 .settings-app .settings-card .el-collapse-item__header { height: auto; min-height: 56px; padding-block: 12px; line-height: 1.5; }
 @media (max-width: 700px) {
   .settings-app .sidebar { flex-wrap: wrap; gap: 10px; }

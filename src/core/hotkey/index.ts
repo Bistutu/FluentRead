@@ -84,7 +84,7 @@ const REGULAR_CODE_KEYS: Readonly<Record<string, keyof typeof REGULAR_KEYS>> = {
 };
 
 function normalizeHotkeyEventCode(code: string | undefined): string {
-  const normalizedCode = code?.toLowerCase() ?? '';
+  const normalizedCode = typeof code === 'string' ? code.toLowerCase() : '';
   if (normalizedCode.startsWith('key')) return normalizedCode.slice(3);
   if (normalizedCode.startsWith('digit')) return normalizedCode.slice(5);
   if (Object.hasOwn(REGULAR_CODE_KEYS, normalizedCode)) return REGULAR_CODE_KEYS[normalizedCode];
@@ -96,9 +96,10 @@ function normalizeHotkeyEventCode(code: string | undefined): string {
  * 将键盘事件收敛为录制器与运行时共享的逻辑按键。支持的可打印字符优先使用
  * `event.key`，因此非 QWERTY 布局会执行用户实际录下的字符；当 Option 等
  * 修饰键把字符变成不可配置字形时，则回退到稳定的物理 `code`。
+ * 页面事件的字段在运行时可能缺失或不是字符串；这类字段按空串处理，仍可回退有效 code。
  */
 export function normalizeHotkeyEventKey(event: Pick<KeyboardEvent, 'key' | 'code'>): string {
-  const key = event.key.toLowerCase();
+  const key = typeof event.key === 'string' ? event.key.toLowerCase() : '';
   if (key === 'control' || key === 'ctrl') return 'ctrl';
   if (key === 'alt' || key === 'option') return 'alt';
   if (key === 'shift') return 'shift';
@@ -136,7 +137,7 @@ export function addPressedHotkeyEventKey(
   const key = pressedHotkeyEventKey(event);
   if (!key) return;
   pressed.add(key);
-  if (event.code) keyByCode.set(event.code, key);
+  if (typeof event.code === 'string' && event.code) keyByCode.set(event.code, key);
 }
 
 /** 按物理 code 移除按下时记录的逻辑键；缺少记录时退回当前事件的归一化结果。 */
@@ -145,8 +146,9 @@ export function deletePressedHotkeyEventKey(
   pressed: Set<string>,
   keyByCode: Map<string, string>,
 ): void {
-  const key = (event.code && keyByCode.get(event.code)) || pressedHotkeyEventKey(event);
-  if (event.code) keyByCode.delete(event.code);
+  const code = typeof event.code === 'string' ? event.code : '';
+  const key = (code && keyByCode.get(code)) || pressedHotkeyEventKey(event);
+  if (code) keyByCode.delete(code);
   if (key) pressed.delete(key);
 }
 
@@ -383,7 +385,7 @@ export function resolveConfiguredHotkey(configuredHotkey: string | undefined, cu
 /** 匹配仅含 Ctrl/Alt/Shift、用作划词修饰键的快捷键。 */
 export function matchesModifierOnlyHotkey(event: HotkeyModifierState, hotkey: string): boolean {
   const definition = Object.hasOwn(modifierOnlyHotkeys, hotkey) ? modifierOnlyHotkeys[hotkey] : undefined;
-  if (!definition || event.key?.toLowerCase() !== definition.eventKey) return false;
+  if (!definition || typeof event.key !== 'string' || event.key.toLowerCase() !== definition.eventKey) return false;
 
   const actualModifiers = [
     event.ctrlKey ? 'ctrlKey' : '',

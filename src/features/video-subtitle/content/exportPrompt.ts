@@ -1,11 +1,11 @@
 /**
  * @file src/features/video-subtitle/content/exportPrompt.ts
  * 文件职责：在播放器字幕菜单内呈现导出缺口，并取得补译、仅已有结果或取消的明确选择。
- * 主要内容：显示冻结预览的条目、人工轨/缓存命中、去重请求量与时间跨度；复用菜单样式和本地化标记，取消时移除监听、节点并恢复原操作焦点。
+ * 主要内容：显示冻结预览的条目、人工轨/缓存命中、去重请求量与时间跨度；复用菜单样式和本地化标记，进入时收起读音顶层提示，取消时移除监听、节点并恢复原操作焦点。
  * 模块边界：只操作传入菜单的节点，不请求翻译、不读取配置或缓存，任务身份与失效由下载协调器拥有。
  */
 import type {VideoSubtitleExportChoice, VideoSubtitleExportPreview} from './downloads';
-import {syncVideoPlayerMenuLayout} from './playerMenu';
+import {closeVideoMenuReadingHelp, syncVideoPlayerMenuLayout} from './playerMenu';
 
 function timestamp(ms: number): string {
     const seconds = Math.max(0, Math.floor(ms / 1000));
@@ -62,6 +62,7 @@ export function confirmVideoSubtitleExport(menu: HTMLElement, preview: VideoSubt
     cancel.dataset.exportChoice = 'cancel';
     for (const button of [complete, existing, cancel]) { button.type = 'button'; button.setAttribute('role', 'menuitem'); }
     actions.append(complete, existing, cancel); panel.appendChild(actions);
+    closeVideoMenuReadingHelp(menu);
     if (main) main.hidden = true;
     menu.dataset.view = 'export-prompt';
     menu.appendChild(panel);
