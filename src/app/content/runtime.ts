@@ -69,7 +69,9 @@ export async function startContentApp(ctx: ContentScriptContext,
         dispose: () => cleanup(),
     }, ctx, document, capabilities.browser !== 'userscript');
     // 非中文界面资源是扩展内本地文件，挂载前取得可避免非响应式浮层先以中文回退渲染；中文同步命中。
-    await configReady; await ensureUiLanguageBundle(config.uiLanguage);
+    await configReady;
+    if (ctx.isInvalid || cleanedUp) { cleanup(); return; }
+    await ensureUiLanguageBundle(config.uiLanguage);
     if (ctx.isInvalid || cleanedUp || (document.readyState === 'loading' && !await waitForContentDocument(document, pageEventController.signal))) { cleanup(); return; }
     const siteAdaptation = createContentSiteAdaptationRuntime(config.siteAdaptation, new URL(window.location.href));
     applyCoreTranslationPreferences(config); clearLegacyPageTranslationCache();

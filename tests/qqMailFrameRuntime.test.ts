@@ -776,3 +776,80 @@ describe('QQ legacy top frame bridge', () => {
         expect(mocks.autoTranslateEnglishPage).toHaveBeenCalledWith({service: 'other'});
     });
 });
+
+describe('expired-frame language initialization', () => {
+    const kinds = ['qq', 'netease', 'embedded'] as const;
+    type Kind = typeof kinds[number];
+    async function fixture(kind: Kind) {
+        const href = kind === 'qq' ? 'https://mail.qq.com/cgi-bin/readmail?mailid=language'
+            : kind === 'netease' ? 'about:blank' : 'https://www.kaggleusercontent.com/kf/126670518/signed-token/__results__.html';
+        const globals = installGlobals(href);
+        Object.assign(globals.window.location, {hostname: kind === 'netease' ? '' : new URL(href).hostname});
+        globals.window.top = kind === 'netease'
+            ? {location: {href: 'https://mail.163.com/js6/main.jsp?sid=redacted#module=read.ReadModule%7C%7B%7D'}} : {};
+        vi.stubGlobal('navigator', {});
+        Object.assign(mocks.config, {uiLanguage: 'en-US'});
+        Object.assign(browser.runtime, {getURL: (path: string) => `chrome-extension://language-fixture/${path}`});
+        const json = vi.fn(async () => ({messages: {'frame.language.test': 'Loaded language'}, legacyText: {}, legacyPatterns: {early: [], late: []}}));
+        const response = {ok: true, status: 200, json};
+        const fetch = vi.fn(async () => response);
+        vi.stubGlobal('fetch', fetch);
+        const language = await import('@/src/platform/i18n/uiLanguageBundles');
+        const ensure = vi.spyOn(language, 'ensureUiLanguageBundle');
+        const definition = kind === 'netease' ? await loadNeteaseEntry() : (await import('../entrypoints/supportedFrame.content')).default;
+        return {...globals, fetch, json, response, ensure, ensureLanguage: language.ensureUiLanguageBundle, start: definition.main};
+    }
+    const flush = async () => {for (let tick = 0; tick < 12; tick++) await Promise.resolve();};
+    afterEach(() => {vi.restoreAllMocks();vi.unstubAllGlobals();});
+
+    it.each(kinds.flatMap(kind => (['invalid', 'pagehide'] as const).map(reason => ({kind, reason}))))(
+        '$kind does not start a language request after $reason while configuration was pending', async ({kind, reason}) => {
+            const f = await fixture(kind);
+            let ready!: () => void, invalidate: (() => void) | undefined, invalid = false;
+            mocks.configReady = new Promise<void>(resolve => {ready = resolve;});
+            const starting = f.start({get isInvalid() {return invalid;}, onInvalidated: (callback: () => void) => {invalidate = callback;}} as never);
+            try {
+                await flush();expect(f.ensure).not.toHaveBeenCalled();expect(f.fetch).not.toHaveBeenCalled();
+                if (reason === 'invalid') invalid = true;
+                else {
+                    const event = Object.assign(new Event('pagehide'), {persisted: false});
+                    Object.defineProperty(event, 'isTrusted', {value: true});f.window.dispatchEvent(event);
+                }
+                ready();await starting;
+                expect(f.ensure).not.toHaveBeenCalled();expect(f.fetch).not.toHaveBeenCalled();expect(f.json).not.toHaveBeenCalled();
+                expect(mocks.sendMessage).not.toHaveBeenCalled();expect(mocks.installStyles).not.toHaveBeenCalled();expect(mocks.mountSelection).not.toHaveBeenCalled();
+                expect([...f.listeners.values()].every(set => set.size === 0)).toBe(true);
+            } finally {invalidate?.();}
+        },
+    );
+
+    it.each(kinds)('%s still waits for the live frame language before requesting authorization and installing tools', async kind => {
+        const f = await fixture(kind);let release!: () => void, invalidate: (() => void) | undefined, settled = false;
+        const resource = new Promise<void>(resolve => {release = resolve;});
+        f.fetch.mockImplementationOnce(async () => {await resource;return f.response;});
+        mocks.sendMessage.mockResolvedValue({enabled: true, revision: 0, sessionId: null});
+        const starting = f.start({isInvalid: false, onInvalidated: (callback: () => void) => {invalidate = callback;}} as never);
+        void Promise.resolve(starting).then(() => {settled = true;});
+        try {
+            await flush();expect(f.ensure).toHaveBeenCalledOnce();expect(f.ensure).toHaveBeenCalledWith('en-US');expect(f.fetch).toHaveBeenCalledOnce();
+            expect(settled).toBe(false);expect(mocks.sendMessage).not.toHaveBeenCalled();expect(mocks.installStyles).not.toHaveBeenCalled();
+            release();await starting;await flush();expect(f.json).toHaveBeenCalledOnce();expect(settled).toBe(true);
+            expect(mocks.sendMessage).toHaveBeenCalledOnce();expect(mocks.installStyles).toHaveBeenCalledOnce();
+            if (kind === 'netease') expect(mocks.mountSelection).toHaveBeenCalledOnce();
+            else expect(mocks.mountSelection).not.toHaveBeenCalled();
+        } finally {release();invalidate?.();}
+    });
+
+    it('lets a shared language load finish after its frame becomes invalid without installing stale tools', async () => {
+        const f = await fixture('qq');let release!: () => void, invalidate: (() => void) | undefined, invalid = false;
+        const resource = new Promise<void>(resolve => {release = resolve;});
+        f.fetch.mockImplementationOnce(async () => {await resource;return f.response;});
+        const starting = f.start({get isInvalid() {return invalid;}, onInvalidated: (callback: () => void) => {invalidate = callback;}} as never);
+        try {
+            await flush();expect(f.fetch).toHaveBeenCalledOnce();invalid = true;
+            const shared = f.ensureLanguage('en-US');release();await expect(shared).resolves.toBe(true);await starting;
+            expect(f.fetch).toHaveBeenCalledOnce();expect(f.json).toHaveBeenCalledOnce();
+            expect(mocks.sendMessage).not.toHaveBeenCalled();expect(mocks.installStyles).not.toHaveBeenCalled();expect(mocks.mountSelection).not.toHaveBeenCalled();
+        } finally {release();invalidate?.();}
+    });
+});

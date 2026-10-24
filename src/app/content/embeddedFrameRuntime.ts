@@ -86,6 +86,7 @@ export async function startEmbeddedFrameApp(ctx: ContentScriptContext): Promise<
         dispose: () => cleanup(),
     }, ctx, document);
     await configReady;
+    if (ctx.isInvalid || disposed) { cleanup(); return; }
     await ensureUiLanguageBundle(config.uiLanguage);
     if (ctx.isInvalid || disposed) { cleanup(); return; }
 

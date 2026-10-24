@@ -18,6 +18,8 @@ Chrome/Edge MV3 的公开图标和实际消费的两份内容入口样式使用�
 
 网页兼容维护集与生命周期验收见 [网页翻译稳定性维护](maintainers/web-stability.md)。该入口显式选择十个独立站点，复用已有正文与保护区契约，并将宿主 DOM 探针、原生站点操作、在线供应商和不同浏览器的证据分开记录。`fullPageVisibilityScheduling` 新增路由观察选项刷新、断连 ShadowRoot 回收/重新插入，以及重连观察器时保留待投递保护区变化；`contentFeatureMounting` 与划词 `--lifecycle-only` 验证入口被移除后的恢复、取消、错误重试、禁用和窄屏键盘操作。
 
+`contentRuntimeLifecycle` 与 `qqMailFrameRuntime` 验证冷启动的两次取消边界：配置就绪后先检查文档销毁或扩展上下文失效，避免为已经退出的顶层、QQ、网易及受支持正文 frame 开始读取和解析界面语言包；语言资源已经开始等待时，完成后仍须复核，禁止迟到挂载。有效页面继续等待语言包，失败仍沿用中文回退；往返缓存中的暂停不是销毁，恢复继续复用原生命周期。本层不取消已经共享的资源请求，也不改变后台 frame 授权时序。
+
 ## 缓存清理等待与恢复
 
 `translationCacheManagement`、`popupCache`、`popupAppLifecycle`、`implementationAudit49C`、`backgroundCoreHandlers` 和 `safariTabBroadcastIntegration` 验证缓存操作的真实消费者。覆盖清库确认前的等待、十五秒截止与重试、迟到成功/拒绝、弹窗失活、设置分类切换和 KeepAlive、容量草稿保留，以及清理与后续统计共用截止。清库成功后统计读取失败必须保留清库结果；超时不能报告清库失败或完成。

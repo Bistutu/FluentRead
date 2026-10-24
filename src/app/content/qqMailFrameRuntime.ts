@@ -128,6 +128,7 @@ async function startMailFrameApp(ctx: ContentScriptContext, kind: MailFrameKind,
         dispose: () => cleanup(),
     }, ctx, document);
     await configReady;
+    if (ctx.isInvalid || disposed) { cleanup(); return; }
     await ensureUiLanguageBundle(config.uiLanguage);
     if (ctx.isInvalid || disposed) { cleanup(); return; }
     let activation: AbortController | null = null;
