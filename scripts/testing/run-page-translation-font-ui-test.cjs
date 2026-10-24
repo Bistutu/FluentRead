@@ -3,7 +3,7 @@
 /**
  * @file scripts/testing/run-page-translation-font-ui-test.cjs
  * 当前页译文字体专项：用临时、后台可见且不抢焦点的 Edge 和本地确定性服务，
- * 从真实 Aa 抽屉验证浏览器默认字体、双语/仅译文、隔离和页面生命周期。
+ * 从主面板真实 Aa 开关验证浏览器默认字体、双语/仅译文、隔离和页面生命周期。
  * 仅使用 getPageTranslationFontState 读取状态；字体写入必须通过真实按钮。
  */
 const assert = require('node:assert/strict');
@@ -78,15 +78,20 @@ async function main() {
   const artifactsDir = path.resolve(argument('artifacts-dir', '/private/tmp/fluentread-page-translation-font'));
   const packages = argument('playwright-root');
   const helperPath = argument('focus-safe-helper', path.join(__dirname, 'focus-safe-browser.cjs'));
+  const diagnosticsHelperPath = path.resolve(argument('runtime-diagnostics-helper', path.join(os.homedir(), '.codex', 'skills',
+    'fluentread-extension-ui-test', 'scripts', 'runtime-diagnostics.cjs')));
   assert(packages, '需要 --playwright-root');
   assert(fs.existsSync(path.join(extensionDir, 'manifest.json')), `缺少扩展产物 ${extensionDir}`);
   assert(fs.existsSync(helperPath), '缺少 focus-safe helper');
+  assert(fs.existsSync(diagnosticsHelperPath), '缺少 runtime diagnostics helper，请用 --runtime-diagnostics-helper 指定 UI 技能的 scripts/runtime-diagnostics.cjs');
   assert(!process.argv.includes('--headed') && !process.argv.includes('--headless'), '本专项只允许真实后台可见、无前台焦点模式');
   const {chromium} = require(require.resolve('playwright', {paths: [packages]}));
   const {launchFocusSafePersistentContext, newPageWithoutForeground, activateExtensionTabWithoutForeground} = require(helperPath);
+  const {createRuntimeDiagnostics, finalizeRun, redact} = require(diagnosticsHelperPath);
+  const diagnostics = createRuntimeDiagnostics();
   fs.mkdirSync(artifactsDir, {recursive: true});
-  const report = {ok: false, extensionDir, artifactsDir, checks: [], consoleErrors: [], screenshots: [], metrics: {},
-    evidenceBoundary: 'Real production/dev MV3 Edge runtime, real Aa drawer clicks, local deterministic HTML/provider and measured author-style-free browser baseline. This does not establish Firefox, a live provider, every website, or the reporter environment.'};
+  const report = {ok: false, extensionDir, artifactsDir, diagnosticsHelperPath, checks: [], screenshots: [], metrics: {},
+    evidenceBoundary: 'Real production/dev MV3 Edge runtime, real main-panel Aa toggle clicks, local deterministic HTML/provider and measured author-style-free browser baseline. This does not establish Firefox, a live provider, every website, or the reporter environment.'};
   let profileDir;
   let fixture;
   let launched;
@@ -108,12 +113,16 @@ async function main() {
     assert.equal(report.windowPlacement.mode, 'background-visible-no-focus');
     assert.equal(report.windowPlacement.browserFrontmost, false);
     const context = launched.context;
+    // 先附加 CDP Runtime/Log，再创建和导航测试页；内容脚本的隔离世界与未处理异常由同一采集器观测。
+    // Target 发现订阅覆盖本轮后来启动的扩展 Service Worker，附加空窗保存在 coverage.limitations。
+    await diagnostics.start(context);
     const worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker', {timeout: 30000});
     const extensionOrigin = /^chrome-extension:\/\/[^/]+/u.exec(worker.url())[0];
+    diagnostics.setExtensionId(new URL(extensionOrigin).host);
+    diagnostics.setPhase('popup-initialization');
     const createPage = async (url, viewport) => {
       const page = await newPageWithoutForeground(context, 30000);
-      page.on('pageerror', error => report.consoleErrors.push(`pageerror ${page.url()}: ${error.message}`));
-      page.on('console', message => {if (message.type() === 'error') report.consoleErrors.push(`console ${page.url()}: ${message.text()}`);});
+      await diagnostics.attachPage(page, url.startsWith(extensionOrigin) ? 'popup' : `fixture-${new URL(url).pathname}`);
       if (viewport) await page.setViewportSize(viewport);
       await page.goto(url, {waitUntil: 'domcontentloaded'});
       return page;
@@ -146,6 +155,7 @@ async function main() {
       await untilConfig(config => Object.keys(patch).filter(key => key !== 'token').every(key => subset(config[key], patch[key])));
     };
     const service = 'custom:page-font-fixture';
+    diagnostics.setPhase('fixture-configuration');
     await patchConfig({uiLanguage: 'zh-CN', uiLanguageSetupCompleted: true, on: true, theme: 'light', interfaceSkin: 'default',
       display: 1, style: 1, translationAppearance: DEFAULT_APPEARANCE, service, from: 'en', to: 'zh-Hans', useCache: false,
       autoTranslate: false, bilingualSentenceHighlightEnabled: false, translationBeforeOriginal: false,
@@ -162,22 +172,31 @@ async function main() {
     const otherTabId = await worker.evaluate(async url => (await chrome.tabs.query({})).find(tab => tab.url === url)?.id, other.url());
     assert(Number.isInteger(tabId) && Number.isInteger(otherTabId));
     const popupUrl = id => `${extensionOrigin}/popup.html?sourceTabId=${id}`;
+    diagnostics.setPhase('popup-automatic-font-read');
     await popup.goto(popupUrl(tabId), {waitUntil: 'domcontentloaded'});
     const waitPopup = async () => {
+      await activateExtensionTabWithoutForeground(context, popup, 30000);
       await popup.locator('.popup-shell[data-config-ready="true"]').waitFor({state: 'visible'});
       await popup.getByTestId('page-font-entry').waitFor({state: 'visible'});
+      await popup.waitForFunction(() => {
+        const button = document.querySelector('[data-testid="page-font-entry"]');
+        return button && !button.disabled && ['host', 'browser-default'].includes(button.getAttribute('data-font-state'));
+      });
     };
-    const openFontDrawer = async () => {
+    const assertFontButton = async enabled => {
       await waitPopup();
-      const drawer = popup.locator('.drawer-surface');
-      if (!await drawer.isVisible()) await popup.getByTestId('page-font-entry').click();
-      await popup.getByTestId('page-font-browser-default').waitFor({state: 'visible'});
-      await popup.getByTestId('page-font-host').waitFor({state: 'visible'});
+      await popup.waitForFunction(value => {
+        const button = document.querySelector('[data-testid="page-font-entry"]');
+        return button?.getAttribute('aria-pressed') === String(value)
+          && button.getAttribute('data-font-state') === (value ? 'browser-default' : 'host') && !button.disabled;
+      }, enabled);
+      assert.equal(await popup.locator('.drawer-surface:visible').count(), 0, 'Aa 字体切换不应打开设置抽屉');
     };
     await waitPopup();
+    await assertFontButton(false);
     assert.notEqual((await readConfig()).popupQuickFeatureVisibility?.appearance, true, '专项不得为了找到入口而开启隐藏的外观快捷卡');
     assert.equal(await popup.locator('[data-popup-quick-feature="appearance"]').count(), 0, '新配置的外观快捷卡应保持默认隐藏');
-    report.checks.push('default configuration exposes the permanent Aa entry while the optional appearance quick card remains hidden');
+    report.checks.push('default configuration exposes the permanent Aa toggle, automatically reads the current font, and leaves the optional appearance quick card hidden');
     const readState = id => popup.evaluate(async tab => chrome.tabs.sendMessage(tab, {type: 'getPageTranslationFontState'}, {frameId: 0}), id);
     const untilState = async (id, enabled) => {
       for (let attempt = 0; attempt < 160; attempt++) {
@@ -188,11 +207,37 @@ async function main() {
       throw new Error(`page font state ${enabled} did not converge`);
     };
     const chooseFont = async enabled => {
-      await openFontDrawer();
-      const button = popup.getByTestId(enabled ? 'page-font-browser-default' : 'page-font-host');
-      await button.click();
+      await waitPopup();
+      const button = popup.getByTestId('page-font-entry');
+      if (await button.getAttribute('aria-pressed') !== String(enabled)) await button.click();
       await untilState(tabId, enabled);
-      await popup.waitForFunction(id => document.querySelector(`[data-testid="${id}"]`)?.getAttribute('aria-pressed') === 'true', enabled ? 'page-font-browser-default' : 'page-font-host');
+      await assertFontButton(enabled);
+      await popup.getByTestId('page-translation').hover();
+      await popup.getByTestId('page-font-tooltip').waitFor({state: 'hidden'});
+    };
+    const inspectFontTooltip = async (enabled, keyboard = false) => {
+      await assertFontButton(enabled);
+      const button = popup.getByTestId('page-font-entry');
+      if (keyboard) await button.focus();
+      else {await popup.mouse.move(1, 1); await button.hover();}
+      const tooltip = popup.getByTestId('page-font-tooltip');
+      try {await tooltip.waitFor({state: 'visible', timeout: 5000});}
+      catch (error) {
+        report.metrics.tooltipFailure = await button.evaluate(element => ({button: element.outerHTML,
+          active: {tag: document.activeElement?.tagName, class: document.activeElement?.className}, visible: document.visibilityState,
+          hover: element.matches(':hover'), focus: element.matches(':focus'),
+          tooltips: [...document.querySelectorAll('.el-popper')].map(node => ({html: node.outerHTML, display: getComputedStyle(node).display}))}));
+        await shot(popup, 'tooltip-failure');
+        throw error;
+      }
+      const copy = await tooltip.innerText();
+      assert(copy.includes('网页字体') && copy.includes('浏览器默认'), '提示必须说明当前字体与下次点击的切换结果');
+      assert(copy.includes('仅当前页') && copy.includes('无需重新翻译'), '提示必须解释当前页作用域与立即生效');
+      await shot(popup, `06-aa-tooltip-${enabled ? 'browser-default' : 'host'}-${keyboard ? 'keyboard' : 'hover'}`);
+      await popup.keyboard.press('Escape');
+      await tooltip.waitFor({state: 'hidden'});
+      await popup.getByTestId('page-translation').hover();
+      await popup.getByTestId('page-translation').focus();
     };
     const noNewRequests = async (count, label) => {await delay(350); assert.equal(fixture.requests.length, count, `${label} triggered translation requests`);};
     const hover = async (target, id) => {
@@ -237,6 +282,7 @@ async function main() {
     };
 
     // 已有双语译文、普通后代、代码和公式，以及之后新增的双语译文。
+    diagnostics.setPhase('bilingual-font-toggle-and-tooltip');
     await hover(page, 'primary'); await waitBilingual('primary');
     await waitFont(bilingual('primary'), original.primary);
     const baselineState = await untilState(tabId, false);
@@ -246,6 +292,12 @@ async function main() {
     assert.equal(await translatedMath.count(), 1, '夹具必须覆盖译文内保留的公式');
     const protectedBefore = {code: await fontOf(translatedCode), math: await fontOf(translatedMath)};
     let count = fixture.requests.length;
+    // 首次真实翻译计数通过配置广播到 Popup；等这次重绘完成再悬停，避免异步移位离开指针。
+    await popup.waitForFunction(() => parseInt(document.querySelector('.popup-translation-count')?.textContent || '', 10) > 0);
+    await assertFontButton(false);
+    await shot(popup, '00-aa-main-host-font');
+    await inspectFontTooltip(false);
+    await inspectFontTooltip(false, true);
     await chooseFont(true);
     await waitFont(bilingual('primary'), browserDefault);
     await waitFont(bilingual('primary').locator('strong'), browserDefault);
@@ -254,12 +306,15 @@ async function main() {
     await assertOriginalUnchanged('bilingual browser default');
     await noNewRequests(count, 'existing bilingual font change');
     await shot(page, '01-bilingual-browser-default');
-    await shot(popup, '02-aa-drawer-browser-default');
+    await shot(popup, '02-aa-main-browser-default');
+    await inspectFontTooltip(true);
+    report.checks.push('hover and keyboard focus reveal the current font, next action and temporary-page hint; Escape dismisses the font tooltip');
     await hover(page, 'secondary'); await waitBilingual('secondary');
     await waitFont(bilingual('secondary'), browserDefault);
-    report.checks.push('real Aa buttons update existing and later bilingual translations, including ordinary inline text; original, code and formula fonts remain unchanged');
+    report.checks.push('the real Aa toggle updates existing and later bilingual translations directly without a drawer, including ordinary inline text; original, code and formula fonts remain unchanged');
 
     // 关闭恢复网页/全局外观；再开启覆盖全局自定义 CSS；任何字体操作都不能请求翻译。
+    diagnostics.setPhase('custom-appearance-font-restoration');
     count = fixture.requests.length;
     await chooseFont(false); await waitFont(bilingual('primary'), original.primary);
     await waitFont(bilingual('primary').locator('strong'), original.emphasis);
@@ -276,28 +331,27 @@ async function main() {
     report.checks.push('switching back restores host and global custom font CSS; temporary choice does not rewrite global appearance or request translation');
 
     // Popup 重开保持当前文档状态，其他标签页独立。
+    diagnostics.setPhase('popup-reopen-and-tab-isolation');
     await popup.close();
     popup = await createPage(popupUrl(tabId), {width: 360, height: 600});
-    await openFontDrawer();
-    await popup.waitForFunction(() => document.querySelector('[data-testid="page-font-browser-default"]')?.getAttribute('aria-pressed') === 'true');
+    await assertFontButton(true);
     await waitFont(bilingual('primary'), browserDefault);
     await hover(other, 'primary'); await waitBilingual('primary', other);
     assert.equal(await fontOf(other.locator('#primary > .fluent-read-bilingual-content')), original.primary);
     await untilState(otherTabId, false);
     await popup.goto(popupUrl(otherTabId), {waitUntil: 'domcontentloaded'});
-    await openFontDrawer();
-    await popup.waitForFunction(() => document.querySelector('[data-testid="page-font-host"]')?.getAttribute('aria-pressed') === 'true');
+    await assertFontButton(false);
     await popup.goto(popupUrl(tabId), {waitUntil: 'domcontentloaded'});
-    await openFontDrawer();
-    await popup.waitForFunction(() => document.querySelector('[data-testid="page-font-browser-default"]')?.getAttribute('aria-pressed') === 'true');
+    await assertFontButton(true);
     report.checks.push('reopened popup reads the active document choice; another tab retains its own host font');
 
     // 刷新与 SPA URL 改变都回到网页/全局字体；刷新产生新的 document token。
+    diagnostics.setPhase('reload-and-spa-lifecycle');
     await page.reload({waitUntil: 'domcontentloaded'});
     await page.locator('#fluent-read-page-styles').waitFor({state: 'attached'});
     const afterRefresh = await untilState(tabId, false);
     assert.notEqual(afterRefresh.documentToken, baselineState.documentToken, '刷新应更换文档 token');
-    await popup.reload({waitUntil: 'domcontentloaded'}); await openFontDrawer();
+    await popup.reload({waitUntil: 'domcontentloaded'}); await assertFontButton(false);
     await hover(page, 'primary'); await waitBilingual('primary');
     await waitFont(bilingual('primary'), original.primary);
     await chooseFont(true); await waitFont(bilingual('primary'), browserDefault);
@@ -311,11 +365,12 @@ async function main() {
     report.checks.push('refresh resets the temporary choice with a new document token; SPA URL navigation also resets it without a translation request');
 
     // 仅译文采用闭合 ShadowRoot：CDP 直接读取真实渲染节点的计算样式，不注入替代 DOM。
+    diagnostics.setPhase('translation-only-font-toggle');
     await patchConfig({display: 0});
     await page.reload({waitUntil: 'domcontentloaded'});
     await page.locator('#fluent-read-page-styles').waitFor({state: 'attached'});
     await untilState(tabId, false);
-    await popup.reload({waitUntil: 'domcontentloaded'}); await openFontDrawer();
+    await popup.reload({waitUntil: 'domcontentloaded'}); await assertFontButton(false);
     const session = await context.newCDPSession(page);
     await session.send('DOM.enable'); await session.send('CSS.enable');
     const attributes = node => Object.fromEntries(Array.from({length: (node.attributes || []).length / 2}, (_, index) => [node.attributes[index * 2], node.attributes[index * 2 + 1]]));
@@ -372,6 +427,7 @@ async function main() {
     await session.detach();
 
     // 从真实全文按钮进入；字体覆盖不依赖悬浮入口，全文会话的后续 DOM 也使用当前选择。
+    diagnostics.setPhase('full-page-dynamic-translation-and-restore');
     await patchConfig({display: 1});
     await page.reload({waitUntil: 'domcontentloaded'});
     await page.locator('#fluent-read-page-styles').waitFor({state: 'attached'});
@@ -413,8 +469,7 @@ async function main() {
     await waitFont(bilingual('primary').locator('strong'), original.emphasis);
     await assertOriginalUnchanged('full page font restored');
     await noNewRequests(count, 'full page existing and later translation font restoration');
-    await popup.locator('.drawer-surface button[aria-label="关闭"]').first().click();
-    await popup.locator('.drawer-surface').waitFor({state: 'hidden'});
+    assert.equal(await popup.locator('.drawer-surface:visible').count(), 0, '主面板字体切换后全文操作应直接可用');
     await fullButton.click();
     await page.locator('.fluent-read-bilingual-content').first().waitFor({state: 'detached'});
     await popup.waitForFunction(() => document.querySelector('[data-testid="page-translation"]')?.getAttribute('aria-pressed') === 'false');
@@ -425,56 +480,84 @@ async function main() {
       laterContentFont: browserDefault, finalFont: original.primary, restoredOriginalDom: true};
     report.checks.push('real popup full-page translation supports existing and dynamically added content, Aa browser default and host restoration without extra requests, and full restore returns original DOM');
 
-    // 真实抽屉在窄屏与深色主题下保留可达控件，并且没有横向溢出。
+    // 主面板开关在窄屏与深浅色主题下保留两态反馈，并且没有横向溢出。
+    diagnostics.setPhase('light-dark-responsive-font-states');
     const layouts = {};
     for (const theme of ['light', 'dark']) {
       await patchConfig({theme});
       await popup.waitForFunction(dark => document.documentElement.classList.contains('dark') === dark, theme === 'dark');
       for (const width of [360, 320]) {
         await popup.setViewportSize({width, height: 600});
-        await openFontDrawer();
-        await delay(100);
-        const metrics = await popup.evaluate(() => {
-          const root = document.querySelector('.popup-shell');
-          const drawer = document.querySelector('.drawer-surface');
-          const button = document.querySelector('[data-testid="page-font-browser-default"]');
-          const rect = button.getBoundingClientRect();
-          return {innerWidth, scrollWidth: document.documentElement.scrollWidth, rootWidth: root.getBoundingClientRect().width,
-            drawerScrollWidth: drawer.scrollWidth, drawerClientWidth: drawer.clientWidth,
-            buttonLeft: rect.left, buttonRight: rect.right, buttonWidth: rect.width};
-        });
-        assert(metrics.scrollWidth <= metrics.innerWidth + 1, `${theme}/${width} 页面横向溢出`);
-        assert(metrics.drawerScrollWidth <= metrics.drawerClientWidth + 1, `${theme}/${width} 抽屉横向溢出`);
-        assert(metrics.buttonLeft >= -1 && metrics.buttonRight <= metrics.innerWidth + 1 && metrics.buttonWidth > 0, '字体按钮超出视口');
-        layouts[`${theme}-${width}`] = metrics;
-        await shot(popup, `05-aa-${theme}-${width}`);
+        for (const browserDefaultEnabled of [false, true]) {
+          await chooseFont(browserDefaultEnabled);
+          await delay(100);
+          const metrics = await popup.evaluate(() => {
+            const root = document.querySelector('.popup-shell');
+            const button = document.querySelector('[data-testid="page-font-entry"]');
+            const mode = document.querySelector('[data-testid="popup-display-mode"]');
+            const rect = button.getBoundingClientRect(), modeRect = mode.getBoundingClientRect();
+            return {innerWidth, scrollWidth: document.documentElement.scrollWidth, rootWidth: root.getBoundingClientRect().width,
+              buttonLeft: rect.left, buttonRight: rect.right, buttonWidth: rect.width, buttonHeight: rect.height,
+              modeLeft: modeRect.left, fontState: button.getAttribute('data-font-state'), pressed: button.getAttribute('aria-pressed')};
+          });
+          assert(metrics.scrollWidth <= metrics.innerWidth + 1, `${theme}/${width} 页面横向溢出`);
+          assert(metrics.buttonLeft >= -1 && metrics.buttonRight <= metrics.innerWidth + 1 && metrics.buttonWidth >= 20, '字体按钮超出视口或被压缩');
+          assert(metrics.buttonRight <= metrics.modeLeft + 1, '字体与显示模式按钮重叠');
+          const stateName = browserDefaultEnabled ? 'browser-default' : 'host';
+          layouts[`${theme}-${width}-${stateName}`] = metrics;
+          await shot(popup, `05-aa-${theme}-${width}-${stateName}`);
+        }
       }
     }
     report.metrics.layouts = layouts;
-    report.checks.push('320/360 CSS px light/dark Aa drawers retain visible font buttons without horizontal overflow');
+    report.checks.push('320/360 CSS px light/dark main panels show host and browser-default Aa states, retain separate font/display buttons, and have no horizontal overflow');
     report.requests = fixture.requests.length;
     report.metrics.requestSources = fixture.requests.map(item => item.source);
-    assert.deepEqual(report.consoleErrors, []);
+    await diagnostics.flush();
+    diagnostics.assertClean();
     report.ok = true;
   } catch (error) {
-    report.error = error.stack || String(error);
+    report.error = redact(error.stack || String(error));
     failure = error;
   } finally {
     report.cleanupErrors = [];
     let closed = !launchAttempted;
-    if (launched) {
-      try {await launched.close(); closed = true;}
-      catch (error) {report.cleanupErrors.push(`session close: ${error.message}`);}
-    }
-    try {await fixture?.close();} catch (error) {report.cleanupErrors.push(`fixture close: ${error.message}`);}
-    if (profileDir) {
-      if (closed) {
-        try {fs.rmSync(profileDir, {recursive: true, force: true});}
-        catch (error) {report.cleanupErrors.push(`profile removal: ${error.message}`); report.retainedProfile = profileDir;}
-      } else report.retainedProfile = profileDir;
-    }
-    if (report.cleanupErrors.length) {report.ok = false; process.exitCode = 1;}
-    fs.writeFileSync(path.join(artifactsDir, 'report.json'), JSON.stringify(report, null, 2));
+    const cleanup = (stage, action) => ({stage, action: async () => {
+      try {await action();}
+      catch (error) {report.cleanupErrors.push({stage, message: redact(error.message || error)}); throw error;}
+    }});
+    await finalizeRun({diagnostics, result: report, artifactsDir, primaryError: failure,
+      cleanup: [
+        cleanup('browser-close', async () => {if (launched) {await launched.close(); closed = true;}}),
+        cleanup('fixture-close', async () => {await fixture?.close();}),
+        cleanup('profile-removal', async () => {
+          if (!profileDir) return;
+          if (!closed) {report.retainedProfile = profileDir; return;}
+          try {fs.rmSync(profileDir, {recursive: true, force: true});}
+          catch (error) {report.retainedProfile = profileDir; throw error;}
+        }),
+      ],
+      emitReport: result => {
+        const snapshot = result.runtimeDiagnostics;
+        const own = snapshot.entries.filter(entry => entry.ownership === 'fluentread' && !entry.expectedCase);
+        result.diagnosticSummary = {
+          passed: snapshot.passed,
+          fluentreadErrors: own.filter(entry => entry.level === 'error').length,
+          fluentreadWarnings: own.filter(entry => entry.level === 'warning').length,
+          expectedDiagnostics: snapshot.entries.filter(entry => entry.expectedCase).length,
+          provenSiteDiagnostics: snapshot.entries.filter(entry => entry.ownership === 'site').length,
+          otherExtensionDiagnostics: snapshot.entries.filter(entry => entry.ownership === 'other-extension').length,
+          unattributedDiagnostics: snapshot.entries.filter(entry => entry.ownership === 'unattributed').length,
+          collectionFailures: snapshot.coverage.failures,
+          collectionLimitations: snapshot.coverage.limitations,
+          workerObserved: snapshot.workerObserved,
+          completeCoverage: snapshot.completeCoverage,
+          coverageScope: snapshot.coverageScope,
+        };
+        const serialized = `${JSON.stringify(result, null, 2)}\n`;
+        fs.writeFileSync(path.join(artifactsDir, 'report.json'), serialized);
+        fs.writeFileSync(path.join(artifactsDir, 'result.json'), serialized);
+      }});
   }
   console.log(JSON.stringify(report, null, 2));
   if (failure) throw failure;

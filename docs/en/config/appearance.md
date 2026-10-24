@@ -14,7 +14,7 @@ Under **Settings → Interface style**, **Sentence learning appearance** follows
 
 Translation-only mode does not use bilingual styles. Switch to bilingual display first.
 
-To remove the website's font from translations on the current page, open **Aa Translation display → Translation font on this page → Browser default** in the quick panel. Both existing and later translations use the browser's default font in bilingual and translation-only modes. Choose **Original font** to return to the previous font settings; refresh or navigation also resets this temporary choice. It does not change global appearance preferences or other tabs.
+To remove the website's font from translations on the current page, click **Aa** at the bottom right of the quick panel's translation card. It switches directly to the browser's default font. The highlighted button indicates browser default; click it again to restore the page's previous font settings. Hover or focus the button to see the current font, next action, and scope; press **Escape** to dismiss the hint. Both existing and later translations update immediately in bilingual and translation-only modes, without translating again. This temporary choice resets on refresh or navigation and does not change global appearance preferences or other tabs.
 
 <details class="guide-details">
 <summary>Translation style</summary>

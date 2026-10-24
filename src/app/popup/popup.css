@@ -836,11 +836,17 @@ footer button { font-weight: 500; color: var(--muted); }
 .translation-tools { position: relative; display: flex; flex: none; align-items: center; gap: 6px; margin-inline-start: auto; }
 .popup-shell .translation-tools > .fluentread-diagnostic { position: static; margin-left: 0; }
 .display-mode-slot { display: grid; place-items: center; flex: 0 0 var(--popup-secondary-action-width); width: var(--popup-secondary-action-width); }
-.display-mode-slot.with-page-font { display: flex; justify-content: center; gap: 2px; flex-basis: max(50px, var(--popup-secondary-action-width)); width: max(50px, var(--popup-secondary-action-width)); }
+.display-mode-slot.with-page-font { position: relative; display: flex; justify-content: center; gap: 2px; flex-basis: max(54px, var(--popup-secondary-action-width)); width: max(54px, var(--popup-secondary-action-width)); padding: 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-soft); }
+.display-mode-slot.with-page-font::after { content: ''; position: absolute; left: 50%; top: 50%; width: 1px; height: 12px; background: var(--line); transform: translate(-50%, -50%); pointer-events: none; }
 .display-mode-button { display: grid; place-items: center; width: 24px; height: 24px; padding: 2px; border: 1px solid transparent; border-radius: 6px; color: var(--brand-strong); background: var(--surface-soft); cursor: pointer; }
-.page-font-entry { flex: none; font-size: 11px; font-weight: 700; }
+.display-mode-slot.with-page-font .display-mode-button { flex: none; width: 23px; border: 0; border-radius: 5px; color: var(--muted); background: transparent; }
+.display-mode-slot.with-page-font .page-font-entry.is-browser-default { color: var(--brand-strong); background: var(--brand-soft); }
+.page-font-tooltip.el-popper { max-width: min(264px, calc(100vw - 24px)); padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: 0 4px 14px rgba(23, 32, 51, .12); overflow-wrap: anywhere; }
+.page-font-tooltip-copy { display: flex; flex-direction: column; gap: 5px; max-width: 240px; color: var(--ink); font-size: 12px; line-height: 1.5; }
+.page-font-tooltip-copy small { color: var(--muted); font-size: 11px; }
 .display-mode-button svg { width: 18px; height: 18px; }
 .display-mode-button:hover:not(:disabled) { border-color: var(--brand); background: var(--brand-soft); }
+.display-mode-slot.with-page-font .display-mode-button:hover:not(:disabled) { color: var(--brand-strong); background: var(--brand-soft); }
 .display-mode-button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .display-mode-button:disabled { color: var(--muted); opacity: .55; cursor: default; }
 /* 诊断图标可在模式图标左侧；浮层仍以工具组右缘为锚点，避免向左越出窄弹窗。 */
@@ -912,7 +918,7 @@ footer button { font-weight: 500; color: var(--muted); }
   :root .popup-shell .fluentread-diagnostic { flex-basis: 46px; width: 46px; height: 46px; }
   :root .popup-shell .fluentread-diagnostic .diagnostic-close { flex-basis: 46px; }
   :root .popup-shell .display-mode-button { width: 46px; height: 46px; flex-shrink: 0; }
-  :root .popup-shell .display-mode-slot.with-page-font { flex-basis: max(94px, var(--popup-secondary-action-width)); width: max(94px, var(--popup-secondary-action-width)); }
+  :root .popup-shell .display-mode-slot.with-page-font { flex-basis: max(100px, var(--popup-secondary-action-width)); width: max(100px, var(--popup-secondary-action-width)); }
 }
 
 /* Firefox Android 的固定扩展容器可能报告 fine pointer；已确认的 Android 容器仍使用与 coarse 相同的触摸命中预算。 */
@@ -1004,4 +1010,4 @@ footer button { font-weight: 500; color: var(--muted); }
   background: var(--surface-soft); color: var(--ink); font-size: 16px; cursor: pointer;
 }
 :root[data-fluentread-android-popup] .popup-shell .display-mode-button { width: 46px; height: 46px; flex-shrink: 0; }
-:root[data-fluentread-android-popup] .popup-shell .display-mode-slot.with-page-font { flex-basis: max(94px, var(--popup-secondary-action-width)); width: max(94px, var(--popup-secondary-action-width)); }
+:root[data-fluentread-android-popup] .popup-shell .display-mode-slot.with-page-font { flex-basis: max(100px, var(--popup-secondary-action-width)); width: max(100px, var(--popup-secondary-action-width)); }

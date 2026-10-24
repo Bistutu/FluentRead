@@ -1,7 +1,7 @@
 <!--
  @file src/app/popup/PopupApp.vue
  文件职责：实现浏览器 Popup 的主交互界面，连接当前标签页状态、翻译配置、可插拔皮肤、功能抽屉和高频操作，让现场开关与显示操作保持简短，将长期偏好引导到对应设置页，并为从划词抽屉打开的设置保留明确返回原网页的入口。
- 主要内容：译文显示抽屉读取当前文档的字体状态，提供仅当前页的原字体与浏览器默认切换，并在导航、关闭与失活时撤销旧操作；翻译卡片右下角的双语/仅译文图标与网站规则同行，模式回调随服务和操作变化失效；品牌官网入口保留稳定点击区域，内部图标在悬停和键盘聚焦时缓慢单次摇摆并遵循动画偏好，停留后显示可用 Escape 关闭的官网提示；复用真实全文完成状态呈现首次翻译指引和就地自助诊断，配置修复定位当前服务，本地报告由用户预览并手动导出；在配置 hydration 后汇总翻译服务，直接展示网页默认服务与适用的配置模型；翻译与局部同排，主操作用短标题合并平台快捷键并保留加载状态，长组合在悬停提示中完整显示，站点开关保留独立按钮；赞赏码在当前弹窗内切换放大与还原，关闭后重置；悬停、划词与图片抽屉优先展示开关和操作示意，首次单屏语言选择独占内容，保存后立即显示主菜单；页面操作、抽屉和导航绑定活跃会话，等待期间独占请求，关闭和配置切换使旧回复失效；网站规则写前复验标签页，等待后台确认并呈现保存忙碌、暂停与失败反馈；Safari 免费池精确授权，焦点复查保留已就绪按钮，点击接管旧读取并重新确认实际许可，撤权取消待发操作，授权事件合并刷新，错误随语言资源更新；打开的实际 teleport 抽屉复用平台可见视口订阅跟随键盘与缩放，极矮区域由同一订阅派生紧凑布局，整页遮罩保持背景拦截，可见高度扩大时仅修正当前聚焦服务搜索被吸顶标题遮住的外框，关闭、缓存失活和卸载立即释放，根画布保持固有尺寸。
+ 主要内容：Aa 按钮读取当前文档的字体状态，直接切换仅当前页的网页字体与浏览器默认字体，以按下状态和悬停提示反馈选择，并在导航、关闭与失活时撤销旧操作；翻译卡片右下角的双语/仅译文图标与网站规则同行，模式回调随服务和操作变化失效；品牌官网入口保留稳定点击区域，内部图标在悬停和键盘聚焦时缓慢单次摇摆并遵循动画偏好，停留后显示可用 Escape 关闭的官网提示；复用真实全文完成状态呈现首次翻译指引和就地自助诊断，配置修复定位当前服务，本地报告由用户预览并手动导出；在配置 hydration 后汇总翻译服务，直接展示网页默认服务与适用的配置模型；翻译与局部同排，主操作用短标题合并平台快捷键并保留加载状态，长组合在悬停提示中完整显示，站点开关保留独立按钮；赞赏码在当前弹窗内切换放大与还原，关闭后重置；悬停、划词与图片抽屉优先展示开关和操作示意，首次单屏语言选择独占内容，保存后立即显示主菜单；页面操作、抽屉和导航绑定活跃会话，等待期间独占请求，关闭和配置切换使旧回复失效；网站规则写前复验标签页，等待后台确认并呈现保存忙碌、暂停与失败反馈；Safari 免费池精确授权，焦点复查保留已就绪按钮，点击接管旧读取并重新确认实际许可，撤权取消待发操作，授权事件合并刷新，错误随语言资源更新；打开的实际 teleport 抽屉复用平台可见视口订阅跟随键盘与缩放，极矮区域由同一订阅派生紧凑布局，整页遮罩保持背景拦截，可见高度扩大时仅修正当前聚焦服务搜索被吸顶标题遮住的外框，关闭、缓存失活和卸载立即释放，根画布保持固有尺寸。
  信息层级：服务摘要只保留当前服务与模型；悬停和划词的快捷开关与标题同排，独立快捷方案的作用范围仍明确说明，圈选快捷键只在操作示意中展示。
  模块边界：组件编排 UI、浏览器导航事件与生命周期；页内面板通过授权来源固定发起网页，页面消息归属由 pageActions 管理，不实现翻译 provider、缓存存储或 content 挂载；公共配置由 services/config 管理；配置草稿复用共享编辑会话，保留 post 合并和关闭补丁交接。
 -->
@@ -179,9 +179,20 @@
         />
         <div class="translation-tools">
           <DiagnosticNotice v-if="pageDiagnostic" :diagnostic="pageDiagnostic" :language="config.uiLanguage" :busy="translating" :version="version" @action="diagnosticAction" />
-          <span class="display-mode-slot" :class="{'with-page-font': pageFontEntryVisible}" :title="displayModeButton.label" data-i18n-ignore>
-            <button v-if="pageFontEntryVisible" class="display-mode-button page-font-entry" type="button" data-testid="page-font-entry"
-              :aria-label="t('popup.pageFont.title')" :title="t('popup.pageFont.title')" :disabled="!config.on || currentSiteExtensionDisabled" :onClick="pageButtons.font">Aa</button>
+          <span class="display-mode-slot" :class="{'with-page-font': pageFontEntryVisible}" data-i18n-ignore>
+            <ElTooltip v-if="pageFontEntryVisible" :ref="setPageFontTooltip" :trigger="['hover', 'focus']" :trigger-keys="[]" :show-after="350" :hide-after="0"
+              :persistent="false" :show-arrow="false" :disabled="!pageFontContext.active.value || drawerVisible" placement="top-end" effect="light" popper-class="page-font-tooltip">
+              <template #content>
+                <span class="page-font-tooltip-copy" data-testid="page-font-tooltip"><span>{{ pageFontButton.label }}</span><small>{{ t('popup.pageFont.hint') }}</small></span>
+              </template>
+              <button class="display-mode-button page-font-entry" :class="{'is-browser-default': pageFontState.browserDefault === true}" type="button" data-testid="page-font-entry"
+                :data-font-state="pageFontButton.state" :aria-label="pageFontButton.label" :aria-pressed="pageFontState.browserDefault === null ? undefined : pageFontState.browserDefault"
+                :aria-busy="pageFontState.loading || pageFontState.busy" :disabled="pageFontButton.disabled" :onClick="pageFontButton.toggle">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="m2.5 17 5-11 5 11M4.1 13.5h6.8M21 10v7M21 13.5a3.5 3.5 0 1 0-7 0 3.5 3.5 0 0 0 7 0" />
+                </svg>
+              </button>
+            </ElTooltip>
             <button class="display-mode-button" type="button" data-testid="popup-display-mode"
               :data-display-mode="config.display === 1 ? 'bilingual' : 'translation-only'"
               :aria-label="displayModeButton.label" :title="displayModeButton.label" :aria-pressed="config.display === 1"
@@ -200,6 +211,7 @@
         </div>
       </div>
 
+      <p v-if="pageFontState.error && pageFontEntryVisible" class="notice error" role="alert" data-testid="page-font-error" data-i18n-ignore>{{ t(pageFontState.error) }} {{ t('popup.pageFont.retryAction') }}</p>
       <p v-if="notice" class="notice" :class="noticeType" :role="noticeType === 'error' ? 'alert' : 'status'" :aria-live="noticeType === 'error' ? 'assertive' : 'polite'">{{ notice }}</p>
     </section>
 
@@ -377,16 +389,6 @@
       </div>
 
       <div v-else class="drawer-content">
-        <div class="choice-block" data-i18n-ignore>
-          <label>{{ t('popup.pageFont.title') }}</label>
-          <div class="chips two" role="group" :aria-label="t('popup.pageFont.title')" :aria-busy="pageFontState.loading || pageFontState.busy">
-            <button v-for="item in pageFontButtons" :key="item.testId" type="button" :data-testid="item.testId" :class="{selected: pageFontState.browserDefault === item.value}" :aria-pressed="pageFontState.browserDefault === item.value" :disabled="item.disabled" :onClick="item.choose">{{ item.label }}</button>
-          </div>
-          <p class="drawer-hint">{{ t('popup.pageFont.hint') }}</p>
-          <p v-if="pageFontState.loading || pageFontState.unavailable" class="drawer-hint" role="status">{{ t(pageFontState.loading ? 'popup.pageFont.loading' : 'popup.pageFont.unavailable') }}</p>
-          <p v-if="pageFontState.error" class="drawer-hint" role="alert">{{ t(pageFontState.error) }}</p>
-          <button v-if="pageFontState.error" class="secondary-action" type="button" data-testid="page-font-retry" :onClick="pageFontRetry">{{ t('popup.pageFont.retry') }}</button>
-        </div>
         <div class="choice-block">
           <label>翻译模式</label>
           <div class="chips two" role="group" aria-label="翻译模式">
@@ -494,6 +496,9 @@ interface PopupQuickFeatureViewModel {
 import {featureServiceDefinitions, getFeatureService} from '@/src/core/config/featureServices';
 const PopupServices = defineAsyncComponent(() => import('./PopupServices.vue'));
 const brandTooltip = ref<TooltipInstance>();
+const pageFontTooltip = ref<TooltipInstance>();
+// 翻译卡片在模块顺序的 v-for 中，函数 ref 保留唯一实例，避免 Vue 将普通 ref 收集为数组。
+const setPageFontTooltip = (tooltip: unknown) => {pageFontTooltip.value = tooltip ? tooltip as TooltipInstance : undefined;};
 const ElDrawer = defineAsyncComponent(() => import('./PopupDrawer'));
 const UiLanguageOnboarding = defineAsyncComponent(() => import('@/src/ui/components/UiLanguageOnboarding.vue'));
 const {language, bundleRevision, t, translateLegacy} = useUiI18n();
@@ -884,7 +889,6 @@ const pageButtons = computed(() => {
   const current = pageContext.capture(), version = pageRenderRevision.value;
   const owns = () => current() && version === pageRenderRevision.value;
   return {toggle: () => {if (owns()) return runPageWithFreePoolAccess('toggle')}, section: () => {if (owns()) return runPageWithFreePoolAccess('section')},
-    font: () => {if (owns()) openDrawer('appearance')},
     always: (value: boolean) => {if (owns()) return setCurrentSiteAlwaysTranslated(value)},
     disabled: (value: boolean) => {if (owns()) return setCurrentSiteExtensionDisabled(value)}};
 });
@@ -965,27 +969,31 @@ const drawerContext = useSettingsActionContext(() => popupContext.active.value &
     config.value.disableImageTranslator, config.value.display, config.value.service, config.value.enableAIContext,
     browserCapabilities.areaTranslation, browserCapabilities.imageTranslation]);
 const pageFontState = reactive<PopupPageFontState>({browserDefault: null, loading: false, busy: false, unavailable: false, error: ''});
-const pageFontContext = useSettingsActionContext(() => popupContext.active.value && drawerVisible.value
-  && activeDrawer.value === 'appearance' && config.value.on && !currentSiteExtensionDisabled.value,
+const pageFontContext = useSettingsActionContext(() => popupContext.active.value && pageFontEntryVisible.value
+  && config.value.on && !currentSiteExtensionDisabled.value,
   () => [pageState.tabId, pageState.url]);
 const pageFontActions = createPopupPageFontActions({state: pageFontState, active: () => pageFontContext.active.value,
   getTab: tabSource.getTab, send: (id, message) => browser.tabs.sendMessage(id, message, {frameId: 0})});
 watch(pageFontContext.revision, () => {
   if (pageFontContext.active.value) void pageFontActions.load();
   else pageFontActions.invalidate();
-}, {flush: 'sync'});
-const pageFontButtonContext = useSettingsActionContext(() => pageFontContext.active.value,
-  () => [pageFontContext.revision.value, pageFontState.browserDefault, pageFontState.loading, pageFontState.busy, pageFontState.error]);
-const pageFontButtons = computed(() => {
+}, {flush: 'sync', immediate: true});
+const pageFontButtonContext = useSettingsActionContext(() => pageFontContext.active.value && !drawerVisible.value,
+  () => [pageFontContext.revision.value, pageFontState.browserDefault, pageFontState.loading, pageFontState.busy, pageFontState.unavailable, pageFontState.error]);
+const pageFontButton = computed(() => {
   const current = pageFontButtonContext.capture();
-  const disabled = !pageFontContext.active.value || pageFontState.browserDefault === null || pageFontState.loading || pageFontState.busy;
-  return [{value: false, label: t('popup.pageFont.original'), testId: 'page-font-host'},
-    {value: true, label: t('popup.pageFont.browserDefault'), testId: 'page-font-browser-default'}]
-    .map(item => ({...item, disabled, choose: () => {if (current() && !disabled) return pageFontActions.set(item.value)}}));
-});
-const pageFontRetry = computed(() => {
-  const current = pageFontButtonContext.capture();
-  return () => {if (current()) return pageFontActions.load()};
+  const disabled = !pageFontButtonContext.active.value || pageFontState.loading || pageFontState.busy || pageFontState.unavailable;
+  const state = pageFontState.loading || pageFontState.busy ? 'loading' : pageFontState.unavailable ? 'unavailable'
+    : pageFontState.error ? 'error' : pageFontState.browserDefault === null ? 'unknown' : pageFontState.browserDefault ? 'browser-default' : 'host';
+  const label = pageFontState.error ? `${t(pageFontState.error)} ${t('popup.pageFont.retryAction')}`
+    : t(pageFontState.loading ? 'popup.pageFont.loading' : pageFontState.busy ? 'popup.pageFont.changing'
+      : pageFontState.unavailable ? 'popup.pageFont.unavailable' : pageFontState.browserDefault === null ? 'popup.pageFont.title'
+        : pageFontState.browserDefault ? 'popup.pageFont.browserAction' : 'popup.pageFont.hostAction');
+  const next = pageFontState.browserDefault === null ? null : !pageFontState.browserDefault;
+  return {disabled, state, label, toggle: () => {
+    if (!current() || disabled) return;
+    return next === null ? pageFontActions.load() : pageFontActions.set(next);
+  }};
 });
 // 按钮仅在能力可用时渲染；能力切换同步撤销 drawerContext，旧事件不能修改已隐藏功能。
 const drawerActions = computed(() => {
@@ -1116,6 +1124,8 @@ function handlePopupKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape') {
     brandTooltip.value?.onClose();
     brandTooltip.value?.hide();
+    pageFontTooltip.value?.onClose();
+    pageFontTooltip.value?.hide();
   }
   if (!donationVisible.value) return;
   if (event.key === 'Escape') {
