@@ -2,7 +2,7 @@
 /**
  * @file scripts/testing/run-man7-translation-test.cjs
  * 文件职责：在临时后台 Edge 中验证真实 man7 core(5) 的预格式化正文翻译和完整恢复。
- * 主要内容：支持旧包漏译复现、受控微软响应及显式在线供应商；通过真实 Control 和 Alt+T 覆盖逐段悬浮、全文、恢复和再次翻译，校验段落、列表、参数与小标题的首行及悬挂缩进、按容器宽度重排、shell/C 保护、原文链接身份、事件及 HTML 恢复，并采集内容脚本、popup 和后台 Runtime 诊断。
+ * 主要内容：支持旧包漏译复现、受控微软响应及显式在线供应商；通过真实 Control 和 Alt+T 覆盖逐段悬浮、全文、恢复和再次翻译，校验段落、列表、参数与小标题的首行及悬挂缩进、原文正文栏左右边界和按栏宽自然换行、shell/C 保护、原文链接身份、事件及 HTML 恢复，并采集内容脚本、popup 和后台 Runtime 诊断。
  * 模块边界：只使用扩展公开配置消息与宿主 DOM，不调用翻译内部函数，不替换真实网页，不连接用户 profile；受控供应商结果不证明在线服务质量。
  */
 'use strict';
@@ -27,15 +27,21 @@ const args = {
   runtimeDiagnosticsHelper: path.resolve(argument('runtime-diagnostics-helper', path.join(process.env.CODEX_HOME || path.join(os.homedir(), '.codex'), 'skills/fluentread-browser-translation-test/scripts/runtime-diagnostics.cjs'))),
   translationBeforeOriginal: process.argv.includes('--translation-before-original'),
   expectMisalignment: process.argv.includes('--expect-misalignment'),
+  expectWideTranslation: process.argv.includes('--expect-wide-translation'),
   expectBaseline: process.argv.includes('--expect-baseline'),
   online: process.argv.includes('--online'),
   service: argument('service', 'freeTranslation'),
   style: Number(argument('style', '1')),
+  viewportWidth: Number(argument('viewport-width', '1280')),
+  viewportHeight: Number(argument('viewport-height', '950')),
   timeout: Number(argument('timeout', process.argv.includes('--online') ? '180000' : '60000')),
   baselineObserveMs: Number(argument('baseline-observe-ms', '3000')),
 };
 assert.ok(args.playwrightRoot, '需要 --playwright-root');
 assert.ok(Number.isSafeInteger(args.style) && args.style >= 0, 'style 必须是非负整数');
+assert.ok(Number.isSafeInteger(args.viewportWidth) && args.viewportWidth >= 320 && args.viewportWidth <= 3840, 'viewport-width 必须为 320–3840');
+assert.ok(Number.isSafeInteger(args.viewportHeight) && args.viewportHeight >= 400 && args.viewportHeight <= 2160, 'viewport-height 必须为 400–2160');
+assert.ok([args.expectBaseline, args.expectMisalignment, args.expectWideTranslation].filter(Boolean).length <= 1, '旧包复现模式一次只能选择一种');
 assert.ok(!process.argv.includes('--headed') && !process.argv.includes('--headless'), '本专项仅允许第二屏后台隔离 Edge');
 assert.ok(Number.isFinite(args.timeout) && args.timeout >= 1000 && args.timeout <= 300000, 'timeout 必须为 1000–300000');
 assert.ok(Number.isFinite(args.baselineObserveMs) && args.baselineObserveMs >= 1000 && args.baselineObserveMs <= 30000, 'baseline-observe-ms 必须为 1000–30000');
@@ -82,7 +88,8 @@ const url = 'https://man7.org/linux/man-pages/man5/core.5.html';
 const wrapper = '.fluent-read-bilingual-content';
 const paragraph = '[data-fr-manpage-paragraph="true"]';
 const report = {
-  ok: false, url, expectBaseline: args.expectBaseline, expectMisalignment: args.expectMisalignment,
+  ok: false, url, expectBaseline: args.expectBaseline, expectMisalignment: args.expectMisalignment, expectWideTranslation: args.expectWideTranslation,
+  requestedViewport: {width: args.viewportWidth, height: args.viewportHeight},
   provider: args.online ? `${args.service}-online` : 'microsoft-controlled-local-response',
   source: 'live-man7-core5-html', profileMode: 'new-temporary-profile',
   limitations: args.online ? ['Online provider results apply only to this run and selected page.']
@@ -336,7 +343,7 @@ async function checkAlignment(label, {full = false, recordOnly = false} = {}) {
     const owner = page.locator(`body > h2:has(> a#${target.section}) + pre ${paragraph}`)
       .filter({hasText: target.needle}).first();
     await owner.scrollIntoViewIfNeeded();
-    const geometry = await owner.evaluate((owner, {wrapper, name, beforeOriginal}) => {
+    const geometry = await owner.evaluate((owner, {wrapper, paragraph, name, beforeOriginal}) => {
       const content = [...owner.children].find(node => node.matches(wrapper));
       if (!content) throw new Error(`${name}: missing translation`);
       const sourceNodes = [];
@@ -378,11 +385,44 @@ async function checkAlignment(label, {full = false, recordOnly = false} = {}) {
         }
         return lines.sort((a, b) => a.top - b.top);
       };
+      // 正文栏取整个同 PRE 的 prose 来源行，不能拿单个短段落或 PRE 的整页块宽替代。
+      const pre = owner.closest('pre');
+      const columnLineRights = [];
+      let measuredSourceNodes = 0;
+      for (const prose of pre.querySelectorAll(paragraph)) {
+        if (prose.closest(`${wrapper},[data-fr-translation-owned="true"],[data-fr-manpage-literal="true"]`)) continue;
+        const sourceWalker = document.createTreeWalker(prose, NodeFilter.SHOW_TEXT);
+        let sourceNode;
+        while ((sourceNode = sourceWalker.nextNode())) {
+          if (++measuredSourceNodes > 12000) throw new Error(`${name}: source column node budget exceeded`);
+          if (sourceNode.parentElement.closest(`${wrapper},[data-fr-translation-owned="true"],[data-fr-manpage-literal="true"],.fluent-read-loading,.fluent-read-retry-wrapper`)) continue;
+          for (const physicalLine of sourceNode.data.matchAll(/[^\n]+/gu)) {
+            const first = physicalLine[0].search(/\S/u);
+            if (first < 0) continue;
+            const end = physicalLine[0].trimEnd().length;
+            const range = document.createRange();
+            range.setStart(sourceNode, physicalLine.index + first); range.setEnd(sourceNode, physicalLine.index + end);
+            for (const rect of range.getClientRects()) {
+              if (rect.width > 0 && rect.height > 0 && Number.isFinite(rect.right)) columnLineRights.push(rect.right);
+            }
+          }
+        }
+      }
+      if (!columnLineRights.length) throw new Error(`${name}: no measured prose column right boundary`);
+      const sourceColumnRight = Math.max(...columnLineRights);
+      const preStyle = getComputedStyle(pre);
+      const preAvailableRight = pre.getBoundingClientRect().right - (Number.parseFloat(preStyle.borderRightWidth) || 0) - (Number.parseFloat(preStyle.paddingRight) || 0);
       const style = getComputedStyle(content);
       const originalLines = textLines(content);
+      const translationGlyphRight = Math.max(...originalLines.map(line => line.right));
+      const translationBlockRight = content.getBoundingClientRect().right;
       const firstExpected = sourceLines[0].left;
       const continuationExpected = (sourceLines[1] || sourceLines[0]).left;
       const result = {name, sourceLines, firstExpected, continuationExpected, lines: originalLines,
+        sourceColumnRight, preAvailableRight, sourceColumnMeasuredRanges: columnLineRights.length, translationGlyphRight, translationBlockRight,
+        glyphRightOverflow: translationGlyphRight - sourceColumnRight, blockRightOverflow: translationBlockRight - sourceColumnRight,
+        glyphPreRightOverflow: translationGlyphRight - preAvailableRight, blockPreRightOverflow: translationBlockRight - preAvailableRight,
+        translatedHanCount: (content.textContent.match(/[\u3400-\u9fff]/gu) || []).length, viewportWidth: innerWidth,
         whiteSpace: style.whiteSpace, hardBreakElements: content.querySelectorAll('br').length,
         beforeOriginal, translationComesFirst: originalLines[0]?.top < sourceLines[0].top,
         firstDelta: originalLines.length ? originalLines[0].left - firstExpected : null,
@@ -405,7 +445,7 @@ async function checkAlignment(label, {full = false, recordOnly = false} = {}) {
         }
       }
       return result;
-    }, {wrapper, name, beforeOriginal: args.translationBeforeOriginal});
+    }, {wrapper, paragraph, name, beforeOriginal: args.translationBeforeOriginal});
     report.alignment.push({label, ...geometry}); save();
     assert.ok(geometry.lines.length > 0, `${name}: translation has no visible text`);
     if (recordOnly) continue;
@@ -413,6 +453,11 @@ async function checkAlignment(label, {full = false, recordOnly = false} = {}) {
     assert.equal(geometry.hardBreakElements, 0, `${name}: source hard line breaks leaked into translation`);
     assert.ok(Math.abs(geometry.firstDelta) <= 2, `${name}: first line shifted ${geometry.firstDelta}px`);
     geometry.continuationDeltas.forEach((delta, index) => assert.ok(Math.abs(delta) <= 2, `${name}: continuation line ${index + 2} shifted ${delta}px`));
+    assert.ok(geometry.glyphRightOverflow <= 2, `${name}: translated glyphs exceed source column right by ${geometry.glyphRightOverflow}px`);
+    assert.ok(geometry.blockRightOverflow <= 2, `${name}: translation block exceeds source column right by ${geometry.blockRightOverflow}px`);
+    assert.ok(geometry.glyphPreRightOverflow <= 2, `${name}: translated glyphs exceed available PRE right by ${geometry.glyphPreRightOverflow}px`);
+    assert.ok(geometry.blockPreRightOverflow <= 2, `${name}: translation block exceeds available PRE right by ${geometry.blockPreRightOverflow}px`);
+    if (name === 'description-opening' && geometry.translatedHanCount >= 64) assert.ok(geometry.lines.length > 1, `${name}: long Chinese prose did not wrap inside its source column`);
     assert.equal(geometry.translationComesFirst, args.translationBeforeOriginal, `${name}: translation order differs from configuration`);
     if (geometry.reflow) {
       assert.ok(geometry.reflow.wideWidth > geometry.reflow.narrowWidth, `${name}: no measurable reflow width`);
@@ -483,14 +528,14 @@ async function waitForRestored() {
 async function main() {
   let primaryError;
   try {
-    report.buildFreshness = args.expectBaseline || args.expectMisalignment ? {skipped: 'Explicit baseline bundle reproduction; checkout freshness does not apply'}
+    report.buildFreshness = args.expectBaseline || args.expectMisalignment || args.expectWideTranslation ? {skipped: 'Explicit baseline bundle reproduction; checkout freshness does not apply'}
       : assertFreshProductionExtension(args.extensionDir, root);
     report.extensionVersion = JSON.parse(fs.readFileSync(path.join(args.extensionDir, 'manifest.json'), 'utf8')).version;
     report.contentSha256 = crypto.createHash('sha256').update(fs.readFileSync(path.join(args.extensionDir, 'content-scripts/content.js'))).digest('hex');
-    progress(`launch ${args.expectBaseline || args.expectMisalignment ? 'baseline' : 'candidate'} / ${report.provider}`);
+    progress(`launch ${args.expectBaseline || args.expectMisalignment || args.expectWideTranslation ? 'baseline' : 'candidate'} / ${report.provider}`);
     session = await helper.launchFocusSafePersistentContext({chromium, profileDir,
       browserPath: '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge', background: true, headless: false,
-      viewport: {width: 1280, height: 950}, displayTarget: 'secondary',
+      viewport: {width: args.viewportWidth, height: args.viewportHeight}, displayTarget: 'secondary',
       browserArgs: [`--disable-extensions-except=${args.extensionDir}`, `--load-extension=${args.extensionDir}`, '--no-first-run', '--no-default-browser-check']});
     guardBrowserClose(session, profileDir);
     await diagnostics.start(session.context);
@@ -547,16 +592,23 @@ async function main() {
       await checkEvent('baseline-restored');
       report.baselineOmissionObserved = true;
       report.finalRestoreExact = true;
-    } else if (args.expectMisalignment) {
-      diagnostics.setPhase('baseline-full-misalignment');
+    } else if (args.expectMisalignment || args.expectWideTranslation) {
+      const label = args.expectWideTranslation ? 'baseline-full-wide-translation' : 'baseline-full-misalignment';
+      diagnostics.setPhase(label);
       await fullToggle(); await waitForFull();
-      const translated = await snapshot('baseline-full-misalignment');
+      const translated = await snapshot(label);
       assertSafe(translated, {literal: true});
-      await checkAlignment('baseline-full-misalignment', {full: true, recordOnly: true});
-      report.misalignmentObserved = report.alignment.some(item => Math.abs(item.firstDelta) > 2 || item.continuationDeltas.some(delta => Math.abs(delta) > 2));
-      assert.equal(report.misalignmentObserved, true, 'Baseline no longer reproduces visible line misalignment');
+      await checkAlignment(label, {full: true, recordOnly: true});
+      if (args.expectWideTranslation) {
+        const opening = report.alignment.find(item => item.label === label && item.name === 'description-opening');
+        report.wideTranslationObserved = Boolean(opening && opening.glyphRightOverflow > 2);
+        assert.equal(report.wideTranslationObserved, true, 'Baseline no longer reproduces opening translation glyphs beyond the source column right');
+      } else {
+        report.misalignmentObserved = report.alignment.some(item => Math.abs(item.firstDelta) > 2 || item.continuationDeltas.some(delta => Math.abs(delta) > 2));
+        assert.equal(report.misalignmentObserved, true, 'Baseline no longer reproduces visible line misalignment');
+      }
       await page.locator(`body > h2:has(> a#DESCRIPTION) + pre ${paragraph}`).first().scrollIntoViewIfNeeded();
-      await page.screenshot({path: path.join(args.artifactsDir, 'baseline-full-misalignment.png')});
+      await page.screenshot({path: path.join(args.artifactsDir, `${label}.png`)});
       diagnostics.setPhase('baseline-restoration');
       await fullToggle(); await waitForRestored();
       assertSafe(await snapshot('baseline-restored'), {restored: true});
@@ -660,7 +712,7 @@ async function main() {
   }
   if (primaryError) throw primaryError;
   process.stdout.write(JSON.stringify({ok: report.ok, artifactsDir: args.artifactsDir, provider: report.provider,
-    baselineOmissionObserved: report.baselineOmissionObserved || false, misalignmentObserved: report.misalignmentObserved || false, hoverCounts: report.hoverCounts,
+    baselineOmissionObserved: report.baselineOmissionObserved || false, misalignmentObserved: report.misalignmentObserved || false, wideTranslationObserved: report.wideTranslationObserved || false, hoverCounts: report.hoverCounts,
     finalRestoreExact: report.finalRestoreExact || false, phaseCount: report.phases.length}) + '\n');
 }
 

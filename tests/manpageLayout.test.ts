@@ -13,7 +13,9 @@ afterEach(() => {
 function fixture(source = '       First source line.\n       Second source line.\n', trusted = true) {
     const {document} = parseHTML(`<html><body><pre><span id="source">${source}</span></pre></body></html>`);
     const paragraph = document.querySelector<HTMLElement>('#source')!;
+    paragraph.setAttribute('data-fr-manpage-paragraph', 'true');
     const pre = document.querySelector('pre')!;
+    pre.getBoundingClientRect = () => ({left: 10, width: 800, height: 100} as DOMRect);
     if (trusted) {
         registerManpagePreparation(pre, [paragraph]);
         registered.push({pre, paragraph});
@@ -32,7 +34,7 @@ function fixture(source = '       First source line.\n       Second source line.
     const measure = vi.fn((text: Text, offset: number) => {
         const before = sourceText.slice(0, offsets.get(text)! + offset);
         const column = before.length - before.lastIndexOf('\n') - 1;
-        return {left: 12 + column * 10, width: 10, height: 16} as DOMRect;
+        return {left: 12 + column * 10, right: 22 + column * 10, width: 10, height: 16} as DOMRect;
     });
     const createRange = vi.fn(() => {
         let text: Text, offset: number;
@@ -90,7 +92,7 @@ describe('man7 translation source alignment', () => {
         paragraph.appendChild(content);
         alignManpageTranslation(paragraph, content);
         expectAlignment(content, 70, 0);
-        expect(measure.mock.calls.map(([text, offset]) => text.data[offset])).toEqual(['F', 'S']);
+        expect(measure.mock.calls.slice(0, 2).map(([text, offset]) => text.data[offset])).toEqual(['F', 'S']);
         expect(paragraph.innerHTML.replace(content.outerHTML, '')).toBe(html);
     });
 
@@ -117,7 +119,7 @@ describe('man7 translation source alignment', () => {
         paragraph.insertBefore(content, paragraph.firstChild);
         alignManpageTranslation(paragraph, content);
         expectAlignment(content, 70, 0);
-        expect(measure.mock.calls.map(([text, offset]) => text.data[offset])).toEqual(['F', 'S']);
+        expect(measure.mock.calls.slice(0, 2).map(([text, offset]) => text.data[offset])).toEqual(['F', 'S']);
         alignManpageTranslation(paragraph, content);
         expectAlignment(content, 70, 0);
     });
@@ -226,5 +228,194 @@ describe('man7 translation source alignment', () => {
         infinite.computedStyle.mockReturnValue({borderLeftWidth: '-Infinity'} as CSSStyleDeclaration);
         alignManpageTranslation(infinite.paragraph, infinite.content);
         expectUnaligned(infinite.content);
+    });
+});
+
+describe('man7 shared source column width', () => {
+    const body = '       ' + 'Ordinary source prose with enough words to wrap at the column edge.' + '\n       A short final source line.\n';
+
+    function addParagraph(f: ReturnType<typeof fixture>, source: string, pre = f.pre, trusted = true) {
+        const paragraph = f.document.createElement('span');
+        paragraph.setAttribute('data-fr-manpage-paragraph', 'true');
+        paragraph.textContent = source;
+        pre.appendChild(paragraph);
+        if (trusted) {
+            registerManpagePreparation(pre, [paragraph]);
+            registered.push({pre, paragraph});
+        }
+        return paragraph;
+    }
+
+    function plainGeometry(f: ReturnType<typeof fixture>) {
+        f.measure.mockImplementation((text: Text, offset: number) => {
+            const before = text.data.slice(0, offset);
+            const column = before.length - before.lastIndexOf('\n') - 1;
+            const preLeft = text.parentElement!.closest('pre')?.getBoundingClientRect().left ?? 10;
+            const left = preLeft + 2 + column * 10;
+            return {left, right: left + 10, width: 10, height: 16} as DOMRect;
+        });
+    }
+
+    function expectedWidth(source: string) {return source.split('\n')[0]!.trimEnd().length * 10 + 2;}
+    function expectWidth(content: HTMLElement, width: number) {
+        expect(content.style.getPropertyValue('width')).toBe('100%');
+        expect(content.style.getPropertyValue('max-width')).toBe(`${width}px`);
+        expect(content.style.getPropertyValue('box-sizing')).toBe('border-box');
+    }
+
+    it('gives a short paragraph and heading the shared multiline source column instead of their own text widths', () => {
+        const f = fixture(body);
+        plainGeometry(f);
+        const short = addParagraph(f, '       A short paragraph.\n');
+        const heading = addParagraph(f, '   Small heading\n');
+        for (const paragraph of [short, heading]) {
+            paragraph.appendChild(f.content);
+            alignManpageTranslation(paragraph, f.content);
+            expectWidth(f.content, expectedWidth(body));
+        }
+        expect(f.measure).toHaveBeenCalledTimes(4); // 每个单行目标各一个首字形，加一个共享行末字形。
+        expect(f.paragraph.textContent).toBe(body);
+    });
+
+    it('retains deeper hanging indentation and derives width from source geometry for every target font', () => {
+        const f = fixture(body);
+        plainGeometry(f);
+        const list = addParagraph(f, '       •  A list item.\n          Its continuation.\n');
+        const parameter = addParagraph(f, '           %c  A core limit\n               More detail.\n');
+        for (const paragraph of [list, parameter]) {
+            paragraph.appendChild(f.content);
+            for (const font of ['monospace', '"PingFang SC"', 'initial']) {
+                f.content.style.fontFamily = font;
+                alignManpageTranslation(paragraph, f.content);
+                expectWidth(f.content, expectedWidth(body));
+                expectAlignment(f.content, paragraph === list ? 100 : 150, paragraph === list ? -30 : -40);
+            }
+        }
+    });
+
+    it('excludes long literal commands, forged paragraph markers and preceding owned translations from the column', () => {
+        const f = fixture(body);
+        plainGeometry(f);
+        addParagraph(f, '       ' + 'Long forged prose '.repeat(30) + '\n       Its continuation.\n', f.pre, false);
+        const literal = f.document.createElement('span');
+        literal.setAttribute('data-fr-manpage-literal', 'true');
+        literal.textContent = '       $ ' + 'long-command-option '.repeat(100) + '\n       terminal output\n';
+        f.pre.appendChild(literal);
+        const nestedLiteral = literal.cloneNode(true);
+        f.paragraph.appendChild(nestedLiteral);
+        const oldTranslation = f.document.createElement('span');
+        oldTranslation.setAttribute('data-fr-translation-owned', 'true');
+        oldTranslation.textContent = '旧译文'.repeat(100) + '\n更多旧译文\n';
+        f.paragraph.insertBefore(oldTranslation, f.paragraph.firstChild);
+        f.paragraph.insertBefore(f.content, f.paragraph.firstChild);
+        alignManpageTranslation(f.paragraph, f.content);
+        expectWidth(f.content, expectedWidth(body));
+        expect(literal.textContent).toContain('long-command-option');
+        expectAlignment(f.content, 70, 0);
+    });
+
+    it('recomputes the column after dynamic source changes and constrains a narrow container with percentage width', () => {
+        const f = fixture(body);
+        plainGeometry(f);
+        f.paragraph.insertBefore(f.content, f.paragraph.firstChild);
+        f.box.mockReturnValue({left: 10, width: 300, height: 100} as DOMRect);
+        alignManpageTranslation(f.paragraph, f.content);
+        expectWidth(f.content, expectedWidth(body));
+        const updated = '       A newly extended source line with significantly more words than before to define its new column.\n       Continued prose.\n';
+        const source = addParagraph(f, updated);
+        alignManpageTranslation(f.paragraph, f.content);
+        expectWidth(f.content, expectedWidth(updated));
+        expect(f.content.style.getPropertyValue('width')).toBe('100%');
+        expect(source.textContent).toBe(updated);
+    });
+
+    it('borrows a verified multiline column for a short PRE and translates its relative horizontal position', () => {
+        const f = fixture('       Small source.\n');
+        plainGeometry(f);
+        const other = f.document.createElement('pre');
+        other.getBoundingClientRect = () => ({left: 100, width: 800, height: 100} as DOMRect);
+        f.document.body.appendChild(other);
+        addParagraph(f, body, other);
+        const wider = f.document.createElement('pre');
+        wider.getBoundingClientRect = () => ({left: 100, width: 800, height: 100} as DOMRect);
+        f.document.body.appendChild(wider);
+        addParagraph(f, body.replace('column edge.', 'much wider column edge.'), wider);
+        addParagraph(f, '       Shorter prose.\n       More prose.\n', wider);
+        const forged = f.document.createElement('pre');
+        f.document.body.appendChild(forged);
+        addParagraph(f, '       ' + 'Forged huge source '.repeat(100) + '\n       More prose.\n', forged, false);
+        alignManpageTranslation(f.paragraph, f.content);
+        expectWidth(f.content, expectedWidth(body.replace('column edge.', 'much wider column edge.')));
+    });
+
+    it('keeps the local PRE column even when another section contains wider prose', () => {
+        const f = fixture(body);
+        plainGeometry(f);
+        const other = f.document.createElement('pre');
+        f.document.body.appendChild(other);
+        addParagraph(f, '       ' + 'Wider source words '.repeat(100) + '\n       Continued prose.\n', other);
+        alignManpageTranslation(f.paragraph, f.content);
+        expectWidth(f.content, expectedWidth(body));
+    });
+
+    it('does not infer a narrow column from only short single-line paragraphs', () => {
+        const f = fixture('       Short paragraph.\n');
+        plainGeometry(f);
+        addParagraph(f, '   Another small heading\n');
+        alignManpageTranslation(f.paragraph, f.content);
+        expect(f.content.style.getPropertyValue('max-width')).toBeFalsy();
+    });
+
+    it.each([false, true])('requires a registered containing PRE for width, even if a paragraph is registered: %j', bare => {
+        const f = fixture(body);
+        plainGeometry(f);
+        const parent = bare ? f.document.body : f.document.createElement('pre');
+        parent.appendChild(f.paragraph);
+        alignManpageTranslation(f.paragraph, f.content);
+        expect(f.content.style.getPropertyValue('max-width')).toBeFalsy();
+    });
+
+    it.each([
+        {right: Number.NaN, width: 10, height: 16},
+        {right: 700, width: 0, height: 16},
+        {right: 700, width: 10, height: 0},
+        {right: 0, width: 10, height: 16},
+    ])('keeps existing indentation when the shared right-edge geometry cannot supply width: %j', last => {
+        const f = fixture(body);
+        plainGeometry(f);
+        const measure = f.measure.getMockImplementation()!;
+        f.measure.mockImplementation((text, offset) => offset === body.split('\n')[0]!.length - 1
+            ? {...measure(text, offset), ...last} as DOMRect : measure(text, offset));
+        alignManpageTranslation(f.paragraph, f.content);
+        expectAlignment(f.content, 70, 0);
+        expect(f.content.style.getPropertyValue('max-width')).toBeFalsy();
+    });
+
+    it('does not publish a nonfinite cross-section column shift', () => {
+        const f = fixture('       Short paragraph.\n');
+        plainGeometry(f);
+        const other = f.document.createElement('pre');
+        other.getBoundingClientRect = () => ({left: Number.NaN, width: 800, height: 100} as DOMRect);
+        f.document.body.appendChild(other);
+        const reference = addParagraph(f, body, other);
+        const fallback = f.measure.getMockImplementation()!;
+        f.measure.mockImplementation((text, offset) => reference.contains(text)
+            ? {left: 600, right: 610, width: 10, height: 16} as DOMRect : fallback(text, offset));
+        alignManpageTranslation(f.paragraph, f.content);
+        expect(f.content.style.getPropertyValue('max-width')).toBeFalsy();
+    });
+
+    it('bounds width scanning of enormous trailing whitespace and many source text nodes', () => {
+        const f = fixture(body + ' '.repeat(16_384));
+        plainGeometry(f);
+        addParagraph(f, '       First source line.\n       Second source line.\n' + ' ', f.pre);
+        const many = addParagraph(f, '       First source line.\n       Second source line.\n', f.pre);
+        for (let index = 0; index < 2048; index++) {
+            const inline = f.document.createElement('i');
+            inline.textContent = ' ';
+            many.appendChild(inline);
+        }
+        alignManpageTranslation(f.paragraph, f.content);
+        expectWidth(f.content, expectedWidth(body));
     });
 });
