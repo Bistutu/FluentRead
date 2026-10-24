@@ -90,6 +90,48 @@ describe('hotkey parsing', () => {
 });
 
 describe('hotkey matching', () => {
+    it.each([undefined, null, 7, false, {}])('键值缺失或类型异常（%j）时安全回退有效 code，并拒绝无按键的误触发', (value) => {
+        const event = keyboardEvent({key: value as string, code: 'KeyT', ctrlKey: true});
+        expect(normalizeHotkeyEventKey(event)).toBe('t');
+        expect(matchesConfiguredHotkey(event, 'Ctrl+T')).toBe(true);
+        expect(matchesConfiguredHotkey(event, 'Ctrl+Y')).toBe(false);
+        expect(matchesModifierOnlyHotkey(event, 'Control')).toBe(false);
+
+        const pressed = new Set<string>(['y']);
+        const keyByCode = new Map<string, string>([['KeyY', 'y']]);
+        addPressedHotkeyEventKey(event, pressed, keyByCode);
+        expect([...pressed]).toEqual(['y', 't']);
+        deletePressedHotkeyEventKey(event, pressed, keyByCode);
+        expect([...pressed]).toEqual(['y']);
+        expect([...keyByCode]).toEqual([['KeyY', 'y']]);
+
+        const withoutCode = {...event, code: ''};
+        expect(normalizeHotkeyEventKey(withoutCode)).toBe('');
+        expect(matchesConfiguredHotkey(withoutCode, 'Ctrl+T')).toBe(false);
+        addPressedHotkeyEventKey(withoutCode, pressed, keyByCode);
+        deletePressedHotkeyEventKey(withoutCode, pressed, keyByCode);
+        expect([...pressed]).toEqual(['y']);
+        expect([...keyByCode]).toEqual([['KeyY', 'y']]);
+    });
+
+    it.each([undefined, null, 7, false, {}])('code 缺失或类型异常（%j）时保留逻辑键，且不污染按住键索引', (value) => {
+        const event = keyboardEvent({key: 't', code: value as string, ctrlKey: true});
+        expect(normalizeHotkeyEventKey(event)).toBe('t');
+        expect(matchesConfiguredHotkey(event, 'Ctrl+T')).toBe(true);
+
+        const pressed = new Set<string>();
+        const keyByCode = new Map<string, string>();
+        addPressedHotkeyEventKey(event, pressed, keyByCode);
+        expect([...pressed]).toEqual(['t']);
+        expect([...keyByCode]).toEqual([]);
+        deletePressedHotkeyEventKey(event, pressed, keyByCode);
+        expect([...pressed]).toEqual([]);
+
+        const withoutKey = {...event, key: undefined as unknown as string};
+        expect(normalizeHotkeyEventKey(withoutKey)).toBe('');
+        expect(matchesConfiguredHotkey(withoutKey, 'Ctrl+T')).toBe(false);
+    });
+
     it('按住组合按物理 code 移除按下时的逻辑键，并忽略修饰键与不可配置按键', () => {
         const pressed = new Set<string>();
         const keyByCode = new Map<string, string>();
