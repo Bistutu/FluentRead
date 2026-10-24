@@ -107,6 +107,8 @@ export interface SelectionTtsBackgroundDependencies {
     readonly stopWithOffscreen: (route: SelectionTtsRoute) => Promise<void>;
     readonly seekWithOffscreen: (route: SelectionTtsRoute, offsetSeconds: -5 | 5) => Promise<boolean>;
     readonly offscreenPlaybackEnabled?: boolean;
+    /** 扩展页面没有 tab 路由时，下载 Google 音频并返回调用页面播放。 */
+    readonly fetchPageAudio?: (url: string, signal: AbortSignal) => Promise<{audio: ArrayBuffer; contentType: string}>;
     readonly sendTabMessage: (tabId: number, message: unknown, options?: {frameId: number}) => Promise<unknown>;
     readonly warn?: (message: string, error: unknown) => void;
 }
@@ -405,7 +407,21 @@ export function createSelectionTtsBackgroundHandlers(
                 const language = parseLanguage(message.language);
                 const clientRequestId = parseSelectionTtsClientRequestId(message.clientRequestId);
                 const tabId = parseTabId(context);
-                if (tabId === null) return {success: false, error: '无法确定当前标签页'};
+                if (tabId === null) {
+                    const owner = pageSenderOwner(context);
+                    if (owner === null) return {success: false, error: '无法确定当前标签页'};
+                    if (!dependencies.fetchPageAudio) return {success: false, error: '扩展页面 Google TTS 不可用'};
+                    const request = beginPageRequest(owner, clientRequestId);
+                    try {
+                        const result = await dependencies.fetchPageAudio(googleSelectionTtsUrl(text, language), request.controller.signal);
+                        if (!isCurrentPageRequest(request)) return {success: false, error: '语音播放已取消'};
+                        releasePageRequest(request);
+                        return {success: true, transport: 'page', audioBase64: arrayBufferToBase64(result.audio), contentType: result.contentType, voice: 'Google TTS'};
+                    } catch (error) {
+                        releasePageRequest(request);
+                        return {success: false, error: errorMessage(error)};
+                    }
+                }
 
                 // 步骤 1：Google fallback 与 Edge 共用单例播放状态，新请求同样先取消旧播放。
                 const route = senderRoute(context, tabId, clientRequestId);

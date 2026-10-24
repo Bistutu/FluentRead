@@ -155,7 +155,20 @@
     "settings.general.themeDescription": "확장 프로그램 인터페이스에만 적용되며 웹페이지 자체의 색상은 바꾸지 않습니다.",
     "settings.services.freeWeights.timeoutHelp": "각 서비스는 설정한 시간까지 기다리며 무료 번역 전체는 20초의 제한을 공유합니다. 전역 재시도는 반복하지 않습니다. 네트워크 오류는 나중에 다시 시도하세요. 속도 제한, 차단 또는 할당량 소진 시 서비스 안내에 따라 기다리거나 다른 서비스를 선택하세요.",
     "writing.experience.inheritService": "기본 서비스 사용 · {service}",
-    "writing.experience.inheritTargetLanguage": "대상 언어 따르기 · {language}"
+    "writing.experience.inheritTargetLanguage": "대상 언어 따르기 · {language}",
+    "learning.collection.speechRequesting": "음성 합성 중…",
+    "learning.collection.speechPlaying": "읽는 중",
+    "learning.collection.speechOnlineNoAudio": "온라인 서비스에서 오디오를 반환하지 않았습니다",
+    "learning.collection.speechCancelled": "음성 요청이 취소되었습니다",
+    "learning.collection.speechPageAudioNotStarted": "페이지 오디오를 시작하지 못했습니다",
+    "learning.collection.speechGoogleNoAudio": "Google에서 오디오를 반환하지 않았습니다",
+    "learning.collection.speechBrowserStartFailed": "브라우저 음성을 시작하지 못했습니다{error}{details}",
+    "learning.collection.speechBrowserNotStarted": "브라우저 음성이 시작되지 않았습니다{details}",
+    "learning.collection.speechBrowserCallFailed": "브라우저 음성 호출 실패: {error}{details}",
+    "learning.collection.speechOnlineSynthesis": "온라인 합성: {error}",
+    "learning.collection.speechGoogleFallback": "Google 대체 음성: {error}",
+    "learning.collection.speechOnlineRequestFailed": "온라인 요청 또는 오디오 재생 실패: {error}",
+    "learning.collection.speechFailedDetail": "음성 읽기 실패: {details}"
   },
   "legacy": {
     "同步连接已变化，请重新生成预览。": "동기화 연결이 변경되었습니다. 미리보기를 다시 생성하세요.",

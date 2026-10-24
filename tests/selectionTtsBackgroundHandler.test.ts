@@ -649,6 +649,51 @@ describe('selection TTS background handlers', () => {
         });
     });
 
+    it('Google TTS 在扩展页面返回音频数据供页面播放', async () => {
+        const fetchPageAudio = vi.fn(async (url: string, signal: AbortSignal) => {
+            expect(url).toBe(googleSelectionTtsUrl('hello', 'en-US'));
+            expect(signal).toBeInstanceOf(AbortSignal);
+            return {audio: new Uint8Array([4, 5, 6]).buffer, contentType: 'audio/mpeg'};
+        });
+        const {router, dependencies} = createSubject({fetchPageAudio});
+        await expect(router.dispatch({type: SELECTION_TTS_GOOGLE_MESSAGE_TYPE, text: 'hello', language: 'en-US', clientRequestId: 'google-page'},
+            {sender: {url: 'chrome-extension://controlled-extension/options.html#settings-vocabulary'}})).resolves.toEqual({
+                handled: true,
+                response: {success: true, transport: 'page', audioBase64: 'BAUG', contentType: 'audio/mpeg', voice: 'Google TTS'},
+            });
+        expect(fetchPageAudio).toHaveBeenCalledOnce();
+        expect(dependencies.playWithOffscreen).not.toHaveBeenCalled();
+    });
+
+    it('Google TTS 扩展页面获取失败时释放请求并返回具体错误', async () => {
+        const fetchPageAudio = vi.fn(async () => {throw new Error('Google TTS failed: 503 Service Unavailable');});
+        const {router} = createSubject({fetchPageAudio});
+        await expect(router.dispatch({type: SELECTION_TTS_GOOGLE_MESSAGE_TYPE, text: 'hello', language: 'en-US', clientRequestId: 'google-page-error'},
+            {sender: {url: 'chrome-extension://controlled-extension/options.html#settings-vocabulary'}})).resolves.toEqual({
+                handled: true,
+                response: {success: false, error: 'Google TTS failed: 503 Service Unavailable'},
+            });
+        expect(fetchPageAudio).toHaveBeenCalledOnce();
+    });
+
+    it('Google TTS 扩展页面请求途中被停止时丢弃迟到的音频', async () => {
+        const pageUrl = 'chrome-extension://controlled-extension/options.html#settings-vocabulary';
+        const fetchPageAudio = vi.fn(() => page.promise);
+        const page = deferred<{audio: ArrayBuffer; contentType: string}>();
+        const {router} = createSubject({fetchPageAudio});
+        const request = router.dispatch({type: SELECTION_TTS_GOOGLE_MESSAGE_TYPE, text: 'hello', language: 'en-US', clientRequestId: 'google-page-cancel'},
+            {sender: {url: pageUrl}});
+        await vi.waitFor(() => expect(fetchPageAudio).toHaveBeenCalledOnce());
+
+        await router.dispatch({type: SELECTION_TTS_STOP_MESSAGE_TYPE, clientRequestId: 'google-page-cancel'}, {sender: {url: pageUrl}});
+        page.resolve({audio: new Uint8Array([4, 5, 6]).buffer, contentType: 'audio/mpeg'});
+
+        await expect(request).resolves.toEqual({
+            handled: true,
+            response: {success: false, error: '语音播放已取消'},
+        });
+    });
+
     it('Google late PLAY 使用二次 stop 并返回取消', async () => {
         const play = deferred<void>();
         const {dependencies, router} = createSubject({
