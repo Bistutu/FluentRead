@@ -528,7 +528,10 @@ describe('userscript browser shim injection', () => {
         const safariPermissionKeys = Object.keys(extension).filter(key => key.startsWith('safari.freePool.'));
         expect(safariPermissionKeys).toHaveLength(8);
         const pageFontKeys = Object.keys(extension).filter(key => key.startsWith('popup.pageFont.'));
-        expect(pageFontKeys).toHaveLength(9);
+        const expectedPageFontKeys = ['title', 'original', 'browserDefault', 'hostAction', 'browserAction', 'changing', 'retryAction',
+            'hint', 'loading', 'unavailable', 'readError', 'changeError', 'retry'].map(name => `popup.pageFont.${name}`);
+        expect([...pageFontKeys].sort()).toEqual([...expectedPageFontKeys].sort());
+        expect(Object.keys(projected).filter(key => key.startsWith('popup.pageFont.'))).toEqual([]);
         for (const key of [...diagnosticKeys, ...readerDialogKeys, ...safariPermissionKeys, ...pageFontKeys]) {
             expect(extension[key]).toBeTruthy();
             expect(Object.hasOwn(projected, key)).toBe(false);
