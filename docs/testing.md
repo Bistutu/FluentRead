@@ -1218,11 +1218,12 @@ node scripts/testing/run-area-translation-flow-test.cjs \
 node scripts/testing/run-section-translation-flow-test.cjs \
   --extension-dir .output/chrome-mv3 \
   --playwright-root <path> \
-  --focus-safe-helper <path> \
+  --focus-safe-helper <任务工作树>/scripts/testing/focus-safe-browser.cjs \
+  --runtime-diagnostics <浏览器测试技能>/scripts/runtime-diagnostics.cjs \
   --artifacts-dir /private/tmp/fluentread-section-flow
 ```
 
-使用 `--case-set sweep` 可单独验证左键划过两段、往返去重和间隙排除、逐块高亮、松开仅锁定、整组扩大缩小、精确翻译/恢复、混合已译状态补译、重新选择、Esc 取消和非首段被移除后的失效保护。`core` 保留原有单击、快捷键和页面生命周期回归，可与 `sweep` 分别运行。
+使用 `--case-set sweep` 可单独验证真实 Alt+R 进入后左键划过两段、往返去重和间隙排除、从段落空白起划后收窄外壳、旧选择器退出动画不打断下一轮拖动、逐块高亮、松开仅锁定且确认前零请求、整组扩大缩小、精确翻译/恢复、混合已译状态补译、重新选择、Esc 取消后网页点击恢复，以及非首段被移除后的失效保护。`core` 保留原有单击、快捷键和页面生命周期回归，可与 `sweep` 分别运行。传入 `--runtime-diagnostics` 后保存内容脚本隔离世界、Popup 和后台的错误与告警；报告同时保留附加前启动日志等采集空窗。
 
 使用临时 Edge profile、防抢焦点 helper 和 CDP 真实指针/按键，在类 GitHub 仓库页夹具上验证：Popup 局部按钮与主按钮同排等高，消息进入选择模式后稳定预览鼠标下的段落，边缘轻微移动不换选；点击只锁定选区、不请求服务且不跳转，锁定后鼠标移动与滚动不改变范围；可见按钮扩大到 README、缩小及重新选择，确认按钮才翻译该区域，网页收不到选择点击，视口外段落排在最后翻译，导航、文件列表、侧栏、页脚和代码保持原文；再次选择同一区域显示“恢复原文”并只恢复该区域。伪造点击和 Esc 不影响选择，真实 Esc 与右键退出且不发请求；主动选择侧栏时按全部节点范围翻译；已是目标语言与空白区域给出提示且不请求服务；快捷键默认关闭、开启后可进入和退出且在输入框中让行；全文恢复原文同时清除局部译文，关闭插件立即退出选择模式。追加 `--github-url <仓库地址>` 可在真实 GitHub README 上重复点选流程并断言 README 之外没有译文。翻译传输是确定性 Google 夹具，不代表外部服务可用性。
 

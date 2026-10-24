@@ -226,6 +226,47 @@ afterEach(() => {
 });
 
 describe('局部翻译选择模式', () => {
+    it('从段落间隙起划时收窄到实际经过的段落，往返经过外壳不扩大或丢失已选块', async () => {
+        const h = await createHarness({initialPoint: {x: 50, y: 110}});
+        h.document.elementFromPoint = (_x, y) => y >= 60 && y <= 100 ? h.byId('para')
+            : y >= 120 && y <= 160 ? h.byId('second') : h.byId('readme');
+        h.picker.startSectionPicker(h.options as never); h.flushFrames();
+        h.emit('pointerdown', {pointerId: 1, clientX: 50, clientY: 110});
+        h.emit('pointermove', {pointerId: 1, buttons: 1, clientX: 50, clientY: 80});
+        h.flushFrames(); vi.advanceTimersByTime(90);
+        expect(h.inspect).toHaveBeenLastCalledWith(h.byId('para'));
+        h.emit('pointermove', {pointerId: 1, buttons: 1, clientX: 50, clientY: 140});
+        h.emit('pointermove', {pointerId: 1, buttons: 1, clientX: 50, clientY: 110});
+        h.emit('pointerup', {pointerId: 1, clientX: 50, clientY: 110});
+        h.flushFrames(); vi.advanceTimersByTime(90);
+        expect(h.host()!.getAttribute('data-selection-count')).toBe('2');
+        expect(h.host()!.getAttribute('data-selection-state')).toBe('locked');
+        expect(h.shadow().querySelectorAll('.fr-section-box.is-visible')).toHaveLength(2);
+        expect(h.onPick).not.toHaveBeenCalled();
+        h.emit('keydown', {key: 'Enter'});
+        expect(h.onPick).toHaveBeenCalledWith([h.byId('para'), h.byId('second')]);
+    });
+
+    it('单击间隙仍可锁定文章，段落的方向键扩大和缩小保留原范围语义', async () => {
+        const h = await createHarness({initialPoint: null});
+        h.hit.current = h.byId('readme');
+        h.picker.startSectionPicker(h.options as never); h.flushFrames();
+        h.emit('pointerdown', {pointerId: 1, clientX: 50, clientY: 110});
+        h.emit('pointerup', {pointerId: 1, clientX: 50, clientY: 110});
+        h.emit('click', {clientX: 50, clientY: 110}); h.flushFrames(); vi.advanceTimersByTime(90);
+        expect(h.inspect).toHaveBeenLastCalledWith(h.byId('readme'));
+        expect(h.host()!.getAttribute('data-selection-state')).toBe('locked');
+        clickButton(h, 'reselect');
+        h.hit.current = h.byId('para');
+        h.emit('pointermove', {clientX: 50, clientY: 80}); h.flushFrames(); vi.advanceTimersByTime(90);
+        h.emit('keydown', {key: 'ArrowUp'}); h.flushFrames(); vi.advanceTimersByTime(90);
+        expect(h.inspect).toHaveBeenLastCalledWith(h.byId('readme'));
+        h.emit('keydown', {key: 'ArrowDown'}); h.flushFrames(); vi.advanceTimersByTime(90);
+        expect(h.inspect).toHaveBeenLastCalledWith(h.byId('para'));
+        h.emit('keydown', {key: 'Enter'});
+        expect(h.onPick).toHaveBeenCalledWith(h.byId('para'));
+    });
+
     it('按住左键划过两段逐块高亮并去重，松开只锁定，确认一次交付精确区域', async () => {
         const h = await createHarness();
         h.picker.startSectionPicker(h.options as never); h.flushFrames();
@@ -312,12 +353,31 @@ describe('局部翻译选择模式', () => {
             h.hit.current = h.byId('second'); h.emit('pointermove', {pointerId: 1, buttons: 1, clientX: 50, clientY: 130});
             h.emit('pointercancel', {pointerId: 2});
             if (exit === 'Escape') h.emit('keydown', {key: 'Escape'});
-            else h.emit(exit, {pointerId: 1});
+            else h.emit(exit, {pointerId: 1, target: exit === 'blur' ? window : undefined});
             h.emit('pointerup', {pointerId: 1, clientX: 50, clientY: 130}); h.flushFrames();
             expect(h.onPick).not.toHaveBeenCalled();
             if (h.host()) expect(h.host()!.getAttribute('data-selection-state')).toBe('preview');
             h.picker.stopSectionPicker();
         }
+    });
+
+    it('捕获到网页元素或旧选择器的失焦时保留划选，松开仍只锁定等待确认', async () => {
+        const h = await createHarness(); h.picker.startSectionPicker(h.options as never); h.flushFrames();
+        h.emit('pointerdown', {pointerId: 1, clientX: 50, clientY: 70});
+        h.hit.current = h.byId('second');
+        h.emit('pointermove', {pointerId: 1, buttons: 1, clientX: 50, clientY: 130}); h.flushFrames();
+        const oldHost = h.document.createElement('fluent-read-section-picker');
+        for (const target of [h.byId('para'), oldHost]) h.emit('blur', {target});
+        h.flushFrames(); vi.advanceTimersByTime(320);
+        expect(h.host()!.getAttribute('data-selection-state')).toBe('dragging');
+        expect(h.host()!.getAttribute('data-selection-count')).toBe('2');
+        h.emit('pointerup', {pointerId: 1, clientX: 50, clientY: 130});
+        h.emit('click', {clientX: 50, clientY: 130}); h.flushFrames(); vi.advanceTimersByTime(90);
+        expect(h.host()!.getAttribute('data-selection-state')).toBe('locked');
+        expect(h.onPick).not.toHaveBeenCalled();
+        clickButton(h, 'confirm');
+        expect(h.onPick).toHaveBeenCalledOnce();
+        expect(h.onPick).toHaveBeenCalledWith([h.byId('para'), h.byId('second')]);
     });
 
     it('伪造、非左键、非主指针和触屏拖动不启动划选，普通点击与触屏滚动保持原行为', async () => {
@@ -394,7 +454,7 @@ describe('局部翻译选择模式', () => {
             h.hit.current = null; h.emit('scroll'); h.flushFrames();
             expect(h.host()!.getAttribute('data-selection-state')).toBe('preview');
             expect(h.shadow().querySelectorAll('.fr-section-box.is-visible')).toHaveLength(0);
-            h.emit('pointercancel', {pointerId: 1}); h.emit('pointercancel', {isTrusted: false}); h.emit('blur'); h.emit('blur', {isTrusted: false});
+            h.emit('pointercancel', {pointerId: 1}); h.emit('pointercancel', {isTrusted: false}); h.emit('blur', {target: window}); h.emit('blur', {isTrusted: false, target: window});
             h.picker.stopSectionPicker();
         }
     });

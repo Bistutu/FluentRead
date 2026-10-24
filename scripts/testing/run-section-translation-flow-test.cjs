@@ -13,6 +13,10 @@ const artifacts = path.resolve(arg('artifacts-dir', '/private/tmp/fluentread-sec
 const githubUrl = arg('github-url');
 const playwrightRoot = arg('playwright-root');
 const helper = arg('focus-safe-helper');
+// 可传入浏览器测试技能的诊断采集器，跨隔离世界、扩展页面和后台观察错误与告警。
+const diagnosticsPath = arg('runtime-diagnostics');
+const diagnosticTools = diagnosticsPath ? require(path.resolve(diagnosticsPath)) : null;
+const diagnostics = diagnosticTools?.createRuntimeDiagnostics();
 const caseSet = arg('case-set', 'core');
 if (!['core', 'sweep', 'quality', 'all'].includes(caseSet)) throw new Error('--case-set 必须是 core、sweep、quality 或 all');
 const qualityCases = arg('quality-cases', 'layout,nested-scroll,replacement,boundary,shadow,retry,cancel,performance,narrow').split(',');
@@ -31,6 +35,7 @@ const profileIdentity = fs.lstatSync(profileDir);
 const owner = crypto.randomUUID();
 fs.writeFileSync(path.join(profileDir, '.owner'), owner, {flag: 'wx'});
 const report = {scope: 'production extension, trusted CDP pointer/keyboard gestures, deterministic Google transport; not live provider latency or quality', sourceProjectRoot: projectRoot, caseSet, qualityCases: ['core', 'sweep'].includes(caseSet) ? [] : qualityCases, cases: [], screenshots: [], errors: [], consoleErrors: [], errorCoverage: 'errors contains uncaught page exceptions; console.error messages are recorded separately, including intentionally failed fixture requests', profileMode: 'automatically-created-temporary-profile'};
+if (!diagnostics) report.diagnosticLimitations = ['未传入 --runtime-diagnostics；现有 pageerror/console.error 监听不覆盖全部内容脚本隔离世界、后台和告警，不能据此认定运行时干净。'];
 
 const filler = (id, text) => `<p id="${id}">${text}</p>`;
 const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Section translation fixture</title><style>
@@ -69,6 +74,7 @@ function privateFocusRecord(record) {
 }
 function noteAction(action) {
   currentAction = action;
+  diagnostics?.setPhase(`${currentCase}: ${action}`);
   if (traceCount++ < 2000) privateFocusRecord({kind: 'action'});
 }
 function tracePageActions(target, label) {
@@ -126,6 +132,11 @@ async function startFromPopupMessage() {
   assert.deepEqual(response, {status: 'success'});
   await wait(pickerActive);
 }
+async function startFromHotkey() {
+  noteAction('trusted keyboard: Alt+R starts section picker');
+  await page.keyboard.press('Alt+R');
+  await wait(pickerActive);
+}
 async function center(selector) {
   const box = await page.locator(selector).boundingBox();
   assert.ok(box, selector);
@@ -172,6 +183,7 @@ async function noticeText() {return page.evaluate(() => document.querySelector('
   Object.assign(report, {launchMode: launched.launchMode, focusPolicy: launched.focusPolicy, windowPlacement: launched.windowPlacement});
   assert.equal(report.launchMode, 'macos-background-cdp'); assert.equal(report.focusPolicy, 'launchservices-no-foreground'); assert.equal(report.windowPlacement.browserFrontmost, false);
   const context = launched.context;
+  await diagnostics?.start(context);
   const browserSession = await context.browser().newBrowserCDPSession();
   try {
     const {processInfo} = await browserSession.send('SystemInfo.getProcessInfo');
@@ -184,7 +196,9 @@ async function noticeText() {return page.evaluate(() => document.querySelector('
   } finally {await browserSession.detach();}
   assertFocusSafe();
   worker = context.serviceWorkers().find(w => w.url().startsWith('chrome-extension://')) || await context.waitForEvent('serviceworker');
+  diagnostics?.setExtensionId(new URL(worker.url()).host);
   popup = await newPageWithoutForeground(context, 30000);
+  await diagnostics?.attachPage(popup, 'popup');
   await popup.setViewportSize({width: 400, height: 760});
   await popup.goto(`chrome-extension://${new URL(worker.url()).host}/popup.html`);
   await patch({on: true, service: 'google', from: 'auto', to: 'zh-Hans', display: 1, disableFloatingBall: true, disableSelectionTranslator: true, uiLanguage: 'zh-CN', uiLanguageSetupCompleted: true});
@@ -207,12 +221,16 @@ async function noticeText() {return page.evaluate(() => document.querySelector('
       const translateFixture = (origin, source, target) => {
         globalThis.__sectionFixture.origins.push(origin);
         globalThis.__sectionFixture.requests.push({origin, source, target, requestedAt: performance.now()});
-        return origin.split(/(___FLUENTREAD_[A-Za-z0-9]+_\d+_(?:BEGIN|END)___)/)
-          .map(part => part.startsWith('___FLUENTREAD_') || !part.trim() ? part : `【译】${part}`).join('');
+        // 生产 broker 会拒绝“少量汉字 + 大段英文原文”的假译文；夹具返回实质译文，保留富文本及槽位协议。
+        const protectedToken = /^(?:___FLUENTREAD_[A-Za-z0-9_-]+?_\d+_(?:BEGIN|END)___|__FRTERM_[A-Za-z0-9_]+__|<[^>]+>)$/;
+        return origin.split(/(___FLUENTREAD_[A-Za-z0-9_-]+?_\d+_(?:BEGIN|END)___|__FRTERM_[A-Za-z0-9_]+__|<[^>]+>)/g)
+          .map(part => protectedToken.test(part) || !part.trim() ? part
+            : target?.startsWith('es') ? '【译】Este es el contenido traducido del fragmento seleccionado.' : '【译】这是用于验证局部翻译交互的中文译文。').join('');
       };
       if (url.includes('/v1/translateHtml')) {
         const [texts, source, target] = JSON.parse(options.body)[0];
-        const translated = texts.map(text => `<pre>${translateFixture(text.replace(/^<pre>|<\/pre>$/g, ''), source, target)}</pre>`);
+        const translated = texts.map(text => `<pre>${translateFixture(text.replace(/^<pre>|<\/pre>$/g, '')
+          .replace(/&(amp|lt|gt|quot|apos|#39);/g, (_match, entity) => ({amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", '#39': "'"})[entity]), source, target)}</pre>`);
         if (await settleFixture(texts)) return new Response('Section fixture request intentionally rejected', {status: 400});
         return new Response(JSON.stringify([translated]), {status: 200});
       }
@@ -252,6 +270,7 @@ async function noticeText() {return page.evaluate(() => document.querySelector('
   report.cases.push(currentCase);
 
   page = await newPageWithoutForeground(context, 30000); page.on('pageerror', e => report.errors.push(e.message));
+  await diagnostics?.attachPage(page, 'fixture-page');
   tracePageActions(page, 'fixturePage');
   page.on('console', message => {if (message.type() === 'error') report.consoleErrors.push({case: currentCase, message: message.text(), location: message.location()});});
   await page.goto(`http://127.0.0.1:${server.address().port}/repo`); cdp = await context.newCDPSession(page);
@@ -275,9 +294,11 @@ async function noticeText() {return page.evaluate(() => document.querySelector('
     const selectedCount = () => picker('return Number(this.host.getAttribute("data-selection-count"))');
     const visibleBoxes = () => picker('return [...this.querySelectorAll(".fr-section-box.is-visible")].map(box=>{const r=box.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height}})');
     const requestCount = () => worker.evaluate(() => globalThis.__sectionFixture.origins.length);
-    currentCase = 'left-button sweep selects exactly two paragraphs; retracing and gaps do not select the article';
+    currentCase = 'shortcut enters left-button sweep; release locks exactly two paragraphs without translating';
+    await patch({sectionTranslationHotkeyEnabled: true, sectionTranslationHotkey: 'Alt+R'});
+    await page.waitForTimeout(180);
     const beforeSweep = await requestCount();
-    await startFromPopupMessage(); await sweep('#p1', '#p2', true);
+    await startFromHotkey(); await sweep('#p1', '#p2', true);
     await waitLabel(/翻译此区域 · 2 段/, '已选 2 个区域');
     assert.equal(await selectedCount(), 2); assert.equal((await visibleBoxes()).length, 2);
     assert.equal(await requestCount(), beforeSweep, 'release only locks; no request before confirmation');
@@ -300,6 +321,58 @@ async function noticeText() {return page.evaluate(() => document.querySelector('
     await wait(async () => (await translationCount('#p1,#p2')) === 0);
     assert.equal(await requestCount(), beforeRestore, 'restore needs no new request'); report.cases.push(currentCase);
 
+    currentCase = 'starting a sweep in article whitespace selects only the paragraphs actually crossed';
+    await wait(async () => !(await pickerActive()));
+    await page.locator('#p1').scrollIntoViewIfNeeded();
+    const firstRect = await page.locator('#p1').boundingBox(), secondRect = await page.locator('#p2').boundingBox();
+    assert.ok(secondRect.y > firstRect.y + firstRect.height, 'fixture has a genuine gap between paragraphs');
+    const gap = {x: firstRect.x + firstRect.width / 2, y: (firstRect.y + firstRect.height + secondRect.y) / 2};
+    assert.equal(await page.evaluate(({x, y}) => document.elementFromPoint(x, y)?.id, gap), 'readme-body', 'the pointerdown hits the article shell, not a paragraph');
+    const beforeGapSweep = await requestCount();
+    await startFromPopupMessage();
+    await page.mouse.move(gap.x, gap.y); await page.mouse.down();
+    const firstPoint = await center('#p1'), secondPoint = await center('#p2');
+    report.whitespaceSweepTrace = {gap, firstPoint, secondPoint, firstRect, secondRect, stages: []};
+    report.whitespaceSweepTrace.nativePathHits = await page.evaluate(({gap, firstPoint, secondPoint}) => {
+      const sample = (from, to, steps) => Array.from({length: steps + 1}, (_, index) => {
+        const x = from.x + (to.x - from.x) * index / steps, y = from.y + (to.y - from.y) * index / steps;
+        const hit = document.elementFromPoint(x, y);
+        return {x, y, id: hit?.id || null, tag: hit?.tagName || null};
+      });
+      return {gapToFirst: sample(gap, firstPoint, 8), firstToSecond: sample(firstPoint, secondPoint, 10)};
+    }, {gap, firstPoint, secondPoint});
+    const recordWhitespaceStage = async stage => {
+      const snapshot = {stage, state: await pickerState(), selected: await selectedCount(), boxes: await visibleBoxes()};
+      report.whitespaceSweepTrace.stages.push(snapshot);
+      return snapshot;
+    };
+    await recordWhitespaceStage('pointerdown-in-gap');
+    await page.mouse.move(firstPoint.x, firstPoint.y, {steps: 8});
+    const afterFirst = await recordWhitespaceStage('moved-to-p1');
+    await page.waitForTimeout(100);
+    const afterFirstWait = await recordWhitespaceStage('held-on-p1-for-100ms');
+    await page.mouse.move(secondPoint.x, secondPoint.y, {steps: 10});
+    await recordWhitespaceStage('moved-to-p2');
+    await page.mouse.up();
+    await recordWhitespaceStage('released-on-p2');
+    assert.equal(afterFirst.state?.selection, 'dragging', 'moving from article whitespace into p1 starts a sweep');
+    assert.equal(afterFirst.selected, 1, 'the first crossed paragraph is collected');
+    assert.equal(afterFirstWait.state?.selection, 'dragging', 'removing the previous picker must not cancel the new sweep');
+    assert.equal(afterFirstWait.selected, 1, 'the first crossed paragraph remains selected after the next paint');
+    await wait(async () => (await pickerState())?.selection === 'locked');
+    await waitLabel(/翻译此区域 · 2 段/, '已选 2 个区域');
+    assert.equal(await selectedCount(), 2); assert.equal((await visibleBoxes()).length, 2);
+    assert.equal(await requestCount(), beforeGapSweep, 'whitespace-started sweep still waits for explicit confirmation');
+    await shot('sweep-whitespace-start-locked');
+    await clickPickerButton('.fr-section-confirm');
+    await wait(async () => (await translationCount('#p1,#p2')) === 2);
+    for (const outside of ['#readme-title', '#p3', '#li1', '#li2', '#about-text', '#p-far']) assert.equal(await hasTranslation(outside), false, `${outside} is outside the actual pointer path`);
+    await wait(async () => !(await pickerActive()));
+    await startFromPopupMessage(); await sweep('#p1', '#p2');
+    await waitLabel(/恢复原文 · 2 段/, '已选 2 个区域');
+    await page.keyboard.press('Enter'); await wait(async () => (await translationCount('#p1,#p2')) === 0);
+    report.cases.push(currentCase);
+
     currentCase = 'sweep with an existing translation fills only the untranslated paragraph';
     await wait(async () => !(await pickerActive()));
     await startFromPopupMessage(); await hover('#p1'); await page.keyboard.press('Enter');
@@ -315,7 +388,7 @@ async function noticeText() {return page.evaluate(() => document.querySelector('
     await page.keyboard.press('Enter'); await wait(async () => (await translationCount('#p1,#p2')) === 0);
     report.cases.push(currentCase);
 
-    currentCase = 'reselect clears all swept regions; Esc during dragging cancels without requests';
+    currentCase = 'reselect clears all swept regions; Esc during dragging cancels without requests and restores webpage clicks';
     await wait(async () => !(await pickerActive()));
     const beforeCancel = await requestCount(); await startFromPopupMessage(); await sweep('#p1', '#p2');
     await clickPickerButton('.fr-section-reselect'); assert.equal((await pickerState()).selection, 'preview');
@@ -324,6 +397,11 @@ async function noticeText() {return page.evaluate(() => document.querySelector('
     await wait(async () => (await pickerState())?.selection === 'dragging');
     await page.keyboard.press('Escape'); await page.mouse.up();
     assert.equal(await pickerActive(), false); assert.equal(await requestCount(), beforeCancel);
+    const beforeNativeClick = await page.evaluate(() => window.__pageClicks);
+    const nativeClick = await center('#p1');
+    await page.mouse.click(nativeClick.x, nativeClick.y);
+    assert.equal(await page.evaluate(() => window.__pageClicks), beforeNativeClick + 1, 'cancel removes interception and gives ordinary clicks back to the webpage');
+    assert.equal(await requestCount(), beforeCancel, 'ordinary clicks after cancellation do not translate');
     report.cases.push(currentCase);
 
     currentCase = 'removing a non-leading swept region invalidates the entire selection before confirmation';
@@ -336,7 +414,8 @@ async function noticeText() {return page.evaluate(() => document.querySelector('
     assert.equal(await requestCount(), beforeCancel);
     await page.locator('#p1').evaluate((element, html) => element.insertAdjacentHTML('afterend', html), original);
     report.cases.push(currentCase);
-    report.sweep = {selectedRegions: 2, translated: 2, restored: 2, outsideTranslations: 0, requestsBeforeConfirmation: 0};
+    report.sweep = {entryHotkey: 'Alt+R', selectedRegions: 2, translated: 2, restored: 2, outsideTranslations: 0, requestsBeforeConfirmation: 0,
+      whitespaceStartHit: 'readme-body', whitespaceStartSelectedRegions: 2, webpageClicksRestoredAfterCancellation: true};
   }
 
   if (caseSet === 'core' || caseSet === 'all') {
@@ -408,7 +487,10 @@ async function noticeText() {return page.evaluate(() => document.querySelector('
   assert.equal((await pickerState()).selection, 'preview');
   await hover('#p2');
   await waitLabel(/翻译此区域 · 1 段/, '段落');
-  assert.match((await pickerState()).preview, /It places the translation/);
+  const reselected = await pickerState(), p2Box = await page.locator('#p2').boundingBox();
+  assert.ok(Math.abs(reselected.rect.y - (p2Box.y - 3)) < 2 && Math.abs(reselected.rect.height - (p2Box.height + 6)) < 2,
+    'reselect highlights p2 using the current compact picker');
+  assert.equal(reselected.preview, undefined, 'the compact picker does not repeat the paragraph text');
   assert.equal(await worker.evaluate(() => globalThis.__sectionFixture.origins.length), 0);
   await page.keyboard.press('Escape');
   report.cases.push(currentCase);
@@ -705,7 +787,36 @@ async function noticeText() {return page.evaluate(() => document.querySelector('
 
   assertFocusSafe();
   assert.deepEqual(report.errors, []); report.success = true;
-})().catch(async error => {report.success = false; report.failure = {case: currentCase, message: error.stack}; process.exitCode = 1; if (page) await shot('failure').catch(() => {});}).finally(async () => {
+})().catch(async error => {
+  report.success = false; report.failure = {case: currentCase, message: error.stack}; process.exitCode = 1;
+  // 失败证据只保留本轮夹具的规模与可见错误；不读取用户配置或凭据，也不再发送真实指针事件。
+  if (worker) report.fixtureFailureSummary = await worker.evaluate(() => {
+    const fixture = globalThis.__sectionFixture;
+    return fixture ? {requests: fixture.requests.length, transports: fixture.transports.length, maxActive: fixture.maxActive,
+      failedTransports: fixture.transports.filter(entry => entry.failed).length,
+      targets: [...new Set(fixture.requests.map(entry => entry.target))]} : null;
+  }).catch(() => ({unavailable: true}));
+  if (page) {
+    const failureDetails = await page.evaluate(() => {
+      const reasons = [...document.querySelectorAll('.fluent-read-reason')].slice(0, 5);
+      // 只唤出已有错误说明以读取文本；这一步不作为可信用户手势验收，也不触发重试。
+      for (const reason of reasons) reason.click();
+      return {retryControls: document.querySelectorAll('.fluent-read-retry').length,
+        errorReasons: [...(document.querySelector('#fluent-read-page-notice-host')?.shadowRoot?.querySelectorAll('.notice-body') || [])].map(node => node.textContent)};
+    }).catch(() => ({unavailable: true}));
+    report.failureDetails = JSON.parse((diagnosticTools?.redact || (text => text))(JSON.stringify(failureDetails)));
+    await shot('failure').catch(() => {});
+  }
+}).finally(async () => {
+  if (diagnostics) {
+    try {
+      await diagnostics.flush();
+      report.runtimeDiagnostics = diagnostics.snapshot();
+      fs.writeFileSync(path.join(artifacts, 'runtime-diagnostics.json'), JSON.stringify(report.runtimeDiagnostics, null, 2));
+      if (report.success) diagnostics.assertClean();
+    } catch (error) {report.diagnosticError = error.message; report.success = false; process.exitCode = 1;}
+    try {await diagnostics.stop();} catch (error) {report.diagnosticCleanupError = error.message; report.success = false; process.exitCode = 1;}
+  }
   let closed = !launchAttempted;
   try {if (launched) {await launched.close(); closed = true;}} catch (error) {report.cleanupError = error.message; process.exitCode = 1;}
   if (focusMonitor) {
