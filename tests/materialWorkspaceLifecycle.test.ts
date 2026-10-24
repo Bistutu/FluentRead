@@ -498,3 +498,77 @@ describe('material workspace search workload and bounded memo',()=>{
     }finally{probe.restore();}
   });
 });
+
+// 真实 SFC 刷新合同：只观察客户端解析、DOM 与 JSON 工作量，不测试 private comparator 的字段表。
+describe('material workspace reference equality on reload',()=>{
+  type Reference=MaterialRecord['references'][number];
+  const sentinel:Reference={kind:'session',id:'reference-sentinel',createdAt:1};
+  const snapshot=(references:Reference[],lastReadAt=2):MaterialRecord=>({...record('references'),references:references.map(reference=>({...reference})),lastReadAt});
+  function sessionReader(){let revision=1;const session=vi.fn(async(id:string)=>({id,text:`Resolved ${id} revision ${revision}`,turns:[]}));return {session,next:()=>revision++};}
+  function report(scenario:string,data:object){if(process.env.FLUENTREAD_MATERIAL_REFERENCE_METRICS==='1')console.info(`MATERIAL_REFERENCE_OPERATIONS ${JSON.stringify({scenario,...data})}`);}
+
+  it.each([{name:'medium',count:200,excerpt:1000,note:1000},{name:'maximum',count:1000,excerpt:6000,note:12000}])('avoids reference JSON output for three timestamp-only refreshes of the $name legal fixture',async fixture=>{
+    const references:Reference[]=Array.from({length:fixture.count},(_,index)=>({kind:'note',id:`REF-JSON-${index}`,excerpt:'x'.repeat(fixture.excerpt),note:'y'.repeat(fixture.note),createdAt:1,updatedAt:2}));
+    const arrays=new WeakSet<object>();let time=2;const list=async()=>{const item=snapshot(references,++time);arrays.add(item.references);return [item];};
+    const original=JSON.stringify;let calls=0,characters=0;
+    const stringify=vi.spyOn(JSON,'stringify').mockImplementation((value,replacer,space)=>{const output=original(value,replacer as never,space);if(value&&typeof value==='object'&&arrays.has(runtime.toRaw(value))){calls++;characters+=output?.length||0;}return output;});
+    try{
+      const ui=await mount({list});const unselected=[] as Array<{calls:number;characters:number}>;
+      for(let round=0;round<3;round++){const before={calls,characters};await ui.panel.reload();await ui.flush();unselected.push({calls:calls-before.calls,characters:characters-before.characters});stringify.mockClear();}
+      await ui.panel.select('references');await ui.flush();ui.panel.startEdit();ui.panel.draft.title='Unsaved reference title';ui.panel.note='Unsaved reference note';const draft=ui.panel.draft;
+      const selected=[] as Array<{calls:number;characters:number}>;
+      for(let round=0;round<3;round++){const before={calls,characters};await ui.panel.reload();await ui.flush();selected.push({calls:calls-before.calls,characters:characters-before.characters});stringify.mockClear();}
+      report(fixture.name,{referenceCount:fixture.count,excerptCharacters:fixture.excerpt,noteCharacters:fixture.note,refreshes:3,unselected,selected,totalSelectedCalls:selected.reduce((total,item)=>total+item.calls,0),totalSelectedOutputCharacters:selected.reduce((total,item)=>total+item.characters,0)});
+      expect(ui.panel.selectedId).toBe('references');expect(ui.panel.draft).toBe(draft);expect(ui.panel.draft.title).toBe('Unsaved reference title');expect(ui.panel.note).toBe('Unsaved reference note');expect(ui.document.querySelectorAll('.fr-material-reference')).toHaveLength(24);
+      expect(unselected).toEqual(Array.from({length:3},()=>({calls:0,characters:0})));expect(selected).toEqual(Array.from({length:3},()=>({calls:0,characters:0})));
+    }finally{stringify.mockRestore();}
+  });
+
+  const changes:Array<{name:string;before:Reference;after:Reference;visible?:string}>=[
+    {name:'reference kind',before:{kind:'note',id:'target',excerpt:'Retained source',createdAt:1},after:{kind:'session',id:'target',excerpt:'Retained source',createdAt:1},visible:'Resolved target revision 2'},
+    {name:'reference identity',before:{kind:'session',id:'old-session',createdAt:1},after:{kind:'session',id:'new-session',createdAt:1},visible:'Resolved new-session revision 2'},
+    {name:'saved excerpt',before:{kind:'note',id:'target',excerpt:'Old excerpt',createdAt:1},after:{kind:'note',id:'target',excerpt:'New excerpt',createdAt:1},visible:'New excerpt'},
+    {name:'saved note',before:{kind:'note',id:'target',note:'Old note',createdAt:1},after:{kind:'note',id:'target',note:'New note',createdAt:1},visible:'New note'},
+    {name:'creation timestamp',before:{kind:'note',id:'target',createdAt:1},after:{kind:'note',id:'target',createdAt:2}},
+    {name:'note update timestamp',before:{kind:'note',id:'target',createdAt:1,updatedAt:2},after:{kind:'note',id:'target',createdAt:1,updatedAt:3}},
+  ];
+  it.each(changes)('reloads resolved content after an authoritative $name change and retains current drafts',async change=>{
+    const reader=sessionReader(),ui=await mount({list:async()=>[snapshot([sentinel,change.before])],session:reader.session});await ui.panel.select('references');await ui.flush();
+    ui.panel.startEdit();ui.panel.draft.title='Draft stays';ui.panel.note='Note draft stays';const draft=ui.panel.draft;reader.session.mockClear();reader.next();
+    ui.api.materialList.mockResolvedValueOnce([snapshot([sentinel,change.after],3)]);await ui.panel.reload();await ui.flush();
+    expect(reader.session).toHaveBeenCalledWith('reference-sentinel');expect(reader.session.mock.calls.filter(([id])=>id==='reference-sentinel')).toHaveLength(1);
+    expect(ui.document.body.textContent).toContain('Resolved reference-sentinel revision 2');if(change.visible)expect(ui.document.body.textContent).toContain(change.visible);
+    expect(ui.panel.selectedId).toBe('references');expect(ui.panel.draft).toBe(draft);expect(ui.panel.draft.title).toBe('Draft stays');expect(ui.panel.note).toBe('Note draft stays');
+  });
+
+  it('treats absent optionals, explicit undefined and property insertion order as the same saved reference',async()=>{
+    const reader=sessionReader(),ui=await mount({list:async()=>[snapshot([sentinel,{kind:'note',id:'equivalent',createdAt:1}])],session:reader.session});await ui.panel.select('references');await ui.flush();reader.session.mockClear();
+    const equivalents:Reference[]=[{kind:'note',id:'equivalent',excerpt:undefined,note:undefined,updatedAt:undefined,createdAt:1},{createdAt:1,id:'equivalent',kind:'note'},{kind:'note',id:'equivalent',createdAt:1}];
+    for(const reference of equivalents){ui.api.materialList.mockResolvedValueOnce([snapshot([sentinel,reference],3)]);await ui.panel.reload();await ui.flush();}
+    expect(reader.session).not.toHaveBeenCalled();expect(ui.document.body.textContent).toContain('Resolved reference-sentinel revision 1');expect(ui.document.querySelectorAll('.fr-material-reference')).toHaveLength(2);
+  });
+
+  it('refreshes the current prefix for reordered, added and removed authoritative references',async()=>{
+    const first:Reference={kind:'session',id:'first',createdAt:1},second:Reference={kind:'session',id:'second',createdAt:1};
+    const reader=sessionReader(),ui=await mount({list:async()=>[snapshot([first,second])],session:reader.session});await ui.panel.select('references');await ui.flush();
+    for(const references of [[second,first],[second,first,{kind:'session' as const,id:'third',createdAt:1}],[first]]){
+      reader.session.mockClear();reader.next();ui.api.materialList.mockResolvedValueOnce([snapshot(references,3)]);await ui.panel.reload();await ui.flush();
+      expect(reader.session.mock.calls.map(([id])=>id)).toEqual(references.map(reference=>reference.id));expect([...ui.document.querySelectorAll('.fr-material-reference blockquote')].map(node=>node.textContent)).toEqual(references.map(reference=>`Resolved ${reference.id} revision ${references.length===2?2:references.length===3?3:4}`));
+    }
+  });
+
+  it('re-reads the full currently shown detail prefix when only a reference beyond it changes',async()=>{
+    const references:Reference[]=Array.from({length:49},(_,index)=>({kind:'session',id:`paged-${index}`,createdAt:1}));
+    const reader=sessionReader(),ui=await mount({list:async()=>[snapshot(references)],session:reader.session});await ui.panel.select('references');await ui.flush();await activate(ui,namedButton(ui,'显示更多学习内容'));expect(ui.document.querySelectorAll('.fr-material-reference')).toHaveLength(48);reader.session.mockClear();reader.next();
+    const changed=references.map(reference=>({...reference}));changed[48].excerpt='Tail changed outside the shown prefix';ui.api.materialList.mockResolvedValueOnce([snapshot(changed,3)]);await ui.panel.reload();await ui.flush();
+    expect(reader.session.mock.calls.map(([id])=>id)).toEqual(references.slice(0,48).map(reference=>reference.id));expect(ui.document.querySelectorAll('.fr-material-reference')).toHaveLength(48);expect(ui.document.body.textContent).toContain('Resolved paged-47 revision 2');expect(ui.document.body.textContent).not.toContain('Tail changed outside the shown prefix');
+  });
+
+  it('replaces a pending old detail read with the authoritative reload without losing selection or drafts',async()=>{
+    const old=deferred<unknown>(),session=vi.fn((id:string)=>id==='old-detail'?old.promise:Promise.resolve({id,text:'Authoritative fresh detail',turns:[]}));
+    const ui=await mount({list:async()=>[snapshot([{kind:'session',id:'old-detail',createdAt:1}])],session});await ui.panel.select('references');await ui.flush();expect(ui.panel.detailLoading).toBe(true);
+    ui.panel.startEdit();ui.panel.draft.title='Pending draft';ui.panel.note='Pending note';const draft=ui.panel.draft;
+    ui.api.materialList.mockResolvedValueOnce([snapshot([{kind:'session',id:'new-detail',createdAt:1}],3)]);await ui.panel.reload();await ui.flush();expect(session).toHaveBeenCalledWith('new-detail');expect(ui.document.body.textContent).toContain('Authoritative fresh detail');
+    old.resolve({id:'old-detail',text:'Obsolete late detail',turns:[]});await ui.flush();expect(ui.document.body.textContent).not.toContain('Obsolete late detail');expect(ui.document.body.textContent).toContain('Authoritative fresh detail');expect(ui.panel.detailLoading).toBe(false);expect(ui.panel.selectedId).toBe('references');expect(ui.panel.draft).toBe(draft);expect(ui.panel.note).toBe('Pending note');
+  });
+});

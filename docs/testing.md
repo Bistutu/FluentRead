@@ -60,7 +60,11 @@ node scripts/testing/run-cache-clear-recovery-test.cjs \
 
 自动补刷须保留保存、导入或导出失败的首因，不能因读取成功清空它或因读取失败覆盖它；用户主动刷新/重试会清理旧错误并呈现新读取结果。已发出的请求和已接受操作仍可在隐藏期间完成，不能将普通读取合并描述为全部隐藏 I/O 为零。
 
-实际父子 SFC 的 16 项与不可变基线配对，外层只复现 Options 异步组件/KeepAlive 结构；实际 Options SFC 的导航用例另以学习中心端口检查捕获的可见性 getter。直接材料组 60 项负责接受中的操作、各等待点、补刷错误及读取期间产生的文件校验错误；另验证 Options 59 项与原学习中心 39 项。均为离线 Vue 与受控客户端端口验证，没有真实浏览器或持久存储验收。设计、分项结果和证据入口见[阅读材料的可见性与延后刷新](maintainers/material-visibility-20261024.md)。
+实际父子 SFC 的 16 项与不可变基线配对，外层只复现 Options 异步组件/KeepAlive 结构；实际 Options SFC 的导航用例另以学习中心端口检查捕获的可见性 getter。直接材料组负责接受中的操作、各等待点、补刷错误及读取期间产生的文件校验错误，最新数量包含下节新增的引用比较用例；隐藏调度阶段另验证 Options 59 项与原学习中心 39 项。均为离线 Vue 与受控客户端端口验证，没有真实浏览器或持久存储验收。设计、分项结果和证据入口见[阅读材料的可见性与延后刷新](maintainers/material-visibility-20261024.md)。
+
+### 阅读材料刷新时的引用比较
+
+`materialWorkspaceLifecycle` 的 72 项与 `materialWorkspaceKeepAlive` 的 16 项同时验证刷新后的完整引用比较：全部引用按顺序检查 `kind`、`id`、`excerpt`、`note`、`createdAt`、`updatedAt`，缺省与 `undefined` 等价，不受对象键插入顺序影响。去除前后两份正文 JSON 输出，仍保留引用变化时的权威详情补读、旧详情失效、选择/草稿及隐藏恢复调度。正式 SFC 上限夹具三次刷新从 6 次正文 JSON、108,521,346 个输出字符降至零；这不是端到端工作量或堆测量。边界及最终证据入口见[阅读材料刷新时的引用比较](maintainers/material-reference-equality-20261024.md)。
 
 ## man7 Linux 手册正文
 

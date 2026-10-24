@@ -1,7 +1,7 @@
 <!--
  * @file src/features/vocabulary/ui/MaterialWorkspace.vue
  * 文件职责：以阅读材料和收藏原句为主要内容，提供主题整理、回到出处、连续学习和本地笔记。
- * 主要内容：保留轻量材料列表，空库隐藏无效搜索与主题筛选但保留管理和恢复入口，详情按来源聚合原句、实时收藏和问答；非空搜索只为当前主题保留有界小写正文，深层字段变化使缓存失效，超预算材料完整匹配且每轮只构造一次；窄屏引用正文预留覆盖式滚动条空间，保持滚动时行尾可读；加载、重试、编辑、归档恢复均保护异步代次和卸载边界，笔记焦点只回到仍属于当前材料的自有输入框，保存成功只清理所属材料中与提交快照相同的草稿；隐藏期间合并普通刷新而保留已接受写入，以独立可见性代次隔离旧读取和焦点，异步迟到挂载读取上游当前可见性。
+ * 主要内容：保留轻量材料列表，空库隐藏无效搜索与主题筛选但保留管理和恢复入口，详情按来源聚合原句、实时收藏和问答；非空搜索只为当前主题保留有界小写正文，深层字段变化使缓存失效，超预算材料完整匹配且每轮只构造一次；刷新按顺序比较引用的完整协议字段，不为未变正文生成 JSON 快照；窄屏引用正文预留覆盖式滚动条空间，保持滚动时行尾可读；加载、重试、编辑、归档恢复均保护异步代次和卸载边界，笔记焦点只回到仍属于当前材料的自有输入框，保存成功只清理所属材料中与提交快照相同的草稿；隐藏期间合并普通刷新而保留已接受写入，以独立可见性代次隔离旧读取和焦点，异步迟到挂载读取上游当前可见性。
  * 模块边界：只通过本地材料与既有学习客户端读写，不访问数据库或供应商；来源恢复由公共适配器处理，个人内容不进入配置同步。
  -->
 <template>
@@ -263,6 +263,17 @@ function resetSelection() {
     resolved.value = {};
     detailError.value = '';
 }
+/** 比较全部引用的同序字段；缺省与 undefined 等价，不受对象键插入顺序影响。 */
+function sameReferences(previous: readonly MaterialReference[] | undefined, next: readonly MaterialReference[] | undefined): boolean {
+    if (previous === next) return true;
+    if (!previous || !next || previous.length !== next.length) return false;
+    for (let index = 0; index < previous.length; index++) {
+        const left = previous[index], right = next[index];
+        if (left.kind !== right.kind || left.id !== right.id || left.excerpt !== right.excerpt
+            || left.note !== right.note || left.createdAt !== right.createdAt || left.updatedAt !== right.updatedAt) return false;
+    }
+    return true;
+}
 async function reload(preserveError = false) {
     if (!active) return;
     if (!viewVisible.value || busy.value) {pendingRefresh = true; return;}
@@ -276,11 +287,11 @@ async function reload(preserveError = false) {
         if (!active || ticket !== generation)
             return;
         if (!viewVisible.value || epoch !== visibilityEpoch) {pendingRefresh = true; return;}
-        const previousReferences = JSON.stringify(selected.value?.references);
+        const previousReferences = selected.value?.references;
         materials.value = items;
         if (selectedId.value && !items.some(item => item.id === selectedId.value))
             resetSelection();
-        else if (selectedId.value && previousReferences !== JSON.stringify(selected.value?.references)) {
+        else if (selectedId.value && !sameReferences(previousReferences, selected.value?.references)) {
             pendingReferences = true;
             detailGeneration++;
             detailLoading.value = false;
