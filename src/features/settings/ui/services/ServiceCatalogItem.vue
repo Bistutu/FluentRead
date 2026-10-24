@@ -51,5 +51,6 @@ const { t } = useUiI18n()
 .compact :deep(.service-brand-icon) { width: 28px; height: 28px; border-radius: 8px; }
 button:focus-visible { outline: 2px solid var(--brand-strong, #bd2853); outline-offset: 2px; }
 
+@media (min-width: 701px) and (max-width: 1100px) { .compact .library-select { padding-inline: 4px; } }
 @media (max-width: 700px) { .compact .library-select { padding: 6px; gap: 7px; } }
 </style>

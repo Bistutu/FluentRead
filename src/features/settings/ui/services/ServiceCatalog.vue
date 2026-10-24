@@ -614,6 +614,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--brand-strong, #
 :global(:root.dark .credential-guide-link) { border-color: var(--line); color: var(--ink); background: var(--surface); }
 :global(:root.dark .credential-guide-link.is-primary) { color: var(--brand-strong); background: var(--brand-soft); }
 @media (max-width: 1100px) {
+  .catalog-layout { grid-template-columns: 220px minmax(0, 1fr); }
+  .service-rail { padding-inline: 4px; }
   .service-detail { padding: 16px; }
   .model-section { grid-template-columns: 1fr; gap: 8px; }
 }
