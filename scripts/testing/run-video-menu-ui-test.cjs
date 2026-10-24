@@ -305,6 +305,50 @@ async function main() {
       result.screenshots.push(filename);
       checkFocus();
     };
+    const readReadingAppearance = () => toggle.evaluate(el => {
+      const css = getComputedStyle(el), indicator = getComputedStyle(el, '::after');
+      return {background: css.backgroundColor, color: css.color, borderColor: css.borderColor, borderWidth: css.borderWidth,
+        boxShadow: css.boxShadow, transform: css.transform, outlineColor: css.outlineColor, outlineStyle: css.outlineStyle, outlineWidth: css.outlineWidth,
+        checked: el.getAttribute('aria-checked'), hovered: el.matches(':hover'), focusVisible: el.matches(':focus-visible'),
+        indicator: {content: indicator.content, width: indicator.width, height: indicator.height, background: indicator.backgroundColor, opacity: indicator.opacity}};
+    });
+    const visualFeedback = appearance => ({background: appearance.background, color: appearance.color,
+      borderColor: appearance.borderColor, boxShadow: appearance.boxShadow, transform: appearance.transform});
+    const configFingerprint = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+    const assertFocusRing = appearance => {
+      assert.equal(appearance.focusVisible, true);
+      assert.equal(appearance.outlineStyle, 'solid');
+      assert.ok(parseFloat(appearance.outlineWidth) >= 2, `Keyboard focus needs a visible outline: ${JSON.stringify(appearance)}`);
+      assert.equal(appearance.outlineColor, 'rgb(255, 173, 194)');
+    };
+    const rgba = color => {
+      const values = color.match(/^rgba?\(([^)]+)\)$/)?.[1].split(/,\s*/).map(Number);
+      assert.ok(values?.length >= 3, `Expected computed RGB color: ${color}`);
+      return [...values.slice(0, 3), values.length > 3 ? values[3] : 1];
+    };
+    const assertFilledBrand = appearance => {
+      const [red, green, blue, alpha] = rgba(appearance.background);
+      assert.ok(alpha >= .95 && red > green * 1.5 && red > blue, `Selected reading icon needs a filled brand background: ${appearance.background}`);
+      const luminance = color => {
+        const rgb = rgba(color).slice(0, 3).map(value => {const channel = value / 255; return channel <= .04045 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4;});
+        return rgb[0] * .2126 + rgb[1] * .7152 + rgb[2] * .0722;
+      };
+      const foreground = luminance(appearance.color), background = luminance(appearance.background);
+      const contrast = (Math.max(foreground, background) + .05) / (Math.min(foreground, background) + .05);
+      assert.ok(contrast >= 3, `Reading icon contrast is ${contrast.toFixed(2)}: ${appearance.color} on ${appearance.background}`);
+      assert.ok(!['none', 'normal'].includes(appearance.indicator.content) && parseFloat(appearance.indicator.width) >= 3 && parseFloat(appearance.indicator.height) >= 3 && Number(appearance.indicator.opacity) > 0,
+        `Selected reading icon needs a visible state indicator: ${JSON.stringify(appearance.indicator)}`);
+    };
+    const readCaptionGeometry = () => page.evaluate(() => Object.fromEntries(['fluent-read-video-subtitle-panel', 'fluent-read-video-subtitle-original', 'fluent-read-video-subtitle'].map(id => {
+      const el = document.getElementById(id), rect = el.getBoundingClientRect(), css = getComputedStyle(el);
+      return [id, {x: rect.x, y: rect.y, width: rect.width, height: rect.height, fontSize: css.fontSize, lineHeight: css.lineHeight, text: el.textContent}];
+    })));
+    await page.waitForFunction(({source, translation}) => document.querySelector('#fluent-read-video-subtitle-original')?.textContent === source
+      && document.querySelector('#fluent-read-video-subtitle')?.textContent === translation, {source: firstSource, translation: firstTranslation});
+    const captionBeforeFeedback = await readCaptionGeometry();
+    const assertCaptionStable = async phase => {
+      assert.deepEqual(await readCaptionGeometry(), captionBeforeFeedback, `Reading feedback must not move subtitles: ${phase}`);
+    };
     await visible(menu);
     assert.equal(await toggle.getAttribute('aria-checked'), 'false');
     assert.equal(await toggle.getAttribute('aria-label') || (await toggle.textContent()).trim(), '读音标注');
@@ -313,7 +357,9 @@ async function main() {
       return {width: r.width, height: r.height, color: css.color};
     });
     assert.ok(iconShape.width >= 14 && iconShape.height >= 14, JSON.stringify(iconShape));
-    const offAppearance = await toggle.evaluate(el => {const css = getComputedStyle(el); return {background: css.backgroundColor, color: css.color, borderColor: css.borderColor};});
+    const offAppearance = await readReadingAppearance();
+    assert.equal(offAppearance.checked, 'false');
+    assert.ok(['none', 'normal'].includes(offAppearance.indicator.content), 'Off reading icon must not show the enabled indicator');
     assert.equal(await disclosure.getAttribute('aria-expanded'), 'false');
     assert.equal(await toggle.evaluate(el => Boolean(el.closest('.fluent-read-video-menu-title'))), true);
     assert.equal(await disclosure.evaluate(el => Boolean(el.closest('.fluent-read-video-menu-title'))), true);
@@ -327,16 +373,28 @@ async function main() {
     assertHeaderFits(desktopHeader);
     result.cases.push({name: 'bilingual-default-reading-and-download-icons-in-header', passed: true, iconShape, offAppearance, initialBounds, desktopHeader});
     await shoot('menu-default-dark');
+    await shoot('reading-off');
 
     diagnostics.setPhase('reading-help');
     const iconBeforeHover = await toggle.boundingBox();
+    const offConfigBeforeHover = configFingerprint(await readConfig(control));
     await helpButton.hover();
     await visible(help);
+    await page.waitForTimeout(220);
+    const offHoverAppearance = await readReadingAppearance();
+    result.readingFeedback = {offAppearance, offHoverAppearance};
+    assert.notDeepEqual(visualFeedback(offHoverAppearance), visualFeedback(offAppearance), 'Off reading icon hover must provide visible feedback');
+    assert.equal(offHoverAppearance.background, 'rgba(239, 71, 118, 0.2)');
+    assert.equal(offHoverAppearance.color, 'rgb(255, 173, 194)');
+    assert.equal((await readConfig(control)).videoSubtitleAppearance.readingAnnotation, false);
+    assert.equal(configFingerprint(await readConfig(control)), offConfigBeforeHover, 'Hover must not write any configuration');
+    await assertCaptionStable('off-hover');
     const iconAfterHover = await toggle.boundingBox();
     assert.deepEqual(iconAfterHover, iconBeforeHover, 'help must not move the reading icon');
     assert.match(await help.textContent(), /拼音|罗马音/);
     assert.match(await help.textContent(), /kyō|konnichiwa|watashi/);
     await shoot('menu-reading-help');
+    await shoot('reading-off-hover');
     await menu.evaluate(el => el.parentElement.appendChild(el));
     await page.mouse.move(4, 4);
     await menu.locator('[data-mode="original-only"]').focus();
@@ -347,21 +405,79 @@ async function main() {
     await page.mouse.move(4, 4);
     await menu.locator('[data-mode="original-only"]').focus();
     await visible(help, false);
-    await helpButton.focus();
+    await menu.locator('[data-action="open-settings"]').focus();
+    await page.keyboard.press('Tab');
+    assert.equal(await toggle.evaluate(el => el === document.activeElement), true);
     await visible(help);
+    const offKeyboardAppearance = await readReadingAppearance();
+    result.readingFeedback.offKeyboardAppearance = offKeyboardAppearance;
+    assertFocusRing(offKeyboardAppearance);
+    assert.equal(offKeyboardAppearance.background, 'rgba(239, 71, 118, 0.2)');
+    assert.equal(offKeyboardAppearance.color, 'rgb(255, 173, 194)');
     assert.equal((await readConfig(control)).videoSubtitleAppearance.readingAnnotation, false);
+    assert.equal(configFingerprint(await readConfig(control)), offConfigBeforeHover, 'Keyboard focus must not write any configuration');
+    await assertCaptionStable('off-keyboard-focus');
     await page.keyboard.press('Escape');
     await visible(menu);
     await visible(help, false);
     assert.equal(await helpButton.evaluate(el => el === document.activeElement), true);
-    result.cases.push({name: 'reading-icon-help-hover-focus-and-escape-without-config-change', passed: true, iconBeforeHover, iconAfterHover});
+    result.cases.push({name: 'reading-icon-help-hover-focus-and-escape-without-config-change', passed: true, iconBeforeHover, iconAfterHover, offHoverAppearance});
 
     diagnostics.setPhase('reading-persistence');
     await toggle.click();
     await waitConfig(control, true);
     assert.equal(await toggle.getAttribute('aria-checked'), 'true');
-    const onAppearance = await toggle.evaluate(el => {const css = getComputedStyle(el); return {background: css.backgroundColor, color: css.color, borderColor: css.borderColor};});
-    assert.notDeepEqual(onAppearance, offAppearance, 'enabled reading icon must have an explicit visual state');
+    await page.mouse.move(4, 4);
+    await menu.locator('[data-mode="bilingual"]').focus();
+    await page.waitForTimeout(220);
+    const onAppearance = await readReadingAppearance();
+    result.readingFeedback.onAppearance = onAppearance;
+    assert.notDeepEqual(visualFeedback(onAppearance), visualFeedback(offAppearance), 'enabled reading icon must have an explicit visual state');
+    await assertCaptionStable('on-idle');
+    await shoot('reading-on');
+    const onConfigBeforeHover = configFingerprint(await readConfig(control));
+    await toggle.hover();
+    await visible(help);
+    await page.waitForTimeout(220);
+    const onHoverAppearance = await readReadingAppearance();
+    result.readingFeedback.onHoverAppearance = onHoverAppearance;
+    await shoot('reading-on-hover');
+    assertFilledBrand(onAppearance);
+    assertFilledBrand(onHoverAppearance);
+    assert.equal(onAppearance.background, 'rgb(220, 49, 95)');
+    assert.equal(onAppearance.color, 'rgb(245, 245, 247)');
+    assert.equal(onAppearance.borderColor, 'rgb(239, 71, 118)');
+    assert.equal(onHoverAppearance.background, 'rgb(207, 49, 94)');
+    assert.equal(onHoverAppearance.color, onAppearance.color);
+    assert.notDeepEqual(visualFeedback(onHoverAppearance), visualFeedback(onAppearance), 'Enabled reading icon hover must remain visually distinct from its idle state');
+    assert.match(await help.textContent(), /拼音|罗马音/);
+    assert.equal((await readConfig(control)).videoSubtitleAppearance.readingAnnotation, true);
+    assert.equal(configFingerprint(await readConfig(control)), onConfigBeforeHover, 'Selected hover must not write any configuration');
+    await assertCaptionStable('on-hover');
+    await page.mouse.move(4, 4);
+    await menu.locator('[data-mode="bilingual"]').focus();
+    await page.waitForTimeout(220);
+    const onMouseleaveAppearance = await readReadingAppearance();
+    result.readingFeedback.onMouseleaveAppearance = onMouseleaveAppearance;
+    assert.deepEqual(visualFeedback(onMouseleaveAppearance), visualFeedback(onAppearance), 'Mouseleave must restore the selected idle style');
+    assert.equal((await readConfig(control)).videoSubtitleAppearance.readingAnnotation, true);
+    assert.equal(configFingerprint(await readConfig(control)), onConfigBeforeHover, 'Mouseleave must preserve configuration');
+    await assertCaptionStable('on-mouseleave');
+    await menu.locator('[data-action="open-settings"]').focus();
+    await page.keyboard.press('Tab');
+    assert.equal(await toggle.evaluate(el => el === document.activeElement), true);
+    await visible(help);
+    const keyboardAppearance = await readReadingAppearance();
+    result.readingFeedback.keyboardAppearance = keyboardAppearance;
+    assertFilledBrand(keyboardAppearance);
+    assertFocusRing(keyboardAppearance);
+    assert.equal(keyboardAppearance.background, onAppearance.background);
+    assert.equal(configFingerprint(await readConfig(control)), onConfigBeforeHover, 'Selected keyboard focus must not write any configuration');
+    await assertCaptionStable('on-keyboard-focus');
+    await shoot('reading-keyboard-focus');
+    result.cases.push({name: 'reading-icon-brand-hover-focus-and-mouseleave-feedback', passed: true,
+      offAppearance, offHoverAppearance, onAppearance, onHoverAppearance, onMouseleaveAppearance, keyboardAppearance,
+      subtitleGeometryUnchanged: true});
     assert.equal(await page.evaluate(() => window.__videoMenuUiToggle === document.querySelector('[data-action="toggle-reading-annotation"]')), true);
     await menu.locator('[data-action="close-menu"]').click();
     await visible(menu, false);

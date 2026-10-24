@@ -1455,11 +1455,18 @@ export function installVideoSubtitleStyle(): HTMLStyleElement {
       color: var(--fr-video-menu-muted) !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-toggle .fluent-read-video-menu-icon { width: 20px !important; height: 20px !important; stroke-width: 1.7 !important; }
-    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-toggle:hover:not(:disabled) { background: var(--fr-video-menu-control-hover) !important; color: var(--fr-video-menu-text) !important; }
-    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-toggle[aria-checked="true"] {
+    /* 悬停只提示可操作性；开启状态持续使用实心品牌色，避免 hover 覆盖成关闭外观。 */
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-toggle[aria-checked="false"]:is(:hover, :focus-visible):not(:disabled) {
       background: var(--fr-video-menu-brand-soft) !important;
-      border-color: var(--fr-video-menu-brand) !important;
       color: var(--fr-video-menu-brand-text) !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-toggle[aria-checked="true"] {
+      background: var(--fr-video-menu-brand-strong) !important;
+      border-color: var(--fr-video-menu-brand) !important;
+      color: var(--fr-video-menu-text) !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-toggle[aria-checked="true"]:hover:not(:disabled) {
+      background: var(--fr-video-menu-brand-strong-hover) !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-toggle[aria-checked="true"]::after {
       content: '' !important;
