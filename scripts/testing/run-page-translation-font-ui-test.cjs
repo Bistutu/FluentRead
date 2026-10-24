@@ -131,6 +131,11 @@ async function main() {
       const file = path.join(artifactsDir, `${name}.png`);
       await page.screenshot({path: file, fullPage: false});
       report.screenshots.push(file);
+      if (name === '02-aa-main-browser-default') {
+        const cardFile = path.join(artifactsDir, '02-independent-buttons-card.png');
+        await page.locator('[data-popup-module="translation"]').screenshot({path: cardFile});
+        report.screenshots.push(cardFile);
+      }
     };
     let popup = await createPage(`${extensionOrigin}/popup.html`, {width: 360, height: 600});
     const readConfig = () => popup.evaluate(async () => {
@@ -208,10 +213,12 @@ async function main() {
     };
     const chooseFont = async enabled => {
       await waitPopup();
+      const displayBefore = (await readConfig()).display;
       const button = popup.getByTestId('page-font-entry');
       if (await button.getAttribute('aria-pressed') !== String(enabled)) await button.click();
       await untilState(tabId, enabled);
       await assertFontButton(enabled);
+      assert.equal((await readConfig()).display, displayBefore, '字体按钮不得更改双语/仅译文模式');
       await popup.getByTestId('page-translation').hover();
       await popup.getByTestId('page-font-tooltip').waitFor({state: 'hidden'});
     };
@@ -496,13 +503,19 @@ async function main() {
             const button = document.querySelector('[data-testid="page-font-entry"]');
             const mode = document.querySelector('[data-testid="popup-display-mode"]');
             const rect = button.getBoundingClientRect(), modeRect = mode.getBoundingClientRect();
+            const slot = button.closest('.display-mode-slot'), slotStyle = getComputedStyle(slot);
             return {innerWidth, scrollWidth: document.documentElement.scrollWidth, rootWidth: root.getBoundingClientRect().width,
               buttonLeft: rect.left, buttonRight: rect.right, buttonWidth: rect.width, buttonHeight: rect.height,
+              slotBackground: slotStyle.backgroundColor, slotBorderWidth: slotStyle.borderTopWidth,
+              slotDivider: getComputedStyle(slot, '::after').content,
               modeLeft: modeRect.left, fontState: button.getAttribute('data-font-state'), pressed: button.getAttribute('aria-pressed')};
           });
           assert(metrics.scrollWidth <= metrics.innerWidth + 1, `${theme}/${width} 页面横向溢出`);
           assert(metrics.buttonLeft >= -1 && metrics.buttonRight <= metrics.innerWidth + 1 && metrics.buttonWidth >= 20, '字体按钮超出视口或被压缩');
-          assert(metrics.buttonRight <= metrics.modeLeft + 1, '字体与显示模式按钮重叠');
+          assert(metrics.modeLeft - metrics.buttonRight >= 5.5, '两个独立功能按钮之间必须保留清晰间距');
+          assert.equal(metrics.slotBackground, 'rgba(0, 0, 0, 0)', '两个独立功能不得共用底色');
+          assert.equal(metrics.slotBorderWidth, '0px', '两个独立功能不得共用外框');
+          assert(['none', 'normal'].includes(metrics.slotDivider), '两个独立功能不得用分隔线组成一组');
           const stateName = browserDefaultEnabled ? 'browser-default' : 'host';
           layouts[`${theme}-${width}-${stateName}`] = metrics;
           await shot(popup, `05-aa-${theme}-${width}-${stateName}`);
