@@ -155,7 +155,20 @@
     "settings.general.themeDescription": "Меняет только интерфейс расширения, сохраняя цвета самой страницы.",
     "settings.services.freeWeights.timeoutHelp": "Каждый сервис ожидает не дольше заданного времени в пределах общего лимита 20 секунд. Бесплатный перевод не повторяет глобальные попытки. При сетевых ошибках попробуйте позже; при ограничениях, блокировке или исчерпании квоты следуйте указаниям сервиса либо выберите другой.",
     "writing.experience.inheritService": "Служба по умолчанию · {service}",
-    "writing.experience.inheritTargetLanguage": "Использовать целевой язык · {language}"
+    "writing.experience.inheritTargetLanguage": "Использовать целевой язык · {language}",
+    "learning.collection.speechRequesting": "Синтез речи…",
+    "learning.collection.speechPlaying": "Идёт озвучивание",
+    "learning.collection.speechOnlineNoAudio": "Онлайн-сервис не вернул аудио",
+    "learning.collection.speechCancelled": "Запрос озвучивания отменён",
+    "learning.collection.speechPageAudioNotStarted": "Не удалось запустить аудио страницы",
+    "learning.collection.speechGoogleNoAudio": "Google не вернул аудио",
+    "learning.collection.speechBrowserStartFailed": "Не удалось запустить речь браузера{error}{details}",
+    "learning.collection.speechBrowserNotStarted": "Речь браузера не запустилась{details}",
+    "learning.collection.speechBrowserCallFailed": "Ошибка вызова речи браузера: {error}{details}",
+    "learning.collection.speechOnlineSynthesis": "Онлайн-синтез: {error}",
+    "learning.collection.speechGoogleFallback": "Резервный вариант Google: {error}",
+    "learning.collection.speechOnlineRequestFailed": "Ошибка онлайн-запроса или воспроизведения аудио: {error}",
+    "learning.collection.speechFailedDetail": "Не удалось озвучить: {details}"
   },
   "legacy": {
     "同步连接已变化，请重新生成预览。": "Подключение изменилось. Создайте новый предварительный просмотр.",

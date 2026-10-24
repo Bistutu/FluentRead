@@ -155,7 +155,20 @@
     "settings.general.themeDescription": "Changes the extension interface only. The webpage colors stay the same.",
     "settings.services.freeWeights.timeoutHelp": "Each service can wait up to the selected duration, within a shared 20-second total budget. Free translation does not repeat global retries. Retry network errors later; for rate limits, blocks or exhausted quotas, follow the service guidance or choose another service.",
     "writing.experience.inheritService": "Use default service · {service}",
-    "writing.experience.inheritTargetLanguage": "Use target language · {language}"
+    "writing.experience.inheritTargetLanguage": "Use target language · {language}",
+    "learning.collection.speechRequesting": "Synthesizing…",
+    "learning.collection.speechPlaying": "Reading aloud",
+    "learning.collection.speechOnlineNoAudio": "The online service returned no audio",
+    "learning.collection.speechCancelled": "The speech request was canceled",
+    "learning.collection.speechPageAudioNotStarted": "Page audio did not start",
+    "learning.collection.speechGoogleNoAudio": "Google returned no audio",
+    "learning.collection.speechBrowserStartFailed": "Browser speech failed to start{error}{details}",
+    "learning.collection.speechBrowserNotStarted": "Browser speech did not start{details}",
+    "learning.collection.speechBrowserCallFailed": "Browser speech call failed: {error}{details}",
+    "learning.collection.speechOnlineSynthesis": "Online synthesis: {error}",
+    "learning.collection.speechGoogleFallback": "Google fallback: {error}",
+    "learning.collection.speechOnlineRequestFailed": "Online request or audio playback failed: {error}",
+    "learning.collection.speechFailedDetail": "Speech failed: {details}"
   },
   "legacy": {
     "同步连接已变化，请重新生成预览。": "The sync connection changed. Generate a new preview.",

@@ -141,6 +141,7 @@ export function installBackgroundMessageRuntime(options: BackgroundMessageRuntim
             playbackStateSender: {runtimeId: browser.runtime.id, url: browser.runtime.getURL('/offscreen.html')},
             getPreferredVoices: () => config.selectionTtsVoices,
             synthesize: selectionTtsSynthesizer,
+            fetchPageAudio: selectionTtsOffscreenAdapter.fetchPageAudio,
             playWithOffscreen: selectionTtsTransport.play,
             stopWithOffscreen: selectionTtsTransport.stop,
             seekWithOffscreen: selectionTtsOffscreenAdapter.seek,
