@@ -626,6 +626,143 @@ describe('GlossarySettings compiled component', () => {
   });
 });
 
+describe('GlossarySettings search workload and reactive semantics', () => {
+  type SearchOperations = {joinedLower: number; sourceLower: number; targetLower: number; queryLower: number; queryTrim: number};
+  const emptyOperations = (): SearchOperations => ({joinedLower:0,sourceLower:0,targetLower:0,queryLower:0,queryTrim:0});
+  const difference = (after:SearchOperations,before:SearchOperations):SearchOperations => Object.fromEntries(Object.keys(after).map(key=>[key,after[key as keyof SearchOperations]-before[key as keyof SearchOperations]])) as SearchOperations;
+  function searchLibrary(id:string,count=500):GlossaryLibrary {
+    return {...fixture(id),entries:Array.from({length:count},(_,index)=>({id:`term-${index}`,source:`GLS-SOURCE-${id}-${index}`,target:`GLS-TARGET-${id}-${index}`,caseSensitive:false}))};
+  }
+  async function mountSearch(libraries:GlossaryLibrary[]):Promise<void>{config.glossaryLibraries=libraries;app.unmount();mountComponent();await settle();}
+  async function search(value:string):Promise<void>{
+    const input=dom.document.querySelector<HTMLInputElement>('.glossary-search input')!;expect(input).toBeTruthy();
+    input.value=value;input.dispatchEvent(new dom.window.Event('input',{bubbles:true}));await settle();
+  }
+  function trackSearch(){
+    const operations=emptyOperations(),localeArguments:unknown[][]=[];
+    const originalLower=String.prototype.toLocaleLowerCase,originalTrim=String.prototype.trim;
+    const lower=vi.spyOn(String.prototype,'toLocaleLowerCase').mockImplementation(function(this:string,...args:Parameters<typeof originalLower>){
+      const value=String(this);let recorded=true;
+      if(value.startsWith('GLS-SOURCE-')){if(value.includes('\n'))operations.joinedLower++;else operations.sourceLower++;}
+      else if(value.startsWith('GLS-TARGET-'))operations.targetLower++;
+      else if(value.startsWith('GLS-QUERY-'))operations.queryLower++;
+      else recorded=false;
+      if(recorded)localeArguments.push(args);
+      return originalLower.apply(this,args);
+    });
+    const trim=vi.spyOn(String.prototype,'trim').mockImplementation(function(this:string){
+      if(String(this).startsWith('  GLS-QUERY-'))operations.queryTrim++;
+      return originalTrim.call(this);
+    });
+    return {operations,localeArguments,snapshot:()=>({...operations}),restore:()=>{lower.mockRestore();trim.mockRestore();}};
+  }
+  function reportOperations(scenario:string,data:unknown):void{
+    // 显式证据运行才输出计数；普通消费者回归没有日志或文件副作用。
+    if(process.env.FLUENTREAD_GLOSSARY_SEARCH_METRICS==='1')console.info(`GLOSSARY_SEARCH_OPERATIONS ${JSON.stringify({scenario,...data as object})}`);
+  }
+  const ids=():string[]=>(state.filteredEntries as GlossaryLibrary['entries']).map(entry=>entry.id);
+
+  it('normalizes each immediate query once and reuses current-library text across twenty inputs',async()=>{
+    const probe=trackSearch();
+    try {
+      await mountSearch(Array.from({length:10},(_,index)=>searchLibrary(`library-${index}`)));
+      const mounted=probe.snapshot();expect(state.totalEntries).toBe(5000);expect(dom.document.querySelectorAll('.glossary-table tbody tr')).toHaveLength(30);
+      await search('  GLS-QUERY-0  ');const first=difference(probe.snapshot(),mounted);
+      const afterFirst=probe.snapshot();
+      for(let index=1;index<20;index++)await search(`  GLS-QUERY-${index}  `);
+      const following=difference(probe.snapshot(),afterFirst),total=difference(probe.snapshot(),mounted),beforeRepeat=probe.snapshot();
+      await search('  GLS-QUERY-19  ');const repeated=difference(probe.snapshot(),beforeRepeat);
+      const cached=state.searchTexts as string[]|undefined;
+      reportOperations('fixed-library-500-entries-20-queries',{libraries:10,totalEntries:5000,selectedEntries:500,mounted,firstInput:first,following19Inputs:following,totalInputs:total,repeatedSameInput:repeated,cachedEntries:cached?.length??null,cachedCharacters:cached?.reduce((count,text)=>count+text.length,0)??null});
+      expect(mounted.joinedLower).toBe(0);
+      expect(first).toEqual({joinedLower:500,sourceLower:0,targetLower:0,queryLower:1,queryTrim:2});
+      expect(following).toEqual({joinedLower:0,sourceLower:0,targetLower:0,queryLower:19,queryTrim:38});
+      expect(total).toEqual({joinedLower:500,sourceLower:0,targetLower:0,queryLower:20,queryTrim:40});
+      expect(repeated).toEqual(emptyOperations());expect(probe.localeArguments.every(args=>args.length===0)).toBe(true);
+      expect(state.filteredEntries).toEqual([]);expect(requestConfigPatch).not.toHaveBeenCalled();
+    }finally{probe.restore();}
+  });
+
+  it('bounds text indexing to the selected library while rotating ten legal libraries over twenty queries',async()=>{
+    await mountSearch(Array.from({length:10},(_,index)=>searchLibrary(`library-${index}`)));
+    const probe=trackSearch(),perLibrary:SearchOperations[]=[],selectionTransitions:SearchOperations[]=[],queryInputs:SearchOperations[]=[];
+    try{
+      for(let library=0;library<10;library++){
+        const before=probe.snapshot();state.selectLibrary(`library-${library}`);await settle();
+        const afterSelection=probe.snapshot();selectionTransitions.push(difference(afterSelection,before));
+        await search(`  GLS-QUERY-${library}-first  `);await search(`  GLS-QUERY-${library}-second  `);
+        perLibrary.push(difference(probe.snapshot(),before));queryInputs.push(difference(probe.snapshot(),afterSelection));
+      }
+      reportOperations('rotating-10-libraries-5000-entries-20-queries',{libraries:10,totalEntries:5000,queriesPerLibrary:2,perLibrary,selectionTransitions,queryInputs,total:probe.snapshot()});
+      expect(perLibrary).toEqual(Array.from({length:10},()=>({joinedLower:500,sourceLower:0,targetLower:0,queryLower:2,queryTrim:4})));
+      expect(probe.operations).toEqual({joinedLower:5000,sourceLower:0,targetLower:0,queryLower:20,queryTrim:40});
+      expect(state.searchTexts).toHaveLength(500);expect(probe.localeArguments.every(args=>args.length===0)).toBe(true);
+      expect(requestConfigPatch).not.toHaveBeenCalled();
+    }finally{probe.restore();}
+  });
+
+  it('preserves default-locale casing, Unicode trim, literal newlines, cross-field matching and non-normalized queries',async()=>{
+    await mountSearch([{...fixture('semantics'),entries:[
+      {id:'boundary',source:'FieldEnd',target:'TargetStart',caseSensitive:true},
+      {id:'lines',source:'Line\r\nKeep',target:'Second\nLine',caseSensitive:false},
+      {id:'accent',source:'Café',target:'',caseSensitive:false},
+      {id:'locale',source:'IİΣΟΣ',target:'LocaleTarget',caseSensitive:false},
+    ]}]);
+    const cases:[string,string[]][]=[['\u00a0\t FIELDEND \n',['boundary']],['targetstart',['boundary']],['dend\ntargets',['boundary']],
+      ['line\r\nkeep',['lines']],['line\nkeep',[]],['second\nline',['lines']],['CAFÉ',['accent']],['CAFE\u0301',[]],['IİΣΟΣ',['locale']],['\t\u00a0\n', ['boundary','lines','accent','locale']]];
+    for(const [query,expected] of cases){await search(query);expect(ids(),JSON.stringify(query)).toEqual(expected);}
+    // locale 结果采用当前运行时默认值，调用不传语言，避免改变原有 locale 合同。
+    await search('İ'.toLocaleLowerCase());expect(ids()).toEqual(['locale']);
+  });
+
+  it('refreshes source, target and array changes without replacing the selected entries array',async()=>{
+    await mountSearch([{...fixture('mutable'),entries:[{id:'first',source:'first',target:'',caseSensitive:false},{id:'second',source:'second',target:'',caseSensitive:false}]}]);
+    await search('needle');const entries=state.selected.entries as GlossaryLibrary['entries'];expect(ids()).toEqual([]);
+    entries[0].source='needle source';await settle();expect(ids()).toEqual(['first']);
+    entries[0].source='first';entries[1].target='needle target';await settle();expect(ids()).toEqual(['second']);
+    entries.push({id:'third',source:'needle third',target:'',caseSensitive:false});await settle();expect(ids()).toEqual(['second','third']);
+    entries.reverse();await settle();expect(ids()).toEqual(['third','second']);
+    entries[1]={id:'replacement',source:'needle replacement',target:'',caseSensitive:false};await settle();expect(ids()).toEqual(['third','replacement']);
+    entries.splice(0,1);await settle();expect(ids()).toEqual(['replacement']);
+    entries[0].target='changed';entries[0].source='gone';await settle();expect(ids()).toEqual([]);
+    expect(state.selected.entries).toBe(entries);expect(requestConfigPatch).not.toHaveBeenCalled();
+  });
+
+  it('clears search on library selection and refreshes same-array and replacement authoritative hydration',async()=>{
+    await mountSearch([{...fixture('first'),entries:[{id:'first-term',source:'needle first',target:'',caseSensitive:false}]},{...fixture('second'),entries:[{id:'second-term',source:'needle second',target:'',caseSensitive:false}]}]);
+    await search('needle');expect(ids()).toEqual(['first-term']);state.selectLibrary('second');await settle();
+    expect(state.query).toBe('');expect(ids()).toEqual(['second-term']);
+    await search('needle');expect(ids()).toEqual(['second-term']);
+    const authoritative=config.glossaryLibraries,entries=authoritative[1].entries;
+    entries[0].source='changed';listeners.forEach(listener=>listener(config));await settle();expect(ids()).toEqual([]);
+    entries[0].target='needle external';listeners.forEach(listener=>listener(config));await settle();expect(ids()).toEqual(['second-term']);expect(config.glossaryLibraries).toBe(authoritative);expect(config.glossaryLibraries[1].entries).toBe(entries);
+    config.glossaryLibraries=[{...fixture('second'),entries:[{id:'replacement',source:'needle replaced',target:'',caseSensitive:false}]}];listeners.forEach(listener=>listener(config));await settle();expect(ids()).toEqual(['replacement']);
+    config.glossaryLibraries=[];listeners.forEach(listener=>listener(config));await settle();expect(ids()).toEqual([]);
+  });
+
+  it('keeps entry ordering and resets pagination for new queries even when the match count stays equal',async()=>{
+    await mountSearch([{...fixture('pages'),entries:Array.from({length:35},(_,index)=>({id:`term-${index}`,source:`source-${index}`,target:'common',caseSensitive:false}))}]);
+    const next=()=>dom.document.querySelector(`[aria-label="${translate('glossary.nextPage','zh-CN')}"]`)!;
+    next().dispatchEvent(new dom.window.Event('click',{bubbles:true}));await settle();expect(state.entryPage).toBe(1);expect(state.visibleEntries[0].id).toBe('term-30');
+    await search('common');expect(state.entryPage).toBe(0);expect(state.filteredEntries).toHaveLength(35);
+    next().dispatchEvent(new dom.window.Event('click',{bubbles:true}));await settle();expect(state.entryPage).toBe(1);
+    await search('COMMON');expect(state.entryPage).toBe(0);expect(ids()).toEqual(Array.from({length:35},(_,index)=>`term-${index}`));
+    expect(dom.document.querySelectorAll('.glossary-table tbody tr')).toHaveLength(30);
+    next().dispatchEvent(new dom.window.Event('click',{bubbles:true}));await settle();state.selected.entries.splice(20);await settle();expect(state.entryPage).toBe(0);expect(state.visibleEntries).toHaveLength(20);
+  });
+
+  it.each(['',' \t\n\u00a0 '])('releases cached text on empty search %j and follows later entry replacement',async empty=>{
+    await mountSearch([searchLibrary('release',35)]);await search('GLS-SOURCE');expect(state.filteredEntries).toHaveLength(35);expect(state.searchTexts).toHaveLength(35);
+    const entries=state.selected.entries;await search(empty);expect(state.searchTexts).toEqual([]);expect(state.filteredEntries).toBe(entries);
+    config.glossaryLibraries=[searchLibrary('release',2)];listeners.forEach(listener=>listener(config));await settle();expect(state.filteredEntries).toHaveLength(2);expect(state.searchTexts).toEqual([]);
+    config.glossaryLibraries=[];listeners.forEach(listener=>listener(config));await settle();expect(state.filteredEntries).toEqual([]);expect(state.searchTexts).toEqual([]);
+  });
+
+  it('does not build search text when no library exists',async()=>{
+    const probe=trackSearch();try{state.query='  GLS-QUERY-no-library  ';await settle();expect(state.filteredEntries).toEqual([]);expect(state.visibleEntries).toEqual([]);expect(probe.operations.joinedLower).toBe(0);}finally{probe.restore();}
+  });
+});
+
 describe('GlossarySettings queued library mutation intents', () => {
   async function mountLibraries(libraries: GlossaryLibrary[]): Promise<{active: boolean}> {
     config.glossaryLibraries=libraries;app.unmount();const props=runtime.reactive({active:true});mountComponent(GlossarySettings,props);await settle();return props;

@@ -1,7 +1,7 @@
 <!--
  * @file src/features/glossary/ui/GlossarySettings.vue
  * 文件职责：提供可直接上手的个人术语库设置，集中管理词库、适用语言、网站范围和固定译名。
- * 主要内容：直接展示导入、新建与匹配预览，词库卡片内固定保留设置入口，多词库优先级独立管理；以单一 Vue 状态控制设置展开，管理独立草稿、范围解释、重复词条校验与串行保存；完整词库字段未变时跳过重复规范化，隐藏时只保留最新通知，已接受的操作按身份和提交草稿在队列执行时合并存活配置服务的最新列表，覆盖外部增删、容量变化及组件卸载；回执只更新仍属于原操作的选择和导入界面，卸载后到达的删除确认不会再发起保存。
+ * 主要内容：直接展示导入、新建与匹配预览，词库卡片内固定保留设置入口，多词库优先级独立管理；以单一 Vue 状态控制设置展开，管理独立草稿、范围解释、重复词条校验与串行保存；非空搜索仅索引当前库的正文，逐次输入复用小写文本，清空时释放；完整词库字段未变时跳过重复规范化，隐藏时只保留最新通知，已接受的操作按身份和提交草稿在队列执行时合并存活配置服务的最新列表，覆盖外部增删、容量变化及组件卸载；回执只更新仍属于原操作的选择和导入界面，卸载后到达的删除确认不会再发起保存。
  * 模块边界：配置通过现有 requestConfigPatch 保存并在失败时回读权威状态；文件只在本地解析，界面不请求翻译服务、不改写宿主网页。
  -->
 <template>
@@ -217,7 +217,17 @@ let latestConfig = glossarySnapshot(config);
 let librarySignature: string | undefined;
 let librariesHydrated = false;
 const selected = computed(() => libraries.value.find(item => item.id === selectedId.value));
-const filteredEntries = computed(() => (selected.value?.entries || []).filter(entry => `${entry.source}\n${entry.target}`.toLocaleLowerCase().includes(query.value.trim().toLocaleLowerCase())));
+const selectedEntries = computed(() => selected.value?.entries || []);
+const searchActive = computed(() => Boolean(query.value.trim()));
+// 只缓存当前库至多 500 条正文；查询字符变化只扫描 includes，原地编辑与顺序变化由 Vue 依赖失效。
+const searchTexts = computed(() => searchActive.value
+  ? selectedEntries.value.map(entry => `${entry.source}\n${entry.target}`.toLocaleLowerCase()) : []);
+const filteredEntries = computed(() => {
+  const keyword = query.value.trim().toLocaleLowerCase();
+  // 即使空查询也读取空索引，释放上次搜索保留的正文；空白查询直接复用原列表。
+  const indexed = searchTexts.value;
+  return keyword ? selectedEntries.value.filter((_entry, index) => indexed[index].includes(keyword)) : selectedEntries.value;
+});
 const visibleEntries = computed(() => filteredEntries.value.slice(entryPage.value * PAGE_SIZE, (entryPage.value + 1) * PAGE_SIZE));
 const duplicateEntry = computed(() => entryDraft.value && selected.value?.entries.find(entry => entry.id !== entryDraft.value!.id && glossarySourcesOverlap(entry, entryDraft.value!)));
 const entryDirty = computed(() => {
