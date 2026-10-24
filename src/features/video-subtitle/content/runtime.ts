@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/runtime.ts
  * 文件职责：装配视频及会议字幕运行时，并协调 YouTube/X 原生字幕、目标语言人工轨、逐条翻译、校时、菜单、完整句学习与下载。
- * 主要内容：挂载原句学习与独立本地读音控制器，原文变化立即作废旧读音，字幕隐藏或关闭取消请求；读音开关复用既有配置与菜单并保持仅译文模式语义，显示模式变化重新授予同句翻译资格并复用已有缓存，不混入字幕原文及导出；媒体切换和配置变化取消有界字幕预取并清理控制，协调字幕校时、预翻译与补译导出确认，并为可选逐字高亮提供当前句时间；X 分片加载尊重原生轨道优先级和原译文成对显示，播放器内换模型保留取消焦点，完整 AI 识别提前展示稳定句，完成后才缓存和导出。
+ * 主要内容：挂载原句学习与独立本地读音控制器，原文变化立即作废旧读音，字幕隐藏或关闭取消请求；读音开关复用既有配置与菜单并保持仅译文模式语义，说明与下载可独立展开，Escape 逐层关闭且菜单关闭重置临时展开状态；显示模式变化重新授予同句翻译资格并复用已有缓存，不混入字幕原文及导出；媒体切换和配置变化取消有界字幕预取并清理控制，协调字幕校时、预翻译与补译导出确认，并为可选逐字高亮提供当前句时间；X 分片加载尊重原生轨道优先级和原译文成对显示，播放器内换模型保留取消焦点，完整 AI 识别提前展示稳定句，完成后才缓存和导出。
  * 模块边界：本文件只在 content 页面编排，同视频底控的局部显隐订阅与字幕布局共用帧调度，帧内先校准自有菜单宿主再测菜单，并随关闭、重绑和销毁清理；完整 AI 字幕缓存请求与提交身份由 subtitleSession 拥有，requestSession 将完整采集映射为后台单流的唯一请求代际；采集资源仍归 fullCapture，不拦截 fetch/XHR 也不实现翻译 provider，翻译经统一 service client。
  */
 import {createApp, h, shallowReactive} from 'vue';
@@ -93,7 +93,7 @@ import type { VideoAiStabilizedCue } from './video-ai/streamingTranscript';
 import {browserCapabilities} from '@/src/platform/browser/capabilities';
 import {
   createVideoPlayerMenu, isVideoModelPromptOpen, renderVideoAiMenu, renderVideoAiModelSelection, renderVideoMenuMode, renderVideoModelPrompt,
-  renderVideoSubtitleTiming, renderVideoSourceStatus, handleVideoMenuNavigation, setVideoMenuToolsOpen, setVideoMenuDownloadStatus, syncVideoPlayerMenuLayout, revealVideoMenuBodyControl, type VideoMenuMode,
+  renderVideoSubtitleTiming, renderVideoSourceStatus, handleVideoMenuNavigation, handleVideoMenuDisclosure, closeVideoMenuDisclosure, resetVideoMenuDisclosures, setVideoMenuToolsOpen, setVideoMenuDownloadStatus, syncVideoPlayerMenuLayout, revealVideoMenuBodyControl, type VideoMenuMode,
 } from './playerMenu';
 import {createVideoAiModelSetup} from './video-ai/modelSetup';
 import {VideoAiSubtitleSession} from './video-ai/subtitleSession';
@@ -853,7 +853,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     const heldFocus = menu?.contains(document.activeElement);
     aiModelSetup.cancel();
     downloads.cancel();
-    if (menu) { menu.hidden = true; setVideoMenuToolsOpen(menu, false); }
+    if (menu) { resetVideoMenuDisclosures(menu); menu.hidden = true; setVideoMenuToolsOpen(menu, false); }
     button?.setAttribute('aria-expanded', 'false');
     playerBinding?.syncMenuHost();
     if (heldFocus && button?.isConnected) button.focus({preventScroll: true});
@@ -1042,6 +1042,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     event.preventDefault();
     event.stopPropagation();
 
+    if (handleVideoMenuDisclosure(menu, target.dataset.action)) return;
     if (reading.handleAction(target.dataset.action)) return;
 
     if (target.dataset.action?.startsWith('download-') && isAiFullActive() && aiFullPhase !== 'ready') {
@@ -1217,6 +1218,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     event.stopPropagation();
     // 导出/模型确认先退回原菜单，再按一次才关闭整个菜单。
     if (menuElement.dataset.view === 'export-prompt') { downloads.cancel(); return; }
+    if (menuElement.dataset.view === 'main' && closeVideoMenuDisclosure(menuElement)) return;
     if (menuElement && !menuElement.hidden && isVideoModelPromptOpen(menuElement)) {
       aiModelMenu.finish(menuElement, false);
     } else if (menuElement.dataset.panel === 'tools') {

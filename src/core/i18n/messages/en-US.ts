@@ -1206,6 +1206,8 @@ export const enUSMessages = {
     "video.readingAnnotation.th": "Thai transliteration",
     "video.readingAnnotation.unavailable": "Reading annotations currently require the browser extension",
     "video.readingAnnotation.label": "Reading annotations",
+    "video.readingAnnotation.explanation": "Show pinyin or romanized readings below the original subtitles to help you read along.",
+    "video.readingAnnotation.exampleLabel": "Example",
     "video.readingAnnotation.description": "Japanese: ~17.8 MB / Hindi: ~0.5 MB on first use, then offline from cache",
     "video.readingAnnotation.originalRequired": "Shown with original or bilingual subtitles; your preference is kept",
     "video.readingAnnotation.approximation": "Supports Japanese, Korean, Chinese, Russian, Greek, Arabic, Hindi and Thai. Latin transliteration is a reading aid, not exact pronunciation. Names, multiple readings and unwritten vowels can be ambiguous.",

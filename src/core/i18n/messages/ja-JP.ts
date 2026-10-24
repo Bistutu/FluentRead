@@ -974,6 +974,8 @@ export const jaJPMessages = {
     "video.readingAnnotation.th": "タイ語の転写",
     "video.readingAnnotation.unavailable": "読み方の表記には現在ブラウザー拡張機能が必要です",
     "video.readingAnnotation.label": "読み方の表記",
+    "video.readingAnnotation.explanation": "原文字幕の下にピンインやローマ字表記を表示し、音声に合わせて読むのを助けます。",
+    "video.readingAnnotation.exampleLabel": "表示例",
     "video.readingAnnotation.description": "日本語は約 17.8 MB、ヒンディー語は約 0.5 MB を初回にダウンロードし、以後はオフラインで使用",
     "video.readingAnnotation.originalRequired": "原文または二言語表示で有効です。設定は保持されます",
     "video.readingAnnotation.approximation": "日本語、韓国語、中国語、ロシア語、ギリシャ語、アラビア語、ヒンディー語、タイ語に対応。ラテン文字への転写は読みの補助であり、正確な発音を示すものではありません。固有名詞、複数の読み、省略された母音には曖昧さがあります。",

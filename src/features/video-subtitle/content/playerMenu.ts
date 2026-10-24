@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/playerMenu.ts
  * 文件职责：组装播放器字幕菜单，以紧凑行呈现显示方式、字幕时间、本地 AI 字幕与下载与完整句学习入口，并在同一弹层内提供模型下载确认。
- * 主要内容：常驻标题与可滚动正文分离，显示与校时先于次级学习入口；触屏安全视口按可用宽度排布，极矮时只保留关闭并暂时隔离正文焦点，正常视口只滚动自有正文显露明确聚焦的操作，桌面按播放器高度收紧；X 首层聚焦显示方式和当前操作，模型选择、校时、导出和重新识别放在可返回的选项页，复用稳定节点呈现来源、故障恢复及识别/下载进度，生成预览期间不开放完整字幕导出。
+ * 主要内容：常驻标题与可滚动正文分离，显示、读音图标开关与校时先于次级学习入口；读音说明支持悬停和键盘聚焦，低频字幕下载默认收起；触屏安全视口按可用宽度排布，极矮时只保留关闭并暂时隔离正文焦点，正常视口只滚动自有正文显露明确聚焦的操作，桌面按播放器高度收紧；X 首层聚焦显示方式和当前操作，模型选择、校时、导出和重新识别放在可返回的选项页，复用稳定节点呈现来源、故障恢复及识别/下载进度，生成预览期间不开放完整字幕导出。
  * 模块边界：只操作 FluentRead 自己的菜单节点，不读取存储、不发起识别或绑定全局事件；运行时负责配置、请求与清理。
  */
 import type {VideoSubtitleDisplayMode} from '@/src/core/config/model';
@@ -35,7 +35,7 @@ const VIEWPORT_MENU_CLOSE_ONLY_HEIGHT_PX = 128;
 /** 单列菜单高度超过播放器可用高度的这一比例时，改用更矮的双列，留出画面上半部分。 */
 const STACK_LAYOUT_MAX_HEIGHT_RATIO = .8;
 
-type IconName = 'settings' | 'minus' | 'plus' | 'reset' | 'sparkle' | 'download' | 'close' | 'back' | 'next' | 'learning';
+type IconName = 'settings' | 'minus' | 'plus' | 'reset' | 'sparkle' | 'download' | 'close' | 'back' | 'next' | 'learning' | 'reading';
 const ICON_PATHS: Record<IconName, string[]> = {
     settings: ['M4 7h9', 'M17 7h3', 'M4 17h3', 'M11 17h9', 'M15 5v4', 'M9 15v4'],
     minus: ['M6 12h12'],
@@ -47,6 +47,7 @@ const ICON_PATHS: Record<IconName, string[]> = {
     back: ['M14 6l-6 6 6 6'],
     next: ['M10 6l6 6-6 6'],
     learning: ['M5 4h14v16H5z', 'M8 8h8', 'M8 12h5'],
+    reading: ['M3 18 8 6l5 12', 'M5 14h6', 'M16 6h5', 'M16 10h3', 'M17 15c1 1 1 3 0 4', 'M21 13c2 2 2 6 0 8'],
 };
 
 // YouTube 启用 Trusted Types，图标只能逐个创建节点，不能写入 innerHTML。
@@ -187,6 +188,30 @@ function createDownloadActions(language: UiLanguage): HTMLElement {
     return actions;
 }
 
+/** 低频导出只保留一行入口，进度仍在折叠区外反馈。 */
+function createDownloadToggle(language: UiLanguage): HTMLButtonElement {
+    const button = createButton('fluent-read-video-menu-download-toggle', {
+        'data-action': 'toggle-subtitle-downloads', role: 'menuitem',
+        'aria-expanded': 'false', 'aria-controls': 'fluent-read-video-subtitle-downloads',
+    });
+    button.dataset.i18nAriaKey = 'video.downloadGroup';
+    setAccessibleName(button, translateVideoUi('video.downloadGroup', language));
+    button.appendChild(createIcon('download'));
+    return button;
+}
+
+function createDownloadDisclosure(language: UiLanguage): HTMLElement {
+    const group = createTextElement('div', 'fluent-read-video-menu-export', '');
+    group.dataset.downloadGroup = 'true';
+    group.hidden = true;
+    const actions = createDownloadActions(language);
+    actions.id = 'fluent-read-video-subtitle-downloads';
+    actions.dataset.subtitleDownloads = 'true';
+    actions.hidden = true;
+    group.append(actions, createDownloadStatus());
+    return group;
+}
+
 function createDownloadStatus(): HTMLElement {
     const status = createTextElement('p', 'fluent-read-video-menu-download-status', '');
     status.dataset.downloadStatus = 'true';
@@ -208,18 +233,141 @@ function createAiModelSelection(): HTMLButtonElement {
 
 /** 读音开关是原文辅助，不增加新的显示模式；状态与重试保留稳定节点。 */
 function createReadingAnnotationRow(language: UiLanguage): HTMLElement {
-    const row = createTextElement('div','fluent-read-video-menu-reading','');
-    const toggle = createButton('fluent-read-video-menu-item', {'data-action':'toggle-reading-annotation',role:'menuitemcheckbox','aria-checked':'false'});
-    const label = keyedText('span','fluent-read-video-menu-label','video.readingAnnotation.label',language);
-    delete label.dataset.i18nKey;
-    label.dataset.readingLabel = 'true';
-    toggle.appendChild(label);
+    const row = createTextElement('div', 'fluent-read-video-menu-reading', '');
+    const header = createTextElement('div', 'fluent-read-video-menu-reading-header', '');
+    const toggle = createButton('fluent-read-video-menu-reading-toggle', {
+        'data-action': 'toggle-reading-annotation', role: 'menuitemcheckbox', 'aria-checked': 'false',
+        'aria-label': translateVideoUi('video.readingAnnotation.label', language),
+    });
+    toggle.dataset.i18nAriaKey = 'video.readingAnnotation.label';
+    toggle.dataset.i18nTitleKey = 'video.readingAnnotation.explanation';
+    toggle.title = translateVideoUi('video.readingAnnotation.explanation', language);
+    toggle.appendChild(createIcon('reading'));
+    const explanation = createTextElement('div', 'fluent-read-video-menu-reading-help', '');
+    explanation.id = 'fluent-read-video-reading-help';
+    explanation.dataset.readingHelp = 'true';
+    explanation.hidden = true;
+    explanation.setAttribute('role', 'tooltip');
+    // 原生顶层避开播放器 overflow/transform；旧浏览器使用原生 title 和无障碍描述。
+    if (typeof explanation.showPopover === 'function') explanation.setAttribute('popover', 'manual');
+    toggle.setAttribute('aria-describedby', explanation.id);
+    const sample = createTextElement('div', 'fluent-read-video-menu-reading-example', '');
+    sample.append(keyedText('span', 'fluent-read-video-menu-reading-example-label', 'video.readingAnnotation.exampleLabel', language));
+    const original = createTextElement('span', '', '今日はいい天気ですね。');
+    original.lang = 'ja';
+    const reading = createTextElement('span', 'fluent-read-video-menu-reading-example-text', 'kyō wa ii tenki desu ne.');
+    reading.lang = 'ja-Latn';
+    sample.append(original, reading);
+    explanation.append(keyedText('strong', '', 'video.readingAnnotation.label', language), keyedText('p', '', 'video.readingAnnotation.explanation', language), sample,
+        keyedText('p', 'fluent-read-video-menu-reading-note', 'video.readingAnnotation.description', language),
+        keyedText('p', 'fluent-read-video-menu-reading-note', 'video.readingAnnotation.approximation', language));
+    toggle.addEventListener('pointerenter', () => setReadingHelpOpen(row, true));
+    toggle.addEventListener('pointerleave', event => {
+        if (event.relatedTarget instanceof Node && explanation.contains(event.relatedTarget)) return;
+        if (document.activeElement !== toggle) setReadingHelpOpen(row, false);
+    });
+    toggle.addEventListener('focus', () => setReadingHelpOpen(row, true));
+    toggle.addEventListener('click', () => setReadingHelpOpen(row, false));
+    toggle.addEventListener('blur', () => {
+        if (!toggle.matches(':hover') && !explanation.matches(':hover')) setReadingHelpOpen(row, false);
+    });
+    explanation.addEventListener('pointerleave', event => {
+        if (event.relatedTarget instanceof Node && toggle.contains(event.relatedTarget)) return;
+        if (document.activeElement !== toggle) setReadingHelpOpen(row, false);
+    });
+    header.append(toggle);
     const status = createTextElement('span','fluent-read-video-menu-source-hint','');
     status.dataset.readingStatus='true'; status.setAttribute('role','status'); status.hidden=true;
     const retry = keyedText('button','fluent-read-video-menu-secondary','video.readingAnnotation.retry',language);
     retry.type='button'; retry.dataset.action='retry-reading-annotation'; retry.setAttribute('role','menuitem'); retry.hidden=true;
-    row.append(toggle,status,retry);
+    row.append(header, explanation, status, retry);
     return row;
+}
+
+function setReadingHelpOpen(row: HTMLElement, open: boolean): void {
+    const help = row.querySelector<HTMLElement>('[data-reading-help]')!;
+    if (open && row.closest('[hidden], [inert]')) return;
+    // 不支持顶层提示时只使用按钮的原生 title，避免把整张说明卡挤进标题工具栏。
+    if (open && !help.hasAttribute('popover')) return;
+    if (!open && isReadingHelpPopoverOpen(help)) {
+        help.hidePopover();
+    }
+    help.hidden = !open;
+    if (open && help.hasAttribute('popover')) {
+        if (!isReadingHelpPopoverOpen(help)) help.showPopover();
+        positionReadingHelp(row);
+    }
+    const menu = row.closest<HTMLElement>(`#${VIDEO_TRANSLATION_MENU_ID}`);
+    if (menu) syncVideoPlayerMenuLayout(menu);
+}
+
+function isReadingHelpPopoverOpen(help: HTMLElement): boolean {
+    // 菜单在全屏或触屏宿主间搬移时，浏览器会自动收起顶层提示，不能用缓存状态判断。
+    return help.hasAttribute('popover') && help.matches(':popover-open');
+}
+
+function positionReadingHelp(row: HTMLElement): void {
+    const help = row.querySelector<HTMLElement>('[data-reading-help]')!;
+    if (!isReadingHelpPopoverOpen(help)) return;
+    const bounds = row.querySelector<HTMLElement>('[data-action="toggle-reading-annotation"]')!.getBoundingClientRect();
+    const viewport = window.visualViewport;
+    const left = viewport?.offsetLeft || 0, top = viewport?.offsetTop || 0;
+    const width = viewport?.width || window.innerWidth, height = viewport?.height || window.innerHeight;
+    help.style.setProperty('--fr-reading-help-width', `${Math.min(280, width - 16)}px`);
+    help.style.setProperty('--fr-reading-help-max-height', `${height - 16}px`);
+    const helpHeight = help.getBoundingClientRect().height;
+    help.style.setProperty('--fr-reading-help-left', `${Math.max(left + 8, Math.min(bounds.right - Math.min(280, width - 16), left + width - Math.min(280, width - 16) - 8))}px`);
+    const preferredTop = bounds.top - helpHeight - 8 >= top + 8 ? bounds.top - helpHeight - 8 : bounds.bottom + 8;
+    help.style.setProperty('--fr-reading-help-top', `${Math.max(top + 8, Math.min(preferredTop, top + height - helpHeight - 8))}px`);
+}
+
+/** 顶层提示不依赖祖先的 hidden，切入确认页时必须显式收起。 */
+export function closeVideoMenuReadingHelp(menu: HTMLElement): void {
+    const row = menu.querySelector<HTMLElement>('.fluent-read-video-menu-reading');
+    if (row) setReadingHelpOpen(row, false);
+}
+
+/** 折叠状态由菜单节点拥有，不触发配置保存、翻译或下载。 */
+export function handleVideoMenuDisclosure(menu: HTMLElement, action: string | undefined): boolean {
+    if (action !== 'toggle-subtitle-downloads') return false;
+    const button = menu.querySelector<HTMLButtonElement>('[data-action="toggle-subtitle-downloads"]')!;
+    const open = button.getAttribute('aria-expanded') !== 'true';
+    button.setAttribute('aria-expanded', String(open));
+    menu.querySelector<HTMLElement>('[data-subtitle-downloads]')!.hidden = !open;
+    syncDownloadGroupVisibility(menu);
+    syncVideoPlayerMenuLayout(menu);
+    return true;
+}
+
+/** Escape 先收起辅助内容，再由宿主处理选项页或菜单本身。 */
+export function closeVideoMenuDisclosure(menu: HTMLElement): boolean {
+    const help = menu.querySelector<HTMLElement>('[data-reading-help]');
+    if (help && !help.closest('[hidden], [inert]') && (!help.hasAttribute('popover') || isReadingHelpPopoverOpen(help))) {
+        const row = help.closest<HTMLElement>('.fluent-read-video-menu-reading')!;
+        setReadingHelpOpen(row, false);
+        return true;
+    }
+    const downloads = menu.querySelector<HTMLElement>('[data-subtitle-downloads]');
+    if (downloads && !downloads.closest('[hidden], [inert]')) {
+        handleVideoMenuDisclosure(menu, 'toggle-subtitle-downloads');
+        menu.querySelector<HTMLButtonElement>('[data-action="toggle-subtitle-downloads"]')!.focus({preventScroll: true});
+        return true;
+    }
+    return false;
+}
+
+/** 关闭菜单或离开工具页时重置临时内容，不移动焦点或改动用户偏好。 */
+export function resetVideoMenuDisclosures(menu: HTMLElement): void {
+    closeVideoMenuReadingHelp(menu);
+    menu.querySelector<HTMLElement>('[data-subtitle-downloads]')!.hidden = true;
+    menu.querySelector('[data-action="toggle-subtitle-downloads"]')!.setAttribute('aria-expanded', 'false');
+    syncDownloadGroupVisibility(menu);
+}
+
+function syncDownloadGroupVisibility(menu: HTMLElement): void {
+    const group = menu.querySelector<HTMLElement>('[data-download-group]');
+    if (group) group.hidden = menu.querySelector('[data-action="toggle-subtitle-downloads"]')?.getAttribute('aria-expanded') !== 'true'
+        && !menu.querySelector('[data-download-status]')?.textContent;
 }
 
 /** 菜单始终由同一组节点更新，避免进度变化时丢失焦点与键盘状态。 */
@@ -235,12 +383,24 @@ export function createVideoPlayerMenu(language: UiLanguage, withLocalGeneration:
     menu.setAttribute('role', 'menu');
     menu.setAttribute('aria-label', translateVideoUi('video.menuAriaLabel', language));
     markVideoUi(menu);
+    menu.addEventListener('pointerleave', () => {
+        const row = menu.querySelector<HTMLElement>('.fluent-read-video-menu-reading')!;
+        const toggle = row.querySelector('[data-action="toggle-reading-annotation"]');
+        if (document.activeElement !== toggle) setReadingHelpOpen(row, false);
+    });
 
     // 子页只切换正文，所有页面共用同一标题和关闭按钮。
-    menu.appendChild(createHeader(language, withLocalGeneration));
+    const header = createHeader(language, withLocalGeneration);
+    const reading = createReadingAnnotationRow(language);
+    header.insertBefore(reading, header.querySelector('[data-action="close-menu"]'));
+    header.insertBefore(createDownloadToggle(language), header.querySelector('[data-action="close-menu"]'));
+    menu.appendChild(header);
     const main = createTextElement('div', 'fluent-read-video-menu-main', '');
     // 标题不进入滚动正文，软键盘或横屏压缩可用高度时仍能立即关闭菜单。
     const body = createTextElement('div', 'fluent-read-video-menu-body', '');
+    const feedback = createTextElement('div', 'fluent-read-video-menu-reading-feedback', '');
+    feedback.append(reading.querySelector('[data-reading-status]')!, reading.querySelector('[data-action="retry-reading-annotation"]')!);
+    body.appendChild(feedback);
     main.appendChild(body);
     const learning = createButton('fluent-read-video-menu-item fluent-read-video-menu-learning', {'data-action': 'open-sentence-learning', role: 'menuitem'});
     learning.append(createIcon('learning'), keyedText('span', 'fluent-read-video-menu-learning-label', 'video.learning.start', language), createIcon('next'));
@@ -263,24 +423,23 @@ export function createVideoPlayerMenu(language: UiLanguage, withLocalGeneration:
         const tools = createTextElement('div', 'fluent-read-video-menu-tools', '');
         tools.id = 'fluent-read-video-menu-tools';
         tools.hidden = true;
-        const downloads = createTextElement('div', 'fluent-read-video-menu-export', '');
-        downloads.append(keyedText('span', 'fluent-read-video-menu-row-label', 'video.downloadGroup', language), createDownloadActions(language), createDownloadStatus());
+        const downloads = createDownloadDisclosure(language);
         const secondary = createTextElement('div', 'fluent-read-video-menu-secondary-ai', '');
         const regenerate = keyedText('button', 'fluent-read-video-menu-secondary', 'video.regenerate', language);
         regenerate.type = 'button';
         regenerate.dataset.action = 'regenerate-ai-subtitle';
         regenerate.setAttribute('role', 'menuitem');
         regenerate.hidden = true;
-        tools.append(createReadingAnnotationRow(language), createAiModelSelection(), createTimingRow(language), downloads, secondary, regenerate);
-        body.append(watch, tools, learning);
+        tools.append(createAiModelSelection(), createTimingRow(language), secondary, regenerate);
+        body.append(watch, tools, downloads, learning);
         menu.append(main, createModelPrompt(language));
         return menu;
     }
 
     const display = createTextElement('div', 'fluent-read-video-menu-section fluent-read-video-menu-display', '');
-    display.append(createModeGroup(language), createReadingAnnotationRow(language), createTimingRow(language));
-    const actions = createTextElement('div', 'fluent-read-video-menu-section fluent-read-video-menu-actions', '');
-    actions.append(createDownloadActions(language), createDownloadStatus());
+    display.append(createModeGroup(language), createTimingRow(language));
+    const actions = createDownloadDisclosure(language);
+    actions.classList.add('fluent-read-video-menu-actions');
     const nativeHint = keyedText('p', 'fluent-read-video-menu-source-hint fluent-read-video-native-fullscreen-hint', 'video.nativeFullscreenHint', language);
     nativeHint.dataset.nativeFullscreenHint = 'true';
     nativeHint.hidden = true;
@@ -294,6 +453,7 @@ export function setVideoMenuToolsOpen(menu: HTMLElement, open: boolean): void {
     const watch = menu.querySelector<HTMLElement>('.fluent-read-video-menu-watch');
     const tools = menu.querySelector<HTMLElement>('.fluent-read-video-menu-tools');
     if (!watch || !tools) return;
+    if (!open) resetVideoMenuDisclosures(menu);
     watch.hidden = open;
     tools.hidden = !open;
     menu.dataset.panel = open ? 'tools' : 'watch';
@@ -535,6 +695,7 @@ export function setVideoMenuDownloadStatus(menu: HTMLElement, text: string, clea
     clearTimeout(downloadStatusTimers.get(menu));
     downloadStatusTimers.delete(menu);
     menu.querySelector<HTMLElement>('[data-download-status]')!.textContent = text;
+    syncDownloadGroupVisibility(menu);
     syncVideoPlayerMenuLayout(menu);
     if (clearAfterMs === undefined) return;
     downloadStatusTimers.set(menu, setTimeout(() => {
@@ -652,6 +813,7 @@ export function renderVideoModelPrompt(menu: HTMLElement, state: VideoModelPromp
         prompt.hidden = true;
         main.hidden = false;
         menu.dataset.view = 'main';
+        syncVideoPlayerMenuLayout(menu);
         return;
     }
     const selection = state.purpose === 'selection';
@@ -677,9 +839,11 @@ export function renderVideoModelPrompt(menu: HTMLElement, state: VideoModelPromp
     confirm.dataset.i18nKey = confirmKey;
     confirm.textContent = translateVideoUi(confirmKey, language);
     prompt.dataset.selectedModel = state.selected;
+    closeVideoMenuReadingHelp(menu);
     main.hidden = true;
     prompt.hidden = false;
     menu.dataset.view = 'model-prompt';
+    syncVideoPlayerMenuLayout(menu);
 }
 
 export function isVideoModelPromptOpen(menu: HTMLElement): boolean {
@@ -746,12 +910,17 @@ const viewportMenuSizes = new WeakMap<HTMLElement, {width: number; height: numbe
  * 矮而宽的播放器改为双列，其余保持单列。
  */
 export function syncVideoPlayerMenuLayout(menu: HTMLElement): void {
+    for (const tool of menu.querySelectorAll<HTMLElement>('.fluent-read-video-menu-reading-header, [data-action="toggle-subtitle-downloads"]')) {
+        tool.hidden = menu.dataset.view !== 'main';
+    }
     const player = menu.parentElement;
     if (menu.hidden || !player) return;
     // 使用布局尺寸而非变换后的外接矩形，与菜单自身的 CSS 像素保持同一坐标系。
     const width = player.clientWidth;
     const height = player.clientHeight;
     if (!width || !height) return;
+    const reading = menu.querySelector<HTMLElement>('.fluent-read-video-menu-reading');
+    if (reading) positionReadingHelp(reading);
     syncVideoMenuCloseOnly(menu, menu.dataset.presentation === 'viewport' && height < VIEWPORT_MENU_CLOSE_ONLY_HEIGHT_PX);
     // 触屏菜单的宿主是已扣除安全区的可见视口，不能再按短视频的高度测量/压缩。
     if (menu.dataset.presentation === 'viewport') {

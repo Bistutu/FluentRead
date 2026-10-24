@@ -974,6 +974,8 @@ export const koKRMessages = {
     "video.readingAnnotation.th": "태국어 전사",
     "video.readingAnnotation.unavailable": "읽기 표기는 현재 브라우저 확장 프로그램이 필요합니다",
     "video.readingAnnotation.label": "읽기 표기",
+    "video.readingAnnotation.explanation": "원문 자막 아래에 병음이나 로마자 표기를 표시하여 소리를 따라 읽도록 도와줍니다.",
+    "video.readingAnnotation.exampleLabel": "표시 예시",
     "video.readingAnnotation.description": "일본어 약 17.8 MB / 힌디어 약 0.5 MB를 처음 다운로드한 뒤 오프라인으로 사용",
     "video.readingAnnotation.originalRequired": "원문 또는 이중 자막에서 표시됩니다. 설정은 유지됩니다",
     "video.readingAnnotation.approximation": "일본어, 한국어, 중국어, 러시아어, 그리스어, 아랍어, 힌디어와 태국어를 지원합니다. 라틴 문자 전사는 읽기 보조이며 정확한 발음을 뜻하지 않습니다. 이름, 여러 독음과 생략된 모음은 모호할 수 있습니다.",
