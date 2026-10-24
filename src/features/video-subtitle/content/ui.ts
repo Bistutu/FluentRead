@@ -1451,32 +1451,22 @@ export function installVideoSubtitleStyle(): HTMLStyleElement {
       height: 28px !important;
       padding: 3px !important;
       border: 1px solid transparent !important;
-      background: var(--fr-video-menu-control) !important;
+      background: transparent !important;
       color: var(--fr-video-menu-muted) !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-toggle .fluent-read-video-menu-icon { width: 20px !important; height: 20px !important; stroke-width: 1.7 !important; }
-    /* 悬停只提示可操作性；开启状态持续使用实心品牌色，避免 hover 覆盖成关闭外观。 */
+    /* 与标题栏图标及显示方式选中态统一：透明底、柔和品牌色；悬停不能覆盖开启状态。 */
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-toggle[aria-checked="false"]:is(:hover, :focus-visible):not(:disabled) {
-      background: var(--fr-video-menu-brand-soft) !important;
-      color: var(--fr-video-menu-brand-text) !important;
-    }
-    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-toggle[aria-checked="true"] {
-      background: var(--fr-video-menu-brand-strong) !important;
-      border-color: var(--fr-video-menu-brand) !important;
+      background: var(--fr-video-menu-control) !important;
       color: var(--fr-video-menu-text) !important;
     }
-    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-toggle[aria-checked="true"]:hover:not(:disabled) {
-      background: var(--fr-video-menu-brand-strong-hover) !important;
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-toggle[aria-checked="true"] {
+      background: var(--fr-video-menu-brand-soft) !important;
+      border-color: rgba(239, 71, 118, .32) !important;
+      color: var(--fr-video-menu-brand-text) !important;
     }
-    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-toggle[aria-checked="true"]::after {
-      content: '' !important;
-      position: absolute !important;
-      top: 2px !important;
-      right: 2px !important;
-      width: 4px !important;
-      height: 4px !important;
-      border-radius: 50% !important;
-      background: currentColor !important;
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-toggle[aria-checked="true"]:hover:not(:disabled) {
+      background: rgba(239, 71, 118, .28) !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-help {
       padding: 9px !important;

@@ -326,19 +326,18 @@ async function main() {
       assert.ok(values?.length >= 3, `Expected computed RGB color: ${color}`);
       return [...values.slice(0, 3), values.length > 3 ? values[3] : 1];
     };
-    const assertFilledBrand = appearance => {
+    const assertSoftBrand = appearance => {
       const [red, green, blue, alpha] = rgba(appearance.background);
-      assert.ok(alpha >= .95 && red > green * 1.5 && red > blue, `Selected reading icon needs a filled brand background: ${appearance.background}`);
-      const luminance = color => {
-        const rgb = rgba(color).slice(0, 3).map(value => {const channel = value / 255; return channel <= .04045 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4;});
-        return rgb[0] * .2126 + rgb[1] * .7152 + rgb[2] * .0722;
-      };
-      const foreground = luminance(appearance.color), background = luminance(appearance.background);
-      const contrast = (Math.max(foreground, background) + .05) / (Math.min(foreground, background) + .05);
-      assert.ok(contrast >= 3, `Reading icon contrast is ${contrast.toFixed(2)}: ${appearance.color} on ${appearance.background}`);
-      assert.ok(!['none', 'normal'].includes(appearance.indicator.content) && parseFloat(appearance.indicator.width) >= 3 && parseFloat(appearance.indicator.height) >= 3 && Number(appearance.indicator.opacity) > 0,
-        `Selected reading icon needs a visible state indicator: ${JSON.stringify(appearance.indicator)}`);
+      assert.ok(alpha >= .2 && alpha <= .28 && red > green * 1.5 && red > blue,
+        `Selected reading icon needs the menu's translucent brand treatment: ${appearance.background}`);
+      assert.equal(appearance.color, 'rgb(255, 173, 194)');
+      assert.equal(appearance.borderColor, 'rgba(239, 71, 118, 0.32)');
+      assert.ok(['none', 'normal'].includes(appearance.indicator.content), 'Reading icon must not add an extra state badge');
     };
+    const readReferenceAppearance = locator => locator.evaluate(el => {
+      const css = getComputedStyle(el);
+      return {background: css.backgroundColor, color: css.color, borderColor: css.borderColor, boxShadow: css.boxShadow};
+    });
     const readCaptionGeometry = () => page.evaluate(() => Object.fromEntries(['fluent-read-video-subtitle-panel', 'fluent-read-video-subtitle-original', 'fluent-read-video-subtitle'].map(id => {
       const el = document.getElementById(id), rect = el.getBoundingClientRect(), css = getComputedStyle(el);
       return [id, {x: rect.x, y: rect.y, width: rect.width, height: rect.height, fontSize: css.fontSize, lineHeight: css.lineHeight, text: el.textContent}];
@@ -358,7 +357,12 @@ async function main() {
     });
     assert.ok(iconShape.width >= 14 && iconShape.height >= 14, JSON.stringify(iconShape));
     const offAppearance = await readReadingAppearance();
+    const selectedModeAppearance = await readReferenceAppearance(menu.locator('[data-mode][aria-checked="true"]'));
+    const downloadIdleAppearance = await readReferenceAppearance(disclosure);
     assert.equal(offAppearance.checked, 'false');
+    assert.equal(offAppearance.background, 'rgba(0, 0, 0, 0)');
+    assert.equal(offAppearance.background, downloadIdleAppearance.background, 'Off reading icon must share the neighboring header icon transparent background');
+    assert.equal(offAppearance.color, downloadIdleAppearance.color);
     assert.ok(['none', 'normal'].includes(offAppearance.indicator.content), 'Off reading icon must not show the enabled indicator');
     assert.equal(await disclosure.getAttribute('aria-expanded'), 'false');
     assert.equal(await toggle.evaluate(el => Boolean(el.closest('.fluent-read-video-menu-title'))), true);
@@ -376,6 +380,11 @@ async function main() {
     await shoot('reading-off');
 
     diagnostics.setPhase('reading-help');
+    await disclosure.hover();
+    await page.waitForTimeout(220);
+    const downloadHoverAppearance = await readReferenceAppearance(disclosure);
+    result.designReferences = {selectedModeAppearance, downloadIdleAppearance, downloadHoverAppearance};
+    await page.mouse.move(4, 4);
     const iconBeforeHover = await toggle.boundingBox();
     const offConfigBeforeHover = configFingerprint(await readConfig(control));
     await helpButton.hover();
@@ -384,8 +393,10 @@ async function main() {
     const offHoverAppearance = await readReadingAppearance();
     result.readingFeedback = {offAppearance, offHoverAppearance};
     assert.notDeepEqual(visualFeedback(offHoverAppearance), visualFeedback(offAppearance), 'Off reading icon hover must provide visible feedback');
-    assert.equal(offHoverAppearance.background, 'rgba(239, 71, 118, 0.2)');
-    assert.equal(offHoverAppearance.color, 'rgb(255, 173, 194)');
+    assert.equal(offHoverAppearance.background, 'rgba(255, 255, 255, 0.07)');
+    assert.equal(offHoverAppearance.color, 'rgb(245, 245, 247)');
+    assert.equal(offHoverAppearance.background, downloadHoverAppearance.background, 'Off hover must match the neighboring header icon');
+    assert.equal(offHoverAppearance.color, downloadHoverAppearance.color);
     assert.equal((await readConfig(control)).videoSubtitleAppearance.readingAnnotation, false);
     assert.equal(configFingerprint(await readConfig(control)), offConfigBeforeHover, 'Hover must not write any configuration');
     await assertCaptionStable('off-hover');
@@ -412,8 +423,8 @@ async function main() {
     const offKeyboardAppearance = await readReadingAppearance();
     result.readingFeedback.offKeyboardAppearance = offKeyboardAppearance;
     assertFocusRing(offKeyboardAppearance);
-    assert.equal(offKeyboardAppearance.background, 'rgba(239, 71, 118, 0.2)');
-    assert.equal(offKeyboardAppearance.color, 'rgb(255, 173, 194)');
+    assert.equal(offKeyboardAppearance.background, 'rgba(255, 255, 255, 0.07)');
+    assert.equal(offKeyboardAppearance.color, 'rgb(245, 245, 247)');
     assert.equal((await readConfig(control)).videoSubtitleAppearance.readingAnnotation, false);
     assert.equal(configFingerprint(await readConfig(control)), offConfigBeforeHover, 'Keyboard focus must not write any configuration');
     await assertCaptionStable('off-keyboard-focus');
@@ -429,6 +440,7 @@ async function main() {
     assert.equal(await toggle.getAttribute('aria-checked'), 'true');
     await page.mouse.move(4, 4);
     await menu.locator('[data-mode="bilingual"]').focus();
+    await menu.locator('[data-mode="bilingual"]').evaluate(el => el.blur());
     await page.waitForTimeout(220);
     const onAppearance = await readReadingAppearance();
     result.readingFeedback.onAppearance = onAppearance;
@@ -442,12 +454,12 @@ async function main() {
     const onHoverAppearance = await readReadingAppearance();
     result.readingFeedback.onHoverAppearance = onHoverAppearance;
     await shoot('reading-on-hover');
-    assertFilledBrand(onAppearance);
-    assertFilledBrand(onHoverAppearance);
-    assert.equal(onAppearance.background, 'rgb(220, 49, 95)');
-    assert.equal(onAppearance.color, 'rgb(245, 245, 247)');
-    assert.equal(onAppearance.borderColor, 'rgb(239, 71, 118)');
-    assert.equal(onHoverAppearance.background, 'rgb(207, 49, 94)');
+    assertSoftBrand(onAppearance);
+    assertSoftBrand(onHoverAppearance);
+    assert.equal(onAppearance.background, 'rgba(239, 71, 118, 0.2)');
+    assert.equal(onAppearance.background, selectedModeAppearance.background, 'Selected reading icon must share the selected mode tab background');
+    assert.equal(onAppearance.color, selectedModeAppearance.color, 'Selected reading icon must share the selected mode tab color');
+    assert.equal(onHoverAppearance.background, 'rgba(239, 71, 118, 0.28)');
     assert.equal(onHoverAppearance.color, onAppearance.color);
     assert.notDeepEqual(visualFeedback(onHoverAppearance), visualFeedback(onAppearance), 'Enabled reading icon hover must remain visually distinct from its idle state');
     assert.match(await help.textContent(), /拼音|罗马音/);
@@ -469,7 +481,7 @@ async function main() {
     await visible(help);
     const keyboardAppearance = await readReadingAppearance();
     result.readingFeedback.keyboardAppearance = keyboardAppearance;
-    assertFilledBrand(keyboardAppearance);
+    assertSoftBrand(keyboardAppearance);
     assertFocusRing(keyboardAppearance);
     assert.equal(keyboardAppearance.background, onAppearance.background);
     assert.equal(configFingerprint(await readConfig(control)), onConfigBeforeHover, 'Selected keyboard focus must not write any configuration');
