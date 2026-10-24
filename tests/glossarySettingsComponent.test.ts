@@ -23,6 +23,11 @@ let dom: ReturnType<typeof parseHTML>;
 let elements: RenderElement[];
 type RenderElement = Record<string, any> & {tag: string; props: Record<string, any>; value?: string};
 
+const normalizationProbe = vi.hoisted(() => vi.fn());
+vi.mock('@/src/core/glossary', async importOriginal => {
+  const original = await importOriginal<typeof import('@/src/core/glossary')>();
+  return {...original, normalizeGlossaryLibraries: (value: unknown) => {normalizationProbe(value);return original.normalizeGlossaryLibraries(value);}};
+});
 vi.mock('@/src/services/config/store', () => ({
   get config() {return (globalThis as any).__fluentReadGlossarySettingsTest.config;},
   get configReady() {return (globalThis as any).__fluentReadGlossarySettingsTest.configReady;},
@@ -40,7 +45,7 @@ vi.mock('@/src/ui/components/UiSelect.vue', () => ({default: {inheritAttrs: fals
   return () => runtime.h('span', [runtime.h('input', {...attrs, value: props.modelValue, disabled: props.disabled, 'data-select-port': '', onInput: (event: any) => {emit('update:modelValue', event.target.value);emit('change', event.target.value);}}), runtime.h('span', {hidden: true}, slots.default?.())]);
 }}}));
 const dialogPort = {props: ['modelValue'], emits: ['update:modelValue'], setup: (props: any, {slots, emit}: any) => () => props.modelValue ? runtime.h('section', {role: 'dialog'}, [slots.default?.(), runtime.h('button', {'data-dialog-close': '', onClick: () => emit('update:modelValue', false)}, 'Close dialog')]) : null};
-function mountComponent(component: import('vue').Component | undefined = undefined, props: Record<string, unknown> = {}): void {
+function mountComponent(component: import('vue').Component | undefined = undefined, props: Record<string, unknown> = {}, shown?: import('vue').Ref<boolean>): void {
   elements = [];
   renderer = runtime.createRenderer({
     patchProp(node: any, key, old: any, value: any) {
@@ -59,7 +64,11 @@ function mountComponent(component: import('vue').Component | undefined = undefin
     insertStaticContent: (content, parent: any, anchor) => {const template = dom.document.createElement('template');template.innerHTML = content;const first = template.content.firstChild,last = template.content.lastChild;parent.insertBefore(template.content, anchor);return [first,last];},
   });
   const capture = (vm: any) => {if (vm) state = vm.$.setupState;};
-  app = renderer.createApp({setup: () => () => component ? runtime.h(component, {...props, ref: capture}) : runtime.h(GlossarySettings, {ref: capture})});
+  const otherPage = {render: () => null};
+  const panel = () => runtime.h(component || GlossarySettings, {...props, ref: capture});
+  app = renderer.createApp({setup: () => () => shown
+    ? runtime.h(runtime.KeepAlive, null, {default: () => shown.value ? panel() : runtime.h(otherPage, {key: 'other-page'})})
+    : panel()});
   app.component('ElDialog', dialogPort);app.config.warnHandler = () => undefined;
   app.mount(dom.document.querySelector('main')!);
 }
@@ -99,6 +108,110 @@ beforeEach(async () => {
 afterEach(async () => {app?.unmount();delete (globalThis as any)[stateKey];vi.unstubAllGlobals();});
 
 describe('GlossarySettings compiled component', () => {
+  it.each([true,false])('skips unchanged glossary normalization for unrelated config notifications while active=%s', async active => {
+    let sourceReads=0;
+    config.glossaryLibraries = Array.from({length:10},(_,index)=>({...fixture(`library-${index}`),entries:Array.from({length:500},(_,term)=>({id:`term-${term}`,get source(){sourceReads++;return `source-${term}`;},target:`译文-${term}`,caseSensitive:false}))}));
+    app.unmount();const props=runtime.reactive({active:true});mountComponent(GlossarySettings,props);await settle();
+    expect(state.totalEntries).toBe(5000);const original=state.libraries;
+    props.active=active;await settle();normalizationProbe.mockClear();sourceReads=0;
+    for(let count=0;count<20;count++)listeners.forEach(listener=>listener({...config,count,glossaryLibraries:config.glossaryLibraries.map(library=>({...library,entries:[...library.entries]}))}));
+    await settle();
+    expect(normalizationProbe).not.toHaveBeenCalled();expect(state.libraries).toBe(original);
+    // 可见页仍检查完整字段签名；隐藏通知只保留快照引用，连签名也不遍历。
+    expect(sourceReads).toBe(active?100000:0);
+    expect(state.totalEntries).toBe(5000);expect(requestConfigPatch).not.toHaveBeenCalled();
+  });
+  it('recognizes complete library metadata, entry identities and ordering while master matching is disabled',async()=>{
+    config.glossaryLibraries=[fixture('first'),fixture('second')];app.unmount();mountComponent();await settle();
+    const notify=async()=>{listeners.forEach(listener=>listener({...config}));await settle();};
+    expect(state.enabled).toBe(false);
+    config.glossaryLibraries[0].name='Renamed';config.glossaryLibraries[0].preset={id:'ai-en-zh-hans',version:2};await notify();
+    expect(state.selected.name).toBe('Renamed');expect(state.selected.preset).toEqual({id:'ai-en-zh-hans',version:2});
+    Object.assign(config.glossaryLibraries[0].entries[0],{id:'changed-id',source:'changed',target:'更新',caseSensitive:true});await notify();
+    expect(state.selected.entries[0]).toEqual({id:'changed-id',source:'changed',target:'更新',caseSensitive:true});
+    config.glossaryLibraries.reverse();await notify();expect(state.libraries.map((library:GlossaryLibrary)=>library.id)).toEqual(['second','first']);expect(state.selectedId).toBe('first');
+    normalizationProbe.mockClear();config.glossaryEnabled=true;await notify();expect(state.enabled).toBe(true);expect(normalizationProbe).not.toHaveBeenCalled();
+  });
+  it('retains only glossary fields without reading or retaining unrelated snapshot data',async()=>{
+    app.unmount();const props=runtime.reactive({active:false});mountComponent(GlossarySettings,props);await settle();let unrelatedReads=0;
+    const next={glossaryEnabled:true,glossaryLibraries:[fixture('latest')],get unrelatedLargeField(){unrelatedReads++;return 'unrelated configuration';}};
+    listeners.forEach(listener=>listener(next));
+    // 先用原生身份比较生成布尔值，避免断言库为对象差异提示遍历 expected 的 getter。
+    expect(Object.keys(state.latestConfig).sort()).toEqual(['glossaryEnabled','glossaryLibraries']);expect(Object.is(state.latestConfig,next)).toBe(false);expect(Object.is(state.latestConfig.glossaryLibraries,next.glossaryLibraries)).toBe(true);expect(unrelatedReads).toBe(0);
+    props.active=true;await settle();expect(state.enabled).toBe(true);expect(state.selectedId).toBe('latest');expect(unrelatedReads).toBe(0);
+    expect(Object.keys(state.latestConfig).sort()).toEqual(['glossaryEnabled','glossaryLibraries']);
+  });
+  it.each(['active-prop','keep-alive'])('reconciles only the latest hidden snapshot and preserves library and metadata drafts through %s',async mode=>{
+    config.glossaryLibraries=[fixture('first'),fixture('second')];app.unmount();
+    const props=runtime.reactive({active:true}),shown=runtime.ref(true);mountComponent(GlossarySettings,props,mode==='keep-alive'?shown:undefined);await settle();
+    const setVisible=async(visible:boolean)=>{if(mode==='keep-alive')shown.value=visible;else props.active=visible;await settle();};
+    await state.editEntry();state.entryDraft.source='first draft';const firstDraft=state.entryDraft;
+    state.selectLibrary('second');await state.editEntry();state.entryDraft.source='second draft';const secondDraft=state.entryDraft;
+    state.editMetadata('name',event('unsubmitted second name'));
+    await setVisible(false);normalizationProbe.mockClear();
+    config.glossaryLibraries[0].name='intermediate';listeners.forEach(listener=>listener({...config}));
+    config.glossaryLibraries=[{...config.glossaryLibraries[0],name:'latest first'},{...config.glossaryLibraries[1],name:'latest second'}];listeners.forEach(listener=>listener({...config}));await settle();
+    expect(normalizationProbe).not.toHaveBeenCalled();expect(state.selected.name).toBe('second');
+    await setVisible(true);expect(normalizationProbe).toHaveBeenCalledOnce();expect(state.selectedId).toBe('second');expect(state.selected.name).toBe('latest second');
+    expect(state.entryDraft).toBe(secondDraft);expect(state.metadataValue('name')).toBe('unsubmitted second name');
+    state.selectLibrary('first');expect(state.entryDraft).toBe(firstDraft);expect(state.entryDraft.source).toBe('first draft');
+    state.selectLibrary('second');expect(state.entryDraft).toBe(secondDraft);
+    await setVisible(false);config.glossaryLibraries=[config.glossaryLibraries[0]];listeners.forEach(listener=>listener({...config}));await setVisible(true);
+    expect(state.selectedId).toBe('first');expect(state.entryDraft).toBe(firstDraft);expect(state.entryDrafts.has('second')).toBe(false);expect(state.metadataValue('name')).toBe('latest first');
+    expect(requestConfigPatch).not.toHaveBeenCalled();
+  });
+  it('keeps initial hydration paused while inactive and refreshes on activation after config becomes ready',async()=>{
+    app.unmount();let release!:()=>void;(globalThis as any)[stateKey].configReady=new Promise<void>(resolve=>{release=resolve;});
+    const props=runtime.reactive({active:false});mountComponent(GlossarySettings,props);normalizationProbe.mockClear();
+    config.glossaryLibraries=[fixture('latest')];listeners.forEach(listener=>listener({...config}));release();await settle();
+    expect(state.ready).toBe(true);expect(state.libraries).toEqual([]);expect(normalizationProbe).not.toHaveBeenCalled();
+    props.active=true;await settle();expect(normalizationProbe).toHaveBeenCalledOnce();expect(state.selectedId).toBe('latest');
+  });
+  it('falls back to normalization if a field signature fails and resumes comparison on the next notification',async()=>{
+    config.glossaryLibraries=[fixture('first')];app.unmount();mountComponent();await settle();normalizationProbe.mockClear();
+    vi.spyOn(JSON,'stringify').mockImplementationOnce(()=>{throw new Error('signature unavailable');});
+    config.glossaryLibraries[0].name='changed';listeners.forEach(listener=>listener(config));await settle();
+    expect(state.selected.name).toBe('changed');expect(normalizationProbe).toHaveBeenCalledOnce();
+    normalizationProbe.mockClear();listeners.forEach(listener=>listener(config));await settle();expect(normalizationProbe).toHaveBeenCalledOnce();
+    normalizationProbe.mockClear();listeners.forEach(listener=>listener({...config,glossaryLibraries:[...config.glossaryLibraries]}));await settle();expect(normalizationProbe).not.toHaveBeenCalled();
+  });
+  it('finishes accepted serial saves while hidden and uses the first acknowledgement for the next queued patch',async()=>{
+    config.glossaryLibraries=[fixture('first'),fixture('second')];app.unmount();const props=runtime.reactive({active:true});mountComponent(GlossarySettings,props);await settle();
+    let release!:()=>void;
+    requestConfigPatch.mockImplementationOnce(async patch=>{await new Promise<void>(resolve=>{release=resolve;});Object.assign(config,patch);listeners.forEach(listener=>listener({...config,glossaryLibraries:[...config.glossaryLibraries]}));});
+    const rename=state.patchLibrary({name:'accepted name'});await settle();const language=state.patchLibrary({sourceLanguage:'en'});
+    props.active=false;await settle();expect(state.busy).toBe(true);release();await Promise.all([rename,language]);
+    expect(config.glossaryLibraries[0]).toMatchObject({name:'accepted name',sourceLanguage:'en'});expect(state.busy).toBe(false);expect(state.saved).toBe(true);
+    props.active=true;await settle();expect(state.selected).toMatchObject({name:'accepted name',sourceLanguage:'en'});expect(requestConfigPatch).toHaveBeenCalledTimes(2);
+  });
+  it('rejects an accepted entry update deleted externally before its queue executes while hidden',async()=>{
+    config.glossaryLibraries=[fixture('first')];app.unmount();const props=runtime.reactive({active:true});mountComponent(GlossarySettings,props);await settle();
+    await state.editEntry(state.selected.entries[0]);state.entryDraft.target='retained draft';const draft=state.entryDraft;
+    const saving=state.saveEntry();props.active=false;config.glossaryLibraries[0].entries=[];listeners.forEach(listener=>listener({...config,glossaryLibraries:[...config.glossaryLibraries]}));
+    await saving;expect(config.glossaryLibraries[0].entries).toEqual([]);expect(requestConfigPatch).not.toHaveBeenCalled();expect(state.entryDraft).toBe(draft);expect(state.error).toContain('已在其他页面删除');
+    props.active=true;await settle();expect(state.entryDraft.target).toBe('retained draft');expect(state.busy).toBe(false);
+  });
+  it('restores authoritative data after a hidden save failure without discarding a newer metadata draft',async()=>{
+    config.glossaryLibraries=[fixture('first')];app.unmount();const props=runtime.reactive({active:true});mountComponent(GlossarySettings,props);await settle();
+    let release!:()=>void;requestConfigPatch.mockImplementationOnce(async()=>{await new Promise<void>(resolve=>{release=resolve;});throw new Error('storage unavailable');});
+    state.editMetadata('name',event('submitted'));const saving=state.saveMetadata('name',{name:'submitted'});await settle();state.editMetadata('name',event('newer local draft'));
+    props.active=false;config.glossaryLibraries=[{...fixture('first'),name:'authoritative external'}];listeners.forEach(listener=>listener({...config,glossaryLibraries:[...config.glossaryLibraries]}));release();await saving;
+    props.active=true;await settle();expect(state.selected.name).toBe('authoritative external');expect(state.metadataValue('name')).toBe('newer local draft');expect(state.error).toContain('保存失败');expect(state.saved).toBe(false);expect(state.busy).toBe(false);
+  });
+  it.each(['import','builtin'])('builds a %s library list from the latest snapshot when an already open dialog confirms while hidden',async mode=>{
+    config.glossaryLibraries=[fixture('deleted')];app.unmount();const props=runtime.reactive({active:true});mountComponent(GlossarySettings,props);await settle();
+    if(mode==='import'){state.openImport();state.importText='source,target\nimported-term,导入';await settle();}
+    else {
+      const card=dom.document.querySelector('[data-testid="builtin-ai-en-zh-hans"]')!;
+      [...card.querySelectorAll('button')].find(button=>button.textContent===translate('glossary.builtin.preview','zh-CN'))!.dispatchEvent(new dom.window.Event('click',{bubbles:true}));await settle();
+    }
+    props.active=false;config.glossaryLibraries=[fixture('remote')];listeners.forEach(listener=>listener({...config,glossaryLibraries:[...config.glossaryLibraries]}));await settle();
+    const dialog=dom.document.querySelector('[role="dialog"]')!;expect(dialog).toBeTruthy();
+    const label=translate(mode==='import'?'glossary.confirmImport':'glossary.builtin.add','zh-CN');
+    [...dialog.querySelectorAll('button')].find(button=>button.textContent===label)!.dispatchEvent(new dom.window.Event('click',{bubbles:true}));await settle();
+    expect(config.glossaryLibraries.some(library=>library.id==='deleted')).toBe(false);expect(config.glossaryLibraries.some(library=>library.id==='remote')).toBe(true);
+    expect(config.glossaryLibraries).toHaveLength(2);expect(config.glossaryLibraries[1].entries.some(entry=>entry.source===(mode==='import'?'imported-term':'artificial intelligence'))).toBe(true);
+  });
   it('renders separate script choices from the shared translation catalog and persists traditional scope', async () => {
     expect(state.languageOptions('zh-hant').filter((item: {value: string}) => item.value.startsWith('zh-'))).toEqual([
       {value: 'zh-hans', label: '简体中文 / Simplified Chinese'},

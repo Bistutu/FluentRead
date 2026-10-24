@@ -1,7 +1,7 @@
 <!--
  * @file src/features/glossary/ui/GlossarySettings.vue
  * 文件职责：提供可直接上手的个人术语库设置，集中管理词库、适用语言、网站范围和固定译名。
- * 主要内容：直接展示导入、新建与匹配预览，词库卡片内固定保留设置入口，多词库优先级独立管理；以单一 Vue 状态控制设置展开，管理独立草稿、范围解释、重复词条校验与串行保存；卸载后到达的删除确认不会再发起保存。
+ * 主要内容：直接展示导入、新建与匹配预览，词库卡片内固定保留设置入口，多词库优先级独立管理；以单一 Vue 状态控制设置展开，管理独立草稿、范围解释、重复词条校验与串行保存；完整词库字段未变时跳过重复规范化，隐藏时只保留最新通知，恢复及已接受保存的队列执行前回读最新基线；卸载后到达的删除确认不会再发起保存。
  * 模块边界：配置通过现有 requestConfigPatch 保存并在失败时回读权威状态；文件只在本地解析，界面不请求翻译服务、不改写宿主网页。
  -->
 <template>
@@ -153,7 +153,7 @@ import ElSelect from '@/src/ui/components/UiSelect.vue';
 import {ElOption} from 'element-plus';
 import 'element-plus/es/components/select/style/css';
 import FeatureEnableCard from '@/src/ui/components/FeatureEnableCard.vue';
-import {computed, nextTick, onBeforeUnmount, ref, watch} from 'vue';
+import {computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, ref, watch} from 'vue';
 import {ElMessageBox} from 'element-plus';
 import browser from 'webextension-polyfill';
 import {config, configReady, requestConfigPatch, subscribeConfig} from '@/src/services/config/store';
@@ -167,6 +167,11 @@ import BuiltinGlossaries from './BuiltinGlossaries.vue';
 import {normalizeGlossaryLanguage, cleanGlossaryText} from '@/src/core/glossary/model';
 
 const {t, language} = useUiI18n();
+const props = withDefaults(defineProps<{active?: boolean}>(), {active: true});
+const viewActive = ref(true);
+const active = computed(() => props.active && viewActive.value);
+onActivated(() => {viewActive.value = true;});
+onDeactivated(() => {viewActive.value = false;});
 const libraries = ref<GlossaryLibrary[]>([]);
 const enabled = ref(false);
 const builtinsElement = ref<HTMLElement | null>(null);
@@ -203,6 +208,13 @@ let disposed = false;
 let pendingSaves = 0;
 let saveQueue: Promise<unknown> = Promise.resolve();
 let fileReadGeneration = 0;
+type GlossarySnapshot = Pick<typeof config, 'glossaryLibraries' | 'glossaryEnabled'>;
+function glossarySnapshot(next: GlossarySnapshot): GlossarySnapshot {
+  return {glossaryLibraries: next.glossaryLibraries, glossaryEnabled: next.glossaryEnabled};
+}
+let latestConfig = glossarySnapshot(config);
+let librarySignature: string | undefined;
+let librariesHydrated = false;
 const selected = computed(() => libraries.value.find(item => item.id === selectedId.value));
 const filteredEntries = computed(() => (selected.value?.entries || []).filter(entry => `${entry.source}\n${entry.target}`.toLocaleLowerCase().includes(query.value.trim().toLocaleLowerCase())));
 const visibleEntries = computed(() => filteredEntries.value.slice(entryPage.value * PAGE_SIZE, (entryPage.value + 1) * PAGE_SIZE));
@@ -215,16 +227,24 @@ const entryDirty = computed(() => {
 });
 watch([query, selectedId, () => filteredEntries.value.length], () => {entryPage.value = 0;});
 
-function hydrate(next = config): void {
-  const previousId = selectedId.value;
-  libraries.value = normalizeGlossaryLibraries(next.glossaryLibraries);
+function hydrate(next: GlossarySnapshot = config): void {
+  latestConfig = glossarySnapshot(next);
   enabled.value = next.glossaryEnabled;
+  let signature: string | undefined;
+  try {signature = JSON.stringify(next.glossaryLibraries);} catch { /* 去重失败仍沿用原有规范化，不把未验证数据记作已同步。 */ }
+  if (librariesHydrated && signature !== undefined && signature === librarySignature) return;
+  const normalized = normalizeGlossaryLibraries(next.glossaryLibraries);
+  const previousId = selectedId.value;
+  libraries.value = normalized;
+  librarySignature = signature;
+  librariesHydrated = true;
   for (const id of entryDrafts.keys()) if (!libraries.value.some(item => item.id === id)) {entryDrafts.delete(id); entryDraftOrigins.delete(id);}
   if (!libraries.value.some(item => item.id === selectedId.value)) selectedId.value = libraries.value[0]?.id || '';
   if (selectedId.value !== previousId) {metadataDrafts.value = {}; entryDraft.value = entryDrafts.get(selectedId.value) || null;}
 }
-const unsubscribe = subscribeConfig(next => {if (!disposed) hydrate(next);});
-void configReady.then(() => {if (!disposed) {hydrate(); ready.value = true;}}).catch(() => {if (!disposed) error.value = t('glossary.loadFailed');});
+const unsubscribe = subscribeConfig(next => {if (!disposed) {if (active.value) hydrate(next);else latestConfig = glossarySnapshot(next);}});
+watch(active, visible => {if (visible && ready.value && !disposed) hydrate(latestConfig);}, {flush: 'sync'});
+void configReady.then(() => {if (!disposed) {latestConfig = glossarySnapshot(config);if (active.value) hydrate();ready.value = true;}}).catch(() => {if (!disposed) error.value = t('glossary.loadFailed');});
 onBeforeUnmount(() => {disposed = true; fileReadGeneration++; unsubscribe();});
 
 type GlossaryPatch = {glossaryLibraries?: GlossaryLibrary[]; glossaryEnabled?: boolean};
@@ -234,6 +254,8 @@ function persist(patch: GlossaryPatch | (() => GlossaryPatch)): Promise<boolean>
   pendingSaves++; busy.value = true; error.value = ''; saved.value = false;
   const operation = saveQueue.then(async () => {
     try {
+      // 隐藏只延迟展示刷新；函数补丁执行前仍须合并最新词库，避免复活外部删除或丢掉前一项保存。
+      if (!disposed) hydrate(latestConfig);
       await requestConfigPatch(typeof patch === 'function' ? patch() : patch, browser.runtime.sendMessage.bind(browser.runtime));
       if (!disposed) {hydrate(); saved.value = true;}
       return true;
@@ -265,6 +287,7 @@ async function startEntry(source = ''): Promise<void> {
 }
 async function addLibrary(): Promise<void> {
   if (busy.value || !ready.value) return;
+  if (!disposed) hydrate(latestConfig);
   if (atLibraryLimit.value) {error.value = t('glossary.capacity'); return;}
   const library = createGlossaryLibrary(libraries.value);
   const base = t('glossary.newName');
@@ -279,6 +302,7 @@ async function addLibrary(): Promise<void> {
 }
 async function addBuiltin(id: string): Promise<void> {
   if (busy.value || !ready.value) return;
+  if (!disposed) hydrate(latestConfig);
   const preset = BUILTIN_GLOSSARIES.find(item => item.id === id);
   if (!preset) return;
   const result = addBuiltinGlossary(id, libraries.value, t(preset.nameKey));
@@ -330,6 +354,7 @@ function languageLabel(value: string): string {
   return value ? languageOptions(value).find(item => item.value === value)?.label.split(' / ')[0] || value : t('glossary.anyLanguage');
 }
 function moveLibrary(index: number, direction: number): void {
+  if (!disposed) hydrate(latestConfig);
   if (busy.value || index < 0 || index >= libraries.value.length || index + direction < 0 || index + direction >= libraries.value.length) return;
   const next = [...libraries.value];
   [next[index], next[index + direction]] = [next[index + direction], next[index]];
@@ -447,6 +472,7 @@ async function readImportFile(event: Event): Promise<void> {
   if (!disposed && generation === fileReadGeneration) input.value = '';
 }
 async function confirmImport(): Promise<void> {
+  if (!disposed) hydrate(latestConfig);
   if (!canImport.value || busy.value) return;
   const next = [...libraries.value];
   let firstId = '';

@@ -85,7 +85,8 @@ function configureSectionPorts(data: Record<string, any>, {template = false, req
     componentPort('@/src/features/settings/ui/TranslationCacheSettings.vue', {props: ['active', 'config'],
         setup(props: any) {data.cacheSettings = props;return () => null;}});
     vi.doMock('@/src/features/translation-center/public', () => ({TranslationCenter: empty}));
-    vi.doMock('@/src/features/glossary/public', () => ({GlossarySettings: empty}));
+    vi.doMock('@/src/features/glossary/public', () => ({GlossarySettings: {props: ['active'],
+        setup(props: any) {data.glossarySettings = props;runtime.onMounted(data.glossaryMounted);return () => null;}}}));
     vi.doMock('@/src/features/image-translation/ui/public', () => ({ImageOcrSettings: empty, MangaSettings: empty}));
     vi.doMock('@/src/features/model-usage/public', () => ({ModelUsageDashboard: empty}));
     vi.doMock('@/src/features/translation-stats/public', () => ({TranslationStatsDashboard: empty}));
@@ -188,13 +189,14 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
     let providerState: Record<string, any> | undefined;
     const providerReady = deferred<void>();
     const catalogReady = deferred<void>();
+    const glossaryReady = deferred<void>();
     const loadProvider = vi.fn(async () => {
         await providerGate;
         const component = (await vi.importActual<typeof import('@/src/features/settings/ui/services/CustomOpenAIProviderDialog.vue')>('@/src/features/settings/ui/services/CustomOpenAIProviderDialog.vue')).default;
         providerReady.resolve();return component;
     });
     let notifyConfig: (value: unknown) => void = () => {};
-    const data = {cacheSettings: {} as Record<string, any>, uiPorts: new Map<string, ChildEventPort>(), serviceCatalog:undefined as undefined | {props:Record<string,any>;emit:(event:string,...args:any[])=>void},serviceConfiguration:undefined as undefined | {props:Record<string,any>;emit:(event:string,...args:any[])=>void},loadProvider, catalogMounted: () => catalogReady.resolve(), config: configSnapshot ?? {}, configReady: ready,
+    const data = {glossaryMounted: () => glossaryReady.resolve(), glossarySettings: undefined as undefined | Record<string, any>, cacheSettings: {} as Record<string, any>, uiPorts: new Map<string, ChildEventPort>(), serviceCatalog:undefined as undefined | {props:Record<string,any>;emit:(event:string,...args:any[])=>void},serviceConfiguration:undefined as undefined | {props:Record<string,any>;emit:(event:string,...args:any[])=>void},loadProvider, catalogMounted: () => catalogReady.resolve(), config: configSnapshot ?? {}, configReady: ready,
         subscribeConfig: (listener: (value: unknown) => void) => {
             notifyConfig = listener;
             if (configSnapshot) listener(configSnapshot);
@@ -247,11 +249,22 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
     if (template && activeSection === 'settings-services') {await catalogReady.promise;await settle();}
     return {state, props, visible, document: dom?.document, domWindow: dom?.window, setVisibility, pageEvent, numericPorts, loadProvider, focus, providerMounted, providerUnmounted,
         get providerState() {return providerState;}, get dialogPort() {return dialogPort;},
+        async finishGlossaryLoad() {await glossaryReady.promise;await settle();},
         async finishProviderLoad() {await providerReady.promise;await new Promise(resolve => setTimeout(resolve, 0));await settle();}, query, send, patch, theme, media, unsubscribe, frames, findTarget, location, data,
         notifyConfig: (value: unknown) => notifyConfig(value)};
 }
 
 describe('设置主表单实际组件异步归属', () => {
+    it('术语库首次访问才挂载，离开和 KeepAlive 隐藏时失活但保留同一组件实例', async () => {
+        const {props, visible, data, finishGlossaryLoad} = await mountSections({activeSection: 'settings-general'});
+        expect(data.glossarySettings).toBeUndefined();
+        props.activeSection = 'settings-glossary';await finishGlossaryLoad();
+        const instance = data.glossarySettings!;expect(instance.active).toBe(true);
+        props.activeSection = 'settings-general';await settle();expect(instance.active).toBe(false);
+        props.activeSection = 'settings-glossary';await settle();expect(data.glossarySettings).toBe(instance);expect(instance.active).toBe(true);
+        visible.value = false;await settle();expect(instance.active).toBe(false);
+        visible.value = true;await settle();expect(data.glossarySettings).toBe(instance);expect(instance.active).toBe(true);
+    });
     it('缓存面板保留实例并由高级页、页内分类和 KeepAlive 活跃状态共同授权', async () => {
         const {props, visible, data} = await mountSections({activeSection: 'settings-advanced'});await settle();
         expect(data.cacheSettings.active).toBe(true);
