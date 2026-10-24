@@ -1,0 +1,16 @@
+{
+  "manifest_version": 2,
+  "name": "FluentRead for Zotero · 流畅阅读",
+  "version": "0.0.40",
+  "description": "Translate research PDFs, read bilingual results, and save translations alongside the original literature.",
+  "author": "FluentRead contributors",
+  "homepage_url": "https://github.com/Bistutu/FluentRead",
+  "applications": {
+    "zotero": {
+      "id": "fluentread@fluentread.app",
+      "strict_min_version": "7.0",
+      "strict_max_version": "10.0.*",
+      "update_url": "https://raw.githubusercontent.com/Bistutu/FluentRead/main/integrations/zotero/updates.json"
+    }
+  }
+}

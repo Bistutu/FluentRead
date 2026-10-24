@@ -2,10 +2,10 @@
  * @file src/features/document-translation/ui/pdfPreview.ts
  * 文件职责：在浏览器 Canvas 环境中生成 PDF 预览和原版译页；显式重排导出按嵌入字体分页，仅公式图表编码为图像，由二进制服务绘制可复制文字。
  * 主要内容：共用 PDF.js 与有界单页 Canvas；导出每页一次像素读回，阅读器每个新段只读回包含取样边缘的局部快照；重排的光栅与文字导出共用原图旋转裁剪，复用保护筛选、表格裁剪和有界拟合，超长译文返回完整批注与逐行搜索层，缺字或离线时可用带相同 Unicode 文字层的有界光栅续页；下载分批绘制并优先 JPEG 编码，预览和重排图表使用 PNG；取消、失败与完成释放画布，租约隔离阅读器与导出，迟到加载不能复活已释放资源。
- * 模块边界：这里负责视觉光栅化而不决定片段翻译或文件结构；PDF 文本块来自 binary 服务，领域类型来自 core，Canvas/PDF.js 仅应在文档 UI 环境调用，不能进入通用纯算法层。
+ * 模块边界：这里负责视觉光栅化而不决定片段翻译或文件结构；PDF 文本块来自 binary 服务，静态地址来自 pdfResources 应用端口，领域类型来自 core，Canvas/PDF.js 仅应在文档 UI 环境调用，不能进入通用纯算法层。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
-import pdfWorkerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
+import {getPdfResources} from '../services/pdfResources';
 import type {PDFDocumentProxy, PDFPageProxy} from 'pdfjs-dist/legacy/build/pdf.mjs';
 
 import type {
@@ -89,14 +89,14 @@ export function releasePdfDocument(bytes: Uint8Array, reason?: unknown): void {
 function browserPdfDocument(bytes: Uint8Array): BrowserPdfResource {
     const cached = browserPdfCache.get(bytes);
     if (cached) return cached;
-    const pdfAssetRoot = `${window.location.origin}/pdfjs`;
+    const {assetRoot: pdfAssetRoot, workerUrl} = getPdfResources();
     const resource: BrowserPdfResource = {
         promise: undefined!, controller: new AbortController(), users: 0,
         unload: () => releasePdfDocument(bytes),
     };
     const promise = import('pdfjs-dist/legacy/build/pdf.mjs').then(({getDocument, GlobalWorkerOptions}) => {
         resource.controller.signal.throwIfAborted();
-        GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+        GlobalWorkerOptions.workerSrc = workerUrl;
         resource.task = getDocument({
             data: new Uint8Array(bytes),
             disableFontFace: false,
