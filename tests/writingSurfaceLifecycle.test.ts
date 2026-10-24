@@ -1,7 +1,7 @@
 /**
  * @file tests/writingSurfaceLifecycle.test.ts
  * 文件职责：执行真实写作入口 SFC 的动态文档和异步保存生命周期，复验入口只属于当前挂载。
- * 主要内容：通过真实 DOM MutationObserver 置换 body，验证原生操作行中的入口恢复、去重与卸载；延迟保存响应不能在卸载后重建入口，失败仍保留给下一次有效挂载显示。
+ * 主要内容：通过真实 DOM MutationObserver 置换 body，验证入口恢复、去重与卸载；验证 Shadow DOM 事件路径区分面板内外，外部点击收起不抢焦点且重开复用会话；延迟保存响应不能在卸载后重建入口，失败仍保留给下一次有效挂载显示。
  * 模块边界：只替换配置、浏览器消息和子面板端口；编辑器发现、入口创建及真实 Vue setup/watch/lifecycle 均执行生产代码，不请求在线服务。
  */
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
@@ -27,7 +27,10 @@ vi.mock('@/src/services/config/store', () => ({config: ports.config, requestConf
     subscribeConfig: (listener: (next: any) => void) => {ports.subscribers.add(listener); return () => ports.subscribers.delete(listener);}}));
 vi.mock('@/src/ui/i18n', async () => {const {ref} = await import('vue'); return {useUiI18n: () => ({t: (key: string) => key,
     translateLegacy: (text: string) => text, language: ref('zh-CN'), bundleRevision: ref(0)})};});
-vi.mock('@/src/features/writing-assistant/ui/WritingPanel.vue', () => ({default: {render: () => null}}));
+vi.mock('@/src/features/writing-assistant/ui/WritingPanel.vue', async () => {
+    const {h} = await import('vue');
+    return {default: {render: () => h('section', {'data-writing-panel-fixture': ''}, [h('button', 'Panel action')])}};
+});
 vi.mock('@/src/features/writing-assistant/ui/WritingEntrySettings.vue', () => ({default: {render: () => null}}));
 import {createApp, nextTick, type App} from 'vue';
 import WritingSurface from '@/src/features/writing-assistant/ui/WritingSurface.vue';
@@ -121,6 +124,43 @@ describe('写作入口真实组件生命周期', () => {
         expect(state.opened).toBe(false);
         Object.assign(ports.config, {on: false}); state.scan();
         expect(state.fillDraft('Disabled')).toContain('已禁用'); expect(entries()).toHaveLength(0);
+    });
+
+    it('dismisses on outside pointerdown without stealing focus and reopens the unchanged editor session', async () => {
+        const listen = vi.spyOn(dom.document, 'addEventListener');
+        const state = mount();
+        const editor = dom.document.querySelector<HTMLTextAreaElement>('textarea')!;
+        const focus = vi.spyOn(editor, 'focus');
+        const entry = entries()[0] as HTMLElement;
+        const trigger = entry.shadowRoot!.querySelector<HTMLButtonElement>('button')!;
+        trigger.click(); await settle();
+        const session = state.sessionKey;
+        const panel = dom.document.querySelector('[data-writing-panel-fixture]')!;
+        const action = panel.querySelector('button')!;
+        const pointer = (path: EventTarget[]) => {
+            const event = new dom.window.Event('pointerdown', {bubbles: true, cancelable: true});
+            Object.defineProperty(event, 'composedPath', {value: () => path});
+            dom.document.dispatchEvent(event);
+            return event;
+        };
+        // 同一 Shadow DOM 内的按钮以及被重定向为入口 host 的事件均属于当前面板。
+        pointer([action, panel, dom.document.documentElement, dom.document]);
+        pointer([trigger, entry.shadowRoot!, entry, dom.document]);
+        expect(state.opened).toBe(true); expect(state.sessionKey).toBe(session);
+        const outside = dom.document.createElement('button'); dom.document.body.append(outside);
+        const clicked = vi.fn(); outside.addEventListener('click', clicked);
+        const event = pointer([outside, dom.document.body, dom.document]);
+        outside.click(); await settle();
+        expect(state.opened).toBe(false); expect(focus).not.toHaveBeenCalled();
+        expect(event.defaultPrevented).toBe(false); expect(clicked).toHaveBeenCalledOnce();
+        expect(trigger.getAttribute('aria-expanded')).toBe('false');
+        trigger.click(); await settle();
+        expect(state.opened).toBe(true); expect(state.sessionKey).toBe(session);
+        expect(trigger.getAttribute('aria-expanded')).toBe('true');
+        const listener = listen.mock.calls.find(([type]) => type === 'pointerdown')!;
+        expect(listener[2]).toEqual(expect.objectContaining({capture: true, signal: expect.any(AbortSignal)}));
+        app!.unmount(); app = undefined;
+        expect((listener[2] as AddEventListenerOptions).signal!.aborted).toBe(true);
     });
 
     it('keeps entry settings mutually exclusive with writing, toggles by trigger, and reports options failures', async () => {
