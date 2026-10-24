@@ -5,7 +5,7 @@
  模块边界：只读取父级传入的内容容器和导航元数据，不改变路由、不隐藏表单、不读写配置；组件卸载或切换页面时清理观察器、事件和动画帧。
 -->
 <template>
-  <nav v-if="anchors.length > 1" ref="navigation" class="settings-page-tabs settings-section-navigation" :aria-label="t('options.categories')">
+  <nav v-if="anchors.length > 1" ref="navigation" class="settings-page-tabs settings-section-navigation settings-subnavigation" :aria-label="t('options.categories')">
     <button
       v-for="anchor in anchors"
       :key="anchor.id"
@@ -17,6 +17,7 @@
   </nav>
 </template>
 <script setup lang="ts">
+import './settings-navigation.css'
 import {nextTick, onBeforeUnmount, ref, shallowRef, watch} from 'vue'
 import type {SettingsPagePanel} from '@/src/features/settings/model/navigation'
 import {useUiI18n} from '@/src/ui/i18n'

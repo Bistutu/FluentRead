@@ -430,7 +430,7 @@ export const esESMessages = {
     "settings.services.library.allCategories": "Todas las categorías",
     "settings.services.library.custom": "Servicios personalizados",
     "settings.services.library.guideToggle": "Ver pasos de configuración",
-    "settings.services.library.saved": "Configuración guardada",
+    "settings.services.library.saved": "Guardado",
     "settings.services.library.empty": "No hay servicios de traducción coincidentes",
     "settings.services.library.defaultBadge": "Predeterminado",
     "settings.services.library.favorite": "Añadir {service} a favoritos",

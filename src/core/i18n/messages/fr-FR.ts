@@ -430,7 +430,7 @@ export const frFRMessages = {
     "settings.services.library.allCategories": "Toutes les catégories",
     "settings.services.library.custom": "Services personnalisés",
     "settings.services.library.guideToggle": "Voir les étapes de configuration",
-    "settings.services.library.saved": "Configuration enregistrée",
+    "settings.services.library.saved": "Enregistré",
     "settings.services.library.empty": "Aucun service de traduction correspondant",
     "settings.services.library.defaultBadge": "Par défaut",
     "settings.services.library.favorite": "Ajouter {service} aux favoris",

@@ -430,7 +430,7 @@ export const ruRUMessages = {
     "settings.services.library.allCategories": "Все категории",
     "settings.services.library.custom": "Свои сервисы",
     "settings.services.library.guideToggle": "Показать шаги настройки",
-    "settings.services.library.saved": "Настройки сохранены",
+    "settings.services.library.saved": "Сохранено",
     "settings.services.library.empty": "Подходящие сервисы перевода не найдены",
     "settings.services.library.defaultBadge": "По умолчанию",
     "settings.services.library.favorite": "Добавить {service} в избранное",

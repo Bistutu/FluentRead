@@ -426,7 +426,7 @@ export const zhCNMessages = {
     "settings.services.library.allCategories": "全部分类",
     "settings.services.library.custom": "自定义服务",
     "settings.services.library.guideToggle": "查看开通步骤",
-    "settings.services.library.saved": "已保存配置",
+    "settings.services.library.saved": "已保存",
     "settings.services.library.empty": "没有匹配的翻译服务",
     "settings.services.library.defaultBadge": "默认",
     "settings.services.library.favorite": "将 {service} 设为常用",

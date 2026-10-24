@@ -430,7 +430,7 @@ export const jaJPMessages = {
     "settings.services.library.allCategories": "すべての分類",
     "settings.services.library.custom": "カスタムサービス",
     "settings.services.library.guideToggle": "設定手順を見る",
-    "settings.services.library.saved": "設定保存済み",
+    "settings.services.library.saved": "保存済み",
     "settings.services.library.empty": "一致する翻訳サービスがありません",
     "settings.services.library.defaultBadge": "既定",
     "settings.services.library.favorite": "{service} をお気に入りに追加",

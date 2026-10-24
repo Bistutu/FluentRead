@@ -1697,15 +1697,11 @@ async function main() {
         }
         report.assertions.aboutSupportArea = true;
       }
-      const pageHeading = page.locator('.workspace > .settings-content-title');
-      if (await pageHeading.count() !== 1) throw new Error(`${id} 页面级语义标题数量异常`);
-      const headingLayout = await pageHeading.evaluate(element => {
-        const rect = element.getBoundingClientRect();
-        const style = getComputedStyle(element);
-        return {width: rect.width, height: rect.height, position: style.position, clipPath: style.clipPath};
-      });
-      if (headingLayout.position !== 'absolute' || headingLayout.width > 1 || headingLayout.height > 1 || headingLayout.clipPath !== 'inset(50%)') {
-        throw new Error(`${id} 页面标题仍占用可见空间：${JSON.stringify(headingLayout)}`);
+      const workspace = page.locator('main.workspace');
+      const pageTitle = (await workspace.getAttribute('aria-label'))?.trim();
+      if (!pageTitle) throw new Error(`${id} 缺少页面级辅助技术名称`);
+      if (await workspace.locator(':scope > h1, .settings-content-title').count()) {
+        throw new Error(`${id} 仍有重复页面标题行`);
       }
       if (await page.locator('.card-intro:visible').count() !== 0) throw new Error(`${id} 仍有重复 card intro`);
       const metrics = await page.evaluate(() => ({
@@ -1716,7 +1712,7 @@ async function main() {
       if (metrics.horizontalOverflow) throw new Error(`${id} 出现横向滚动：${JSON.stringify(metrics)}`);
       const file = `settings-${String(index + 1).padStart(2, '0')}-${id}.png`;
       report.screenshots.push(await screenshot(page, file));
-      report.navigation.push({id, label, title: (await page.locator('.workspace > .settings-content-title').textContent())?.trim(), metrics});
+      report.navigation.push({id, label, title: pageTitle, metrics});
     }
     page = await verifyIndependentAreaSettings(page, context, extensionOrigin, report, attachPageDiagnostics);
     report.assertions.navigation = true;
