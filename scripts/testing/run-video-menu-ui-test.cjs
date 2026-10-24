@@ -17,7 +17,7 @@ assert.ok(['menu-ui', 'subtitle-stability'].includes(suite), `unknown suite: ${s
 const extensionDir = path.resolve(arg('extension-dir', '.output/chrome-mv3'));
 const artifactsDir = path.resolve(arg('artifacts-dir', path.join(os.tmpdir(), 'fluentread-video-menu-ui')));
 const runtimeRoot = arg('playwright-root', process.env.PLAYWRIGHT_ROOT);
-const helperPath = path.resolve(arg('focus-safe-helper', '/Users/thinkstu/.codex/skills/fluentread-extension-ui-test/scripts/focus-safe-browser.cjs'));
+const helperPath = path.resolve(arg('focus-safe-helper', path.join(os.homedir(), '.codex/skills/fluentread-extension-ui-test/scripts/focus-safe-browser.cjs')));
 const diagnosticsPath = path.resolve(arg('runtime-diagnostics', path.join(path.dirname(helperPath), 'runtime-diagnostics.cjs')));
 const fixtureUrl = 'https://www.youtube.com/watch?v=fluentread-menu-ui';
 const trackUrl = 'https://www.youtube.com/api/timedtext?v=fluentread-menu-ui&lang=en';
