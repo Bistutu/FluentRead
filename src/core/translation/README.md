@@ -77,6 +77,10 @@ sections as reversible prose paragraphs. Only internally registered nodes can
 cross that PRE boundary; matching a public marker alone grants no permission.
 Terminal sessions and program source remain protected, while prose, list items
 and parameter explanations share the ordinary hover/full translation pipeline.
+Bilingual copies align their first and continuation lines to the original prose,
+including hanging indents in lists and parameter descriptions. Manual layout line
+breaks collapse so translated text wraps within the available width; the explicit
+long-paragraph line-break option still applies. Original PRE layout is retained.
 Restoration removes the preparation wrappers and retains original inline nodes,
 links, text and whitespace. This does not enable arbitrary HTML PRE or RFC text.
 Ubuntu HTML manpages preserve command signatures and command labels using the

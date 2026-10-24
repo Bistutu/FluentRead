@@ -625,6 +625,7 @@
       "tests/mangaSites.test.ts",
       "tests/mangaTypography.test.ts",
       "tests/manpagePreparation.test.ts",
+      "tests/manpageLayout.test.ts",
       "tests/materialRepository.test.ts",
       "tests/mimo.test.ts",
       "tests/modelDownloads.test.ts",

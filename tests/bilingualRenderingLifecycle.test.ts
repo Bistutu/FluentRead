@@ -1,4 +1,5 @@
 import {parseHTML} from 'linkedom';
+import {registerManpagePreparation, unregisterManpagePreparation} from '@/src/core/translation/manpage';
 import {describe, expect, it, vi} from 'vitest';
 
 vi.mock('@/src/services/config/store', () => ({config: {style: 1, to: 'zh-Hans'}}));
@@ -513,6 +514,57 @@ describe('外观同步与重挂撤下旧译文尺寸', () => {
             expect(isTranslationArtifactCurrent(replacement, state)).toBe(true);
             expectRestored({...fixture, owner: replacement, state, content, sourceChildren,
                 code, codeText, codeHTML, sourceNodes});
+        });
+    });
+});
+
+
+describe('man7 双语渲染的换行生命周期', () => {
+    it('append 与 refresh 折叠手册硬断行，保留行内链接和原文节点', async () => {
+        await withDocumentRealm(document => {
+            const base = document.createElement('base');
+            base.setAttribute('href', 'https://example.com/');
+            document.head.appendChild(base);
+            document.body.innerHTML = '<pre><span id="manual">       Original explanation.\n       Continuation remains unchanged.\n</span></pre>';
+            const owner = document.querySelector<HTMLElement>('#manual')!;
+            const pre = owner.parentElement!;
+            const source = owner.firstChild!;
+            const original = source.nodeValue;
+            registerManpagePreparation(pre, [owner]);
+            try {
+                const content = appendBilingualTranslation(owner, '译文第一部分<br><a href="https://example.com/">链接</a>\n第二部分', {longParagraphLineBreak: false});
+                expect(content.style.whiteSpace).toBe('normal');
+                expect(content.querySelector('br')).toBeNull();
+                expect(content.textContent).toBe('译文第一部分 链接\n第二部分');
+                expect(content.querySelector('a')!.getAttribute('href')).toBe('https://example.com/');
+                const refreshed = refreshBilingualTranslation(owner, content, '更新译文<br>后续文字', {longParagraphLineBreak: false});
+                expect(refreshed).toBe(content);
+                expect(refreshed.querySelector('br')).toBeNull();
+                expect(refreshed.textContent).toBe('更新译文 后续文字');
+                expect(owner.firstChild).toBe(source);
+                expect(source.nodeValue).toBe(original);
+                expect(owner.querySelectorAll('.fluent-read-bilingual-content')).toHaveLength(1);
+                content.remove();
+                expect(owner.textContent).toBe(original);
+            } finally { unregisterManpagePreparation(pre, [owner]); }
+        });
+    });
+
+    it('译文前置保留显式长段落按句换行选项', async () => {
+        await withDocumentRealm(document => {
+            document.body.innerHTML = '<pre><span id="manual">       Original manual explanation.\n</span></pre>';
+            const owner = document.querySelector<HTMLElement>('#manual')!;
+            const pre = owner.parentElement!;
+            const source = owner.firstChild;
+            registerManpagePreparation(pre, [owner]);
+            try {
+                const content = appendBilingualTranslation(owner, '这是一段用于验证显式按句换行开关的较长译文。'.repeat(8),
+                    {longParagraphLineBreak: true, translationBeforeOriginal: true});
+                expect(owner.firstChild).toBe(content);
+                expect(content.querySelectorAll('br').length).toBeGreaterThan(0);
+                expect(source!.parentNode).toBe(owner);
+                expect(content.style.whiteSpace).toBe('normal');
+            } finally { unregisterManpagePreparation(pre, [owner]); }
         });
     });
 });
