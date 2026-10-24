@@ -1,10 +1,11 @@
 /**
  * @file src/features/full-page-translation/content/renderer.ts
  * 文件职责：把翻译返回的受限 HTML 或纯文本安全插入原页面，构造 FluentRead 双语与仅译文节点，为学习标记保留逐行文字片段，同时保护链接属性并触发布局截断修复。
- * 主要内容：渲染前通知组合根为开放 ShadowRoot 安装公共翻译样式，并登记文档、开放根与自有闭合仅译文根供当前页字体覆盖；包含复验来源连续顺序的安全候选物化与显式原文行容器、URL 协议白名单、仅从本地骨架保留的链接颜色、可复制属性集合、显式迭代节点净化、本地公式可视骨架的无递归受限克隆与辅助副本排除、DocumentFragment 创建、不改写宿主 class 的双语 wrapper、跨 CJK 书写体系时前置目标字体族、man7 译文的原文缩进对齐与自然换行、可选的译文前置与长段落按句换行、长页新译文的保守屏外渲染隔离，以及通过 Shadow DOM 保留宿主原文的仅译文文本槽。
+ * 主要内容：渲染前通知组合根为开放 ShadowRoot 安装公共翻译样式，并登记文档、开放根与自有闭合仅译文根供当前页字体覆盖；包含复验来源连续顺序的安全候选物化、纯文本 flex/grid 的共同原译文行容器与显式原文行容器、URL 协议白名单、仅从本地骨架保留的链接颜色、可复制属性集合、显式迭代节点净化、本地公式可视骨架的无递归受限克隆与辅助副本排除、DocumentFragment 创建、不改写宿主 class 的双语 wrapper、跨 CJK 书写体系时前置目标字体族、man7 译文的原文缩进对齐与自然换行、inside 列表前置译文与原生标记同排、可选的译文前置与长段落按句换行、长页新译文的保守屏外渲染隔离，以及通过 Shadow DOM 保留宿主原文的仅译文文本槽。
  * 模块边界：本文件只负责安全渲染，不发起翻译或管理请求状态；服务调用归 runtime，节点所有权归 state，配置仅用于展示选项，任意脚本、事件属性和危险链接都不得穿过净化边界。
  */
 import type {TranslationCandidate} from "@/src/core/translation/types";
+import {getElementDisplay} from "@/src/core/translation/layout";
 import { options } from "@/src/core/config/catalog";
 import { config } from "@/src/services/config/store";
 import {ensureTranslationTruncationLayout} from "@/src/features/full-page-translation/content/layout";
@@ -15,6 +16,8 @@ import {prepareTranslationFontStyleRoot} from './fontStyleRoots';
 import {registerVisibleTranslationRoot} from './visibleTranslation';
 import {enableBilingualRenderingContainment} from './renderingContainment';
 import {prepareManpageTranslation, alignManpageTranslation} from './manpageLayout';
+import {prepareBilingualFlowLayout} from './bilingualFlowLayout';
+import {prepareInsideListTranslation} from './insideListLayout';
 
 /**
  * 译文允许保留的内联元素。
@@ -325,6 +328,8 @@ function createBilingualTranslationContent(
         while (content.firstChild) markedText.appendChild(content.firstChild);
         content.appendChild(markedText);
     }
+    prepareBilingualFlowLayout(node, content);
+    prepareInsideListTranslation(node, content, renderOptions.translationBeforeOriginal ?? config.translationBeforeOriginal ?? false);
     return content;
 }
 
@@ -374,9 +379,22 @@ export function refreshBilingualTranslation(
 }
 
 
+const directTextLayoutDisplays = new Set(['flex', 'inline-flex', 'grid', 'inline-grid']);
+
+/** 纯文本在 flex/grid 中原本就是单一匿名布局项；让原译文继续共享该项，不重组多元素布局。 */
+function groupDirectLayoutText(candidate: TranslationCandidate): TranslationCandidate {
+    if (candidate.kind !== 'content' || candidate.nodes?.length || candidate.element.childNodes.length > 2048) return candidate;
+    const nodes = Array.from(candidate.element.childNodes);
+    if (!nodes.some(node => node.nodeType === 3 && node.nodeValue?.trim()) ||
+        nodes.some(node => node.nodeType !== 3 && node.nodeType !== 8) ||
+        !directTextLayoutDisplays.has(getElementDisplay(candidate.element))) return candidate;
+    return {...candidate, nodes, sourceLine: true};
+}
+
 /** 在宿主仍拥有连续有序的原文节点时物化候选；恢复由 state 解包自建容器。 */
-export function materializeCandidate(candidate: TranslationCandidate): {node: HTMLElement; synthetic: boolean} | null {
+export function materializeCandidate(candidate: TranslationCandidate, groupLayoutText = true): {node: HTMLElement; synthetic: boolean} | null {
     if (candidate.manualChunk) return {node: candidate.element, synthetic: true};
+    if (groupLayoutText) candidate = groupDirectLayoutText(candidate);
     if (!candidate.nodes?.length) return {node: candidate.element, synthetic: false};
     const first = candidate.nodes[0];
     if (!first) return null;

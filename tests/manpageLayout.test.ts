@@ -124,6 +124,31 @@ describe('man7 translation source alignment', () => {
         expectAlignment(content, 70, 0);
     });
 
+    it('does not rewrite unchanged layout properties and restores a missing important priority', () => {
+        const {paragraph, content} = fixture();
+        const priorities = new Map<string, string>();
+        const values = new Map<string, string>();
+        const setProperty = vi.fn((name: string, value: string, priority?: string) => {
+            priorities.set(name, priority ?? '');
+            values.set(name, value);
+        });
+        Object.defineProperty(content, 'style', {
+            configurable: true, value: {
+                getPropertyValue: (name: string) => values.get(name) ?? '',
+                getPropertyPriority: (name: string) => priorities.get(name) ?? '', setProperty,
+            },
+        });
+        paragraph.appendChild(content);
+        alignManpageTranslation(paragraph, content);
+        expect(setProperty).toHaveBeenCalledTimes(5);
+        alignManpageTranslation(paragraph, content);
+        expect(setProperty).toHaveBeenCalledTimes(5);
+        priorities.delete('padding-left');
+        alignManpageTranslation(paragraph, content);
+        expect(setProperty).toHaveBeenCalledTimes(6);
+        expect(priorities.get('padding-left')).toBe('important');
+    });
+
     it.each([
         ['       First source line.\n       Second source line.\n', 8, 62, 0],
         ['       •  First list item.\n          Continued item.\n', 8, 92, -30],

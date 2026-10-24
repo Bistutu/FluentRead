@@ -10,6 +10,13 @@ const artifactSelector = '[data-fr-translation-owned="true"],.fluent-read-loadin
 const maxSourceNodes = 2048;
 const maxSourceLength = 16_384;
 
+/** 重复复核不得制造 style mutation 回路；只有数值或优先级变化才写自有工件。 */
+function setLayoutProperty(content: HTMLElement, property: string, value: string): void {
+    if (content.style.getPropertyValue(property) === value &&
+        content.style.getPropertyPriority?.(property) === 'important') return;
+    content.style.setProperty(property, value, 'important');
+}
+
 /** 用户主动启用的按句换行在此步骤之后执行；这里只撤销手册固定列宽产生的断行。 */
 export function prepareManpageTranslation(node: HTMLElement, content: HTMLElement): void {
     if (!isPreparedManpageParagraph(node)) return;
@@ -111,9 +118,9 @@ function constrainManpageWidth(node: HTMLElement, content: HTMLElement, box: DOM
     const width = last.right + shift - box.left;
     if (!Number.isFinite(width) || width <= 0) return;
     // 百分比宽度适应窄视口，border-box 上限覆盖右侧装饰，避免译文外框超过原文正文栏。
-    content.style.setProperty('box-sizing', 'border-box', 'important');
-    content.style.setProperty('width', '100%', 'important');
-    content.style.setProperty('max-width', `${width}px`, 'important');
+    setLayoutProperty(content, 'box-sizing', 'border-box');
+    setLayoutProperty(content, 'width', '100%');
+    setLayoutProperty(content, 'max-width', `${width}px`);
 }
 
 /** 插入完成后以源字形坐标对齐；译文在前和刷新场景均排除已有自有译文。 */
@@ -139,8 +146,8 @@ export function alignManpageTranslation(node: HTMLElement, content: HTMLElement)
         const first = positions[0]!.left - base;
         const subsequent = (positions[1] ?? positions[0])!.left - base;
         if (first < 0 || subsequent < 0 || !Number.isFinite(subsequent)) return;
-        content.style.setProperty('padding-left', `${subsequent}px`, 'important');
-        content.style.setProperty('text-indent', `${first - subsequent}px`, 'important');
+        setLayoutProperty(content, 'padding-left', `${subsequent}px`);
+        setLayoutProperty(content, 'text-indent', `${first - subsequent}px`);
         constrainManpageWidth(node, content, box);
     } catch {
         // 脱离文档、无布局实现或宿主同步移除节点时，不改动原文也不猜测字体宽度。

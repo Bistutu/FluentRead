@@ -423,10 +423,10 @@ async function renderTranslation(
         const spinner = state.spinner;
 
         // 目标文本即使不变，class/role/可见性变化也可能把所有权移到另一语义块。
-        // 提交前必须复验原 owner；合成行内段因 materialize 已移动节点，
-        // 所以下方改用其精确 Text 节点身份校验。
+        // 提交前必须复验原 owner；行内段及纯文本 flex/grid 已物化到自有 owner，
+        // 此时复核自有段的受保护来源和下方新骨架槽，不再把旧父元素当作同一候选。
         if (!node.isConnected || !attemptSourceIsCurrent(node, state) ||
-            (!candidate.nodes?.length && !candidateIsCurrent(candidate))) return staleOutcome();
+            (node === candidate.element && !candidate.nodes?.length && !candidateIsCurrent(candidate))) return staleOutcome();
 
         // 交互控件、仅译文正文和按钮属性共用替换式渲染；提交细节由渲染模块负责。
         if (result.kind === "control-value" || result.kind === "live-text") {
@@ -502,7 +502,7 @@ async function renderTranslation(
     } catch (error) {
         if (state.controller.signal.aborted || getTranslationState(node) !== state || (owner && !owner.active)) return staleOutcome();
         if ((requestSession.renderCommitGeneration ?? 0) !== requestCommitGeneration) return staleOutcome();
-        if (!candidate.nodes?.length && !candidateIsCurrent(candidate)) return staleOutcome();
+        if (node === candidate.element && !candidate.nodes?.length && !candidateIsCurrent(candidate)) return staleOutcome();
         return markFailedTranslation(node, candidate, attempt, state.spinner, error, owner, snapshot);
     }
 }
@@ -878,8 +878,8 @@ export async function translateTarget(candidate: TranslationCandidate, displayMo
     }
 
     const materialized = candidate.nodes?.length && !candidate.manualChunk
-        ? withFullPageViewportAnchor(() => materializeCandidate(candidate), [candidate.element])
-        : materializeCandidate(candidate);
+        ? withFullPageViewportAnchor(() => materializeCandidate(candidate, displayMode === 'bilingual'), [candidate.element])
+        : materializeCandidate(candidate, displayMode === 'bilingual');
     if (!materialized) {
         return {
             status: "not-current",

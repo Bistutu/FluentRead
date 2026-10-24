@@ -82,7 +82,11 @@ including hanging indents in lists and parameter descriptions. Translations shar
 the original prose column's right boundary, including short paragraphs and headings,
 and shrink to the available container width. Manual layout line breaks collapse
 so translated text wraps naturally within that column; the explicit long-paragraph
-line-break option still applies. Original PRE layout is retained.
+line-break option still applies. Window and appearance changes remeasure the
+registered prose geometry without requesting another translation. Original PRE
+layout is retained. Manual loading and retry feedback uses an owned block so it
+cannot occupy the next paragraph's first line. Orphan cleanup handles that block
+as one artifact and preserves feedback still held by active state.
 Restoration removes the preparation wrappers and retains original inline nodes,
 links, text and whitespace. This does not enable arbitrary HTML PRE or RFC text.
 Ubuntu HTML manpages preserve command signatures and command labels using the
@@ -91,6 +95,17 @@ inside translated explanations; these rules apply only to Ubuntu's manpage URLs.
 The JSON compiler maps `omit` to metadata omission and `literalLabels` to a
 conservative command-label predicate. Both remain editable through ordinary
 same-ID custom replacement; no parallel site-specific TypeScript registry is kept.
+
+Bilingual copies can wrap even when the source inherits `white-space: nowrap`;
+preformatted whitespace and explicit line breaks remain meaningful. In intrinsic
+width contexts such as auto-layout tables, inline blocks and floats, only the
+translation's inline size is contained, so the original text still determines
+the column width. Direct text in a flex/grid content candidate is materialized
+as one reversible source-and-translation item; controls and containers with
+existing element children retain their ordinary ownership boundaries.
+When a translation precedes an inside-list item, its inline block reserves the
+native marker's measured space. The marker stays on the first translated line,
+card styles remain a single box, and the original text continues below it.
 
 Every accepted candidate includes a reason and optional adapter id. This keeps
 hover/full equality and adapter precedence directly testable without starting a

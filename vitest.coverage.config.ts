@@ -20,6 +20,8 @@ export default defineConfig({
             reporter: ['text', 'json-summary', 'json', 'html'],
             include: [
                 'src/features/full-page-translation/content/manpageLayout.ts',
+                'src/features/full-page-translation/content/bilingualFlowLayout.ts',
+                'src/features/full-page-translation/content/insideListLayout.ts',
                 'src/features/settings/ui/LearningCenter.vue',
                 'src/ui/components/UiLanguageSelector.vue',
                 'src/ui/components/UiLanguageOnboarding.vue',
