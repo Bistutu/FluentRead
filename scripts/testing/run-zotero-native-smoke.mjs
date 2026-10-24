@@ -14,6 +14,7 @@ import {createServer} from 'node:http';
 import {createConnection} from 'node:net';
 import JSZip from 'jszip';
 import {PDFDocument, StandardFonts} from 'pdf-lib';
+import focusSafe from './focus-safe-browser.cjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const evidence = process.argv[2];
@@ -22,6 +23,7 @@ const directory = resolve(evidence);
 const platformOnly = process.argv.includes('--platform-only');
 const application = process.env.FLUENTREAD_ZOTERO_APP || '/Applications/Zotero.app';
 const exec = promisify(execFile);
+const {queryMacFrontmostApplication, startFocusEventMonitor} = focusSafe;
 const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 const profile = join(directory, 'profile'); const data = join(directory, 'data');
 const report = join(directory, 'native-result.json');
@@ -29,6 +31,20 @@ await mkdir(directory, {recursive: false, mode: 0o700});
 await mkdir(join(profile, 'extensions'), {recursive: true, mode: 0o700});
 await mkdir(join(profile, 'fluentread'), {recursive: true, mode: 0o700});
 await mkdir(data, {mode: 0o700});
+const {stdout: screenJSON} = await exec('/usr/bin/osascript', ['-l', 'JavaScript', '-e', `ObjC.import('AppKit');
+const screens = $.NSScreen.screens;
+const rect = frame => ({x:Number(frame.origin.x),y:Number(frame.origin.y),width:Number(frame.size.width),height:Number(frame.size.height)});
+const layout = [];
+for (let index=0;index<Number(screens.count);index++) {const screen=screens.objectAtIndex(index);layout.push({index,frame:rect(screen.frame),visible:rect(screen.visibleFrame)});}
+JSON.stringify(layout);`], {timeout: 5000});
+const screens = JSON.parse(screenJSON.trim());
+if (!screens.length) throw new Error('Cannot read a visible macOS display; no native instance will be launched');
+const secondary = screens.find(screen => screen.index !== 0);
+if (!secondary) throw new Error('A second display is required; no native instance will be launched');
+const display = {left:secondary.visible.x,top:screens[0].frame.y + screens[0].frame.height - secondary.visible.y - secondary.visible.height,
+    width:secondary.visible.width,height:secondary.visible.height,screenIndex:secondary.index};
+if (display.width < 1120 || display.height < 800) throw new Error('The selected display cannot contain a normal 1120×800 test window');
+await writeFile(join(directory, 'screen-layout.json'), JSON.stringify({screens,display}, null, 2));
 const requests = [];
 const debuggerPort = 52000 + Math.floor(Math.random() * 10000);
 const server = createServer(async (request, response) => {
@@ -68,7 +84,10 @@ await cp(join(root, 'integrations/zotero/dist/fluentread-zotero.xpi'), join(dire
 
 
 async function probe(config) {
-    const results = {application: Zotero.version, platformOnly: config.platformOnly, steps: [], errors: [], logs: []};
+    const results = {application: Zotero.version, platformOnly: config.platformOnly, steps: [], errors: [], warnings: [], logs: [],
+        diagnosticsCoverage:'Console observer installed by the probe before the native add-on; retained through workspace mount, disable, re-enable and disposal',
+        windowPlacement:{mode:'background-visible-no-focus',display:config.display,windows:[]}};
+    let phase = 'native installation';
     const assert = (condition, message) => {if (!condition) throw new Error(message); results.steps.push(message);};
     const waitFor = async (predicate, name, timeout = 60000) => {
         const end = Date.now() + timeout;
@@ -78,20 +97,36 @@ async function probe(config) {
     const observer = {observe(message) {
         const value = message.errorMessage || message.message || '';
         if (!/fluentread|workspace\.js|native\.js/i.test((message.sourceName || '') + value)) return;
-        let isError = false;
+        let scriptError;
         try {
-            const scriptError = message.QueryInterface(Components.interfaces.nsIScriptError);
-            isError = Boolean(scriptError.errorMessage) && !(scriptError.flags & Components.interfaces.nsIScriptError.warningFlag);
+            scriptError = message.QueryInterface(Components.interfaces.nsIScriptError);
         } catch { /* Add-on lifecycle DEBUG messages implement nsIConsoleMessage only. */ }
-        (isError ? results.errors : results.logs).push(String(value).slice(0, 500));
+        if (!scriptError?.errorMessage) {results.logs.push(String(value).slice(0, 500)); return;}
+        const warning = Boolean(scriptError.flags & Components.interfaces.nsIScriptError.warningFlag);
+        (warning ? results.warnings : results.errors).push({message:String(value).slice(0, 500),sourceName:scriptError.sourceName || '',
+            lineNumber:scriptError.lineNumber,columnNumber:scriptError.columnNumber,flags:scriptError.flags,category:scriptError.category,
+            phase,timeStamp:scriptError.timeStamp});
     }};
     Services.console.registerListener(observer);
+    const placeWindow = async (window, name, width=1120, height=800) => {
+        const area = config.display;
+        const left = Math.round(area.left + (area.width-width)/2);
+        const top = Math.round(area.top + (area.height-height)/2);
+        window.resizeTo(width,height); window.moveTo(left,top);
+        await waitFor(() => Math.abs(window.screenX-left)<=2 && Math.abs(window.screenY-top)<=2, name+' visible display placement', 3000);
+        const bounds = {left:window.screenX,top:window.screenY,width:window.outerWidth,height:window.outerHeight};
+        if (window.windowState !== window.STATE_NORMAL || bounds.left<area.left-2 || bounds.top<area.top-2
+            || bounds.left+bounds.width>area.left+area.width+2 || bounds.top+bounds.height>area.top+area.height+2) {
+            throw new Error('Native test window is not fully contained in the visible display: '+JSON.stringify({name,bounds,area}));
+        }
+        results.windowPlacement.windows.push({name,bounds,visible:true,windowState:'normal'});
+    };
     try {
         await IOUtils.writeJSON(config.environment, {DOMParser:typeof DOMParser, Response:typeof Response, Request:typeof Request, Headers:typeof Headers, AbortController:typeof AbortController, DOMException:typeof DOMException, fetch:typeof fetch});
         await Zotero.uiReadyPromise;
         assert(Services.dirsvc.get('ProfD', Components.interfaces.nsIFile).path === config.profile && Zotero.DataDirectory.dir === config.data, 'Probe is restricted to the task-owned profile and data directory');
         const win = Zotero.getMainWindow();
-        win.moveTo(-1700, -1100); win.resizeTo(1100, 800);
+        await placeWindow(win, 'main', 1100, 800);
         const menu = await waitFor(() => win.document.getElementById('fluentread-zotero-workspace'), 'installed native menu');
         assert(menu, 'Native add-on loads through Zotero AddonManager');
         const parent = new Zotero.Item('journalArticle'); parent.libraryID = Zotero.Libraries.userLibraryID;
@@ -104,7 +139,7 @@ async function probe(config) {
             while (windows.hasMoreElements()) {const candidate = windows.getNext(); if (candidate.location?.href === 'chrome://fluentread/content/workspace.html') return candidate;}
             return null;
         }, 'workspace window');
-        workspace.moveTo(-1700, -1100); workspace.resizeTo(1120, 800);
+        await placeWindow(workspace, 'workspace');
         await waitFor(() => workspace.FluentReadWorkspace, 'Vue workspace initialized');
         assert(workspace.document.querySelector('main.app'), 'Vue workspace renders in real Gecko HTML');
         assert(workspace.document.contentType === 'text/html' && workspace.document.querySelector('button') instanceof workspace.HTMLButtonElement, 'Workspace uses native HTML controls and click behavior');
@@ -114,6 +149,7 @@ async function probe(config) {
         assert(source.fingerprint.length === 64, 'Native sandbox can read and SHA-256 fingerprint the PDF');
         assert((await host.selectedAttachments()).some(item => item.id === attachment.id), 'Selection resolves while the workspace is open');
         const loadedSettings = await host.loadSettings();
+        phase = 'PDF translation and writeback';
         let completed;
         if (config.platformOnly) {
             const {apiKey, autoOpen, ...settings} = loadedSettings;
@@ -167,6 +203,7 @@ async function probe(config) {
             } catch (error) {results.liveMicrosoft = {passed:false,error:String(error),scope:'External service availability is reported separately from controlled native validation'};}
         }
         await workspace.FluentReadWorkspace.dispose(); workspace.close();
+        phase = 'disable and re-enable';
         const {AddonManager} = ChromeUtils.importESModule('resource://gre/modules/AddonManager.sys.mjs');
         const addon = await AddonManager.getAddonByID('fluentread@fluentread.app');
         await addon.disable();
@@ -179,17 +216,22 @@ async function probe(config) {
             while (windows.hasMoreElements()) {const candidate = windows.getNext(); if (candidate.location?.href === 'chrome://fluentread/content/workspace.html' && !candidate.closed && candidate.FluentReadWorkspace) return candidate;}
             return null;
         }, 're-enabled workspace');
+        await placeWindow(reopened, 're-enabled workspace');
         assert((await reopened.arguments[0].host.loadTasks()).some(task => task.id === completed.id && task.outputAttachmentID === output.id), 'Task history survives disable and re-enable');
         await reopened.FluentReadWorkspace.dispose(); reopened.close();
         results.passed = true;
     } catch (error) {results.passed = false; results.failure = String(error); results.stack = error.stack;}
     finally {
         Services.console.unregisterListener(observer);
+        if (results.errors.length || results.warnings.length) {
+            results.passed = false;
+            results.failure ||= `Native runtime diagnostics: ${results.errors.length} errors, ${results.warnings.length} warnings`;
+        }
         await IOUtils.writeJSON(config.report, results, {tmpPath: config.report + '.tmp', flush: true});
         Services.startup.quit(Components.interfaces.nsIAppStartup.eForceQuit);
     }
 }
-const configuration = {fixture, report, profile, data, dom: join(directory, 'native-dom.html'), environment: join(directory, 'sandbox-environment.json'), result:join(directory,'result.pdf'), platformOnly, liveMicrosoft:process.argv.includes('--live-microsoft')};
+const configuration = {fixture, report, profile, data, display, dom: join(directory, 'native-dom.html'), environment: join(directory, 'sandbox-environment.json'), result:join(directory,'result.pdf'), platformOnly, liveMicrosoft:process.argv.includes('--live-microsoft')};
 const runner = new JSZip();
 runner.file('manifest.json', JSON.stringify({manifest_version: 2, name: 'FluentRead isolated native validation', version: '1.0',
     applications: {zotero: {id: 'fluentread-native-probe@test.invalid', update_url: 'https://example.invalid/fluentread-native-probe-updates.json', strict_min_version: '7.0', strict_max_version: '10.0.*'}}}));
@@ -198,24 +240,36 @@ const probeDir = join(directory, 'probe'); await mkdir(probeDir);
 for (const name of ['manifest.json', 'bootstrap.js']) await writeFile(join(probeDir, name), await runner.file(name).async('nodebuffer'));
 const probeArchive = join(directory, 'native-probe.xpi');
 await writeFile(probeArchive, await runner.generateAsync({type: 'nodebuffer'}));
-let result;
+let result, ownedPID, focusViolation;
+const frontmostBefore = await queryMacFrontmostApplication();
+if (!frontmostBefore) throw new Error('Cannot read the foreground application; refusing a native background launch');
+const focusMonitor = startFocusEventMonitor({onEvent:event => {
+    if (event.pid === ownedPID) focusViolation = new Error('The isolated Zotero instance took foreground focus');
+}});
 try {
+    await focusMonitor.ready;
     await exec('/usr/bin/open', ['-g', '-n', '-a', application, '--stdout', join(directory, 'stdout.log'), '--stderr', join(directory, 'stderr.log'), '--args', '-no-remote', '-profile', profile, '-datadir', data, '-ZoteroDebugText', '-debugger'], {timeout: 15000});
-    await installThroughDebugger(debuggerPort, [join(directory, 'tested-fluentread-zotero.xpi'), probeArchive], join(directory, 'install-error.json'));
+    await installThroughDebugger(debuggerPort, [probeArchive, join(directory, 'tested-fluentread-zotero.xpi')], join(directory, 'install-error.json'));
     const end = Date.now() + 210000;
     while (Date.now() < end) {
+        if (focusMonitor.error) throw focusMonitor.error;
+        if (focusViolation) throw focusViolation;
         try {const failure = JSON.parse(await readFile(join(directory, 'install-error.json'), 'utf8')); throw new Error('Native XPI install failed: ' + JSON.stringify(failure));}
         catch (error) {if (error.code !== 'ENOENT') throw error;}
         try {await access(report); result = JSON.parse(await readFile(report, 'utf8')); break;} catch {await delay(300);}
     }
     if (!result) throw new Error('Zotero native validation timed out; the isolated profile is preserved for diagnosis');
-} finally {server.close(); await writeFile(join(directory, 'controlled-requests.json'), JSON.stringify(requests, null, 2));
+} finally {server.close(); await focusMonitor.stop();
+    const frontmostAfter = await queryMacFrontmostApplication();
+    await writeFile(join(directory, 'focus-events.json'), JSON.stringify({frontmostBefore,frontmostAfter,ownedPID,events:focusMonitor.events,
+        error:String(focusMonitor.error || focusViolation || ''),browserFrontmost:frontmostAfter?.pid===ownedPID}, null, 2));
+    await writeFile(join(directory, 'controlled-requests.json'), JSON.stringify(requests, null, 2));
     if (!result) {try {const {stdout} = await exec('/bin/ps', ['-axo', 'pid=,command=']);
         for (const line of stdout.split('\n')) {const match = line.match(/^\s*(\d+)\s+(.+)$/);
             if (match && match[2].startsWith(`${application}/Contents/MacOS/zotero `) && match[2].includes(`-profile ${profile} -datadir ${data} `)) process.kill(Number(match[1]), 'SIGTERM');}} catch { /* 只清理明确匹配本次 profile 的进程；权限不足时保留用于诊断。 */ }}
 }
 const launch = {launchMode: 'open -g -n, dedicated native Zotero instance', focusPolicy: 'background launch; no activate/bringToFront',
-    windowPlacement: 'off-screen (-1700,-1100), normal 1120x800 workspace', profile, data, controlledRequests: requests.length};
+    windowPlacement:result.windowPlacement, profile, data, controlledRequests: requests.length};
 await writeFile(join(directory, 'launch.json'), JSON.stringify(launch, null, 2));
 console.log(JSON.stringify({...launch, result, evidence: directory}, null, 2));
 if (!result.passed) process.exitCode = 1;
@@ -261,6 +315,10 @@ async function installThroughDebugger(port, archives, errorPath) {
         if (!target.consoleActor) throw new Error('Debugger process target has no console actor');
         const {stdout: processCommand} = await exec('/bin/ps', ['-p', String(target.processID), '-o', 'command=']);
         if (!processCommand.trim().startsWith(`${application}/Contents/MacOS/zotero `) || !processCommand.includes(`-profile ${profile} -datadir ${data} `)) throw new Error('Debugger target does not belong to this isolated profile');
+        ownedPID = target.processID;
+        if (focusMonitor.events.some(event => event.pid === ownedPID) || (await queryMacFrontmostApplication())?.pid===ownedPID) {
+            throw new Error('The isolated Zotero instance took foreground focus during launch');
+        }
         const text = `(async () => {const {Zotero} = ChromeUtils.importESModule('chrome://zotero/content/zotero.mjs'); if (Services.dirsvc.get('ProfD', Components.interfaces.nsIFile).path !== ${JSON.stringify(profile)}) throw new Error('Refusing another profile'); await Zotero.uiReadyPromise; if (Zotero.DataDirectory.dir !== ${JSON.stringify(data)}) throw new Error('Refusing another data directory'); const {AddonManager} = ChromeUtils.importESModule('resource://gre/modules/AddonManager.sys.mjs'); for (const path of ${JSON.stringify(archives)}) {await AddonManager.installTemporaryAddon(Zotero.File.pathToFile(path));}})().catch(error => IOUtils.writeJSON(${JSON.stringify(errorPath)}, {error:String(error),stack:error.stack,details:error.additionalErrors}));`;
         await send({to: target.consoleActor, type: 'evaluateJSAsync', text});
     } finally {socket.end();}
