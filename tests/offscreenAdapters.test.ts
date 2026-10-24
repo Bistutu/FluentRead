@@ -258,6 +258,14 @@ describe('selection TTS Offscreen adapter', () => {
         await expect(adapter.fetchPageAudio('https://example.test/audio', new AbortController().signal)).rejects.toThrow(expected);
     });
 
+    it('cancels an unread Google error body before reporting the HTTP failure', async () => {
+        const cancel = vi.fn();
+        const body = new ReadableStream<Uint8Array>({cancel});
+        setRuntimeFetch(async () => new Response(body, {status: 503}));
+        await expect(adapter.fetchPageAudio('https://example.test/audio', new AbortController().signal)).rejects.toThrow('Google TTS failed: 503');
+        expect(cancel).toHaveBeenCalledOnce();
+    });
+
     it('uses the MPEG content type when Google omits the response header', async () => {
         setRuntimeFetch(async () => new Response(new Uint8Array([7])));
         await expect(adapter.fetchPageAudio('https://example.test/audio', new AbortController().signal)).resolves.toMatchObject({
