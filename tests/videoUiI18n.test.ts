@@ -29,10 +29,14 @@ import {confirmVideoSubtitleExport} from '@/src/features/video-subtitle/content/
 registerAllUiLanguageBundles();
 
 /** LinkeDOM 不实现顶层提示；只替换浏览器端口，状态由 matches(':popover-open') 实时报告。 */
-function mockReadingHelpPopover(menu: HTMLElement) {
+function mockReadingHelpPopover(menu: HTMLElement, options: {
+  bounds?: {left: number; right: number; top: number; bottom: number};
+  viewport?: {offsetLeft: number; offsetTop: number; width: number; height: number};
+} = {}) {
   const help = menu.querySelector<HTMLElement>('[data-reading-help]')!;
   const toggle = menu.querySelector<HTMLButtonElement>('[data-action="toggle-reading-annotation"]')!;
   let open = false;
+  let toggleHovered = false, helpHovered = false;
   const show = vi.fn(() => {open = true;});
   const hide = vi.fn(() => {open = false;});
   help.setAttribute('popover', 'manual');
@@ -42,12 +46,16 @@ function mockReadingHelpPopover(menu: HTMLElement) {
     getBoundingClientRect: {configurable: true, value: () => ({height: 180})},
   });
   Object.defineProperty(toggle, 'getBoundingClientRect', {
-    configurable: true, value: () => ({left: 350, right: 380, top: 300, bottom: 330}),
+    configurable: true, value: () => options.bounds || ({left: 350, right: 380, top: 300, bottom: 330}),
   });
   const matches = help.matches.bind(help);
-  vi.spyOn(help, 'matches').mockImplementation(selector => selector === ':popover-open' ? open : matches(selector));
-  vi.stubGlobal('window', {innerWidth: 800, innerHeight: 600});
-  return {show, hide, browserAutoClose: () => {open = false;}};
+  const toggleMatches = toggle.matches.bind(toggle);
+  vi.spyOn(help, 'matches').mockImplementation(selector => selector === ':popover-open' ? open
+    : selector === ':hover' ? helpHovered : matches(selector));
+  vi.spyOn(toggle, 'matches').mockImplementation(selector => selector === ':hover' ? toggleHovered : toggleMatches(selector));
+  vi.stubGlobal('window', {innerWidth: 800, innerHeight: 600, visualViewport: options.viewport});
+  return {show, hide, browserAutoClose: () => {open = false;},
+    hover: (icon: boolean, card: boolean) => {toggleHovered = icon; helpHovered = card;}};
 }
 
 describe('player subtitle timing', () => {
@@ -240,6 +248,105 @@ describe('video player menu composition', () => {
     toggle.dispatchEvent(new window.Event('pointerenter'));
     toggle.dispatchEvent(new window.Event('focus'));
     expect(help.hidden).toBe(true);
+    expect(toggle.getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('detects native Popover when building the menu and ignores help requests while hidden or inert', () => {
+    const {document, window} = parseHTML('<!doctype html><body></body>');
+    vi.stubGlobal('document', document);
+    const prototype = window.HTMLElement.prototype;
+    const previous = Object.getOwnPropertyDescriptor(prototype, 'showPopover');
+    Object.defineProperty(prototype, 'showPopover', {configurable: true, value: vi.fn()});
+    try {
+      const menu = createVideoPlayerMenu('en-US', false);
+      const toggle = menu.querySelector<HTMLButtonElement>('[data-action="toggle-reading-annotation"]')!;
+      const help = menu.querySelector<HTMLElement>('[data-reading-help]')!;
+      expect(help.getAttribute('popover')).toBe('manual');
+      const popover = mockReadingHelpPopover(menu);
+      toggle.dispatchEvent(new window.Event('pointerenter'));
+      expect(popover.show).not.toHaveBeenCalled();
+      expect(help.hidden).toBe(true);
+      menu.hidden = false;
+      menu.setAttribute('inert', '');
+      toggle.dispatchEvent(new window.Event('focus'));
+      expect(popover.show).not.toHaveBeenCalled();
+      expect(help.hidden).toBe(true);
+      menu.removeAttribute('inert');
+      toggle.dispatchEvent(new window.Event('pointerenter'));
+      expect(popover.show).toHaveBeenCalledOnce();
+      expect(help.hidden).toBe(false);
+    } finally {
+      if (previous) Object.defineProperty(prototype, 'showPopover', previous);
+      else Reflect.deleteProperty(prototype, 'showPopover');
+    }
+  });
+
+  it('keeps help during pointer transfers and retained focus, then closes when both leave', () => {
+    const {document, window} = parseHTML('<!doctype html><body></body>');
+    vi.stubGlobal('document', document);
+    vi.stubGlobal('Node', window.Node);
+    const menu = createVideoPlayerMenu('en-US', false);
+    menu.hidden = false;
+    const popover = mockReadingHelpPopover(menu);
+    const toggle = menu.querySelector<HTMLButtonElement>('[data-action="toggle-reading-annotation"]')!;
+    const help = menu.querySelector<HTMLElement>('[data-reading-help]')!;
+    let active: Element | null = null;
+    Object.defineProperty(document, 'activeElement', {configurable: true, get: () => active});
+    const leave = (element: HTMLElement, relatedTarget?: Node) => {
+      const event = new window.Event('pointerleave');
+      if (relatedTarget) Object.defineProperty(event, 'relatedTarget', {value: relatedTarget});
+      element.dispatchEvent(event);
+    };
+    const open = () => toggle.dispatchEvent(new window.Event('pointerenter'));
+    open();
+    leave(toggle, help);
+    leave(help, toggle);
+    expect(help.hidden).toBe(false);
+    expect(popover.hide).not.toHaveBeenCalled();
+    active = toggle;
+    leave(toggle, document.body);
+    leave(help, document.body);
+    menu.dispatchEvent(new window.Event('pointerleave'));
+    expect(help.hidden).toBe(false);
+    active = null;
+    leave(toggle);
+    expect(help.hidden).toBe(true);
+    open();
+    leave(help);
+    expect(help.hidden).toBe(true);
+    open();
+    popover.hover(true, false);
+    toggle.dispatchEvent(new window.Event('blur'));
+    expect(help.hidden).toBe(false);
+    popover.hover(false, true);
+    toggle.dispatchEvent(new window.Event('blur'));
+    expect(help.hidden).toBe(false);
+    popover.hover(false, false);
+    toggle.dispatchEvent(new window.Event('blur'));
+    expect(help.hidden).toBe(true);
+    expect(popover.hide).toHaveBeenCalledTimes(3);
+    expect(toggle.getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('fits help inside a panned narrow visual viewport and places it below an icon near the top', () => {
+    const {document, window} = parseHTML('<!doctype html><body></body>');
+    vi.stubGlobal('document', document);
+    const menu = createVideoPlayerMenu('en-US', false);
+    menu.hidden = false;
+    const viewport = {offsetLeft: 120, offsetTop: 80, width: 240, height: 300};
+    const bounds = {left: 125, right: 153, top: 86, bottom: 114};
+    mockReadingHelpPopover(menu, {viewport, bounds});
+    const toggle = menu.querySelector<HTMLButtonElement>('[data-action="toggle-reading-annotation"]')!;
+    const help = menu.querySelector<HTMLElement>('[data-reading-help]')!;
+    toggle.dispatchEvent(new window.Event('focus'));
+    const metric = (name: string) => Number.parseFloat(help.style.getPropertyValue(`--fr-reading-help-${name}`));
+    expect(help.hidden).toBe(false);
+    expect(metric('width')).toBeLessThanOrEqual(viewport.width - 16);
+    expect(metric('left')).toBeGreaterThanOrEqual(viewport.offsetLeft + 8);
+    expect(metric('left') + metric('width')).toBeLessThanOrEqual(viewport.offsetLeft + viewport.width - 8);
+    expect(metric('top')).toBeGreaterThanOrEqual(bounds.bottom);
+    expect(metric('top') + help.getBoundingClientRect().height).toBeLessThanOrEqual(viewport.offsetTop + viewport.height - 8);
+    expect(metric('max-height')).toBeLessThanOrEqual(viewport.height - 16);
     expect(toggle.getAttribute('aria-checked')).toBe('false');
   });
 
