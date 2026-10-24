@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/readingAnnotationPlayer.ts
  * 文件职责：拥有播放器当前原句的读音显示、菜单交互与配置切换生命周期。
- * 主要内容：装配独立读音控制器和本地请求端，关闭时跳过语言解析，按原句及轨道上下文缓存语言元数据；为完整句学习提供始终可用的原轨上下文，更新稳定读音节点和菜单状态，无适用读音时给出简短原因且不显示重试，保留仅译文语义，并在显示模式切换时请求宿主重置当前句翻译资格，隐藏及销毁时清理自有任务与监听。
+ * 主要内容：装配独立读音控制器和本地请求端，关闭时跳过语言解析，按原句及轨道上下文缓存语言元数据；为完整句学习提供始终可用的原轨上下文，更新稳定读音节点和菜单状态，菜单保持固定功能名称并由显式开关表达状态，无适用读音时给出简短原因且不显示重试，保留仅译文语义，并在显示模式切换时请求宿主重置当前句翻译资格，隐藏及销毁时清理自有任务与监听。
  * 模块边界：只操作视频 feature 自有 UI 并通过既有入口读写共享配置；播放器定位、翻译状态与字幕布局由宿主注入，原轨上下文不依赖读音开关，不访问词典、创建 Worker 或管理视频采集。
  */
 import type {Config} from '@/src/core/config/model';
@@ -69,8 +69,7 @@ export function createVideoReadingPlayer(ports: ReadingPlayerPorts) {
       if (toggle) {
         toggle.setAttribute('aria-checked', String(config.videoSubtitleAppearance.readingAnnotation === true));
         toggle.disabled = !browserCapabilities.extensionDom || !subtitlesEnabled;
-        const label = toggle.querySelector<HTMLElement>('[data-reading-label]');
-        if (label) label.textContent = videoUi(`video.readingAnnotation.${controller.state.language || 'label'}`);
+        toggle.setAttribute('aria-label', videoUi('video.readingAnnotation.label'));
       }
       const status = menu.querySelector<HTMLElement>('[data-reading-status]');
       if (status) {

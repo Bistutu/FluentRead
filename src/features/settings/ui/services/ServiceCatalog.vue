@@ -1,7 +1,7 @@
 <!--
  * @file src/features/settings/ui/services/ServiceCatalog.vue
  * 文件职责：以服务目录和清晰分层的配置工作区呈现翻译服务，窄屏按需展开目录，保持配置与默认使用分离；默认状态由目录标记和显式按钮表达，标题不重复显示状态徽章。
- * 主要内容：侧栏展示全部内置及自定义服务，分组可单独收起，选中服务或回到本页时展开正在配置的服务所在分组；顶部分组导航点击后展开并滚动到对应分组，并随目录滚动同步高亮；搜索过滤目录时展开全部匹配分组，此时点击分组导航会清空搜索并回到完整目录；自定义按钮直接打开创建表单，入口下方的状态插槽由父组件反馈首次窗口加载，反馈显示时停用按钮说明气泡，避免遮挡提示与关闭操作；右侧服务标题支持程序聚焦且不加入 Tab 顺序，集中展示服务名称及接口性质徽章、模型、官网帮助和连接配置；目录搜索文本按需缓存，目录几何按帧合并并缓存分组位置，滚动只读取当前位置，活跃上下文限定操作并取消过期焦点、滚动与帧回调。
+ * 主要内容：侧栏为同行名称与标签保留稳定宽度，窄屏目录使用单列；侧栏展示全部内置及自定义服务，分组可单独收起，选中服务或回到本页时展开正在配置的服务所在分组；顶部分组导航复用设置页的紧凑样式，点击后展开并滚动到对应分组，随目录滚动同步高亮并横向显示当前入口；搜索过滤目录时展开全部匹配分组，此时点击分组导航会清空搜索并回到完整目录；自定义按钮直接打开创建表单，入口下方的状态插槽由父组件反馈首次窗口加载，反馈显示时停用按钮说明气泡，避免遮挡提示与关闭操作；右侧服务标题支持程序聚焦且不加入 Tab 顺序，集中展示服务名称及接口性质徽章、模型、官网帮助和连接配置；目录搜索文本按需缓存，目录几何按帧合并并缓存分组位置，滚动只读取当前位置，活跃上下文限定操作并取消过期焦点、滚动与帧回调。
  * 模块边界：目录提供“配置服务”“自定义服务”和“添加组合”入口，组合与自建接口共同显示在自定义目录且不展示模型字段；标题栏在检查连接左侧提供显式设为默认操作，通过独立事件交给外层 SettingsSections 持久化，公开构建不展示 ChatGPT 登录模块或旧配置详情，模块只在显式开发开关下可见，不编辑凭据、不测试连接也不保存配置；分组收起状态只保存在本次页面会话，不写入配置，停用或切换上下文时取消目录帧并重建分组尺寸及字体观察，卸载时清理观察器与监听；详细表单归 ServiceConfiguration.vue，服务定义来自 core/config。
  -->
 <template>
@@ -12,7 +12,7 @@
     :data-default-service="defaultService"
     :data-editing-service="service"
   >
-    <nav v-if="directoryGroups.length > 1" class="service-group-navigation" :aria-label="t('options.categories')">
+    <nav v-if="directoryGroups.length > 1" ref="groupNavigation" class="service-group-navigation settings-subnavigation" :aria-label="t('options.categories')">
       <button
         v-for="group in directoryGroups"
         :key="group.id"
@@ -182,6 +182,7 @@
 </template>
 
 <script setup lang="ts">
+import '../components/settings-navigation.css'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
 import ServiceIcon from '@/src/ui/components/ServiceIcon.vue'
 import ServiceNatureBadge from './ServiceNatureBadge.vue'
@@ -275,6 +276,20 @@ const searching = computed(() => Boolean(serviceQuery.value.trim()))
 const groupsElement = ref<HTMLElement | null>(null)
 const collapsedGroups = ref<ReadonlySet<string>>(new Set())
 const activeGroup = ref('')
+const groupNavigation = ref<HTMLElement | null>(null)
+// 与连续表单导航一致：长语言标签横向滚动时，当前分组保持在导航可见范围内。
+watch(activeGroup, async () => {
+  const current = capture()
+  await nextTick()
+  const nav = groupNavigation.value
+  const button = nav?.querySelector<HTMLElement>('[aria-current]')
+  if (!current() || !nav || !button || !nav.getClientRects().length) return
+  const navRect = nav.getBoundingClientRect()
+  const buttonRect = button.getBoundingClientRect()
+  if (buttonRect.left < navRect.left || buttonRect.right > navRect.right) {
+    nav.scrollTo({left: nav.scrollLeft + buttonRect.left - navRect.left - (nav.clientWidth - buttonRect.width) / 2, behavior: 'instant'})
+  }
+})
 // 末尾的短分组无法滚到目录顶部；点击导航后保持指向目标，直到用户自己操作目录。
 let pinnedGroup = ''
 
@@ -521,13 +536,9 @@ watch(() => props.service, (service) => {
 </script>
 
 <style scoped>
-.service-catalog { display: flex; flex-direction: column; height: min(650px, 70dvh); min-height: 0; color: var(--ink, #172033); background: var(--surface, #fff); }
-.service-group-navigation { display: flex; flex: none; gap: 20px; min-width: 0; padding: 0 16px; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: thin; overscroll-behavior-x: contain; }
-.service-group-navigation button { flex: none; padding: 10px 2px 12px; border: 0; border-bottom: 2px solid transparent; color: var(--muted); background: transparent; font: inherit; font-size: 13px; font-weight: 600; line-height: 1.4; white-space: nowrap; cursor: pointer; }
-.service-group-navigation button:hover { color: var(--ink); }
-.service-group-navigation button[aria-current] { border-bottom-color: var(--brand); color: var(--brand-strong); font-weight: 650; }
-.service-group-navigation button:focus-visible { outline-offset: -3px; border-radius: 4px; }
-.catalog-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: 0; flex: 1; overflow: hidden; }
+.service-catalog { display: flex; flex-direction: column; height: min(650px, 70dvh); min-height: 0; color: var(--ink, #172033); background: transparent; }
+.service-group-navigation { margin: 0 var(--settings-navigation-inset, 12px) var(--settings-navigation-gap, 18px); }
+.catalog-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); min-height: 0; flex: 1; overflow: hidden; background: var(--surface, #fff); }
 .service-rail { display: flex; flex-direction: column; min-height: 0; padding: 12px 10px; border-right: 1px solid var(--line, #e4e7ef); background: var(--surface-soft, #fafbfc); }
 .rail-heading { flex-shrink: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin: 0 6px 10px; }
 .rail-heading > div { display: flex; flex: none; align-items: baseline; gap: 5px; min-width: 0; }
@@ -603,7 +614,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--brand-strong, #
 :global(:root.dark .credential-guide-link) { border-color: var(--line); color: var(--ink); background: var(--surface); }
 :global(:root.dark .credential-guide-link.is-primary) { color: var(--brand-strong); background: var(--brand-soft); }
 @media (max-width: 1100px) {
-  .catalog-layout { grid-template-columns: 200px minmax(0, 1fr); }
+  .catalog-layout { grid-template-columns: 220px minmax(0, 1fr); }
+  .service-rail { padding-inline: 4px; }
   .service-detail { padding: 16px; }
   .model-section { grid-template-columns: 1fr; gap: 8px; }
 }
@@ -614,7 +626,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--brand-strong, #
   .service-rail { border-right: 0; border-bottom: 1px solid var(--line, #e4e7ef); padding: 10px 12px; }
   .rail-heading { margin-bottom: 6px; }
   .service-groups { min-height: 80px; }
-  .directory-items { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .directory-items { grid-template-columns: minmax(0, 1fr); }
   .service-detail { margin: 0; padding: 14px; border: 0; border-radius: 0; overflow: visible; }
   .detail-hero { flex-wrap: wrap; gap: 10px; }
   .detail-title-row h4 { font-size: 18px; }

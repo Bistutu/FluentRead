@@ -1,0 +1,38 @@
+/**
+ * @file src/features/settings/ui/components/settings-navigation.css
+ * 文件职责：统一设置页内定位、服务分组与统计视图导航的紧凑外观。
+ * 主要内容：单行横向滚动、圆角面板、浅色选中块及键盘焦点；文字保持完整，长标签只扩展导航内部宽度。
+ * 模块边界：仅定义 settings-subnavigation 展示原语，不决定导航位置、路由、滚动目标或配置状态。
+ */
+.settings-subnavigation {
+  display: flex;
+  flex: none;
+  flex-wrap: nowrap;
+  gap: 4px;
+  min-width: 0;
+  margin: 0;
+  padding: 4px;
+  border: 1px solid var(--line, #e4e7ef);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+}
+.settings-subnavigation { overflow-x: auto; scrollbar-width: thin; overscroll-behavior-x: contain; }
+.settings-subnavigation > button {
+  flex: none;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--muted, #7c8598);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 550;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  cursor: pointer;
+}
+.settings-subnavigation > button:hover { color: var(--ink, #172033); background: var(--surface-soft, #f5f6fa); }
+.settings-subnavigation > button[aria-current] { color: var(--brand-strong, #d63260); background: var(--brand-soft, #fff0f5); font-weight: 650; }
+.settings-subnavigation > button:focus-visible { outline: 2px solid var(--brand, #ef4776); outline-offset: -2px; border-radius: 8px; box-shadow: none; }
+.settings-subnavigation > button:disabled { cursor: default; opacity: .6; }

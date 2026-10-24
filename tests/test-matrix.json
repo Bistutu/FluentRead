@@ -690,6 +690,7 @@
       "tests/selectionTtsReceiverRecovery.test.ts",
       "tests/selectionTtsSenderFrameRuntime.test.ts",
       "tests/selfHelpNotice.test.ts",
+      "tests/serviceCatalogItemLifecycle.test.ts",
       "tests/serviceConfigurationLifecycle.test.ts",
       "tests/serviceDirectoryLifecycle.test.ts",
       "tests/serviceEditorLifecycle.test.ts",

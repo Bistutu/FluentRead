@@ -42,6 +42,37 @@ export function configureSafariBackgroundPage(
     manifest.background = {persistent: false, page: 'safari-background.html'};
 }
 
+/**
+ * Chromium 重载扩展会更换动态资源 UUID，旧页面保存的 CSS/图标地址因此失效。
+ * WXT 0.20.18 在生成清单时才追加 Shadow UI CSS，故在 manifestGenerated 阶段
+ * 仅将这几项已公开的界面资源改为稳定地址；语言包和其他资源继续保持原规则。
+ * 不增加可访问文件、站点或权限；稳定地址的公开 UI 资产可被网页按固定 ID 探测。
+ */
+export function configureStableContentUiResources(
+    env: Pick<ConfigEnv, 'browser' | 'manifestVersion'>,
+    manifest: Pick<UserManifest, 'web_accessible_resources'>,
+): void {
+    if (env.manifestVersion !== 3 || !['chrome', 'edge'].includes(env.browser)) return;
+    const rules = manifest.web_accessible_resources;
+    if (!rules || rules.some(rule => typeof rule === 'string')) return;
+    const stableResources = new Set([
+        'icon/32.png', 'icon/48.png', 'icon/128.png',
+        'content-scripts/content.css',
+        'content-scripts/neteaseMailFrame.css',
+        'content-scripts/supportedFrame.css',
+    ]);
+    manifest.web_accessible_resources = rules.flatMap(rule => {
+        if (typeof rule === 'string') return [];
+        const stable = rule.resources.filter(resource => stableResources.has(resource));
+        if (stable.length === 0) return [rule];
+        const remaining = rule.resources.filter(resource => !stableResources.has(resource));
+        return [
+            {...rule, resources: stable, use_dynamic_url: false},
+            ...(remaining.length ? [{...rule, resources: remaining}] : []),
+        ];
+    });
+}
+
 /** Chrome 只交付保留固定身份的原 ZIP；验证成功后清理同版本旧商店包。 */
 export async function finalizeExtensionZip(browser: string, zipPath: string): Promise<void> {
     if (browser !== 'chrome') return;
@@ -195,7 +226,7 @@ export function createExtensionManifest(
                 matches: ['<all_urls>'],
             },
             {
-                // 界面语言资源包由内容脚本按需 fetch；use_dynamic_url 避免网页用固定地址探测扩展。
+                // 语言包保持动态 URL；Chromium 的公开 UI 图标在清单生成后与语言包拆分为稳定地址。
                 // 不要把需要 import() 执行的脚本放进这里：动态 ID 地址不满足内容脚本隔离环境的 script-src 'self'。
                 resources: ['icon/32.png', 'icon/48.png', 'icon/128.png', `${UI_LANGUAGE_BUNDLE_DIRECTORY}/*.json`],
                 matches: ['<all_urls>'],
@@ -279,6 +310,7 @@ export default defineConfig({
     hooks: {
         'build:manifestGenerated': (wxt, manifest) => {
             configureSafariBackgroundPage(wxt.config, manifest);
+            configureStableContentUiResources(wxt.config, manifest);
         },
         'zip:extension:done': async (wxt, zipPath) => {
             await finalizeExtensionZip(wxt.config.browser, zipPath);

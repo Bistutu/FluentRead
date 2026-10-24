@@ -1,0 +1,31 @@
+/**
+ * @file src/features/settings/ui/services/service-badges.css
+ * 文件职责：统一翻译服务性质与配置状态的小型标签外观。
+ * 主要内容：共享字号、行高、内边距与圆角；默认服务使用品牌色，其余信息保持中性，颜色随浅色、深色及皮肤语义变量变化，标签保持单行，极长或并列标签受空间约束时省略末尾并由 title 保留完整内容。
+ * 模块边界：仅描述 service-badge 展示原语，不推断服务性质、连接状态或默认配置，不改变目录选择行为。
+ */
+.service-badge {
+  display: inline-block;
+  flex: 0 1 auto;
+  box-sizing: border-box;
+  min-height: 20px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 1px 5px;
+  border: 1px solid var(--line, #e4e7ef);
+  border-radius: 4px;
+  color: var(--muted, #737c8f);
+  background: var(--surface-soft, #f5f6fa);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.service-badge--default {
+  flex-shrink: 0;
+  border-color: color-mix(in srgb, var(--brand, #ef4776) 35%, var(--line, #e4e7ef));
+  color: var(--brand-strong, #bd2853);
+  background: var(--brand-soft, #fff0f4);
+}

@@ -509,10 +509,11 @@
       "scenario": "真实分组展开、选择和导航清理"
     },
     "src/features/settings/ui/services/ServiceCatalogItem.vue": {
-      "kind": "frozen-debt",
-      "sourceSha256": "94a06a3ffe8fd3461a07e6446fe2c37b3660a3d7661584a249a70b4c23142ba9",
-      "reason": "为完整服务目录渲染紧凑的服务选择行。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
-      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+      "kind": "behavior",
+      "tests": [
+        "tests/serviceCatalogItemLifecycle.test.ts"
+      ],
+      "scenario": "实际目录行选择事件、服务与选中 props 更新、同行标签、默认/已保存/常用优先级、紧凑说明和七语可见文案与完整提示"
     },
     "src/features/settings/ui/services/ServiceConfiguration.vue": {
       "kind": "behavior",
@@ -522,10 +523,11 @@
       "scenario": "实际连接检测、Safari 授权读取与线路过滤、取消、配置切换、迟到结果、模板事件及安全诊断修复和逐服务重试"
     },
     "src/features/settings/ui/services/ServiceNatureBadge.vue": {
-      "kind": "frozen-debt",
-      "sourceSha256": "5972d46edec15f06a33e116dd43e480c87e9d4b612354c1483c15801ad608821",
-      "reason": "在服务名称旁展示接口性质徽章。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
-      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+      "kind": "behavior",
+      "tests": [
+        "tests/serviceCatalogItemLifecycle.test.ts"
+      ],
+      "scenario": "实际性质徽章随服务 props 切换 DeepLX、免费入口、合法组合与无徽章条件，语言切换同步更新中性标签和完整提示"
     },
     "src/features/translation-stats/ui/TranslationStatsDashboard.vue": {
       "kind": "behavior",

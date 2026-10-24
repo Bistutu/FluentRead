@@ -1,7 +1,7 @@
 /**
  * @file src/ui/styles/interface-skins/compact.css
  * 文件职责：实现 FluentRead 紧凑风格，在不隐藏功能的前提下压缩 Popup 与 Options 的间距和控件高度。
- * 主要内容：缩小品牌区、语言与服务控件、功能卡和设置导航的间距与高度，同时保留长文案换行、可点击面积及清晰焦点状态；文字不随之缩到难以辨认，次要文字不小于 9px；快捷入口的局部间距变量供 Safari 触摸两列布局共用。
+ * 主要内容：设置工作区沿用统一的 12px 顶部间距；缩小品牌区、语言与服务控件、功能卡和设置导航的间距与高度，同时保留长文案换行、可点击面积及清晰焦点状态；文字不随之缩到难以辨认，次要文字不小于 9px；快捷入口的局部间距变量供 Safari 触摸两列布局共用。
  * 模块边界：本文件只服务 data-interface-skin="compact"，不改变栏目可见性、配置语义或翻译行为，可从样式入口独立增删。
  */
 
@@ -254,16 +254,13 @@
 }
 
 :root[data-interface-skin="compact"] .workspace {
-  padding: 22px 28px 16px;
+  --settings-navigation-gap: 14px;
+  padding: 12px 28px 16px;
 }
 
 :root[data-interface-skin="compact"] .topbar {
   gap: 18px;
   margin-bottom: 14px;
-}
-
-:root[data-interface-skin="compact"] .topbar h1 {
-  font-size: 25px;
 }
 
 :root[data-interface-skin="compact"] .settings-card .settings-control-row {
@@ -278,6 +275,6 @@
   }
 
   :root[data-interface-skin="compact"] .workspace {
-    padding: 18px 14px 14px;
+    padding: 12px 14px 14px;
   }
 }

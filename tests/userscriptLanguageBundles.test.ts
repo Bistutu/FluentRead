@@ -61,6 +61,8 @@ describe('userscript remote UI language data', () => {
             expect(Object.keys(bundle.messages).some(key => key.startsWith('popup.displayMode.'))).toBe(false);
             expect(Object.keys(bundle.messages).some(key => key.startsWith('popup.pageFont.'))).toBe(false);
             expect(Object.keys(bundle.messages).some(key => key.startsWith('safari.freePool.'))).toBe(false);
+            expect(Object.keys(bundle.messages).some(key => key.startsWith('learning.collection.speech') && key !== 'learning.collection.speechFailed')).toBe(false);
+            expect(bundle.messages['learning.collection.speechFailed']).toBeTruthy();
             expect(bundle.messages['popup.translateCurrentPage']).toBeTruthy();
         }
         const requests: string[] = [];

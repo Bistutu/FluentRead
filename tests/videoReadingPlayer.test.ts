@@ -40,12 +40,36 @@ function fixture() {
   const reading = createVideoReadingPlayer(ports); instances.push(reading);
   const render = (text = 'こんにちは') => reading.renderCaption(player, caption, text, '译文');
   const menu = document.createElement('div');
-  menu.innerHTML = '<button data-action="toggle-reading-annotation"><span data-reading-label></span></button><span data-reading-status></span><button data-action="retry-reading-annotation"></button>';
+  menu.innerHTML = '<button data-action="toggle-reading-annotation"><svg aria-hidden="true"></svg></button><span data-reading-status></span><button data-action="retry-reading-annotation"></button>';
   return {document, window, player, caption, context, ports, reading, render, menu,
     visibility(value: string) {visibility = value; document.dispatchEvent(new window.Event('visibilitychange'));}};
 }
 
 describe('播放器读音与原轨上下文所有权', () => {
+  it('图标操作只切换读音设置，开关状态保留可访问名称与图形节点', () => {
+    const f = fixture();
+    const toggle = f.menu.querySelector<HTMLButtonElement>('[data-action="toggle-reading-annotation"]')!;
+    const icon = toggle.querySelector('svg')!;
+    f.reading.syncMenu(f.menu, true, 'bilingual');
+    expect(toggle.getAttribute('aria-label')).toBe('video.readingAnnotation.label');
+    expect(toggle.getAttribute('aria-checked')).toBe('false');
+    expect(f.reading.handleAction('toggle-reading-annotation')).toBe(true);
+    expect(mocks.patch).toHaveBeenLastCalledWith({videoSubtitleAppearance: {
+      ...mocks.config.videoSubtitleAppearance, readingAnnotation: true,
+    }}, mocks.send);
+    mocks.config.videoSubtitleAppearance.readingAnnotation = true;
+    f.reading.syncMenu(f.menu, true, 'bilingual');
+    expect(toggle.getAttribute('aria-checked')).toBe('true');
+    expect(toggle.getAttribute('aria-label')).toBe('video.readingAnnotation.label');
+    expect(toggle.textContent).toBe('');
+    expect(toggle.querySelector('svg')).toBe(icon);
+    f.reading.handleAction('toggle-reading-annotation');
+    expect(mocks.patch).toHaveBeenLastCalledWith({videoSubtitleAppearance: {
+      ...mocks.config.videoSubtitleAppearance, readingAnnotation: false,
+    }}, mocks.send);
+    expect(mocks.annotate).not.toHaveBeenCalled();
+  });
+
   it('默认关闭仅渲染原字幕，不读取语言脚本或启动读音，空句及不可见状态也提前结束', async () => {
     const f = fixture(); expect(f.reading.enabled()).toBe(false); f.render();
     expect(mocks.caption).toHaveBeenCalledWith(f.player, f.caption, 'こんにちは', '译文');
@@ -88,11 +112,11 @@ describe('播放器读音与原轨上下文所有权', () => {
     const f = fixture(), toggle = f.menu.querySelector<HTMLButtonElement>('[data-action="toggle-reading-annotation"]')!;
     const status = f.menu.querySelector<HTMLElement>('[data-reading-status]')!, retry = f.menu.querySelector<HTMLButtonElement>('[data-action="retry-reading-annotation"]')!;
     f.reading.syncMenu(f.menu, false, 'bilingual'); expect(toggle.disabled).toBe(true); expect(status.hidden).toBe(true);
-    expect(toggle.textContent).toBe('video.readingAnnotation.label');
+    expect(toggle.getAttribute('aria-label')).toBe('video.readingAnnotation.label');
     mocks.config.videoSubtitleAppearance.readingAnnotation = true;
     let reject!: (error: Error) => void; mocks.annotate.mockImplementationOnce(() => new Promise((_, no) => {reject = no;}));
     f.render(); await flush(); f.reading.syncMenu(f.menu, true, 'bilingual');
-    expect(toggle.disabled).toBe(false); expect(toggle.getAttribute('aria-checked')).toBe('true'); expect(toggle.textContent).toBe('video.readingAnnotation.ja');
+    expect(toggle.disabled).toBe(false); expect(toggle.getAttribute('aria-checked')).toBe('true'); expect(toggle.getAttribute('aria-label')).toBe('video.readingAnnotation.label');
     expect(status.textContent).toBe('video.readingAnnotation.loading'); expect(retry.hidden).toBe(true);
     reject(new Error('failed')); await flush(); f.reading.syncMenu(f.menu, true, 'bilingual');
     expect(status.textContent).toBe('video.readingAnnotation.error'); expect(retry.hidden).toBe(false);
@@ -102,6 +126,8 @@ describe('播放器读音与原轨上下文所有权', () => {
     mocks.capabilities.extensionDom = false; f.reading.syncMenu(f.menu, true, 'bilingual');
     expect(toggle.disabled).toBe(true); expect(status.textContent).toBe('video.readingAnnotation.unavailable');
     expect(f.reading.handleAction(undefined)).toBe(false);
+    expect(f.reading.handleAction('toggle-subtitle-downloads')).toBe(false);
+    expect(mocks.patch).not.toHaveBeenCalled();
     const appearance = {...mocks.config.videoSubtitleAppearance}; expect(f.reading.handleAction('toggle-reading-annotation')).toBe(true);
     expect(mocks.patch).toHaveBeenCalledWith({videoSubtitleAppearance: {...appearance, readingAnnotation: false}}, mocks.send);
     const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined); mocks.patch.mockRejectedValueOnce(new Error('offline'));

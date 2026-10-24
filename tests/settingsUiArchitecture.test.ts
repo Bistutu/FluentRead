@@ -1198,7 +1198,7 @@ describe('options UI composition architecture', () => {
     expect(catalog).toContain('data-testid="custom-service-add"')
     expect(catalog).not.toContain('service-add-dialog')
     expect(catalog).toContain('v-for="group in visibleDirectoryGroups"')
-    expect(catalog).toContain('<nav v-if="directoryGroups.length > 1" class="service-group-navigation"')
+    expect(catalog).toContain('class="service-group-navigation settings-subnavigation"')
     expect(catalog).toContain(':data-service-group-link="group.id"')
     expect(catalog).toContain(':aria-expanded="isGroupOpen(group.id)"')
     expect(catalog).toContain('v-show="isGroupOpen(group.id)"')
