@@ -17,6 +17,7 @@ import spanish from './languages/es-ES.ccf366fbe218633c.json';
 
 export function userscriptMessages<T extends Record<string, string>>(messages: T): T {
     return Object.fromEntries(Object.entries(messages).filter(([key]) => !key.startsWith('informationHighlight.')
+        && (!key.startsWith('learning.collection.speech') || key === 'learning.collection.speechFailed')
         && !key.startsWith('contextMenu.notice.') && !key.startsWith('video.learning.')
         && !key.startsWith('video.readingAnnotation.')
         && key !== 'video.nativeFullscreenHint'

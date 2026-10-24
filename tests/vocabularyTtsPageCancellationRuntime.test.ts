@@ -13,6 +13,7 @@ import VocabularyBook from '@/src/features/vocabulary/ui/VocabularyBook.vue';
 import CollectionEntry from '@/src/features/vocabulary/ui/CollectionEntry.vue';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {normalizeConfig} from '@/src/core/config/model';
+import type {LocalTtsMode} from '@/src/core/config/localTts';
 import * as learning from '@/src/features/vocabulary/learningModel';
 import {createSelectionTtsSynthesizer} from '@/src/features/selection-translation/background/selectionTtsSynthesis';
 import {createSelectionTtsBackgroundHandlers, type SelectionTtsContext} from '@/src/features/selection-translation/background/ttsHandler';
@@ -52,10 +53,10 @@ afterEach(async () => {
     vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers();
 });
 
-function runtime(honorAbort = true) {
+function runtime(honorAbort = true, mode: LocalTtsMode = 'local-only') {
     vi.useFakeTimers();
     const jobs: Array<{text: string; signal?: AbortSignal; task: ReturnType<typeof deferred<LocalTtsAudio>>}> = [];
-    const online = vi.fn(async () => {throw new Error('Local-only case must not call an online provider');});
+    const online = vi.fn(async () => {throw new Error('Controlled online synthesis failure');});
     const local = vi.fn((text: string, _language: string, _voice: string, signal?: AbortSignal) => {
         const task = deferred<LocalTtsAudio>(); pending.push(task); jobs.push({text, signal, task});
         const onAbort = () => {if (honorAbort) task.reject(new DOMException('cancelled', 'AbortError'));};
@@ -63,30 +64,42 @@ function runtime(honorAbort = true) {
         if (signal?.aborted) onAbort();
         return task.promise.finally(() => signal?.removeEventListener('abort', onAbort));
     });
-    const synthesize = createSelectionTtsSynthesizer({getMode: () => 'local-only', getLocalVoice: () => 'af_heart',
+    const synthesize = createSelectionTtsSynthesizer({getMode: () => mode, getLocalVoice: () => 'af_heart',
         getOnlineVoices: () => [], synthesizeOnline: online, synthesizeLocal: local});
     const play = vi.fn(async () => {}), stop = vi.fn(async () => {}), notify = vi.fn(async () => {});
-    const handlers = createSelectionTtsBackgroundHandlers({getPreferredVoices: () => [], synthesize,
+    const fetchPageAudio = vi.fn(async () => audio());
+    const handlers = createSelectionTtsBackgroundHandlers({getPreferredVoices: () => [], synthesize, fetchPageAudio,
         playWithOffscreen: play, stopWithOffscreen: stop, seekWithOffscreen: async () => {throw Error('Unexpected seek in vocabulary cancellation fixture');}, sendTabMessage: notify});
     const router = createBackgroundMessageRouter(handlers);
     // Same public context construction as installBackgroundMessageRuntime.
     const dispatch = createBackgroundRuntimeMessageListener(router, sender => ({sender: sender as SelectionTtsContext['sender']}));
-    return {jobs, online, local, play, stop, notify, dispatch};
+    return {jobs, online, local, play, stop, notify, dispatch, fetchPageAudio};
 }
 
-async function mountBook(honorAbort = true) {
-    const rt = runtime(honorAbort), sender = optionsSender();
-    expect(Object.hasOwn(sender, 'tab')).toBe(false);
+async function mountBook(honorAbort = true, options: {mode?: LocalTtsMode; audioContext?: boolean; tabId?: number} = {}) {
+    const rt = runtime(honorAbort, options.mode), sender = optionsSender();
+    if (options.tabId === undefined) expect(Object.hasOwn(sender, 'tab')).toBe(false);
+    else sender.tab = {id: options.tabId};
     const {window, document} = parseHTML('<html><head></head><body><div id="mount"></div></body></html>');
     Object.defineProperty(document, 'visibilityState', {configurable: true, value: 'visible'});
-    const browserSpeech = vi.fn(), audioPlay = vi.fn(async () => {});
-    Object.assign(window, {matchMedia: () => ({matches: false, addEventListener() {}, removeEventListener() {}}),
+    const browserSpeech = vi.fn(), audioPlay = vi.fn(async () => {}), audioContexts: any[] = [], audioElements: any[] = [];
+    class TestAudioContext {
+        state = 'running'; destination = {};
+        resume = vi.fn(async () => {}); close = vi.fn(async () => {this.state = 'closed';});
+        decodeAudioData = vi.fn(async () => ({}));
+        createBufferSource = vi.fn(() => {
+            const source = {buffer: null, onended: null as unknown, connect: vi.fn(), disconnect: vi.fn(), start: vi.fn(), stop: vi.fn()};
+            return source;
+        });
+        constructor() {audioContexts.push(this);}
+    }
+    Object.assign(window, {AudioContext: options.audioContext === false ? undefined : TestAudioContext, matchMedia: () => ({matches: false, addEventListener() {}, removeEventListener() {}}),
         speechSynthesis: {getVoices: () => [], speak: browserSpeech, cancel: vi.fn()}});
     vi.stubGlobal('__VUE_DEVTOOLS_GLOBAL_HOOK__', {enabled: true, emit() {}});
     vi.stubGlobal('window', window); vi.stubGlobal('document', document);
     for (const key of ['Node', 'Element', 'HTMLElement', 'SVGElement'] as const) vi.stubGlobal(key, window[key]);
     vi.stubGlobal('crypto', {randomUUID});
-    vi.stubGlobal('Audio', class {onended: unknown; onerror: unknown; play = audioPlay; pause() {} removeAttribute() {}});
+    vi.stubGlobal('Audio', class {onended: unknown; onerror: unknown; play = audioPlay; pause() {} removeAttribute() {} constructor() {audioElements.push(this);}});
     vi.stubGlobal('SpeechSynthesisUtterance', class {lang = ''; voice: unknown; onend: unknown; onerror: unknown; constructor(readonly text: string) {}});
     const listeners = new Set<unknown>();
     const traffic: Array<{message: any; sender: Sender; response?: any}> = [];
@@ -103,7 +116,7 @@ async function mountBook(honorAbort = true) {
         },
         onMessage: {addListener: (fn: unknown) => listeners.add(fn), removeListener: (fn: unknown) => listeners.delete(fn)},
     }};
-    const config = normalizeConfig({theme: 'light', uiLanguage: 'zh-CN', vocabularyBookEnabled: true, selectionTtsMode: 'local-only'});
+    const config = normalizeConfig({theme: 'light', uiLanguage: 'zh-CN', vocabularyBookEnabled: true, selectionTtsMode: options.mode || 'local-only'});
     ports.browser = browser; ports.config = config;
     const component = VocabularyBook;
     const events = new WeakMap<Element, Record<string, any>>();
@@ -127,8 +140,11 @@ async function mountBook(honorAbort = true) {
         const callback = events.get(button!)?.onClick; expect(callback).toBeTypeOf('function');
         callback({target: button, currentTarget: button, stopPropagation() {}, preventDefault() {}});
     }
+    function sendPlaybackState(message: unknown) {
+        for (const listener of listeners) (listener as (message: unknown, sender: unknown) => unknown)(message, sender);
+    }
     function unmount() {app.unmount(); apps.splice(apps.indexOf(app), 1);}
-    return {...rt, sender, document, listeners, traffic, clickSpeech, unmount, browserSpeech, audioPlay, entry, renderer,
+    return {...rt, sender, document, listeners, traffic, clickSpeech, sendPlaybackState, unmount, browserSpeech, audioPlay, audioContexts, audioElements, entry, renderer,
         click(target: Element) {const handler = events.get(target)?.onClick; expect(handler).toBeTypeOf('function'); handler({target,currentTarget:target,stopPropagation(){},preventDefault(){}});}};
 }
 
@@ -152,7 +168,7 @@ describe('vocabulary extension-page TTS cancellation through public runtime', ()
         expect(ctx.browserSpeech).not.toHaveBeenCalled();
         expect(ctx.online).not.toHaveBeenCalled();
         expect(ctx.document.querySelector('.entry-actions button.entry-icon')?.getAttribute('aria-label')).toBe('朗读原文');
-        expect(ctx.document.body.textContent).toContain('本地语音');
+        expect(ctx.document.body.textContent).toContain('Local model unavailable');
     });
     it('aborts on public unmount after hash navigation and rejects delayed adapter success without playback', async () => {
         const ctx = await mountBook(false); ctx.clickSpeech(); await settle();
@@ -164,6 +180,93 @@ describe('vocabulary extension-page TTS cancellation through public runtime', ()
         expect(ctx.traffic.find(row => row.message.type === 'selectionTts')?.response).toMatchObject({success: false});
         expect(ctx.audioPlay).not.toHaveBeenCalled(); expect(ctx.browserSpeech).not.toHaveBeenCalled();
         expect(ctx.online).not.toHaveBeenCalled(); expect(ctx.play).not.toHaveBeenCalled();
+    });
+    it('activates extension-page Web Audio in the click gesture and plays returned synthesis bytes', async () => {
+        const ctx = await mountBook(); ctx.clickSpeech(); await settle();
+        expect(ctx.document.querySelector('.entry-speech-status')?.textContent).toBe('learning.collection.speechRequesting');
+        expect(ctx.audioContexts).toHaveLength(1);
+        expect(ctx.audioContexts[0].resume).toHaveBeenCalledOnce();
+        expect(ctx.jobs).toHaveLength(1);
+        ctx.jobs[0].task.resolve(audio()); await settle();
+        expect(ctx.document.querySelector('.entry-speech-status')?.textContent).toBe('learning.collection.speechPlaying');
+        expect(ctx.audioContexts[0].decodeAudioData).toHaveBeenCalledOnce();
+        expect(ctx.audioContexts[0].createBufferSource.mock.results[0].value.start).toHaveBeenCalledOnce();
+        expect(ctx.audioPlay).not.toHaveBeenCalled();
+    });
+    it('keeps the visible speech status while offscreen reports playback progress', async () => {
+        const ctx = await mountBook(); ctx.clickSpeech(); await settle();
+        ctx.jobs[0].task.resolve(audio()); await settle();
+        expect(ctx.document.querySelector('.entry-speech-status')?.textContent).toBe('learning.collection.speechPlaying');
+        const id = ctx.traffic.find(row => row.message.type === 'selectionTts')?.message.clientRequestId;
+        ctx.sendPlaybackState({type: 'selectionTtsState', clientRequestId: id, state: 'progress', progress: 0.25});
+        await settle();
+        expect(ctx.document.querySelector('.entry-speech-status')?.textContent).toBe('learning.collection.speechPlaying');
+    });
+    it.each(['event-first', 'rejection-first'] as const)('bounds HTML audio fallback when Google playback fails (%s)', async order => {
+        const ctx = await mountBook(true, {mode: 'online-first', audioContext: false});
+        const primaryPlay = deferred<void>(), googlePlay = deferred<void>();
+        ctx.audioPlay.mockImplementationOnce(() => primaryPlay.promise).mockImplementationOnce(() => googlePlay.promise);
+        ctx.clickSpeech(); await settle();
+        ctx.jobs[0].task.resolve(audio()); await settle();
+        expect(ctx.audioElements).toHaveLength(1);
+        const primary = ctx.audioElements[0];
+        primary.onerror(); primaryPlay.reject(new Error('Primary decode failure')); await settle();
+        expect(ctx.fetchPageAudio).toHaveBeenCalledOnce();
+        expect(ctx.audioElements).toHaveLength(2);
+        const google = ctx.audioElements[1];
+        if (order === 'event-first') google.onerror();
+        googlePlay.reject(new Error('Google decode failure')); await settle();
+        if (order === 'rejection-first') google.onerror();
+        await settle();
+        expect(ctx.browserSpeech).toHaveBeenCalledOnce();
+        primary.onerror(); google.onerror(); await settle();
+        expect(ctx.fetchPageAudio).toHaveBeenCalledOnce();
+        expect(ctx.traffic.filter(row => row.message.type === 'selectionTtsGoogle')).toHaveLength(1);
+        expect(ctx.browserSpeech).toHaveBeenCalledOnce();
+        ctx.browserSpeech.mock.calls[0][0].onstart(); await settle();
+        expect(ctx.document.querySelector('.entry-speech-status')?.textContent).toBe('learning.collection.speechPlaying');
+    });
+    it('does not leave local-only mode after HTML audio playback fails', async () => {
+        const ctx = await mountBook(true, {audioContext: false});
+        ctx.audioPlay.mockRejectedValueOnce(new Error('Local audio decode failure'));
+        ctx.clickSpeech(); await settle(); ctx.jobs[0].task.resolve(audio()); await settle();
+        expect(ctx.fetchPageAudio).not.toHaveBeenCalled();
+        expect(ctx.online).not.toHaveBeenCalled(); expect(ctx.browserSpeech).not.toHaveBeenCalled();
+        expect(ctx.traffic.map(row => row.message.type)).toEqual(['selectionTts']);
+        expect(ctx.document.querySelector('.entry-speech-status')).toBeNull();
+    });
+    it('ignores a pending HTML play rejection after the user stops playback', async () => {
+        const ctx = await mountBook(true, {mode: 'online-first', audioContext: false});
+        const playback = deferred<void>(); ctx.audioPlay.mockImplementationOnce(() => playback.promise);
+        ctx.clickSpeech(); await settle(); ctx.jobs[0].task.resolve(audio()); await settle();
+        ctx.clickSpeech(); playback.reject(new Error('Play cancelled')); await settle();
+        expect(ctx.fetchPageAudio).not.toHaveBeenCalled(); expect(ctx.browserSpeech).not.toHaveBeenCalled();
+        expect(ctx.document.querySelector('.entry-speech-status')).toBeNull();
+    });
+    it('shows playing after the background accepts offscreen audio', async () => {
+        const ctx = await mountBook(true, {tabId: 8}); ctx.clickSpeech(); await settle();
+        ctx.jobs[0].task.resolve(audio()); await settle();
+        expect(ctx.play).toHaveBeenCalledOnce();
+        expect(ctx.document.querySelector('.entry-speech-status')?.textContent).toBe('learning.collection.speechPlaying');
+    });
+    it('clears the active speech state when all providers fail and browser speech is unavailable', async () => {
+        const ctx = await mountBook(true, {mode: 'online-first'});
+        Reflect.deleteProperty(window, 'speechSynthesis');
+        ctx.fetchPageAudio.mockRejectedValueOnce(new Error('Google unavailable'));
+        ctx.clickSpeech(); await settle();
+        ctx.jobs[0].task.reject(new Error('Local unavailable')); await settle();
+        expect(ctx.fetchPageAudio).toHaveBeenCalledOnce();
+        expect(ctx.browserSpeech).not.toHaveBeenCalled();
+        expect(ctx.document.querySelector('.entry-speech-status')).toBeNull();
+        expect(ctx.document.querySelector('.entry-actions button.entry-icon')?.getAttribute('aria-label')).toBe('朗读原文');
+    });
+    it('does not send a local-only vocabulary word to any online provider after local synthesis fails', async () => {
+        const ctx = await mountBook(); ctx.clickSpeech(); await settle();
+        ctx.jobs[0].task.reject(new Error('Edge test failure')); await settle();
+        expect(ctx.document.querySelector('.book-toast')?.textContent).toContain('Edge test failure');
+        expect(ctx.traffic.map(row => row.message.type)).toEqual(['selectionTts']);
+        expect(ctx.online).not.toHaveBeenCalled();
+        expect(ctx.document.querySelector('.entry-speech-status')).toBeNull();
     });
     it('isolates URL and UUID owners from content, wrong-page STOP and no-tab Google fallback', async () => {
         const rt = runtime(false), first = optionsSender(), other = {url: 'chrome-extension://controlled-extension/options.html?view=another'};
@@ -199,7 +302,7 @@ describe('vocabulary extension-page TTS cancellation through public runtime', ()
 it('renders the direct collection entry and dispatches bilingual copy, learning and mastery from its own controls', async () => {
     const ctx = await mountBook(); const copy = vi.fn(), study = vi.fn(), mastery = vi.fn();
     const host = ctx.document.createElement('section'); ctx.document.body.append(host);
-    const app = ctx.renderer.createApp(CollectionEntry, {entry: ctx.entry, translation: '艺术', playing: false, busy: false, status: '新词', review: '现在可以复习', onCopy: copy, onStudy: study, onMastery: mastery});
+    const app = ctx.renderer.createApp(CollectionEntry, {entry: ctx.entry, translation: '艺术', playing: false, speechPhase: 'idle', busy: false, status: '新词', review: '现在可以复习', onCopy: copy, onStudy: study, onMastery: mastery});
     apps.push(app); app.mount(host); await settle();
     expect(host.querySelector('.entry-open')?.textContent).toBe('art');
     const byText = (text: string) => {const button = [...host.querySelectorAll('button')].find(node => node.textContent?.trim() === text); expect(button).toBeTruthy(); return button!;};

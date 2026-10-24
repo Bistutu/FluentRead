@@ -545,6 +545,7 @@ describe('userscript browser shim injection', () => {
             expect(Object.hasOwn(projected, key)).toBe(false);
         }
         const retainedKeys = Object.keys(extension).filter(key => !key.startsWith('informationHighlight.')
+            && (!key.startsWith('learning.collection.speech') || key === 'learning.collection.speechFailed')
             && !noticeKeys.includes(key) && !learningKeys.includes(key) && !readingAnnotationKeys.includes(key) && !readerRecoveryKeys.includes(key)
             && !diagnosticKeys.includes(key) && !readerDialogKeys.includes(key)
             && key !== 'video.nativeFullscreenHint'

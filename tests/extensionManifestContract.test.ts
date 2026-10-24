@@ -12,10 +12,85 @@ import {runInNewContext} from 'node:vm';
 import {FREE_PROVIDER_ORIGINS} from '@/src/core/config/freeProviderOrigins';
 import {GOOGLE_DRIVE_DEFAULT_CLIENT_ID, GOOGLE_DRIVE_EXTENSION_ID, GOOGLE_DRIVE_EXTENSION_PUBLIC_KEY, GOOGLE_DRIVE_SCOPES} from '@/src/platform/google-drive/constants';
 import {createDriveAuth, type DriveAuthPorts} from '@/src/platform/google-drive/auth';
-import type {Entrypoint, EntrypointGroup} from 'wxt';
-import {remoteConfigStorageBuildPlugin, createExtensionManifest, extendRemoteConfigBuildConfig, groupModuleWorkers, finalizeExtensionZip, createSafariBackgroundPage, configureSafariBackgroundPage} from '@/wxt.config';
+import type {Entrypoint, EntrypointGroup, UserManifest} from 'wxt';
+import {remoteConfigStorageBuildPlugin, createExtensionManifest, extendRemoteConfigBuildConfig, groupModuleWorkers, finalizeExtensionZip, createSafariBackgroundPage, configureSafariBackgroundPage, configureStableContentUiResources} from '@/wxt.config';
 
 const PROJECT_ROOT = resolve(__dirname, '..');
+
+describe('stable public content UI resources', () => {
+    const uiFiles = [
+        'icon/32.png', 'icon/48.png', 'icon/128.png',
+        'content-scripts/content.css', 'content-scripts/neteaseMailFrame.css', 'content-scripts/supportedFrame.css',
+    ];
+    const generatedRules = () => [
+        {resources: [...uiFiles.slice(0, 3), 'i18n/*.json'], matches: ['<all_urls>'], use_dynamic_url: true},
+        {resources: [uiFiles[3]], matches: ['<all_urls>'], use_dynamic_url: true},
+        {resources: [uiFiles[4]], matches: ['https://*.mail.163.com/*'], use_dynamic_url: true},
+        {resources: [uiFiles[5]], matches: ['https://mail.qq.com/*'], use_dynamic_url: true},
+        {resources: ['content-scripts/unrelated.css', 'private.js'], extension_ids: ['other-extension'], use_dynamic_url: true},
+    ];
+
+    it.each(['chrome', 'edge'])('%s 使用稳定 UI 地址，同时完整保留文件、站点、权限和其他资源规则', browser => {
+        const env = {browser, manifestVersion: 3 as const};
+        const manifest = {...createExtensionManifest(env), web_accessible_resources: generatedRules()};
+        const before = structuredClone(manifest);
+        configureStableContentUiResources(env, manifest);
+        const rules = manifest.web_accessible_resources;
+        for (const resource of uiFiles) {
+            const rule = rules.find(rule => rule.resources.includes(resource))!;
+            expect(rule.use_dynamic_url).toBe(false);
+            expect(rule.matches).toEqual(before.web_accessible_resources.find(rule => rule.resources.includes(resource))!.matches);
+        }
+        expect(rules.find(rule => rule.resources.includes('i18n/*.json'))).toEqual({
+            resources: ['i18n/*.json'], matches: ['<all_urls>'], use_dynamic_url: true,
+        });
+        expect(rules.at(-1)).toEqual(before.web_accessible_resources.at(-1));
+        expect(rules.flatMap(rule => rule.resources).sort()).toEqual(before.web_accessible_resources.flatMap(rule => rule.resources).sort());
+        expect(manifest.permissions).toEqual(before.permissions);
+        expect(manifest.host_permissions).toEqual(before.host_permissions);
+        expect(manifest.content_security_policy).toEqual(before.content_security_policy);
+        const once = structuredClone(rules);
+        configureStableContentUiResources(env, manifest);
+        expect(manifest.web_accessible_resources).toEqual(once);
+    });
+
+    it.each([
+        {browser: 'firefox', manifestVersion: 2 as const},
+        {browser: 'firefox', manifestVersion: 3 as const},
+        {browser: 'safari', manifestVersion: 2 as const},
+        {browser: 'chrome', manifestVersion: 2 as const},
+    ])('保留其他目标 $browser MV$manifestVersion 的原资源规则', env => {
+        const manifest = {web_accessible_resources: generatedRules()};
+        const before = structuredClone(manifest);
+        configureStableContentUiResources(env, manifest);
+        expect(manifest).toEqual(before);
+    });
+
+    it('无资源及旧版字符串规则交由原清单验证器处理，不丢失或添加资源', () => {
+        const missing: Pick<UserManifest, 'web_accessible_resources'> = {};
+        configureStableContentUiResources({browser: 'chrome', manifestVersion: 3}, missing);
+        expect(missing).toEqual({});
+        const legacy = {web_accessible_resources: [...uiFiles]};
+        configureStableContentUiResources({browser: 'chrome', manifestVersion: 3}, legacy);
+        expect(legacy.web_accessible_resources).toEqual(uiFiles);
+    });
+
+    it('拆分包含 UI 资产的混组时保留 extension_ids，不把扩展专用访问改为网页访问', () => {
+        const extensionIds = ['a'.repeat(32)];
+        const manifest = {web_accessible_resources: [{
+            resources: ['icon/128.png', 'i18n/*.json'], extension_ids: extensionIds, use_dynamic_url: true,
+        }]};
+        configureStableContentUiResources({browser: 'chrome', manifestVersion: 3}, manifest);
+        expect(manifest.web_accessible_resources).toHaveLength(2);
+        for (const rule of manifest.web_accessible_resources) {
+            expect(rule.extension_ids).toEqual(extensionIds);
+            expect(rule).not.toHaveProperty('matches');
+        }
+        expect(manifest.web_accessible_resources.map(rule => [rule.resources, rule.use_dynamic_url])).toEqual([
+            [['icon/128.png'], false], [['i18n/*.json'], true],
+        ]);
+    });
+});
 
 describe('Safari unsigned delivery contract', () => {
     async function safariTools() {

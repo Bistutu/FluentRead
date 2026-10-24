@@ -155,7 +155,20 @@
     "settings.general.themeDescription": "只影响扩展界面，不会改变网页本身的配色",
     "settings.services.freeWeights.timeoutHelp": "每个服务最多等待设定秒数，免费翻译共享 20 秒总预算，不重复全局重试。网络错误可稍后重试；限流、封禁或额度用尽时，请按服务提示等待，或选择其他服务。",
     "writing.experience.inheritService": "跟随默认服务 · {service}",
-    "writing.experience.inheritTargetLanguage": "跟随目标语言 · {language}"
+    "writing.experience.inheritTargetLanguage": "跟随目标语言 · {language}",
+    "learning.collection.speechRequesting": "正在合成…",
+    "learning.collection.speechPlaying": "正在朗读",
+    "learning.collection.speechOnlineNoAudio": "在线服务未返回音频",
+    "learning.collection.speechCancelled": "朗读请求已取消",
+    "learning.collection.speechPageAudioNotStarted": "页面音频未启动",
+    "learning.collection.speechGoogleNoAudio": "Google 服务未返回音频",
+    "learning.collection.speechBrowserStartFailed": "浏览器语音启动失败{error}{details}",
+    "learning.collection.speechBrowserNotStarted": "浏览器语音未启动{details}",
+    "learning.collection.speechBrowserCallFailed": "浏览器语音调用失败：{error}{details}",
+    "learning.collection.speechOnlineSynthesis": "在线合成：{error}",
+    "learning.collection.speechGoogleFallback": "Google 回退：{error}",
+    "learning.collection.speechOnlineRequestFailed": "在线请求或音频播放失败：{error}",
+    "learning.collection.speechFailedDetail": "朗读失败：{details}"
   },
   "legacy": {}
 }
