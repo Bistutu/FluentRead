@@ -1,10 +1,10 @@
 /**
  * @file src/features/selection-translation/background/offscreenAdapter.ts
  * 文件职责：适配划词 TTS 的 Offscreen 播放控制与扩展页在线音频获取，把 AbortSignal 和稳定路由身份传到平台边界。
- * 主要内容：定义响应与默认适配器，先读取接收端实例/版本、领取一次性播放许可，再携带取消信号发送 PLAY；支持停止、跳转及为无 tabId 的扩展页下载 Google 音频，并保留服务端 HTTP 错误状态。
+ * 主要内容：定义响应与默认适配器，先读取接收端实例/版本、领取一次性播放许可，再携带取消信号发送 PLAY；支持停止、跳转及为无 tabId 的扩展页下载 Google 音频，并保留服务端 HTTP 错误状态、取消未消费的错误响应体。
  * 模块边界：不合成音频、不创建 Audio 或 Offscreen document；音频解码与播放归调用页面，实际传输由 runtimeFetch 和平台 Offscreen client 执行。
  */
-import {runtimeFetch} from '@/src/platform/http/runtime';
+import {cancelUnreadResponseBody, runtimeFetch} from '@/src/platform/http/runtime';
 import {extensionDomClient} from '@/src/platform/offscreen/extensionClient';
 import {parseSelectionTtsRoute} from '@/src/features/selection-translation/protocol';
 import type {
@@ -31,7 +31,10 @@ export function createSelectionTtsOffscreenAdapter(client: OffscreenClient = ext
     return {
         async fetchPageAudio(url: string, signal: AbortSignal): Promise<{audio: ArrayBuffer; contentType: string}> {
             const response = await runtimeFetch(url, {signal});
-            if (!response.ok) throw new Error(`Google TTS failed: ${response.status}${response.statusText ? ` ${response.statusText}` : ''}`);
+            if (!response.ok) {
+                cancelUnreadResponseBody(response);
+                throw new Error(`Google TTS failed: ${response.status}${response.statusText ? ` ${response.statusText}` : ''}`);
+            }
             return {audio: await response.arrayBuffer(), contentType: response.headers.get('content-type') || 'audio/mpeg'};
         },
         async play(payload: SelectionTtsPlaybackRequest, signal?: AbortSignal): Promise<void> {

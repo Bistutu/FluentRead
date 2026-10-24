@@ -1,7 +1,7 @@
 <!--
  * @file src/features/vocabulary/ui/VocabularyBook.vue
  * 文件职责：组织内容优先的学习收藏列表与主动复习，协调句子听读、解释保存、筛选与文件操作。
- * 主要内容：相同译文保留原文且不重复展示；把复习作为列表主操作，收藏开关与文件动作收进管理菜单；搜索与类型筛选合为一行，每条收藏直接提供学习入口；界面文案订阅共享语言与资源修订，缓存期间首次加载的语言也能自动更新。配置、数据和朗读沿用已有消息协议，后台进度保持播放状态、结束或停止才释放；确认开始即占用操作状态，等待、菜单让步及响应后校验生命周期，拒绝迟到请求、文件下载和已卸载界面更新。
+ * 主要内容：相同译文保留原文且不重复展示；把复习作为列表主操作，收藏开关与文件动作收进管理菜单；搜索与类型筛选合为一行，每条收藏直接提供学习入口；界面文案订阅共享语言与资源修订，缓存期间首次加载的语言也能自动更新。配置、数据和朗读沿用已有消息协议，后台进度保持播放状态、结束或停止才释放，页面音频失败按在线与浏览器两级有限回退并合并重复错误通知；确认开始即占用操作状态，等待、菜单让步及响应后校验生命周期，拒绝迟到请求、文件下载和已卸载界面更新。
  * 模块边界：UI 不直接访问 Dexie 或上传学习数据；完整备份进入备份与恢复页，收藏文件只包含本领域数据，数据库操作集中在后台 repository/handler，上下文和来源只有用户明确选择时才导出。
  -->
 <template>
@@ -337,14 +337,14 @@ function prepareEntryAudioContext(): AudioContext | null {
   } catch { return null; }
 }
 
-async function playEntryAudioBytes(bytes: Uint8Array, contentType: string, generation: number): Promise<boolean> {
-  if (generation !== speechRequestGeneration) return false;
+async function playEntryAudioBytes(bytes: Uint8Array, contentType: string, generation: number, fallback: 'google' | 'browser' = 'google'): Promise<'playing' | 'stale' | 'fallback'> {
+  if (generation !== speechRequestGeneration) return 'stale';
   if (entryAudioContext && entryAudioContext.state !== 'closed') {
     await entryAudioContext.resume();
     const encoded = new Uint8Array(bytes.byteLength);
     encoded.set(bytes);
     const buffer = await entryAudioContext.decodeAudioData(encoded.buffer as ArrayBuffer);
-    if (generation !== speechRequestGeneration) return false;
+    if (generation !== speechRequestGeneration) return 'stale';
     const source = entryAudioContext.createBufferSource();
     source.buffer = buffer;
     source.connect(entryAudioContext.destination);
@@ -352,17 +352,29 @@ async function playEntryAudioBytes(bytes: Uint8Array, contentType: string, gener
     entryAudioSource = source;
     source.start();
     speechPhase.value = 'playing';
-    return true;
+    return 'playing';
   }
   const audioUrl = URL.createObjectURL(new Blob([bytes], {type: contentType || 'audio/mpeg'}));
   entryAudioUrl = audioUrl;
   const audio = new Audio(audioUrl);
   entryAudio = audio;
   audio.onended = () => { if (entryAudio === audio) stopEntrySpeech(false); };
-  audio.onerror = () => { if (entryAudio === audio) { const entry = entries.value.find(item => item.id === playingEntryId.value); if (entry) void fallbackEntrySpeech(entry, generation); } };
-  await audio.play();
+  let failureHandled = false;
+  const handleFailure = (cause: unknown): void => {
+    if (failureHandled || entryAudio !== audio || generation !== speechRequestGeneration) return;
+    failureHandled = true;
+    const entry = entries.value.find(item => item.id === playingEntryId.value);
+    if (!entry) { stopEntrySpeech(false); return; }
+    // 同一次播放的 error 事件和 play() 拒绝共享一次交接；Google 音频失败后直接进入浏览器回退。
+    if (fallback === 'browser') speakEntryWithBrowser(entry, generation, speechErrorText(cause));
+    else void fallbackEntrySpeech(entry, generation, speechErrorText(cause));
+  };
+  audio.onerror = () => handleFailure(new Error(t('learning.collection.speechPageAudioNotStarted')));
+  try { await audio.play(); } catch (cause) { handleFailure(cause); }
+  if (failureHandled) return 'fallback';
+  if (generation !== speechRequestGeneration || entryAudio !== audio) return 'stale';
   speechPhase.value = 'playing';
-  return true;
+  return 'playing';
 }
 
 function stopEntrySpeech(notifyRemote = true): void {
@@ -387,6 +399,7 @@ function speakEntryWithBrowser(entry: VocabularyEntry, generation = speechReques
   speechController.stop(false);
   releaseEntryAudio();
   if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
+    stopEntrySpeech(false);
     showToast('当前环境无法朗读，请稍后重试。'); return false;
   }
   try {
@@ -443,7 +456,7 @@ async function toggleEntrySpeech(entry: VocabularyEntry): Promise<void> {
     const response = await browser.runtime.sendMessage({type: 'selectionTts', text: entry.term, language: normalizeSpeechLanguage(entry.sourceLanguage), clientRequestId: remote.clientRequestId}) as {success?: boolean; transport?: 'offscreen' | 'page'; audioBase64?: string; contentType?: string; error?: string; errorCode?: string};
     const result = speechController.completeRemoteRequest(remote, response);
     if (result === 'stale' || generation !== speechRequestGeneration) return;
-    if (result === 'offscreen') return;
+    if (result === 'offscreen') { speechPhase.value = 'playing'; return; }
     if (result === 'failed' || !response.audioBase64) {
       const primaryError = response.error && !/取消|已取消|aborted|cancelled/iu.test(response.error) ? response.error : t('learning.collection.speechOnlineNoAudio');
       await fallbackEntrySpeech(entry, generation, primaryError);
@@ -490,8 +503,8 @@ async function speakEntryWithGoogle(entry: VocabularyEntry, generation: number):
     if (result === 'page' && response.audioBase64) {
       const binary = atob(response.audioBase64);
       const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
-      return await playEntryAudioBytes(bytes, response.contentType || 'audio/mpeg', generation)
-        ? null : t('learning.collection.speechPageAudioNotStarted');
+      const playback = await playEntryAudioBytes(bytes, response.contentType || 'audio/mpeg', generation, 'browser');
+      return playback === 'stale' ? t('learning.collection.speechCancelled') : null;
     }
     return response.error || t('learning.collection.speechGoogleNoAudio');
   } catch (cause) {
