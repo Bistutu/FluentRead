@@ -36,6 +36,12 @@ vi.mock('webextension-polyfill', () => ({default: {
     get runtime() {return (globalThis as any).browser?.runtime;},
 }}));
 vi.mock('@/src/features/vocabulary/material/content/public', () => ({mountMaterialContent: mocks.mountMaterial}));
+vi.mock('@/src/features/vocabulary/content/public', () => ({mountVocabularyReencounter: mocks.mountReencounter, unmountVocabularyReencounter: mocks.unmountReencounter}));
+vi.mock('@/src/features/share-card/public', () => ({
+    mountShareCard: () => { mocks.shareCardMounted = true; mocks.mountShareCard(); },
+    unmountShareCard: () => { mocks.shareCardMounted = false; },
+    isShareCardMounted: () => mocks.shareCardMounted,
+}));
 vi.mock('@/src/features/writing-assistant/public', () => ({
     mountWritingAssistant: () => {mocks.writingMounted = true; mocks.mountWriting();},
     unmountWritingAssistant: () => {mocks.writingMounted = false; mocks.unmountWriting();},
@@ -74,11 +80,6 @@ vi.mock('@/src/app/content/features', async () => {
         'unmountImageTranslator', 'unmountSelectionTranslator', 'unmountTranslationProgressPanel',
     ].map(name => [name, vi.fn()])),
     mountParagraphCopyContentFeature: mocks.mountParagraphCopyContentFeature,
-    mountVocabularyReencounter: mocks.mountReencounter,
-    unmountVocabularyReencounter: mocks.unmountReencounter,
-    mountShareCard: () => { mocks.shareCardMounted = true; mocks.mountShareCard(); },
-    unmountShareCard: () => { mocks.shareCardMounted = false; },
-    isShareCardMounted: () => mocks.shareCardMounted,
     isFloatingBallAllowedOnPage: () => mocks.floatingBallAllowed,
     createPageTranslationDisplayModeSync: (_initial: unknown, apply: (next: any) => void) => apply,
     restoreOriginalContent: mocks.restoreOriginal,

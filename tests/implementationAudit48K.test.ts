@@ -27,6 +27,7 @@ const ports = vi.hoisted(() => ({
     mountWriting: vi.fn(), unmountWriting: vi.fn(), setLanguage: vi.fn(), language: undefined as unknown as Vue.Ref<string>,
     mountCorrections: vi.fn(), unmountCorrections: vi.fn(),
     mountMaterial: vi.fn(), unmountMaterial: vi.fn(),
+    shareCardMounted: false, mountShareCard: vi.fn(), unmountShareCard: vi.fn(),
     appearance: vi.fn(), subscribe: vi.fn(), unsubscribe: vi.fn(), reload: vi.fn(),
 }));
 vi.mock('vue', async importOriginal => {
@@ -49,6 +50,11 @@ vi.mock('@/src/ui/interfaceAppearance', () => ({applyInterfaceSkin: ports.appear
 vi.mock('@/src/app/content/personalCorrections', () => ({mountPersonalCorrectionContent: ports.mountCorrections, unmountPersonalCorrectionContent: ports.unmountCorrections}));
 vi.mock('@/src/features/personal-corrections/public', () => ({unmountPersonalCorrections: vi.fn()}));
 vi.mock('@/src/features/vocabulary/material/content/public', () => ({mountMaterialContent: ports.mountMaterial}));
+vi.mock('@/src/features/share-card/public', () => ({
+    mountShareCard: () => {ports.shareCardMounted = true; ports.mountShareCard();},
+    unmountShareCard: () => {ports.shareCardMounted = false; ports.unmountShareCard();},
+    isShareCardMounted: () => ports.shareCardMounted,
+}));
 
 import {createLearningContentFeatures} from '@/src/app/content/learningFeatures';
 import {createContentFeatureRegistry, type ContentFeatureRegistry} from '@/src/app/content/featureRegistry';
@@ -77,6 +83,7 @@ let focused: Element | null;
 beforeEach(() => {
     vi.clearAllMocks(); vi.useFakeTimers({toFake: ['setTimeout', 'clearTimeout']});
     ports.config.vocabularyReencounterEnabled = true; ports.extension.inIncognitoContext = false; ports.writingMounted = false;
+    ports.shareCardMounted = false;
     ports.mountWriting.mockImplementation(() => {ports.writingMounted = true;});
     ports.unmountWriting.mockImplementation(() => {ports.writingMounted = false;});
     ports.mountMaterial.mockReturnValue(ports.unmountMaterial);
@@ -189,8 +196,10 @@ describe('48K 当前写作学习装配公开消费者', () => {
         const runtime = learning({on, writing: {enabled: writing}}, browser);
         const active = activation();
         expect((await runtime.mountEnabled(active)).map(row => ({id: row.id, status: row.status}))).toEqual([
+            {id: 'vocabulary-reencounter', status: 'skipped'},
             {id: 'material-resume', status: browser !== 'userscript' && on ? 'mounted' : 'skipped'},
             {id: 'personal-corrections', status: 'skipped'}, {id: 'writing-assistant', status},
+            {id: 'share-card', status: on ? 'mounted' : 'skipped'},
         ]);
         expect(ports.mountMaterial).toHaveBeenCalledTimes(browser !== 'userscript' && on ? 1 : 0);
         expect(ports.mountCorrections).not.toHaveBeenCalled();
@@ -201,8 +210,10 @@ describe('48K 当前写作学习装配公开消费者', () => {
         const runtime = learning(config); await runtime.mountEnabled(activation());
         config.writing.enabled = true;
         expect((await runtime.reconcileEnabled()).map(row => ({id: row.id, status: row.status}))).toEqual([
+            {id: 'vocabulary-reencounter', status: 'skipped'},
             {id: 'material-resume', status: 'mounted'},
             {id: 'personal-corrections', status: 'skipped'}, {id: 'writing-assistant', status: 'mounted'},
+            {id: 'share-card', status: 'mounted'},
         ]);
         await runtime.reconcileEnabled(); expect(ports.mountWriting).toHaveBeenCalledOnce(); expect(ports.mountMaterial).toHaveBeenCalledOnce();
         config.on = false; await runtime.reconcileEnabled();

@@ -17,7 +17,7 @@ import {decodeUserscriptData} from '@/userscript/dataEncoding';
 import {zhCNMessages, UI_LANGUAGE_BUNDLES, userscriptMessages, currentUserscriptLanguageBundle, createUserscriptLanguageUpdate} from '@/userscript/languageBundles';
 import {zhCNMessages as extensionChinese} from '@/src/core/i18n/messages/zh-CN';
 import {UI_LANGUAGE_BUNDLES as extensionBundles} from '@/src/core/i18n/bundles';
-import {aiRequestTimeoutMessages} from '@/src/core/i18n/messages/aiRequestTimeout';
+import {aiRequestTimeoutChineseMessages, aiRequestTimeoutMessages} from '@/src/core/i18n/messages/aiRequestTimeout';
 import {learningMaterialLegacyText, learningMaterialPatterns} from '@/src/core/i18n/messages/learningMaterials';
 import {installInformationHighlight} from '@/userscript/informationHighlight';
 import {inflateWithPako} from '@/userscript/pakoRuntime';
@@ -2075,7 +2075,7 @@ describe('standalone immutable glossary and UI catalogs', () => {
         ['src/core/glossary/builtins.ts', ['BUILTIN_GLOSSARIES']],
         ['src/core/config/videoSubtitleAppearance.ts', ['VIDEO_SUBTITLE_SKINS']],
         ['src/features/settings/model/chromeTranslationPreparation.ts', ['TEST_SAMPLES']],
-        ['src/core/i18n/messages/aiRequestTimeout.ts', ['aiRequestTimeoutMessages']],
+        ['src/core/i18n/messages/aiRequestTimeout.ts', ['aiRequestTimeoutChineseMessages', 'aiRequestTimeoutMessages']],
         ['src/core/config/driveSync.ts', ['VISIBLE_FIELDS']],
         ['src/features/settings/model/navigation.ts', ['settingsPagePanels', 'settingsSearchTargets']],
         ['src/core/config/translationLoadingStyle.ts', ['translationLoadingStyleOptions']],
@@ -2113,5 +2113,45 @@ describe('standalone immutable glossary and UI catalogs', () => {
             const target = ts.isVariableStatement(statement) && statement.declarationList.declarations.some(declaration => (names as readonly string[]).includes(declaration.name.getText(originalAst)));
             if (!target) expect(transformed).toContain(statement.getText(originalAst));
         }
+    });
+});
+
+describe('standalone shared AI timeout locale data', () => {
+    const root = process.cwd(), id = resolve(root, 'src/core/i18n/messages/aiRequestTimeout.ts');
+    const original = readFileSync(id, 'utf8');
+    const transform = (code: string) => Reflect.apply(createUserscriptSettingsDataPlugin(root, true, true).transform as Function, {}, [code, id]) as {code: string};
+    const fixture = (chinese = '{message:"中文"}', table = '{"zh-CN":aiRequestTimeoutChineseMessages,"en-US":{message:"English"}}') =>
+        `export const aiRequestTimeoutChineseMessages=${chinese};export const aiRequestTimeoutMessages=${table};`;
+    it('restores every real locale with the same shared Chinese export identity and key order', async () => {
+        const {transformWithEsbuild} = await import('vite');
+        const compiled = await transformWithEsbuild(transform(original).code, 'shared-timeout-catalog.ts', {format: 'cjs', target: 'es2018'});
+        const module = {exports: {} as typeof import('@/src/core/i18n/messages/aiRequestTimeout')}, decode = vi.fn(inflateBundledFrancData);
+        runInNewContext(compiled.code, {module, exports: module.exports, Uint8Array, atob, require: (name: string) => {
+            expect(name).toBe('@/userscript/pakoRuntime');return {inflateWithPako: decode};
+        }}, {timeout: 5000});
+        expect(JSON.stringify(module.exports.aiRequestTimeoutMessages)).toBe(JSON.stringify(aiRequestTimeoutMessages));
+        expect(JSON.stringify(module.exports.aiRequestTimeoutChineseMessages)).toBe(JSON.stringify(aiRequestTimeoutChineseMessages));
+        expect(module.exports.aiRequestTimeoutMessages['zh-CN']).toBe(module.exports.aiRequestTimeoutChineseMessages);
+        expect(Object.keys(module.exports.aiRequestTimeoutMessages)).toEqual(Object.keys(aiRequestTimeoutMessages));
+        expect(decode).toHaveBeenCalledTimes(2);
+    });
+    it.each([
+        ['unknown-reference', fixture(undefined, '{"zh-CN":otherMessages}')],
+        ['called-reference', fixture(undefined, '{"zh-CN":aiRequestTimeoutChineseMessages()}')],
+        ['computed-reference', fixture(undefined, '{["zh-CN"]:aiRequestTimeoutChineseMessages}')],
+        ['duplicate-reference', fixture(undefined, '{"zh-CN":aiRequestTimeoutChineseMessages,"zh-CN":aiRequestTimeoutChineseMessages}')],
+        ['missing-reference', fixture(undefined, '{"en-US":{message:"English"}}')],
+        ['alias-chain', fixture('otherMessages')],
+        ['called-shared-data', fixture('makeMessages()')],
+        ['non-object-shared-data', fixture('[]')],
+        ['duplicate-shared-data', fixture('{message:"one",message:"two"}')],
+        ['prototype-shared-data', fixture('{"__proto__":{}}')],
+        ['executable-other-locale', fixture(undefined, '{"zh-CN":aiRequestTimeoutChineseMessages,"en-US":makeMessages()}')],
+        ['unregistered-other-reference', fixture(undefined, '{"zh-CN":aiRequestTimeoutChineseMessages,"en-US":aiRequestTimeoutChineseMessages}')],
+        ['mutable-shared-data', fixture().replace('export const aiRequestTimeoutChineseMessages', 'export let aiRequestTimeoutChineseMessages')],
+        ['unexported-shared-data', fixture().replace('export const aiRequestTimeoutChineseMessages', 'const aiRequestTimeoutChineseMessages')],
+        ['late-shared-data', 'export const aiRequestTimeoutMessages={"zh-CN":aiRequestTimeoutChineseMessages};export const aiRequestTimeoutChineseMessages={message:"中文"};'],
+    ])('rejects %s without broadening the JSON literal parser', (_label, code) => {
+        expect(() => transform(code)).toThrow();
     });
 });

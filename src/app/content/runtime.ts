@@ -30,8 +30,8 @@ import {
     mountAreaTranslator, startAreaTranslationFromContextMenu, mountFloatingBall, isFloatingBallAllowedOnPage,
     mountHoverTranslationContentFeature, mountImageTranslator, mountParagraphCopyContentFeature, mountSectionTranslationContentFeature,
     isImageTranslatorNeeded, isMangaReaderPage, mountMangaEntry, unmountMangaEntry,
-    mountSelectionTranslator, mountTranslationProgressPanel, mountShareCard, unmountShareCard, isShareCardMounted,
-    mountVideoSubtitleTranslation, mountVocabularyReencounter, unmountVocabularyReencounter,
+    mountSelectionTranslator, mountTranslationProgressPanel,
+    mountVideoSubtitleTranslation,
     isSupportedVideoPage,
     restoreOriginalContent, resetFullPageTranslationRouteState, createPageTranslationDisplayModeSync,
     unmountAreaTranslator, unmountFloatingBall, unmountImageTranslator,
@@ -153,9 +153,7 @@ export async function startContentApp(ctx: ContentScriptContext,
         mountConfiguredQuickTranslation(config, hotkeys, () => currentPageSiteDisabled, activationController.signal,
             () => { resetHoverKeyboardGesture(); resetFullPageKeyboardGesture(); }, mailFullPageToggle);
         const pageFeatureRegistry = createContentFeatureRegistry([
-            {id: 'vocabulary-reencounter', isEnabled: () => capabilities.browser !== 'userscript' && config.vocabularyReencounterEnabled === true && !browser.extension.inIncognitoContext, mount: runtime => mountVocabularyReencounter(runtime.ctx, runtime.signal), unmount: unmountVocabularyReencounter},
             ...createLearningContentFeatures(ctx, config, capabilities),
-            {id: 'share-card', isEnabled: () => config.on, mount: () => mountShareCard(ctx), unmount: unmountShareCard, isMounted: isShareCardMounted},
             {
                 id: 'floating-ball',
                 isEnabled: () => config.on && config.disableFloatingBall !== true && isFloatingBallAllowedOnPage(),
