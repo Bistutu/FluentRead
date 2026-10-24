@@ -239,4 +239,67 @@ describe('explicit configuration application ownership', () => {
         expect(client.getConfigRevision()).toBe(owner.getConfigRevision());
         await client.waitForConfigPersistenceQueue();
     });
+
+    it.each(['delete', 'edit', 'unrelated'] as const)('keeps glossary list CAS across a delayed transport with a concurrent %s', async change => {
+        const library = (id: string) => ({
+            id, name: id, enabled: true, sourceLanguage: 'en', targetLanguage: 'zh-hans', domains: [],
+            entries: [{id: `${id}-term`, source: id, target: `${id} translation`, caseSensitive: false}],
+        });
+        const {port, records} = memoryStorage('en');
+        const initial = normalizeConfig({to: 'en', count: 7, glossaryLibraries: [library('first'), library('second')]});
+        records.set('local:config', {...sanitizeConfigCredentials(initial), __fluentConfigRevision: 4});
+        const owner = application(port);
+        const client = application({...port, writeOwner: false});
+        await Promise.all([owner.start(), client.start()]);
+        const handler = createConfigPersistenceHandler({
+            ready: owner.configReady, getCurrentConfig: () => owner.config,
+            prepareConfigSaveRequest: owner.prepareConfigSaveRequest,
+            prepareConfigPatchRequest: owner.prepareConfigPatchRequest,
+            saveConfig: owner.saveConfig, getCurrentRevision: owner.getConfigRevision,
+            isExtensionUrl: url => url.startsWith('chrome-extension://application-test/'),
+        });
+        const sent = pending<void>(), proceed = pending<void>();
+        const sender = vi.fn<NonNullable<Parameters<typeof client.requestConfigPatch>[1]>>(async message => {
+            sent.resolve();
+            await proceed.promise;
+            return handler.handle(JSON.parse(JSON.stringify(message)), {
+                sender: {url: 'chrome-extension://application-test/options.html'},
+            });
+        });
+        const requested = [...client.config.glossaryLibraries, library('local-addition')];
+        const saving = client.requestConfigPatch({glossaryLibraries: requested}, sender);
+        // Attach rejection handling before releasing the transport; the actual client,
+        // background CAS and authoritative watch/readback remain production code.
+        const outcome = saving.then(() => 'accepted', (error: unknown) => error);
+        await sent.promise;
+        expect(sender).toHaveBeenCalledOnce();
+        expect(sender).toHaveBeenCalledWith(expect.objectContaining({
+            mode: 'patch', config: {glossaryLibraries: requested}, expected: {glossaryLibraries: initial.glossaryLibraries},
+        }));
+        expect(client.config.glossaryLibraries).toEqual(requested);
+        expect(owner.config.glossaryLibraries).toEqual(initial.glossaryLibraries);
+
+        const externalLibraries = change === 'delete' ? initial.glossaryLibraries.slice(1)
+            : initial.glossaryLibraries.map(item => item.id === 'second'
+                ? {...item, entries: item.entries.map(entry => ({...entry, target: 'external translation'}))} : item);
+        await owner.requestConfigPatch(change === 'unrelated' ? {on: false} : {glossaryLibraries: externalLibraries});
+        const externalRevision = owner.getConfigRevision();
+        // The active request defers the incoming watch; its old expected array must
+        // still reach CAS, rather than borrowing the new baseline and overwriting it.
+        expect(client.config.glossaryLibraries).toEqual(requested);
+        proceed.resolve();
+        const result = await outcome;
+        if (change === 'unrelated') expect(result).toBe('accepted');
+        else expect(result).toMatchObject({message: expect.stringContaining('glossaryLibraries')});
+        await client.waitForConfigPersistenceQueue();
+
+        const expectedLibraries = change === 'unrelated' ? requested : externalLibraries;
+        expect(owner.config.glossaryLibraries).toEqual(expectedLibraries);
+        expect(client.config.glossaryLibraries).toEqual(expectedLibraries);
+        expect(owner.config).toMatchObject({on: change !== 'unrelated', to: 'en', count: 7});
+        expect(records.get('local:config')).toMatchObject({glossaryLibraries: expectedLibraries});
+        expect(owner.getConfigRevision()).toBe(externalRevision + (change === 'unrelated' ? 1 : 0));
+        expect(client.getConfigRevision()).toBe(owner.getConfigRevision());
+        expect(sender).toHaveBeenCalledOnce();
+    });
 });

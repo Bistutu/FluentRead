@@ -6,7 +6,7 @@ import GlossarySettings from '@/src/features/glossary/ui/GlossarySettings.vue';
 import BuiltinGlossaries from '@/src/features/glossary/ui/BuiltinGlossaries.vue';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {translate} from '@/src/core/i18n';
-import {GLOSSARY_LIMITS, normalizeGlossaryLibraries, type GlossaryLibrary} from '@/src/core/glossary';
+import {GLOSSARY_LIMITS, createGlossaryLibrary, normalizeGlossaryLibraries, type GlossaryLibrary} from '@/src/core/glossary';
 import {Config} from '@/src/core/config/model';
 import {createQuickTranslationProfile} from '@/src/core/config/quickTranslation';
 
@@ -249,7 +249,7 @@ describe('GlossarySettings compiled component', () => {
     expect(state.preview.terms).toEqual([{source: 'FluentRead', target: 'FluentRead'}]);
     state.query = 'not-here'; expect(state.filteredEntries).toHaveLength(0);
     state.query = 'fluent'; expect(state.filteredEntries).toHaveLength(1);
-    await state.addLibrary(); state.moveLibrary(1, -1); await settle();
+    await state.addLibrary(); state.moveLibrary(config.glossaryLibraries[1].id, -1); await settle();
     expect(config.glossaryLibraries[1].name).toBe('产品名');
     expect(requestConfigPatch.mock.calls.every(([patch]) => Object.keys(patch).every(key => ['glossaryLibraries', 'glossaryEnabled'].includes(key)))).toBe(true);
   });
@@ -623,6 +623,162 @@ describe('GlossarySettings compiled component', () => {
     await state.deleteLibrary(); expect(config.glossaryLibraries).toHaveLength(0);
     expect(confirm).toHaveBeenCalledTimes(2); expect(listeners.size).toBe(1);
     app.unmount(); expect(listeners.size).toBe(0);
+  });
+});
+
+describe('GlossarySettings queued library mutation intents', () => {
+  async function mountLibraries(libraries: GlossaryLibrary[]): Promise<{active: boolean}> {
+    config.glossaryLibraries=libraries;app.unmount();const props=runtime.reactive({active:true});mountComponent(GlossarySettings,props);await settle();return props;
+  }
+  function publishLibraries(libraries: GlossaryLibrary[]): void {
+    config.glossaryLibraries=libraries;listeners.forEach(listener=>listener({...config,glossaryLibraries:[...libraries]}));
+  }
+  const libraryIds=()=>config.glossaryLibraries.map(library=>library.id);
+  function capacityLibraries(kind:'libraries'|'entries'):GlossaryLibrary[] {
+    return Array.from({length:kind==='libraries'?20:10},(_,index)=>({...fixture(`remote-${index}`),entries:kind==='libraries'?[]:Array.from({length:500},(_,term)=>({id:`term-${term}`,source:`remote-${term}`,target:'远端',caseSensitive:false}))}));
+  }
+  function moveByButton(id:string,direction:number):void {
+    const library=(state.libraries as GlossaryLibrary[]).find(item=>item.id===id)!;
+    const label=translate(direction<0?'glossary.moveUp':'glossary.moveDown','zh-CN',{name:library.name});
+    const button=[...dom.document.querySelectorAll('button')].find(item=>item.getAttribute('aria-label')===label)!;
+    expect(button).toBeTruthy();button.dispatchEvent(new dom.window.Event('click',{bubbles:true}));
+  }
+  async function prepareImport(text='source,target\nqueued-term,排队译法',warnings=false):Promise<void>{
+    state.openImport();state.importText=text;await settle();
+    if(warnings){expect(state.importPreview.warnings.length).toBeGreaterThan(0);state.acceptWarnings=true;}
+    expect(state.canImport).toBe(true);
+  }
+  it('preserves an external deletion after accepting addLibrary but before its queued request is sent',async()=>{
+    await mountLibraries([fixture('delete-me'),fixture('keep-me')]);
+    const saving=state.addLibrary();expect(state.busy).toBe(true);expect(requestConfigPatch).not.toHaveBeenCalled();
+    publishLibraries([config.glossaryLibraries[1]]);expect(state.libraries.map((library:GlossaryLibrary)=>library.id)).toEqual(['keep-me']);expect(requestConfigPatch).not.toHaveBeenCalled();
+    await saving;expect(libraryIds()).not.toContain('delete-me');expect(libraryIds()).toContain('keep-me');expect(config.glossaryLibraries).toHaveLength(2);expect(state.busy).toBe(false);
+  });
+  it.each(['insert','id-collision'])('rebases an accepted new library on external %s while retaining its accepted target language',async mode=>{
+    await mountLibraries([fixture('keep')]);const intendedId=createGlossaryLibrary(config.glossaryLibraries).id;
+    const saving=state.addLibrary();expect(requestConfigPatch).not.toHaveBeenCalled();
+    const remote={...fixture(mode==='id-collision'?intendedId:'remote'),name:'新术语库',targetLanguage:'de'};
+    config.to='ja';publishLibraries([...config.glossaryLibraries,remote]);await saving;
+    expect(config.glossaryLibraries.find(library=>library.id===remote.id)).toEqual(remote);expect(config.glossaryLibraries).toHaveLength(3);
+    const added=config.glossaryLibraries.find(library=>library.id!=='keep'&&library.id!==remote.id)!;
+    expect(added).toMatchObject({name:'新术语库 2',targetLanguage:'zh-hans',entries:[]});expect(new Set(libraryIds()).size).toBe(3);expect(state.selectedId).toBe(added.id);
+  });
+  it('rejects newly reached library capacity without truncation and permits a later add retry',async()=>{
+    await mountLibraries([fixture('keep')]);const saving=state.addLibrary();const full=capacityLibraries('libraries');publishLibraries(full);await saving;
+    expect(config.glossaryLibraries).toEqual(full);expect(requestConfigPatch).not.toHaveBeenCalled();expect(state.error).toContain('超出容量');expect(state.busy).toBe(false);expect(state.saved).toBe(false);
+    publishLibraries(full.slice(0,19));await state.addLibrary();expect(config.glossaryLibraries).toHaveLength(20);expect(state.error).toBe('');expect(state.saved).toBe(true);
+  });
+  it('reuses an externally installed builtin at full capacity without replacing its customization',async()=>{
+    await mountLibraries([fixture('keep')]);const saving=state.addBuiltin('ai-en-zh-hans');
+    const full=capacityLibraries('libraries');full[7]={...full[7],name:'remote customized builtin',preset:{id:'ai-en-zh-hans',version:2},entries:[{id:'remote-term',source:'artificial intelligence',target:'外部定制',caseSensitive:true}]};
+    publishLibraries(full);await saving;expect(config.glossaryLibraries).toEqual(full);expect(requestConfigPatch).not.toHaveBeenCalled();expect(state.selectedId).toBe(full[7].id);expect(state.error).toBe('');expect(state.busy).toBe(false);
+  });
+  it('adds a builtin to the latest list without restoring a library removed after acceptance',async()=>{
+    await mountLibraries([fixture('deleted')]);const saving=state.addBuiltin('ai-en-zh-hans');publishLibraries([fixture('remote')]);await saving;
+    expect(libraryIds()).toContain('remote');expect(libraryIds()).not.toContain('deleted');expect(config.glossaryLibraries).toHaveLength(2);expect(config.glossaryLibraries[1].preset?.id).toBe('ai-en-zh-hans');
+  });
+  it.each(['libraries','entries'] as const)('rechecks builtin %s capacity when its accepted queue task executes',async kind=>{
+    await mountLibraries([]);const saving=state.addBuiltin('ai-en-zh-hans');const full=capacityLibraries(kind);publishLibraries(full);await saving;
+    expect(config.glossaryLibraries).toEqual(full);expect(requestConfigPatch).not.toHaveBeenCalled();expect(state.error).toContain('超出容量');expect(state.busy).toBe(false);expect(state.saved).toBe(false);
+  });
+  it.each([
+    {mode:'prepend',remote:['remote','a','b','c'],expected:['remote','b','a','c']},
+    {mode:'delete-other',remote:['a','b'],expected:['b','a']},
+    {mode:'new-neighbor',remote:['a','remote','b','c'],expected:['a','b','remote','c']},
+  ])('moves the accepted library identity one current step after external $mode',async({remote,expected})=>{
+    await mountLibraries([fixture('a'),fixture('b'),fixture('c')]);moveByButton('b',-1);expect(state.busy).toBe(true);expect(requestConfigPatch).not.toHaveBeenCalled();
+    publishLibraries(remote.map(id=>fixture(id)));await settle();expect(libraryIds()).toEqual(expected);expect(state.busy).toBe(false);
+  });
+  it.each([
+    {mode:'removed',remote:['a','c','remote']},
+    {mode:'already at boundary',remote:['b','a','c','remote']},
+  ])('treats an accepted move as a successful no-op when its library is $mode',async({remote})=>{
+    await mountLibraries([fixture('a'),fixture('b'),fixture('c')]);moveByButton('b',-1);publishLibraries(remote.map(id=>fixture(id)));await settle();
+    expect(libraryIds()).toEqual(remote);expect(requestConfigPatch).not.toHaveBeenCalled();expect(state.error).toBe('');expect(state.saved).toBe(false);expect(state.busy).toBe(false);
+  });
+  it.each(['delete','insert','id-collision'])('merges accepted import content with external %s and regenerates conflicting library identities',async mode=>{
+    await mountLibraries([fixture('original')]);await prepareImport();const intendedId=createGlossaryLibrary(config.glossaryLibraries).id;
+    const saving=state.confirmImport();expect(requestConfigPatch).not.toHaveBeenCalled();
+    const remote=fixture(mode==='id-collision'?intendedId:'remote');publishLibraries(mode==='delete'?[remote]:[...config.glossaryLibraries,remote]);await saving;
+    expect(config.glossaryLibraries.find(library=>library.id===remote.id)).toEqual(remote);if(mode==='delete')expect(libraryIds()).not.toContain('original');
+    expect(config.glossaryLibraries.flatMap(library=>library.entries).filter(entry=>entry.source==='queued-term')).toHaveLength(1);expect(new Set(libraryIds()).size).toBe(config.glossaryLibraries.length);expect(state.importOpen).toBe(false);expect(state.busy).toBe(false);
+  });
+  it.each(['libraries','entries'] as const)('rejects accepted import when latest %s capacity is exhausted without truncating the remote list',async kind=>{
+    await mountLibraries([]);await prepareImport();const saving=state.confirmImport();const full=capacityLibraries(kind);publishLibraries(full);await saving;
+    expect(config.glossaryLibraries).toEqual(full);expect(requestConfigPatch).not.toHaveBeenCalled();expect(state.importOpen).toBe(true);expect(state.importText).toContain('queued-term');expect(state.error).toContain('超出容量');expect(state.busy).toBe(false);
+  });
+  it.each(['text','format','warning','reopened-dialog'])('keeps accepted import content and preserves newer %s intent after its acknowledgement',async mode=>{
+    await mountLibraries([fixture('original')]);await state.editEntry();state.entryDraft.source='retained entry draft';const draft=state.entryDraft;
+    await prepareImport(mode==='warning'?'source,target,note\nqueued-term,排队译法,extra':'source,target\nqueued-term,排队译法',mode==='warning');
+    let release!:()=>void;requestConfigPatch.mockImplementationOnce(async patch=>{await new Promise<void>(resolve=>{release=resolve;});Object.assign(config,patch);listeners.forEach(listener=>listener(config));});
+    const saving=state.confirmImport();await settle();expect(requestConfigPatch).toHaveBeenCalledOnce();
+    if(mode==='text')state.importText='source,target\nnewer-term,新草稿';
+    else if(mode==='format')state.importFormat='tsv';
+    else if(mode==='warning')state.acceptWarnings=false;
+    else {state.importOpen=false;await settle();state.openImport();state.importText='source,target\nnewer-term,新窗口草稿';}
+    await settle();release();await saving;await settle();
+    expect(config.glossaryLibraries.flatMap(library=>library.entries).filter(entry=>entry.source==='queued-term')).toHaveLength(1);expect(config.glossaryLibraries.flatMap(library=>library.entries).some(entry=>entry.source==='newer-term')).toBe(false);
+    expect(state.importOpen).toBe(true);expect(state.selectedId).toBe('original');expect(state.entryDraft).toBe(draft);
+    if(mode==='text'||mode==='reopened-dialog')expect(state.importText).toContain('newer-term');else if(mode==='format')expect(state.importFormat).toBe('tsv');else expect(state.acceptWarnings).toBe(false);
+  });
+  it.each(['add','builtin','import'].flatMap(operation=>['hidden','unmounted'].map(mode=>({operation,mode}))))('finishes an accepted $operation against live config while $mode without restoring deleted data',async({operation,mode})=>{
+    const props=await mountLibraries([fixture('deleted')]);if(operation==='import')await prepareImport();const before=state.selectedId;
+    const saving=operation==='add'?state.addLibrary():operation==='builtin'?state.addBuiltin('ai-en-zh-hans'):state.confirmImport();
+    if(mode==='hidden')props.active=false;else app.unmount();
+    publishLibraries([fixture('remote')]);await saving;
+    expect(libraryIds()).toContain('remote');expect(libraryIds()).not.toContain('deleted');expect(config.glossaryLibraries).toHaveLength(2);
+    const added=config.glossaryLibraries.find(library=>library.id!=='remote')!;
+    if(operation==='builtin')expect(added.preset?.id).toBe('ai-en-zh-hans');else if(operation==='import')expect(added.entries[0].source).toBe('queued-term');else expect(added.entries).toEqual([]);
+    if(mode==='unmounted')expect(state.selectedId).toBe(before);else {props.active=true;await settle();expect(state.selected).toBeTruthy();expect(state.busy).toBe(false);}
+  });
+  it.each(['add','builtin'])('preserves a newer library selection and its cached entry draft when an older %s acknowledgement returns',async mode=>{
+    await mountLibraries([fixture('a'),fixture('b')]);state.selectLibrary('b');await state.editEntry();state.entryDraft.source='retained b draft';const draft=state.entryDraft;state.selectLibrary('a');
+    let release!:()=>void;requestConfigPatch.mockImplementationOnce(async patch=>{await new Promise<void>(resolve=>{release=resolve;});Object.assign(config,patch);listeners.forEach(listener=>listener(config));});
+    const saving=mode==='add'?state.addLibrary():state.addBuiltin('ai-en-zh-hans');await settle();state.selectLibrary('b');expect(state.entryDraft).toBe(draft);release();await saving;
+    expect(state.selectedId).toBe('b');expect(state.entryDraft).toBe(draft);expect(state.entryDraft.source).toBe('retained b draft');expect(config.glossaryLibraries).toHaveLength(3);
+  });
+  it('serializes an accepted add and a captured library edit while hidden without retargeting the edit to the new selection',async()=>{
+    const props=await mountLibraries([fixture('original')]);await state.editEntry();state.entryDraft.source='retained original draft';const draft=state.entryDraft;
+    let release!:()=>void;requestConfigPatch.mockImplementationOnce(async patch=>{await new Promise<void>(resolve=>{release=resolve;});Object.assign(config,patch);listeners.forEach(listener=>listener(config));});
+    const adding=state.addLibrary();await settle();const editing=state.patchLibrary({name:'original renamed'});props.active=false;release();await Promise.all([adding,editing]);
+    expect(config.glossaryLibraries).toHaveLength(2);expect(config.glossaryLibraries.find(library=>library.id==='original')?.name).toBe('original renamed');expect(config.glossaryLibraries.find(library=>library.id!=='original')?.name).toBe('新术语库');
+    props.active=true;await settle();state.selectLibrary('original');expect(state.entryDraft).toBe(draft);expect(state.busy).toBe(false);
+  });
+  it('keeps an existing entry draft after an add storage failure and safely retries the same user intent',async()=>{
+    await mountLibraries([fixture('original')]);await state.editEntry();state.entryDraft.source='retained original draft';const draft=state.entryDraft;
+    requestConfigPatch.mockRejectedValueOnce(new Error('storage unavailable'));await state.addLibrary();
+    expect(libraryIds()).toEqual(['original']);expect(state.entryDraft).toBe(draft);expect(state.error).toContain('保存失败');expect(state.busy).toBe(false);expect(state.saved).toBe(false);
+    await state.addLibrary();expect(config.glossaryLibraries).toHaveLength(2);expect(state.error).toBe('');expect(state.saved).toBe(true);state.selectLibrary('original');expect(state.entryDraft).toBe(draft);
+  });
+  it('does not continue an empty-library startEntry in another selected library after its older add acknowledgement',async()=>{
+    await mountLibraries([]);let release!:()=>void;
+    requestConfigPatch.mockImplementationOnce(async patch=>{
+      await new Promise<void>(resolve=>{release=resolve;});
+      // The acknowledged snapshot includes both the accepted creation and later external libraries.
+      const created=patch.glossaryLibraries as GlossaryLibrary[];
+      publishLibraries([...created,...config.glossaryLibraries.filter(library=>!created.some(item=>item.id===library.id))]);
+    });
+    const starting=state.startEntry('captured source');await settle();publishLibraries([fixture('remote-a'),fixture('remote-b')]);state.selectLibrary('remote-b');release();await starting;await settle();
+    expect(state.selectedId).toBe('remote-b');expect(state.entryDraft).toBeNull();expect(dom.document.querySelector('input[required]')).toBeNull();expect(config.glossaryLibraries).toHaveLength(3);
+  });
+  it.each(['selection-aba','draft-replacement'])('rejects an older editEntry confirmation after %s without replacing or focusing the newer draft',async mode=>{
+    await mountLibraries([fixture('a'),fixture('b')]);await state.editEntry();state.entryDraft.source='retained draft';
+    let release!:()=>void;confirm.mockImplementationOnce(()=>new Promise<void>(resolve=>{release=resolve;}));
+    const input=dom.document.querySelector<HTMLInputElement>('input[required]')!;const focus=vi.spyOn(input,'focus').mockImplementation(()=>undefined);
+    try {
+      const editing=state.editEntry(state.selected.entries[0]);expect(confirm).toHaveBeenCalledOnce();
+      if(mode==='selection-aba'){state.selectLibrary('b');state.selectLibrary('a');}else state.entryDraft={...state.entryDraft,id:'newer-draft',source:'newer draft'};
+      const retained=state.entryDraft;release();await editing;await settle();expect(state.entryDraft).toBe(retained);expect(state.entryDraft.source).toBe(mode==='selection-aba'?'retained draft':'newer draft');expect(focus).not.toHaveBeenCalled();
+    } finally {focus.mockRestore();}
+  });
+  it.each(['selection-aba','draft-replacement'])('does not focus or fill a newer draft after a startEntry nextTick %s',async mode=>{
+    await mountLibraries([fixture('a'),fixture('b')]);
+    const focus=vi.spyOn(dom.window.HTMLElement.prototype,'focus').mockImplementation(()=>undefined);
+    try {
+      const starting=state.startEntry('captured source');expect(state.entryDraft).toBeTruthy();
+      if(mode==='selection-aba'){state.selectLibrary('b');state.selectLibrary('a');}else state.entryDraft={...state.entryDraft,id:'newer-draft',source:'newer draft'};
+      const retained=state.entryDraft;const source=retained.source;await starting;await settle();expect(state.entryDraft).toBe(retained);expect(state.entryDraft.source).toBe(source);expect(focus).not.toHaveBeenCalled();
+    } finally {focus.mockRestore();}
   });
 });
 

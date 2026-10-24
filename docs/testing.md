@@ -40,6 +40,12 @@ node scripts/testing/run-cache-clear-recovery-test.cjs \
 
 这些采样会改变测试时序，仅用于定位问题。Node `performance.now()` 与原生事件的 `systemUptime` 有不同原点，不能直接相减；跨来源须用 epoch 时间和采样区间关联。公开 CDP session 的五类命令记录不涵盖 Playwright 私有 page session 的全部协议；离线 `browserFocusSafety` 用例只验证报告接线、返回/拒绝身份和失败锁存，不能证明真实浏览器焦点问题已修复。
 
+## 术语库排队保存
+
+运行 `pnpm test tests/glossarySettingsComponent.test.ts tests/configApplication.test.ts` 验证术语库操作的真实 SFC 与配置传输边界。新建、内置库添加、排序和导入捕获用户操作，在组件保存队列执行时合并共享 store 的最新列表；排序携带库 ID，按当前顺序移动一格，导入固定已确认内容并重新检查容量。覆盖排队期间的外部增删、同 ID 与同名、无写入的 no-op、隐藏及组件卸载、容量恢复、旧回执对新选择/新导入草稿的保护，以及确认框与延迟焦点的草稿归属。
+
+`configApplication` 的 glossary list CAS 用例让两个独立 application 通过真实客户端及持久化 handler 交互；发送期间修改同一数组字段应拒绝、回读最新值且只发送一次，无关字段变化则正常确认。这不证明跨设备或真实浏览器关闭的持久化：组件卸载后共享 store 仍运行，整个页面销毁会终止尚未交给配置客户端的本地任务。实现边界及证据入口见[术语库排队保存与草稿归属](maintainers/glossary-save-concurrency-20261024.md)。
+
 ## man7 Linux 手册正文
 
 man7 的 Linux 手册将自然语言正文、参数说明、终端会话和源码混放在 `pre` 中。翻译时按手册段落建立可恢复的正文边界，保留原来的换行、缩进和行内链接；命令会话与程序源码继续保持原文。此能力限定于经过结构核验的 man7 Linux 手册，普通网页代码块和 RFC 的格式化文本仍遵守原有保护策略。
