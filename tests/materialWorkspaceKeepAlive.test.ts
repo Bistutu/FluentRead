@@ -55,6 +55,7 @@ vi.mock('@/src/features/vocabulary/ui/public', async () => {
 });
 
 async function mount(options: {
+  useParentVisibility?: boolean;
   items?: MaterialRecord[];
   list?: (...args: any[]) => Promise<MaterialRecord[]>;
   session?: (...args: any[]) => Promise<unknown>;
@@ -112,7 +113,7 @@ async function mount(options: {
   const isVisible = () => shown.value;
   let panel: any;
   const app = renderer.createApp({render: () => runtime.h(runtime.KeepAlive, null, {default: () => shown.value
-    ? runtime.h(LearningEntry, {initialTab: 'materials', key: 'learning', isVisible}) : runtime.h(otherPage, {key: 'settings'})})});
+    ? runtime.h(LearningEntry, {initialTab: 'materials', key: 'learning', ...(options.useParentVisibility === false ? {} : {isVisible})}) : runtime.h(otherPage, {key: 'settings'})})});
   app.mixin({mounted() {const instance = this as any; if (instance.$options.__name?.startsWith('MaterialWorkspace')) panel = instance.$.setupState;}});
   const errors: unknown[] = [];
   app.config.errorHandler = error => errors.push(error);
@@ -182,8 +183,8 @@ describe('actual learning-center material pane under an outer KeepAlive', () => 
     expect(ui.errors).toEqual([]);
   });
 
-  it('coalesces five hidden broadcasts into one current read on reactivation', async () => {
-    const ui = await mount();
+  it.each([true, false])('coalesces five hidden broadcasts into one current read on reactivation (parent visibility getter: %s)', async useParentVisibility => {
+    const ui = await mount({useParentVisibility});
     await ui.hide();
     ui.setItems([{...record('b'), title: 'Changed while another settings page was open'}]);
     ui.notify(5); await ui.flush();

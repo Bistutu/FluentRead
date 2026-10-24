@@ -117,7 +117,7 @@ describe('content UI localization boundaries', () => {
     it.each(UI_LANGUAGE_OPTIONS.map(({value}) => value))('localizes %s collection tooltips while preserving the saved expression', async language => {
         const ui = fixture(language);
         const entry = {id: 'saved', term: '打开听读与解释', kind: 'expression', contexts: [], translations: {}, status: 'new'};
-        const mounted = ui.mount('src/features/vocabulary/ui/CollectionEntry.vue', {entry, translation: '', playing: false, busy: false, status: 'New', review: ''}, {
+        const mounted = ui.mount('src/features/vocabulary/ui/CollectionEntry.vue', {entry, translation: '', playing: false, speechPhase: 'idle', busy: false, status: 'New', review: ''}, {
             '../learningModel': learning, '../source': source,
             './SavedExplanation.vue': {default: {render: () => null}}, './VocabularySource.vue': {default: {render: () => null}},
             '@/src/ui/components/UiIcon.vue': {default: {render: () => null}}, '@/src/core/translation/result': translationResult,
