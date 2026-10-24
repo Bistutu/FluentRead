@@ -79,7 +79,7 @@ function fixture(site, variant = '') {
 (async () => {
   const extensionDir = path.resolve(arg('extension-dir', '.output/chrome-mv3'));
   const artifactsDir = path.resolve(arg('artifacts-dir', '/private/tmp/fluentread-writing-browser'));
-  const suites = {'entry-menu': 'Three entry-dismissal scopes, site restoration and preserved editing', compact: 'Reading-space allocation and bilingual insertion in GitHub/Gmail', experience: 'Writing readiness, retry intent, empty-state guidance, keyboard flow and responsive settings', harness: 'Harness tool loop, persisted learning memory, language translation and memory mutation cancellation', bilingual: 'Reply and reading language combinations, source-only insertion and translation lifecycle', i18n: 'Issue #490 seven-language writing panel and content boundaries', all: 'All writing regression cases', settings: 'Default writing preferences, custom input stability, persistence and open-card synchronization', github: 'GitHub writing lifecycle and staged preferences', issue646: 'First GitHub issue reply and new issue creation', gmail: 'Gmail writing lifecycle and staged preferences', recovery: 'Model ownership and partial-stream recovery', context: 'Issue #421 context, target-language ownership, staged style, Markdown editing and insertion', compose: 'Empty and subject-only new mail, Gmail conversation isolation and rich signatures', layout: 'Editor resize and preceding-DOM positioning', dynamic: 'Remount, disabled focus, scrolling and global website rule', presentation: 'Fresh-page global website rule, dark PR, mobile layouts and unsupported routes'};
+  const suites = {'first-open': 'First GitHub SPA generation and GitHub/Gmail outside-dismissal session restoration', 'entry-menu': 'Three entry-dismissal scopes, site restoration and preserved editing', compact: 'Reading-space allocation and bilingual insertion in GitHub/Gmail', experience: 'Writing readiness, retry intent, empty-state guidance, keyboard flow and responsive settings', harness: 'Harness tool loop, persisted learning memory, language translation and memory mutation cancellation', bilingual: 'Reply and reading language combinations, source-only insertion and translation lifecycle', i18n: 'Issue #490 seven-language writing panel and content boundaries', all: 'All writing regression cases', settings: 'Default writing preferences, custom input stability, persistence and open-card synchronization', github: 'GitHub writing lifecycle and staged preferences', issue646: 'First GitHub issue reply and new issue creation', gmail: 'Gmail writing lifecycle and staged preferences', recovery: 'Model ownership and partial-stream recovery', context: 'Issue #421 context, target-language ownership, staged style, Markdown editing and insertion', compose: 'Empty and subject-only new mail, Gmail conversation isolation and rich signatures', layout: 'Editor resize and preceding-DOM positioning', dynamic: 'Remount, disabled focus, scrolling and global website rule', presentation: 'Fresh-page global website rule, dark PR, mobile layouts and unsupported routes'};
   const suite = arg('suite', 'all'); const selectedSuites = suite.split(',');
   assert(selectedSuites.every(name => Object.hasOwn(suites, name)), `--suite must select from ${Object.keys(suites).join(', ')}`);
   const runs = name => selectedSuites.includes('all') || selectedSuites.includes(name);
@@ -286,6 +286,111 @@ function fixture(site, variant = '') {
       await dialog(p).waitFor(); await p.locator('.writing-panel').evaluate(async element => { await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))); window.writingSamples = []; window.sampleWriting = true; const sample = () => { if (!window.sampleWriting) return; const rect = element.getBoundingClientRect(); window.writingSamples.push({x: rect.x, y: rect.y, width: rect.width, height: rect.height}); requestAnimationFrame(sample); }; sample(); });
     };
     const endSampling = async (p, site) => { const samples = await p.evaluate(() => { window.sampleWriting = false; return window.writingSamples; }); assert(samples.length >= 5, 'streaming must include multiple visible frames'); const deltas = Object.fromEntries(['x', 'y', 'width', 'height'].map(key => [key, Math.max(...samples.map(rect => rect[key])) - Math.min(...samples.map(rect => rect[key]))])); assert(Object.values(deltas).every(delta => delta === 0), `zero streaming jitter: ${JSON.stringify(deltas)}`); report.cardStability.push({site, sampleCount: samples.length, deltas}); };
+
+    if (runs('first-open')) {
+      // 浏览器自身提供 sender.url/tab.url；通过同文档跳转复现旧文档 URL，不能用请求负载伪造授权来源。
+      await worker.evaluate(() => {
+        globalThis.writingFirstOpenSenders = [];
+        globalThis.captureWritingFirstOpen = port => {
+          if (port.name === 'fluentReadWritingStream') globalThis.writingFirstOpenSenders.push({url: port.sender?.url, tabUrl: port.sender?.tab?.url, frameId: port.sender?.frameId});
+        };
+        chrome.runtime.onConnect.addListener(globalThis.captureWritingFirstOpen);
+      });
+      const addOutsideControl = p => p.evaluate(() => {
+        const button = document.createElement('button'); button.id = 'fixture-outside'; button.type = 'button'; button.textContent = 'Outside writing panel';
+        Object.assign(button.style, {position: 'fixed', top: '12px', right: '12px'});
+        button.addEventListener('click', () => { window.outsideWritingClicks = (window.outsideWritingClicks || 0) + 1; }); document.body.append(button);
+      });
+      const dismissOutside = async p => {
+        const before = await p.evaluate(() => window.outsideWritingClicks || 0);
+        await p.locator('#fixture-outside').click(); await dialog(p).waitFor({state: 'hidden'});
+        assert.equal(await p.evaluate(() => window.outsideWritingClicks), before + 1, 'outside native click still executes');
+        assert.equal(await p.locator('#fixture-outside').evaluate(element => document.activeElement === element), true, 'outside dismissal preserves native focus');
+      };
+      try {
+        report.firstOpenNavigation = [];
+        for (const [source, target, variant] of [
+          ['/fluentread-fixture/project', '/fluentread-fixture/project/issues/1056', ''],
+          ['/fluentread-fixture/project/issues', '/fluentread-fixture/project/pull/1056', ''],
+          ['/fluentread-fixture/project/issues', '/fluentread-fixture/project/issues/new', 'issue646-new'],
+        ]) {
+          const p = await page(`https://github.com${source}`, 'first-open-spa');
+          await p.locator('#fluent-read-page-styles').waitFor({state: 'attached'});
+          assert.equal(await entry(p).count(), 0, 'unsupported initial route has no writing entry');
+          const marker = await p.evaluate(() => window.writingDocumentMarker = crypto.randomUUID());
+          const before = requests.length;
+          await p.evaluate(({target, html}) => {
+            history.pushState({}, '', target);
+            const next = new DOMParser().parseFromString(html, 'text/html').querySelector('main');
+            document.querySelector('main').replaceWith(document.importNode(next, true));
+          }, {target, html: fixture('github', variant)});
+          await entry(p).waitFor(); await addOutsideControl(p);
+          assert.equal(await p.evaluate(() => window.writingDocumentMarker), marker, 'SPA transition preserves the original content document');
+          let result;
+          if (variant) {
+            await entry(p).click(); await instruction(p).fill('Please write a short first issue report.');
+            result = await oneGeneration(p, () => dialog(p).locator('.writing-composer button[type="submit"]').click());
+          } else result = await oneGeneration(p, () => entry(p).click());
+          assert.equal(requests.length, before + 1, 'first open generates once without a refresh or retry');
+          assert.equal(await p.getByRole('alert').count(), 0, 'supported current route never receives the unsupported-site error');
+          report.firstOpenNavigation.push({source, target, documentPreserved: true, modelRequests: requests.length - before});
+          await instruction(p).fill('UNSUBMITTED_SESSION_INSTRUCTION'); await instruction(p).click();
+          assert(await dialog(p).isVisible(), 'pointer event inside the writing Shadow DOM keeps the panel open');
+          // 紧凑的新建 Issue 夹具会被既有高卡片遮住入口；已展开入口的点击断言只使用真实可点击的回复布局。
+          if (!variant) { await entry(p).click(); assert(await dialog(p).isVisible(), 'clicking the exposed active writing entry keeps the existing panel'); }
+          assert.equal(await instruction(p).inputValue(), 'UNSUBMITTED_SESSION_INSTRUCTION');
+          await dismissOutside(p); await entry(p).click(); await dialog(p).waitFor();
+          assert.equal(await readDraft(p), result.text); assert.equal(await instruction(p).inputValue(), 'UNSUBMITTED_SESSION_INSTRUCTION');
+          assert.equal(requests.length, before + 1, 'reopening retained state never repeats generation');
+          if (target.endsWith('/issues/1056')) {
+            await p.getByRole('button', {name: '输出语言', exact: true}).click();
+            const search = p.getByRole('searchbox', {name: '搜索输出语言', exact: true}); await search.fill('English'); await search.click();
+            await dismissOutside(p); await entry(p).click(); await search.waitFor(); assert.equal(await search.inputValue(), 'English', 'language subview and its search survive dismissal');
+            await p.getByRole('button', {name: '返回草稿', exact: true}).click();
+            await beginEdit(p); const edited = `${result.text}\n手工修改后保留。`; await output(p).fill(edited);
+            await dismissOutside(p); await entry(p).click(); await output(p).waitFor(); assert.equal(await output(p).inputValue(), edited, 'editing view and unsaved generated-text edits survive dismissal');
+            await finishEdit(p);
+            await p.getByRole('button', {name: '回答风格', exact: true}).click(); await selectStyle(p, '长度', '详细');
+            await dismissOutside(p); await entry(p).click();
+            assert.equal(await p.getByRole('radiogroup', {name: '长度', exact: true}).getByRole('radio', {name: '详细', exact: true}).getAttribute('aria-checked'), 'true', 'staged style selection survives dismissal');
+            await p.getByRole('button', {name: '取消', exact: true}).click(); assert.equal(await readDraft(p), edited);
+            assert.equal(await instruction(p).inputValue(), 'UNSUBMITTED_SESSION_INSTRUCTION');
+            assert.equal(requests.length, before + 1, 'view restoration never submits staged instructions or preferences');
+            await shot(p, 'writing-first-open-restored-session');
+          }
+          assert.equal(await p.locator('#editor').inputValue(), '', 'generated and edited text stays outside the native draft until insertion');
+          assert.equal(await p.evaluate(() => window.sent || 0), 0); await closePage(p);
+        }
+        const partial = await page('https://github.com/fluentread-fixture/project/issues/1057', 'outside-dismiss-partial');
+        await addOutsideControl(partial); const beforePartial = requests.length; responsePlans.push({slow: true}); await entry(partial).click();
+        await assertRequestCount(beforePartial + 1, 'slow initial generation starts');
+        const received = await until(async () => { const text = await readDraft(partial); return /^回复版本 \d+：/.test(text) && await preview(partial).getAttribute('aria-busy') === 'true' ? text : null; }, 'initial partial output');
+        await dismissOutside(partial); await entry(partial).click(); await preview(partial).waitFor();
+        assert.equal(await readDraft(partial), received, 'outside dismissal retains received first-generation text');
+        assert.equal(await preview(partial).getAttribute('aria-busy'), 'false', 'hidden work is stopped and does not resume by itself');
+        await wait(1800); assert.equal(await readDraft(partial), received, 'late stream output cannot overwrite the retained partial draft');
+        assert.equal(requests.length, beforePartial + 1, 'reopening interrupted work requires an explicit new generation');
+        await shot(partial, 'writing-outside-dismiss-retained-partial'); assert.equal(await partial.evaluate(() => window.sent || 0), 0); await closePage(partial);
+        const mail = await page('https://mail.google.com/mail/u/0/#inbox/fixture', 'gmail-outside-dismiss');
+        await addOutsideControl(mail); const nativeMailDraft = await mail.locator('#editor').innerText(); const beforeMail = requests.length;
+        const mailResult = await oneGeneration(mail, () => entry(mail).click());
+        await instruction(mail).fill('UNSUBMITTED_MAIL_INSTRUCTION'); await instruction(mail).click();
+        assert(await dialog(mail).isVisible(), 'Gmail panel inside click keeps its session open');
+        await dismissOutside(mail); await entry(mail).click(); await dialog(mail).waitFor();
+        assert.equal(await readDraft(mail), mailResult.text, 'Gmail outside dismissal restores its generated result');
+        assert.equal(await instruction(mail).inputValue(), 'UNSUBMITTED_MAIL_INSTRUCTION', 'Gmail outside dismissal restores its unsubmitted instruction');
+        assert.equal(requests.length, beforeMail + 1, 'Gmail reopen does not generate or submit the retained instruction');
+        assert.equal(await mail.locator('#editor').innerText(), nativeMailDraft, 'Gmail original rich editor draft stays unchanged');
+        assert.equal(await mail.evaluate(() => window.sent || 0), 0, 'Gmail outside dismissal never sends');
+        await shot(mail, 'writing-gmail-outside-dismiss-restored'); await closePage(mail);
+        report.firstOpenSenders = await worker.evaluate(() => globalThis.writingFirstOpenSenders);
+        for (const sender of report.firstOpenSenders.filter(sender => sender.tabUrl?.startsWith('https://github.com/'))) { assert.equal(sender.frameId, 0); assert.match(sender.tabUrl, /^https:\/\/github\.com\/fluentread-fixture\/project\/(?:issues|pull)\//); }
+        report.cases.push('same-document repository/list navigation to GitHub Issue, PR and new Issue generates once on first action; outside native clicks preserve focus and restore result, instruction, editing, language search and staged style without model calls; interrupted first stream retains partial text and ignores late output; no native submission');
+        report.cases.push('Gmail automatic generation and outside dismissal/reopen preserve the result, unsubmitted instruction, native click focus and original draft without regeneration or sending');
+      } finally {
+        report.firstOpenSenders = await worker.evaluate(() => { const senders = globalThis.writingFirstOpenSenders; chrome.runtime.onConnect.removeListener(globalThis.captureWritingFirstOpen); delete globalThis.captureWritingFirstOpen; delete globalThis.writingFirstOpenSenders; return senders; });
+      }
+    }
 
     if (runs('entry-menu')) {
       const p = await page('https://github.com/fluentread-fixture/project/issues/990?fixture=draft', 'entry-menu');
