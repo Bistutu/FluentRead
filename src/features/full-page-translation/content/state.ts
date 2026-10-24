@@ -1,7 +1,7 @@
 /**
  * @file src/features/full-page-translation/content/state.ts
  * 文件职责：维护每个被翻译 DOM 节点的可恢复状态、请求代次、译文工件和共享布局覆盖所有权，确保重复翻译、宿主变更和移除节点都能安全收敛。
- * 主要内容：包含 WeakMap 状态索引、begin/complete/error/discard 状态机、spinner/译文/retry/仅译文槽节点登记、无主槽原文解包、兼容字体标记与链接提示的译文复验及有界重挂、离线模板仅省略外层属性自比较并保留内容与复制工件复验、双语重放对象的纯组装与扩展源语言边界、已提交译文的前后位置及骨架重放换行快照、保留请求代次的显示工件切换、含固定高度 line-clamp 的共享样式租约、同批布局与来源保护读数复用及写入失效（释放最后一个旧祖先租约也立即失效）、祖先观察器引用计数、文本槽回写、按钮型 input 标签属性的原值记录与回滚、逐父节点单次读取子列表的移除子树所有者枚举、按真实状态变更发布增量阶段通知、清除通知携带旧来源以协调延迟区域任务，以及沿用当前 owner 快照并保护各滚动面的全量恢复。
+ * 主要内容：包含 WeakMap 状态索引、begin/complete/error/discard 状态机、spinner/译文/retry/仅译文槽节点登记、无主槽原文解包、兼容字体标记与链接提示的译文复验及有界重挂、离线模板仅省略外层属性自比较并保留内容与复制工件复验、双语重放对象的纯组装与扩展源语言边界、已提交译文的前后位置及骨架重放换行快照、保留请求代次的显示工件切换、含固定高度 line-clamp 的共享样式租约、同批布局与来源保护读数复用及写入失效（释放最后一个旧祖先租约也立即失效）、窗口及外观变化后的手册缩进和栏宽复核并同步可信模板、祖先观察器引用计数、文本槽回写、按钮型 input 标签属性的原值记录与回滚、逐父节点单次读取子列表的移除子树所有者枚举、按真实状态变更发布增量阶段通知、清除通知携带旧来源以协调延迟区域任务，以及沿用当前 owner 快照并保护各滚动面的全量恢复。
  * 模块边界：该模块不发现候选、不请求翻译也不生成译文 HTML；自动应用外壳许可随状态保存并在提交、修复和独立观察时向核心复验；runtime 负责会话编排，renderer 负责内容创建，本文件仅拥有 DOM 状态与可逆样式资源，重挂时撤下旧译文尺寸隔离并同步可信模板，避免跨 session 误删新结果。
  */
 import {getTranslatableControlValueAttribute, isTranslationTooltip} from "@/src/core/translation/dom";
@@ -9,6 +9,9 @@ import {isIdentifierLikeText, isTranslationTextNodeProtected} from "@/src/core/t
 import {clearTranslationFailedHost} from "@/src/features/full-page-translation/core/hostMarkers";
 import {withFullPageRestorationAnchors} from './viewportStability';
 import {disableBilingualRenderingContainment} from './renderingContainment';
+import {isPreparedManpageParagraph} from '@/src/core/translation/manpage';
+import {alignManpageTranslation} from './manpageLayout';
+import {alignInsideListTranslation} from './insideListLayout';
 import {
     hasTranslationHeightOverflow,
     isTranslationHeightBoundary,
@@ -480,7 +483,19 @@ export function getTranslationState(node: HTMLElement): TranslationState | undef
 
 /** 将文本槽候选映射回持有翻译状态的祖先；普通候选仍直接使用自身节点。 */
 export function resolveTranslationStateNode(candidate: TranslationCandidate): HTMLElement | null {
-    if (!candidate.nodes?.length) return candidate.element;
+    if (!candidate.nodes?.length) {
+        // 纯文本 flex/grid 的原候选仍以父元素为键；只认唯一直属且有真实状态的自有段，
+        // 使失败重试和重复触发能找到同一代，不能按宿主伪造的公开标记寻找任意后代。
+        const child = candidate.element.childNodes.length === 1 ? candidate.element.firstChild : null;
+        if (child?.nodeType === 1) {
+            const segment = child as HTMLElement;
+            const state = states.get(segment);
+            if (state?.syntheticSegment && state.syntheticHost === candidate.element &&
+                state.kind === candidate.kind && state.scope === candidate.scope &&
+                segment.matches('.fluent-read-source-line[data-fr-translation-segment="true"]')) return segment;
+        }
+        return candidate.element;
+    }
     let current = candidate.nodes[0]?.parentElement ?? null;
     while (current) {
         if (current.matches('[data-fr-translation-segment="true"]') && states.has(current)) return current;
@@ -1076,17 +1091,44 @@ function releaseReboundBilingualRendering(content: HTMLElement, state: Translati
     state.bilingualContentTemplate = template;
 }
 
-/** 外观规则即将改变时撤下本页的旧尺寸记忆；保留工件信任、译文及请求代次。 */
+/** 仅重新度量已提交的手册或列表工件，并同步可信模板；宿主篡改不能借布局复核升级信任。 */
+function refreshBilingualSourceLayout(owner: HTMLElement, state: TranslationState): void {
+    if ((!isPreparedManpageParagraph(owner) && owner.localName !== 'li') || state.phase !== 'translated' ||
+        state.mode !== 'bilingual' || state.kind !== 'content' ||
+        !isOwnedBilingualArtifactAttached(owner, state)) return;
+    const content = state.bilingualContent!;
+    if (bilingualArtifactTrust(content, state) === 'tampered') return;
+    const layoutAttributes = ['style', 'data-fr-inside-list-layout', 'data-fr-inside-list-inset', 'data-fr-inside-list-source-size'];
+    const before = layoutAttributes.map(name => content.getAttribute(name));
+    alignManpageTranslation(owner, content);
+    alignInsideListTranslation(owner, content);
+    if (layoutAttributes.every((name, index) => content.getAttribute(name) === before[index])) return;
+    disableBilingualRenderingContainment(content);
+    const template = state.bilingualContentTemplate!.cloneNode(true) as HTMLElement;
+    for (const name of layoutAttributes) {
+        const value = content.getAttribute(name);
+        if (value === null) template.removeAttribute(name);
+        else template.setAttribute(name, value);
+    }
+    template.removeAttribute('data-fr-rendering-contained');
+    state.bilingualContentTemplate = template;
+    state.bilingualOuterHTML = content.outerHTML;
+    layoutStyleVersion += 1;
+}
+
+/** 外观规则改变前撤下旧尺寸记忆，并在 CSS 更新后复核手册和列表布局；保留译文及请求代次。 */
 export function releaseDocumentBilingualRenderingContainment(document: Document): void {
     forEachActiveNode((owner, state) => {
         const content = state.bilingualContent;
         if (owner.ownerDocument !== document || state.phase !== 'translated' ||
             state.mode !== 'bilingual' || state.kind !== 'content' || !content ||
-            content.getAttribute('data-fr-rendering-contained') !== 'true' ||
             !isOwnedBilingualArtifactAttached(owner, state) ||
             bilingualArtifactTrust(content, state) === 'tampered') return;
-        releaseReboundBilingualRendering(content, state);
-        state.bilingualOuterHTML = content.outerHTML;
+        if (content.getAttribute('data-fr-rendering-contained') === 'true') {
+            releaseReboundBilingualRendering(content, state);
+            state.bilingualOuterHTML = content.outerHTML;
+        }
+        if (isPreparedManpageParagraph(owner) || owner.localName === 'li') scheduleTranslationLayoutRefresh(owner);
     });
 }
 
@@ -1755,6 +1797,7 @@ export function ensureTranslationTruncationLayout(
 ): boolean {
     const state = states.get(owner);
     if (!state || !owner.isConnected) return false;
+    refreshBilingualSourceLayout(owner, state);
     synchronizeTranslationLayoutMeasurements(measurements);
 
     const ancestors = translationLayoutAncestorChain(owner);

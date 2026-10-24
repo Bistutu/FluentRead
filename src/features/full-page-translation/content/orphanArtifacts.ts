@@ -1,7 +1,7 @@
 /**
  * @file src/features/full-page-translation/content/orphanArtifacts.ts
  * 文件职责：清理宿主 clone/remount 后失去状态所有权的 FluentRead 轻 DOM 产物，并保住仅译文模式中的宿主原文。
- * 主要内容：移除直属双语/loading/retry 孤儿，恢复全文原文及篇章证据后清理旧版标记并解包合成段落，解包 single-slot 的 light DOM 文本，排除译文产物判定同源重挂，并跳过仍由活动 WeakMap 状态管理的真实产物。
+ * 主要内容：以完整的手册反馈外框为单位移除直属双语/loading/retry 孤儿，避免把活跃反馈内部节点误当无主 owner；恢复全文原文及篇章证据后清理旧版标记并解包合成段落，解包 single-slot 的 light DOM 文本，排除译文产物判定同源重挂，并跳过仍由活动 WeakMap 状态管理的真实产物。
  * 模块边界：本文件处理原文恢复和明确带 FluentRead owned 标记的孤儿 DOM，不发现候选、不发请求，也不删除仅凭同名 class 无法证明所有权的宿主节点。
  */
 import {
@@ -15,10 +15,12 @@ import {clearTranslationFailedHost} from '../core/hostMarkers';
 export {unwrapUnownedSingleTextSlots as normalizeOrphanedSingleSlots}
     from '@/src/features/full-page-translation/content/state';
 
+const MANPAGE_FEEDBACK_SELECTOR = '.fluent-read-manpage-feedback[data-fr-translation-owned="true"]';
 const REMOVABLE_ORPHAN_ARTIFACT_SELECTOR = [
     '.fluent-read-bilingual-content[data-fr-translation-owned="true"]',
     '.fluent-read-loading[data-fr-translation-owned="true"]',
     '.fluent-read-retry-wrapper[data-fr-translation-owned="true"]',
+    MANPAGE_FEEDBACK_SELECTOR,
 ].join(',');
 const normalizedOwnerClassMutations = new WeakSet<HTMLElement>();
 const OWNED_ARTIFACT_SELECTOR = '[data-fr-translation-owned="true"]';
@@ -51,11 +53,28 @@ function normalizedNodeText(node: Node): string {
     return clone.textContent!;
 }
 
+/** 只合并明确的手册反馈外框；任意宿主 owned 标记不能成为阻止孤儿清理的边界。 */
+function completeFeedbackArtifact(artifact: Element): Element {
+    let feedback = artifact.closest(MANPAGE_FEEDBACK_SELECTOR);
+    if (!feedback) return artifact;
+    for (let outer = feedback.parentElement?.closest(MANPAGE_FEEDBACK_SELECTOR); outer; outer = feedback.parentElement?.closest(MANPAGE_FEEDBACK_SELECTOR)) {
+        feedback = outer;
+    }
+    return feedback;
+}
+
 /** 清理一个没有活动状态、但仍携带直属扩展产物的克隆 owner。 */
 export function normalizeOrphanedTranslationOwner(node: HTMLElement): void {
     if (getTranslationState(node)) return;
+    const feedback = completeFeedbackArtifact(node);
+    if (feedback !== node || node.matches(MANPAGE_FEEDBACK_SELECTOR)) {
+        // dirty root 可以直接指向内层 loading/retry；所有权始终属于完整外框的实际父节点。
+        const owner = asHTMLElement(feedback.parentElement);
+        if (owner) normalizeOrphanedTranslationOwner(owner);
+        return;
+    }
     const orphaned = Array.from(node.children).filter((child) =>
-        child.matches(REMOVABLE_ORPHAN_ARTIFACT_SELECTOR));
+        child.matches(REMOVABLE_ORPHAN_ARTIFACT_SELECTOR) && !getTranslationState(child as HTMLElement));
     if (orphaned.length === 0) return;
 
     orphaned.forEach((child) => child.remove());
@@ -99,7 +118,7 @@ export function isTextEquivalentHostReplacement(mutation: MutationRecord): boole
 export function normalizeOrphanedTranslationArtifacts(root: Node): void {
     const owners = new Set<HTMLElement>();
     queryElements(root, REMOVABLE_ORPHAN_ARTIFACT_SELECTOR).forEach((artifact) => {
-        const owner = asHTMLElement(artifact.parentElement);
+        const owner = asHTMLElement(completeFeedbackArtifact(artifact).parentElement);
         if (owner) owners.add(owner);
     });
     owners.forEach(normalizeOrphanedTranslationOwner);
@@ -111,7 +130,15 @@ export function clearOrphanedTranslationArtifacts(root: Node): void {
     if (typeof queryRoot.querySelectorAll !== 'function') return;
     unwrapUnownedSingleTextSlots(root);
     const orphanOwners = new Set<Element>();
-    queryRoot.querySelectorAll(OWNED_ARTIFACT_SELECTOR).forEach((element) => {
+    const artifacts = new Set<Element>();
+    // 只把明确可移除工件自身纳入 root 清理，不扩大到任意带 owned 属性的宿主根。
+    if (root.nodeType === 1 && (root as Element).matches(REMOVABLE_ORPHAN_ARTIFACT_SELECTOR)) {
+        artifacts.add(completeFeedbackArtifact(root as Element));
+    }
+    queryRoot.querySelectorAll(OWNED_ARTIFACT_SELECTOR).forEach(element => artifacts.add(completeFeedbackArtifact(element)));
+    artifacts.forEach((element) => {
+        // 宿主给真实 owner 复制反馈 class/owned 属性，也不能越过 WeakMap 状态删除原文。
+        if (getTranslationState(element as HTMLElement)) return;
         const owner = element.parentElement;
         const htmlOwner = asHTMLElement(owner);
         if (htmlOwner && getTranslationState(htmlOwner)) return;

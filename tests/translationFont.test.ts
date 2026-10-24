@@ -174,7 +174,11 @@ describe('译文节点字体渲染', () => {
 
     it('英文原文、缺少原文与同语言译文都不写入字体样式', () => {
         const document = fixture('<p id="english">Hello</p><p id="missing">Hello</p>');
-        const computedStyle = vi.fn(() => ({fontFamily: 'Georgia, serif'}));
+        const readFontFamily = vi.fn(() => 'Georgia, serif');
+        const computedStyle = vi.fn(() => ({
+            display: 'block', cssFloat: 'none', tableLayout: 'auto',
+            get fontFamily() { return readFontFamily(); },
+        }));
         (document.defaultView as unknown as Record<string, unknown>).getComputedStyle = computedStyle;
         const english = document.querySelector<HTMLElement>('#english')!;
         const missing = document.querySelector<HTMLElement>('#missing')!;
@@ -189,8 +193,8 @@ describe('译文节点字体渲染', () => {
 
         expect(englishContent.getAttribute('style')).toBeNull();
         expect(missingContent.getAttribute('style')).toBeNull();
-        // 无需改写字体时不读取宿主计算样式，避免逐段提交触发同步样式重算。
-        expect(computedStyle).not.toHaveBeenCalled();
+        // 字体策略无需改字族时不读取 fontFamily；布局模块仍可读取 display/float/tableLayout。
+        expect(readFontFamily).not.toHaveBeenCalled();
     });
 
     it('仅译文模式的文本槽同样改用目标书写体系的字体', () => {

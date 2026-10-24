@@ -1,7 +1,7 @@
 /**
  * @file src/features/full-page-translation/ui/translationIndicators.ts
  * 文件职责：创建全文翻译过程中插入原页面的加载指示器和失败重试提示，并将错误详情转换为页面通知或可操作的重试控件。
- * 主要内容：提供 insertLoadingSpinner 与 insertFailedTip，组装 FluentRead 专属 DOM、完整点击区和按宿主语义启用的键盘操作控件；受控重试由队列接管后才清理反馈，避免先移除控件的宿主观察记录撤销排队意图；隔离宿主链接导航，并使用内置或动态自定义服务名称生成错误文案。
+ * 主要内容：提供 insertLoadingSpinner 与 insertFailedTip，组装 FluentRead 专属 DOM、完整点击区和按宿主语义启用的键盘操作控件；受信 man7 段的临时反馈用自有块包装，避免加载或失败时挤动下一段首行；受控重试由队列接管后才清理反馈，避免先移除控件的宿主观察记录撤销排队意图；隔离宿主链接导航，并使用内置或动态自定义服务名称生成错误文案。
  * 模块边界：本文件不发起翻译、不判断候选，也不持有 session；重试回调由 runtime 注入，节点生命周期由 state 管理，全局页面通知通过 page-notice 公共接口显示。
  */
 // 全文翻译节点中的加载与失败反馈。
@@ -16,6 +16,7 @@ import {
   markTranslationFailedHost,
 } from '@/src/features/full-page-translation/core/hostMarkers';
 import {normalizeUiLanguage, translate} from '@/src/core/i18n';
+import {isPreparedManpageParagraph} from '@/src/core/translation/manpage';
 import {
   createTranslationLoadingIndicator,
   shouldAnimateTranslationLoading,
@@ -51,6 +52,17 @@ const INTERACTIVE_HOST_SELECTOR = [
   '[role="treeitem"]',
 ].join(',');
 
+/** 手册相邻说明段共用 PRE 的行内流；反馈独占一行，避免短暂挤动下一段首字。 */
+function containManpageFeedback(node: HTMLElement, feedback: HTMLElement): HTMLElement {
+  if (!isPreparedManpageParagraph(node)) return feedback;
+  const block = node.ownerDocument.createElement('span');
+  block.className = 'fluent-read-manpage-feedback';
+  block.setAttribute('data-fr-translation-owned', 'true');
+  block.style.setProperty('display', 'block', 'important');
+  block.appendChild(feedback);
+  return block;
+}
+
 // 插入失败提示并处理错误
 export function insertFailedTip(
   node: HTMLElement,
@@ -63,6 +75,7 @@ export function insertFailedTip(
   const wrapper = document.createElement("span");
   wrapper.classList.add("fluent-read-retry-wrapper");
   wrapper.setAttribute("data-fr-translation-owned", "true");
+  const feedback = containManpageFeedback(node, wrapper);
   wrapper.setAttribute("role", "group");
   const language = normalizeUiLanguage(config.uiLanguage);
   wrapper.setAttribute("aria-label", translate('content.translationFailedActions', language));
@@ -76,7 +89,7 @@ export function insertFailedTip(
     icon.retry,
     contextInvalidated
       ? handleInvalidatedRetryClick(errMsg)
-      : handleRetryClick(node, wrapper, onRetry),
+      : handleRetryClick(node, feedback, onRetry),
     keyboardAccessible,
   );
 
@@ -94,8 +107,8 @@ export function insertFailedTip(
 
   // 将所有元素批量添加到 wrapper
   wrapper.append(retryBtn, errorTip);
-  node.appendChild(wrapper);
-  return wrapper;
+  node.appendChild(feedback);
+  return feedback;
 }
 
 function isExtensionContextInvalidated(message: string): boolean {
@@ -203,6 +216,7 @@ export function insertLoadingSpinner(
     cacheHit: isCache,
   });
   spinner.setAttribute("data-fr-translation-owned", "true");
-  node.appendChild(spinner);
-  return spinner;
+  const feedback = containManpageFeedback(node, spinner);
+  node.appendChild(feedback);
+  return feedback;
 }

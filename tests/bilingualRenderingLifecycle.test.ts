@@ -1,4 +1,5 @@
 import {parseHTML} from 'linkedom';
+import {registerManpagePreparation, unregisterManpagePreparation} from '@/src/core/translation/manpage';
 import {describe, expect, it, vi} from 'vitest';
 
 vi.mock('@/src/services/config/store', () => ({config: {style: 1, to: 'zh-Hans'}}));
@@ -16,6 +17,7 @@ import {
 } from '@/src/features/full-page-translation/content/renderer';
 import {
     beginTranslation,
+    ensureTranslationTruncationLayout,
     getTranslationOwnersForIndexedNode,
     getTranslationState,
     hasBilingualArtifactHostWriteBudget,
@@ -175,7 +177,7 @@ function supportedLayout(document: Document) {
             Object.defineProperties(element, {
                 clientWidth: {value: 640}, clientHeight: {value: 120},
                 scrollWidth: {value: 640}, scrollHeight: {value: 120},
-                getBoundingClientRect: {value: () => ({x: 0, y: 8000, width: 640, height: 120})},
+                getBoundingClientRect: {value: () => ({x: 0, y: 8000, left: 0, right: 640, top: 8000, bottom: 8120, width: 640, height: 120})},
             });
         }
         return element;
@@ -513,6 +515,330 @@ describe('外观同步与重挂撤下旧译文尺寸', () => {
             expect(isTranslationArtifactCurrent(replacement, state)).toBe(true);
             expectRestored({...fixture, owner: replacement, state, content, sourceChildren,
                 code, codeText, codeHTML, sourceNodes});
+        });
+    });
+});
+
+
+describe('man7 双语渲染的换行生命周期', () => {
+    it('append 与 refresh 折叠手册硬断行，保留行内链接和原文节点', async () => {
+        await withDocumentRealm(document => {
+            const base = document.createElement('base');
+            base.setAttribute('href', 'https://example.com/');
+            document.head.appendChild(base);
+            document.body.innerHTML = '<pre><span id="manual">       Original explanation.\n       Continuation remains unchanged.\n</span></pre>';
+            const owner = document.querySelector<HTMLElement>('#manual')!;
+            const pre = owner.parentElement!;
+            const source = owner.firstChild!;
+            const original = source.nodeValue;
+            registerManpagePreparation(pre, [owner]);
+            try {
+                const content = appendBilingualTranslation(owner, '译文第一部分<br><a href="https://example.com/">链接</a>\n第二部分', {longParagraphLineBreak: false});
+                expect(content.style.whiteSpace).toBe('normal');
+                expect(content.querySelector('br')).toBeNull();
+                expect(content.textContent).toBe('译文第一部分 链接\n第二部分');
+                expect(content.querySelector('a')!.getAttribute('href')).toBe('https://example.com/');
+                const refreshed = refreshBilingualTranslation(owner, content, '更新译文<br>后续文字', {longParagraphLineBreak: false});
+                expect(refreshed).toBe(content);
+                expect(refreshed.querySelector('br')).toBeNull();
+                expect(refreshed.textContent).toBe('更新译文 后续文字');
+                expect(owner.firstChild).toBe(source);
+                expect(source.nodeValue).toBe(original);
+                expect(owner.querySelectorAll('.fluent-read-bilingual-content')).toHaveLength(1);
+                content.remove();
+                expect(owner.textContent).toBe(original);
+            } finally { unregisterManpagePreparation(pre, [owner]); }
+        });
+    });
+
+    it('译文前置保留显式长段落按句换行选项', async () => {
+        await withDocumentRealm(document => {
+            document.body.innerHTML = '<pre><span id="manual">       Original manual explanation.\n</span></pre>';
+            const owner = document.querySelector<HTMLElement>('#manual')!;
+            const pre = owner.parentElement!;
+            const source = owner.firstChild;
+            registerManpagePreparation(pre, [owner]);
+            try {
+                const content = appendBilingualTranslation(owner, '这是一段用于验证显式按句换行开关的较长译文。'.repeat(8),
+                    {longParagraphLineBreak: true, translationBeforeOriginal: true});
+                expect(owner.firstChild).toBe(content);
+                expect(content.querySelectorAll('br').length).toBeGreaterThan(0);
+                expect(source!.parentNode).toBe(owner);
+                expect(content.style.whiteSpace).toBe('normal');
+            } finally { unregisterManpagePreparation(pre, [owner]); }
+        });
+    });
+});
+
+
+/** 只替代浏览器字形度量，实际 renderer、活动状态、外观同步与 resize 观察器仍走生产入口。 */
+function committedManpageFixture(document: Document, beforeOriginal = false, marker = false) {
+    document.body.innerHTML = '<pre><span id="manual">       Original explanation continues.\n       Continuation remains unchanged.\n</span></pre>';
+    const owner = document.querySelector<HTMLElement>('#manual')!;
+    const pre = owner.parentElement!;
+    const source = owner.firstChild as Text;
+    const sourceHTML = owner.innerHTML;
+    const sourceColumns = source.data.split('\n')[0]!.length;
+    registerManpagePreparation(pre, [owner]);
+    const layout = supportedLayout(document);
+    let sourceAdvance = 10;
+    const originalComputedStyle = layout.getComputedStyle.getMockImplementation()!;
+    layout.getComputedStyle.mockImplementation((element: HTMLElement) => ({
+        ...originalComputedStyle(element), borderLeftWidth: '0px',
+        paddingLeft: element.classList.contains('fluent-read-translation-text')
+            ? `${8 * Number(document.getElementById(TRANSLATION_APPEARANCE_STYLE_ID)?.textContent?.match(/font-size: (\d+)%/u)?.[1] ?? 100) / 100}px` : '0px',
+    }));
+    Object.defineProperty(pre, 'getBoundingClientRect', {configurable: true,
+        value: () => ({left: 0, right: 640, top: 0, bottom: 100, width: 640, height: 100})});
+    const rangeDescriptor = Object.getOwnPropertyDescriptor(document, 'createRange');
+    Object.defineProperty(document, 'createRange', {configurable: true, value: () => {
+        let text: Text, offset: number;
+        return {
+            setStart(node: Text, start: number) {text = node; offset = start;}, setEnd() {},
+            getBoundingClientRect() {
+                const prefix = text.data.slice(0, offset);
+                const column = prefix.length - prefix.lastIndexOf('\n') - 1;
+                return {left: column * sourceAdvance, right: (column + 1) * sourceAdvance, width: sourceAdvance, height: 16};
+            },
+        };
+    }});
+    const attempt = beginTranslation(owner, 'bilingual', 'content', false, source.data, [source])!;
+    markTranslationComplete(owner, attempt.state, attempt.generation);
+    const content = appendBilingualTranslation(owner,
+        marker ? '<span>这是带逐行标记的手册译文。</span>' : '这是手册译文。',
+        {translationBeforeOriginal: beforeOriginal, longParagraphLineBreak: false});
+    if (marker) content.firstElementChild!.className = 'fluent-read-translation-text';
+    setBilingualContent(owner, content);
+    setRenderedStyleAttribute(owner);
+    ensureTranslationTruncationLayout(owner);
+    let restored = false;
+    return {owner, pre, source, sourceHTML, sourceColumns, content, state: attempt.state, generation: attempt.generation,
+        setSourceAdvance(value: number) {sourceAdvance = value;},
+        restore() {
+            if (restored) return;
+            restored = true;
+            restoreTranslation(owner);
+            unregisterManpagePreparation(pre, [owner]);
+            layout.restore();
+            if (rangeDescriptor) Object.defineProperty(document, 'createRange', rangeDescriptor);
+            else Reflect.deleteProperty(document, 'createRange');
+        },
+    };
+}
+
+function expectManpageSnapshot(fixture: ReturnType<typeof committedManpageFixture>, padding: number, width: number) {
+    const content = fixture.state.bilingualContent!;
+    expect(content.style.getPropertyValue('padding-left')).toBe(`${padding}px`);
+    expect(content.style.getPropertyValue('max-width')).toBe(`${width}px`);
+    expect(fixture.state.bilingualContentTemplate!.getAttribute('style')).toBe(content.getAttribute('style'));
+    expect(fixture.state.bilingualOuterHTML).toBe(content.outerHTML);
+    expect(isTrustedBilingualArtifactWithHostClass(content, fixture.state)).toBe(true);
+    expect(fixture.state.generation).toBe(fixture.generation);
+    expect(fixture.state.phase).toBe('translated');
+    expect(getTranslationState(fixture.owner)).toBe(fixture.state);
+}
+
+// 多轮微任务包括既有观察器和合并后的布局复核，不依赖计时器或真实字体安装。
+async function flushLayoutCheckpoint(): Promise<void> {
+    for (let index = 0; index < 6; index++) await Promise.resolve();
+}
+
+describe('man7 已提交译文的持续布局复核', () => {
+    it.each([false, true])('源字形变化后由 resize 更新缩进与栏宽，并保持译文位置及精确恢复：before=%s', async before => {
+        await withDocumentRealm(async document => {
+            const fixture = committedManpageFixture(document, before);
+            try {
+                expectManpageSnapshot(fixture, 70, fixture.sourceColumns * 10);
+                const source = fixture.source;
+                const originalTemplate = fixture.state.bilingualContentTemplate!;
+                const originalTemplateHTML = originalTemplate.outerHTML;
+                fixture.setSourceAdvance(14);
+                document.defaultView!.dispatchEvent(new document.defaultView!.Event('resize'));
+                await flushLayoutCheckpoint();
+                expectManpageSnapshot(fixture, 98, fixture.sourceColumns * 14);
+                expect(originalTemplate.outerHTML).toBe(originalTemplateHTML);
+                expect(fixture.owner.firstChild === fixture.content).toBe(before);
+                expect(fixture.source).toBe(source);
+                expect(fixture.source.data).toBe(fixture.sourceHTML);
+                expectOrdinaryRendering(fixture.content);
+                fixture.restore();
+                expect(fixture.owner.innerHTML).toBe(fixture.sourceHTML);
+                expect(fixture.owner.firstChild).toBe(source);
+            } finally { fixture.restore(); }
+        });
+    });
+
+    it('无屏外隔离时字号外观更新仍在新 CSS 生效后重算逐行标记留白，不重新请求或改动原文', async () => {
+        await withDocumentRealm(async document => {
+            const fixture = committedManpageFixture(document, false, true);
+            try {
+                expectManpageSnapshot(fixture, 62, fixture.sourceColumns * 10);
+                expectOrdinaryRendering(fixture.content);
+                const source = fixture.source;
+                const contentChildren = [...fixture.content.childNodes];
+                const controller = fixture.state.controller;
+                syncTranslationAppearanceStyles(document, {fontScale: 150});
+                expect(document.getElementById(TRANSLATION_APPEARANCE_STYLE_ID)!.textContent)
+                    .toContain('font-size: 150% !important');
+                await flushLayoutCheckpoint();
+                expectManpageSnapshot(fixture, 58, fixture.sourceColumns * 10);
+                expect([...fixture.content.childNodes]).toEqual(contentChildren);
+                expect(fixture.state.controller).toBe(controller);
+                expect(controller.signal.aborted).toBe(false);
+                expect(fixture.source).toBe(source);
+                expect(source.data).toBe(fixture.sourceHTML);
+                syncTranslationAppearanceStyles(document, null);
+                await flushLayoutCheckpoint();
+                expectManpageSnapshot(fixture, 62, fixture.sourceColumns * 10);
+            } finally { fixture.restore(); }
+        });
+    });
+
+    it('可信克隆重挂后按当前源字形更新布局，旧工件及模板保持不变', async () => {
+        await withDocumentRealm(document => {
+            const fixture = committedManpageFixture(document, true);
+            try {
+                const oldContent = fixture.content;
+                const oldHTML = oldContent.outerHTML;
+                const clone = oldContent.cloneNode(true) as HTMLElement;
+                oldContent.replaceWith(clone);
+                expect(tryRepairBilingualTranslationArtifact(fixture.owner, fixture.state)).toBe('repaired');
+                fixture.setSourceAdvance(12);
+                ensureTranslationTruncationLayout(fixture.owner);
+                expectManpageSnapshot(fixture, 84, fixture.sourceColumns * 12);
+                expect(fixture.state.bilingualContent).toBe(clone);
+                expect(fixture.owner.firstChild).toBe(clone);
+                expect(oldContent.outerHTML).toBe(oldHTML);
+            } finally { fixture.restore(); }
+        });
+    });
+
+    it('布局复核不会把宿主篡改的译文或外层样式升级成可信模板', async () => {
+        await withDocumentRealm(document => {
+            const fixture = committedManpageFixture(document);
+            try {
+                const template = fixture.state.bilingualContentTemplate!;
+                const templateHTML = template.outerHTML;
+                fixture.content.textContent = '宿主篡改译文';
+                fixture.content.style.setProperty('padding-left', '999px');
+                fixture.setSourceAdvance(12);
+                ensureTranslationTruncationLayout(fixture.owner);
+                expect(fixture.state.bilingualContentTemplate).toBe(template);
+                expect(template.outerHTML).toBe(templateHTML);
+                expect(fixture.content.style.getPropertyValue('padding-left')).toBe('999px');
+                expect(isTrustedBilingualArtifactWithHostClass(fixture.content, fixture.state)).toBe(false);
+            } finally { fixture.restore(); }
+        });
+    });
+});
+
+/** 浏览器负责 inside marker 的原生字形，fixture 仅给初始源字形留出可重复的原生标记宽度。 */
+function insideListFixture(document: Document, beforeOriginal: boolean, inside = true) {
+    document.body.innerHTML = '<ul><li id="item">Original list explanation remains readable.</li><li id="neighbor">A neighboring item is unchanged.</li></ul>';
+    const owner = document.querySelector<HTMLElement>('#item')!;
+    const source = owner.firstChild as Text;
+    const sourceHTML = owner.innerHTML;
+    const neighborHTML = document.querySelector('#neighbor')!.outerHTML;
+    const layout = supportedLayout(document);
+    const originalComputedStyle = layout.getComputedStyle.getMockImplementation()!;
+    let sourceFontSize = 16;
+    layout.getComputedStyle.mockImplementation((element: HTMLElement) => ({
+        ...originalComputedStyle(element), display: element === owner ? 'list-item' : 'block',
+        listStylePosition: inside ? 'inside' : 'outside', direction: 'ltr',
+        fontSize: `${sourceFontSize * (element === owner ? 1 : Number(document.getElementById(TRANSLATION_APPEARANCE_STYLE_ID)?.textContent?.match(/font-size: (\d+)%/u)?.[1] ?? 100) / 100)}px`,
+        paddingLeft: '0px', paddingRight: '0px', borderLeftWidth: '0px', borderRightWidth: '0px',
+    }));
+    Object.defineProperty(owner, 'getBoundingClientRect', {configurable: true,
+        value: () => ({left: 0, right: 640, top: 0, bottom: 60, width: 640, height: 60})});
+    const descriptor = Object.getOwnPropertyDescriptor(document, 'createRange');
+    Object.defineProperty(document, 'createRange', {configurable: true, value: () => ({
+        setStart() {}, setEnd() {}, getBoundingClientRect: () => ({left: 24, right: 32, width: 8, height: 16}),
+    })});
+    const attempt = beginTranslation(owner, 'bilingual', 'content', false, source.data, [source])!;
+    markTranslationComplete(owner, attempt.state, attempt.generation);
+    const content = appendBilingualTranslation(owner, '这是一段前置的列表译文。', {translationBeforeOriginal: beforeOriginal});
+    setBilingualContent(owner, content);
+    setRenderedStyleAttribute(owner);
+    return {owner, source, sourceHTML, neighborHTML, content, state: attempt.state,
+        setSourceFontSize(value: number) {sourceFontSize = value;},
+        restore() {
+            restoreTranslation(owner);
+            layout.restore();
+            if (descriptor) Object.defineProperty(document, 'createRange', descriptor);
+            else Reflect.deleteProperty(document, 'createRange');
+        },
+    };
+}
+
+describe('inside 列表前置译文的真实渲染接线', () => {
+    it('factory 与 refresh 保持原生标记同行的整体译文盒，并精确恢复原 Text 与邻项', async () => {
+        await withDocumentRealm(document => {
+            const fixture = insideListFixture(document, true);
+            try {
+                expect(fixture.owner.firstChild).toBe(fixture.content);
+                expect(fixture.content.style.getPropertyValue('display')).toBe('inline-block');
+                expect(fixture.content.style.getPropertyValue('inline-size')).toBe('calc(100% - 24px)');
+                expect(fixture.content.style.getPropertyValue('box-sizing')).toBe('border-box');
+                expect(fixture.source.parentNode).toBe(fixture.owner);
+                expect(fixture.source.data).toBe(fixture.sourceHTML);
+                const refreshed = refreshBilingualTranslation(fixture.owner, fixture.content, '这是刷新后的列表译文。',
+                    {translationBeforeOriginal: true});
+                setBilingualContent(fixture.owner, refreshed);
+                setRenderedStyleAttribute(fixture.owner);
+                expect(refreshed).toBe(fixture.content);
+                expect(refreshed.style.getPropertyValue('display')).toBe('inline-block');
+                expect(refreshed.style.getPropertyValue('inline-size')).toBe('calc(100% - 24px)');
+                expect(isTranslationArtifactCurrent(fixture.owner, fixture.state)).toBe(true);
+                expect(fixture.owner.querySelectorAll(OWNED_WRAPPER)).toHaveLength(1);
+                expect(document.querySelector('#neighbor')!.outerHTML).toBe(fixture.neighborHTML);
+                expect(restoreTranslation(fixture.owner)).toBe(true);
+                expect(fixture.owner.innerHTML).toBe(fixture.sourceHTML);
+                expect(fixture.owner.firstChild).toBe(fixture.source);
+            } finally { fixture.restore(); }
+        });
+    });
+
+    it('源字号复核同步marker占位及精确metadata快照，目标字号仅改变译文不改变原生marker间隔', async () => {
+        await withDocumentRealm(async document => {
+            const fixture = insideListFixture(document, true);
+            try {
+                const previousTemplate = fixture.state.bilingualContentTemplate!;
+                const previousTemplateHTML = previousTemplate.outerHTML;
+                const source = fixture.source;
+                fixture.setSourceFontSize(20);
+                expect(ensureTranslationTruncationLayout(fixture.owner)).toBe(true);
+                expect(fixture.content.style.getPropertyValue('inline-size')).toBe('calc(100% - 30px)');
+                expect(fixture.content.getAttribute('data-fr-inside-list-inset')).toBe('30');
+                expect(fixture.content.getAttribute('data-fr-inside-list-source-size')).toBe('20');
+                for (const attribute of ['style', 'data-fr-inside-list-layout', 'data-fr-inside-list-inset', 'data-fr-inside-list-source-size']) {
+                    expect(fixture.state.bilingualContentTemplate!.getAttribute(attribute)).toBe(fixture.content.getAttribute(attribute));
+                }
+                expect(fixture.state.bilingualOuterHTML).toBe(fixture.content.outerHTML);
+                expect(isTranslationArtifactCurrent(fixture.owner, fixture.state)).toBe(true);
+                expect(previousTemplate.outerHTML).toBe(previousTemplateHTML);
+                syncTranslationAppearanceStyles(document, {fontScale: 150});
+                await flushLayoutCheckpoint();
+                expect(fixture.content.style.getPropertyValue('inline-size')).toBe('calc(100% - 30px)');
+                expect(fixture.content.getAttribute('data-fr-inside-list-inset')).toBe('30');
+                expect(fixture.content.getAttribute('data-fr-inside-list-source-size')).toBe('20');
+                expect(isTranslationArtifactCurrent(fixture.owner, fixture.state)).toBe(true);
+                expect(fixture.source).toBe(source);
+                expect(source.data).toBe(fixture.sourceHTML);
+                expect(document.querySelector('#neighbor')!.outerHTML).toBe(fixture.neighborHTML);
+            } finally { fixture.restore(); }
+        });
+    });
+
+    it.each([[false, true], [true, false]])('后置译文或outside标记维持普通渲染：before=%s inside=%s', async (before, inside) => {
+        await withDocumentRealm(document => {
+            const fixture = insideListFixture(document, before, inside);
+            try {
+                expect(fixture.owner.firstChild === fixture.content).toBe(before);
+                expect(fixture.content.style.getPropertyValue('display')).toBeFalsy();
+                expect(fixture.content.style.getPropertyValue('inline-size')).toBeFalsy();
+                expect(fixture.source.parentNode).toBe(fixture.owner);
+                expect(isTranslationArtifactCurrent(fixture.owner, fixture.state)).toBe(true);
+            } finally { fixture.restore(); }
         });
     });
 });
