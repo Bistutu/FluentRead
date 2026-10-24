@@ -817,6 +817,7 @@ export default defineConfig({
                 'src/services/translation/cachePolicyBinding.ts',
                 'src/services/translation/availability.ts',
                 'src/services/translation/cacheManagement.ts',
+                'src/services/translation/cacheRequest.ts',
                 'src/core/config/vision.ts',
                 'src/core/config/visionProbe.ts',
                 'src/core/translation/visionProbeImage.ts',

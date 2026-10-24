@@ -878,6 +878,8 @@ export const enUSMessages = {
     "settings.cache.limitPolicy": "Defaults: {size}, up to {entries} entries. Lowering a limit immediately removes excess cache, starting with the least recently used results (LRU).",
     "settings.cache.readFailed": "Cache usage is unavailable. Select Refresh to try again.",
     "settings.cache.clearFailed": "The cache could not be confirmed as cleared. Select Clear cache to try again.",
+    "settings.cache.clearUnconfirmed": "Cache clearing has not been confirmed yet. Refresh shortly.",
+    "settings.cache.clearedPendingPages": "The background cache has been cleared. Some pages are still syncing.",
     "settings.cache.saveFailed": "Settings could not be saved. Save again or retry the switch.",
     "settings.cache.cleared": "Translation cache cleared.",
     "settings.cache.saved": "Cache settings saved.",

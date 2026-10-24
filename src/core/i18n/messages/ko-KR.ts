@@ -1687,6 +1687,8 @@ export const koKRMessages = {
     "settings.cache.limitPolicy": "기본 용량은 {size}, 최대 {entries}개입니다. 한도를 낮추면 가장 오래 사용하지 않은 결과(LRU)부터 초과 캐시를 즉시 삭제합니다.",
     "settings.cache.readFailed": "캐시 사용량을 확인할 수 없습니다. 새로고침하여 다시 시도하세요.",
     "settings.cache.clearFailed": "캐시 삭제를 확인할 수 없습니다. 캐시 지우기로 다시 시도하세요.",
+    "settings.cache.clearUnconfirmed": "캐시 삭제 결과가 아직 확인되지 않았습니다. 잠시 후 새로고침하세요.",
+    "settings.cache.clearedPendingPages": "백그라운드 캐시는 삭제되었지만 일부 페이지는 아직 동기화 중입니다.",
     "settings.cache.saveFailed": "설정을 저장하지 못했습니다. 다시 저장하거나 스위치를 다시 조작하세요.",
     "settings.cache.cleared": "번역 캐시를 지웠습니다.",
     "settings.cache.saved": "캐시 설정을 저장했습니다.",

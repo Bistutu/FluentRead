@@ -935,6 +935,46 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
   it('缓存失败与暂停均有确定结束状态，失败只显示当前会话通知',async()=>{
     await mount();const error=vi.spyOn(console,'error').mockImplementation(()=>{});runtimeSend.mockResolvedValueOnce({success:false,error:'fixture'});await eventOf(document.querySelector('footer button')!)();expect(state.notice).toBe('缓存清除失败');expect(state.clearingCache).toBe(false);const reply=deferred();runtimeSend.mockReturnValueOnce(reply.promise);const pending=eventOf(document.querySelector('footer button')!)();state.config.on=false;reply.resolve({success:true});await pending;expect(state.clearingCache).toBe(false);expect(state.notice).toBe('全部翻译缓存已清除');error.mockRestore()
   })
+  it.each(['success','failure'] as const)('[cache-recovery] 超时恢复按钮，旧%s回复不覆盖重试且不记录异常',async outcome=>{
+    vi.useFakeTimers({toFake:['setTimeout','clearTimeout','performance']});localized=true;await mount()
+    const error=vi.spyOn(console,'error').mockImplementation(()=>{}),first=deferred(),second=deferred()
+    runtimeSend.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
+    const pending=eventOf(document.querySelector('footer button')!)()
+    await vi.advanceTimersByTimeAsync(14999);expect(state.clearingCache).toBe(true)
+    await vi.advanceTimersByTimeAsync(1);await drain()
+    try{
+      expect(state.clearingCache).toBe(false);expect(state.notice).toBe('暂未确认清除结果，请稍后刷新');expect(error).not.toHaveBeenCalled()
+      const newer=eventOf(document.querySelector('footer button')!)();expect(state.clearingCache).toBe(true)
+      if(outcome==='success')first.resolve({success:true});else first.reject(new Error('late fixture'))
+      await pending;await drain();expect(state.clearingCache).toBe(true);expect(state.notice).toBe('暂未确认清除结果，请稍后刷新')
+      second.resolve({success:true});await newer;expect(state.clearingCache).toBe(false);expect(state.notice).toBe('全部翻译缓存已清除');expect(error).not.toHaveBeenCalled()
+    }finally{error.mockRestore()}
+  })
+  it('[cache-recovery] 已清后台而页面同步未完成时保留准确状态',async()=>{
+    localized=true;await mount();runtimeSend.mockResolvedValueOnce({success:true,invalidationPending:true})
+    await eventOf(document.querySelector('footer button')!)();expect(state.clearingCache).toBe(false)
+    expect(state.notice).toBe('后台缓存已清除，部分页面仍在同步');expect(state.noticeType).toBe('pending');expect(document.querySelector('.notice')!.getAttribute('role')).toBe('status')
+  })
+  it.each(['cached','pagehide','unmount'] as const)('[cache-recovery] %s 立即结束旧清理等待和计时器，迟到错误不影响新会话',async reason=>{
+    vi.useFakeTimers({toFake:['setTimeout','clearTimeout','performance']});await mount()
+    const error=vi.spyOn(console,'error').mockImplementation(()=>{}),first=deferred(),second=deferred()
+    const schedules=vi.spyOn(globalThis,'setTimeout'),releases=vi.spyOn(globalThis,'clearTimeout')
+    runtimeSend.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
+    try{
+      const pending=eventOf(document.querySelector('footer button')!)();await drain()
+      const timers=schedules.mock.results.filter((_,index)=>schedules.mock.calls[index][1]===15000);expect(timers).toHaveLength(1)
+      const cacheTimer=timers[0].value
+      if(reason==='cached')shown.value=false;else if(reason==='pagehide')win.dispatchEvent(new win.Event('pagehide'));else app.unmount()
+      await drain();expect(releases).toHaveBeenCalledWith(cacheTimer);await pending
+      if(reason==='cached'){shown.value=true;await drain()}else if(reason==='pagehide'){win.dispatchEvent(new win.Event('pageshow'));await drain()}
+      const newer=reason==='unmount'?undefined:eventOf(document.querySelector('footer button')!)()
+      first.reject(new Error('late closed fixture'));await drain();expect(error).not.toHaveBeenCalled()
+      if(reason!=='unmount'){
+        expect(state.clearingCache).toBe(true);expect(state.notice).toBe('')
+        second.resolve({success:true});await newer;expect(state.clearingCache).toBe(false);expect(state.notice).toBe('全部翻译缓存已清除')
+      }
+    }finally{error.mockRestore();schedules.mockRestore();releases.mockRestore()}
+  })
   it('赞赏打开不抢新焦点，旧遮罩不能关闭新弹窗；Tab/Escape 保持焦点归属',async()=>{
     await mount();const outsider=document.createElement('button');document.body.appendChild(outsider);const pending=eventOf(document.querySelector('.donation-button')!)();focused=outsider;await pending;expect(focused).toBe(outsider);const oldOverlay=eventOf(document.querySelector('.donation-overlay')!),oldClose=eventOf(document.querySelector('.donation-close')!);oldClose();expect(focused).toBe(outsider);await drain();await eventOf(document.querySelector('.donation-button')!)();await drain();const qr=document.querySelector('.donation-qr-frame')!;eventOf(qr)();await drain();expect(qr.getAttribute('aria-pressed')).toBe('true');eventOf(qr)();await drain();expect(qr.getAttribute('aria-pressed')).toBe('false');const overlay=document.querySelector('.donation-overlay')!;oldOverlay({target:overlay,currentTarget:overlay});expect(state.donationVisible).toBe(true);focused=outsider;const tab=new win.Event('keydown',{cancelable:true});Object.assign(tab,{key:'Tab',shiftKey:false});document.dispatchEvent(tab);expect(focused).toBe(document.querySelector('.donation-close'));const reverse=new win.Event('keydown',{cancelable:true});Object.assign(reverse,{key:'Tab',shiftKey:true});document.dispatchEvent(reverse);expect(focused).toBe(document.querySelector('.donation-kofi'));const escape=new win.Event('keydown',{cancelable:true});Object.assign(escape,{key:'Escape'});document.dispatchEvent(escape);expect(state.donationVisible).toBe(false);expect(focused).toBe(document.querySelector('.donation-button'))
   })

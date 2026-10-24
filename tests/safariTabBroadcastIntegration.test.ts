@@ -24,7 +24,7 @@ vi.mock('@/src/services/personal-corrections/service', () => ({PersonalCorrectio
 import {createConfigImageOcrLanguageStorage, installBrowserConfigStorageBroadcast, installBrowserTabBroadcastRuntime} from '@/src/app/background/configStorageRuntime';
 import {createPersonalCorrectionRuntimeHandlers} from '@/src/app/background/personalCorrectionRuntime';
 import {createConfigStorageReadHandler} from '@/src/app/background/handlers/configStorage';
-import {createTranslationCacheInvalidationBroadcaster} from '@/src/app/background/handlers/translationCache';
+import {createTranslationCacheHandler, createTranslationCacheInvalidationBroadcaster} from '@/src/app/background/handlers/translationCache';
 import {createBrowserVocabularyBookChangedBroadcaster} from '@/src/features/vocabulary/background/handler';
 import {TAB_BROADCAST_SESSION_KEY} from '@/src/app/background/tabBroadcast';
 import {CONFIG_STORAGE_READ_MESSAGE} from '@/src/platform/storage/configStorage';
@@ -168,6 +168,96 @@ describe('真实后台广播工厂共享接收者适配器', () => {
         expect(ports.browser.tabs.query).not.toHaveBeenCalled();
         expect(ports.browser.tabs.sendMessage).not.toHaveBeenCalled();
         dispose();
+    });
+});
+
+describe('真实共享广播挂起时的缓存清理回复', () => {
+    beforeEach(() => {vi.useFakeTimers();});
+    afterEach(() => {
+        expect(vi.getTimerCount()).toBe(0);
+        vi.useRealTimers();
+    });
+
+    it.each(['chrome', 'safari'])('%s 挂起投递只占用1000毫秒，其他页面立即收到失效且迟到完成不再回复', async browserName => {
+        let finish!: () => void;
+        const delivery = new Promise<void>(resolve => {finish = resolve;});
+        ports.browser.storage.session.get.mockResolvedValue({[TAB_BROADCAST_SESSION_KEY]: [7, 90]});
+        ports.browser.tabs.sendMessage.mockImplementation(async id => id === 7 ? delivery : undefined);
+        const clear = vi.fn(async () => undefined);
+        const warn = vi.fn();
+        const settled = vi.fn();
+        const broadcast = createTranslationCacheInvalidationBroadcaster({...installBrowserTabBroadcastRuntime(browserName), warn});
+        const handler = createTranslationCacheHandler(clear, broadcast);
+        const request = Promise.resolve(handler.handle({type: 'clearTranslationCache'}, undefined)).then(settled);
+        try {
+            await vi.advanceTimersByTimeAsync(999);
+            expect(clear).toHaveBeenCalledOnce();
+            expect(ports.browser.tabs.sendMessage).toHaveBeenCalledWith(7, {type: 'translationCacheCleared'});
+            expect(ports.browser.tabs.sendMessage).toHaveBeenCalledWith(90, {type: 'translationCacheCleared'});
+            expect(settled).not.toHaveBeenCalled();
+            await vi.advanceTimersByTimeAsync(1);
+            expect(settled).toHaveBeenCalledWith({success: true, invalidationPending: true});
+        } finally {
+            finish();
+            await request;
+        }
+        await vi.advanceTimersByTimeAsync(10_000);
+        expect(settled).toHaveBeenCalledTimes(1);
+        expect(warn).not.toHaveBeenCalled();
+    });
+
+    it.each(['chrome', 'safari'])('%s 接收者读取挂起时仍返回清库成功，恢复后原失效消息继续投递', async browserName => {
+        let finish!: () => void;
+        if (browserName === 'safari') {
+            ports.browser.storage.session.get.mockImplementationOnce(() => new Promise(resolve => {
+                finish = () => resolve({[TAB_BROADCAST_SESSION_KEY]: [7]});
+            }));
+        } else {
+            ports.browser.tabs.query.mockImplementationOnce(() => new Promise(resolve => {
+                finish = () => resolve([{id: 7}]);
+            }));
+        }
+        const warn = vi.fn();
+        const settled = vi.fn();
+        const broadcast = createTranslationCacheInvalidationBroadcaster({...installBrowserTabBroadcastRuntime(browserName), warn});
+        const handler = createTranslationCacheHandler(async () => undefined, broadcast);
+        const request = Promise.resolve(handler.handle({type: 'clearTranslationCache'}, undefined)).then(settled);
+        try {
+            await vi.advanceTimersByTimeAsync(1_000);
+            expect(ports.browser.tabs.sendMessage).not.toHaveBeenCalled();
+            expect(settled).toHaveBeenCalledWith({success: true, invalidationPending: true});
+        } finally {
+            finish();
+            await request;
+        }
+        await vi.advanceTimersByTimeAsync(0);
+        expect(ports.browser.tabs.sendMessage).toHaveBeenCalledOnce();
+        expect(ports.browser.tabs.sendMessage).toHaveBeenCalledWith(7, {type: 'translationCacheCleared'});
+        expect(settled).toHaveBeenCalledTimes(1);
+        expect(warn).not.toHaveBeenCalled();
+    });
+
+    it('共享查询迟到拒绝仍记录原告警，已完成的清库回复不改变', async () => {
+        let fail!: (error: Error) => void;
+        ports.browser.tabs.query.mockImplementationOnce(() => new Promise((_, reject) => {fail = reject;}));
+        const failure = new Error('late tabs query failure');
+        const warn = vi.fn();
+        const settled = vi.fn();
+        const broadcast = createTranslationCacheInvalidationBroadcaster({...installBrowserTabBroadcastRuntime('chrome'), warn});
+        const handler = createTranslationCacheHandler(async () => undefined, broadcast);
+        const request = Promise.resolve(handler.handle({type: 'clearTranslationCache'}, undefined)).then(settled);
+        try {
+            await vi.advanceTimersByTimeAsync(1_000);
+            expect(settled).toHaveBeenCalledWith({success: true, invalidationPending: true});
+        } finally {
+            fail(failure);
+            await request;
+        }
+        await vi.advanceTimersByTimeAsync(0);
+        expect(warn).toHaveBeenCalledOnce();
+        expect(warn).toHaveBeenCalledWith('[FluentRead] 翻译缓存清理完成广播失败', failure);
+        expect(settled).toHaveBeenCalledTimes(1);
+        expect(ports.browser.tabs.sendMessage).not.toHaveBeenCalled();
     });
 });
 

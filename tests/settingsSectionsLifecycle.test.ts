@@ -82,6 +82,8 @@ function configureSectionPorts(data: Record<string, any>, {template = false, req
         '@/src/features/settings/ui/QuickTranslationProfiles.vue', '@/src/features/settings/ui/ContextMenuSettings.vue',
         '@/src/features/settings/ui/components/FieldHelp.vue',
     ]) componentPort(path);
+    componentPort('@/src/features/settings/ui/TranslationCacheSettings.vue', {props: ['active', 'config'],
+        setup(props: any) {data.cacheSettings = props;return () => null;}});
     vi.doMock('@/src/features/translation-center/public', () => ({TranslationCenter: empty}));
     vi.doMock('@/src/features/glossary/public', () => ({GlossarySettings: empty}));
     vi.doMock('@/src/features/image-translation/ui/public', () => ({ImageOcrSettings: empty, MangaSettings: empty}));
@@ -192,7 +194,7 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
         providerReady.resolve();return component;
     });
     let notifyConfig: (value: unknown) => void = () => {};
-    const data = {uiPorts: new Map<string, ChildEventPort>(), serviceCatalog:undefined as undefined | {props:Record<string,any>;emit:(event:string,...args:any[])=>void},serviceConfiguration:undefined as undefined | {props:Record<string,any>;emit:(event:string,...args:any[])=>void},loadProvider, catalogMounted: () => catalogReady.resolve(), config: configSnapshot ?? {}, configReady: ready,
+    const data = {cacheSettings: {} as Record<string, any>, uiPorts: new Map<string, ChildEventPort>(), serviceCatalog:undefined as undefined | {props:Record<string,any>;emit:(event:string,...args:any[])=>void},serviceConfiguration:undefined as undefined | {props:Record<string,any>;emit:(event:string,...args:any[])=>void},loadProvider, catalogMounted: () => catalogReady.resolve(), config: configSnapshot ?? {}, configReady: ready,
         subscribeConfig: (listener: (value: unknown) => void) => {
             notifyConfig = listener;
             if (configSnapshot) listener(configSnapshot);
@@ -207,7 +209,7 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
     const imported = (await import('@/src/features/settings/ui/SettingsSections.vue')).default;
     const component = imported;
     const renderer = createDomRenderer(dom.document as unknown as Document, focus);
-    const visible = runtime.ref(true);const props = runtime.reactive({activeSection, onNavigateSection: undefined as undefined | ((section: string, target?: string) => void)});
+    const visible = runtime.ref(true);const props = runtime.reactive({activeSection, activePanel: undefined as string | undefined, onNavigateSection: undefined as undefined | ((section: string, target?: string) => void)});
     let state!: Record<string, any>;
     app = renderer.createApp({setup: () => () => runtime.h(runtime.KeepAlive, null, {default: () => visible.value
         ? runtime.h(component as runtime.Component, {...props, ref: (vm: any) => {if (vm) state = vm.$.setupState;}})
@@ -250,6 +252,16 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
 }
 
 describe('设置主表单实际组件异步归属', () => {
+    it('缓存面板保留实例并由高级页、页内分类和 KeepAlive 活跃状态共同授权', async () => {
+        const {props, visible, data} = await mountSections({activeSection: 'settings-advanced'});await settle();
+        expect(data.cacheSettings.active).toBe(true);
+        props.activePanel = 'requests';await settle();expect(data.cacheSettings.active).toBe(false);
+        props.activePanel = 'cache';await settle();expect(data.cacheSettings.active).toBe(true);
+        props.activeSection = 'settings-general';await settle();expect(data.cacheSettings.active).toBe(false);
+        props.activeSection = 'settings-advanced';await settle();expect(data.cacheSettings.active).toBe(true);
+        const instance = data.cacheSettings;visible.value = false;await settle();expect(instance.active).toBe(false);
+        visible.value = true;await settle();expect(data.cacheSettings).toBe(instance);expect(instance.active).toBe(true);
+    });
     it('普通划词实际面板仅展示明确来源返回按钮，挂载不请求标签或修复焦点', async () => {
         const h = await mountSections({template: true, repairReturn: true, activeSection: 'settings-selection', search: '?returnTabId=7'});
         const section = h.document!.querySelector('#settings-selection')!;
