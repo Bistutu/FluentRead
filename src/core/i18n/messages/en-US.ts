@@ -431,7 +431,7 @@ export const enUSMessages = {
     "settings.services.library.allCategories": "All categories",
     "settings.services.library.custom": "Custom services",
     "settings.services.library.guideToggle": "View setup steps",
-    "settings.services.library.saved": "Configuration saved",
+    "settings.services.library.saved": "Saved",
     "settings.services.library.empty": "No matching translation services",
     "settings.services.library.defaultBadge": "Default",
     "settings.services.library.favorite": "Favorite {service}",

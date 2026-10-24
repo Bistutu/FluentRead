@@ -430,7 +430,7 @@ export const koKRMessages = {
     "settings.services.library.allCategories": "모든 분류",
     "settings.services.library.custom": "사용자 지정 서비스",
     "settings.services.library.guideToggle": "설정 단계 보기",
-    "settings.services.library.saved": "설정 저장됨",
+    "settings.services.library.saved": "저장됨",
     "settings.services.library.empty": "일치하는 번역 서비스가 없습니다",
     "settings.services.library.defaultBadge": "기본값",
     "settings.services.library.favorite": "{service} 즐겨찾기 추가",

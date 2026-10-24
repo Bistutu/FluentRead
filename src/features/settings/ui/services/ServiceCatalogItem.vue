@@ -1,7 +1,7 @@
 <!--
  * @file src/features/settings/ui/services/ServiceCatalogItem.vue
  * 文件职责：为完整服务目录渲染紧凑的服务选择行。
- * 主要内容：本地图标、可换行的完整服务名称及提示、紧邻名称且保持同行的接口性质与状态标签、可访问的选中状态；默认优先于已保存和常用，窄屏继续展示标签；目录短名称行保留 44px 命中高度，长名称自然增高，不用截断正文换取密度。
+ * 主要内容：本地图标、可换行的完整服务名称及提示、紧邻名称首行的接口性质与简短状态标签、可访问的选中状态；默认优先于已保存和常用，窄屏继续展示标签；目录短名称行保留 44px 命中高度，长名称自然增高，不用截断正文换取密度。
  * 模块边界：只发出选择事件，不修改配置、不测试连接、不发起翻译。
  -->
 <template>
@@ -41,7 +41,7 @@ const { t } = useUiI18n()
 .library-item.active { border-color: var(--brand-border, #f3c4d1); background: var(--brand-soft); box-shadow: 0 4px 12px color-mix(in srgb, var(--brand) 5%, transparent); }
 .library-select { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; min-height: 64px; padding: 10px 8px 10px 12px; border: 0; background: transparent; color: var(--ink, #172033); text-align: left; cursor: pointer; border-radius: 8px; }
 .library-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
-.library-name { display: flex; align-items: center; flex-wrap: nowrap; gap: 6px; min-width: 0; }
+.library-name { display: flex; align-items: flex-start; flex-wrap: nowrap; gap: 6px; min-width: 0; }
 .library-copy strong { min-width: 0; flex: 0 1 auto; white-space: normal; overflow-wrap: anywhere; line-height: 1.5; font-size: 13px; font-weight: 600; }
 .library-copy small { color: var(--muted, #737c8f); font-size: 11px; }
 .library-metadata { display: flex; align-items: center; flex: none; flex-wrap: nowrap; gap: 4px; min-width: 0; max-width: calc(100% - 64px); }
