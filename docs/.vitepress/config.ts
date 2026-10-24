@@ -76,6 +76,7 @@ const guide = (en = false): DefaultTheme.SidebarItem[] => {
         item('油猴脚本', 'Userscript', '/guide/userscript'),
         item('移动端与 Safari', 'Mobile & Safari', '/guide/mobile-safari'),
         item('Thunderbird 邮件翻译', 'Thunderbird email translation', '/guide/thunderbird'),
+        ...(!en ? [item('Zotero 文献翻译', 'Zotero literature translation', '/guide/zotero')] : []),
       ],
     },
     {

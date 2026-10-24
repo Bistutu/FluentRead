@@ -488,7 +488,8 @@
       "tests/i18nKeyReferences.test.ts",
       "tests/i18nMetadata.test.ts",
       "tests/i18nRuntimeContracts.test.ts",
-      "tests/i18nPlural.test.ts"
+      "tests/i18nPlural.test.ts",
+      "tests/pdfResources.test.ts"
     ],
     "functional": [
       "tests/affectedTests.test.ts",
@@ -758,7 +759,13 @@
       "tests/videoReadingCachedJapanese.test.ts",
       "tests/videoReadingHindi.test.ts",
       "tests/i18nSettingsCopy.test.ts",
-      "tests/i18nContentUi.test.ts"
+      "tests/i18nContentUi.test.ts",
+      "tests/zoteroEngine.test.ts",
+      "tests/zoteroPlatform.test.ts",
+      "tests/zoteroQueue.test.ts",
+      "tests/zoteroTranslation.test.ts",
+      "tests/zoteroWorkspace.test.ts",
+      "tests/zoteroFontCache.test.ts"
     ],
     "regression": [
       "tests/discordServerIconBoundary.test.ts",
