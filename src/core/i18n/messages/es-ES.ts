@@ -1687,6 +1687,8 @@ export const esESMessages = {
     "settings.cache.limitPolicy": "Por defecto: {size}, hasta {entries} entradas. Al reducir un límite, se elimina el exceso empezando por los resultados que llevan más tiempo sin usarse (LRU).",
     "settings.cache.readFailed": "No se puede consultar el uso de la caché. Pulsa Actualizar para reintentar.",
     "settings.cache.clearFailed": "No se pudo confirmar el borrado. Pulsa Borrar caché para reintentar.",
+    "settings.cache.clearUnconfirmed": "El borrado de la caché aún no está confirmado. Actualiza dentro de un momento.",
+    "settings.cache.clearedPendingPages": "La caché en segundo plano se ha borrado. Algunas páginas aún se están sincronizando.",
     "settings.cache.saveFailed": "No se pudieron guardar los ajustes. Guarda de nuevo o vuelve a accionar el interruptor.",
     "settings.cache.cleared": "Caché de traducción borrada.",
     "settings.cache.saved": "Ajustes de caché guardados.",

@@ -18,6 +18,24 @@ Chrome/Edge MV3 的公开图标和三份内容入口样式使用稳定扩展地�
 
 网页兼容维护集与生命周期验收见 [网页翻译稳定性维护](maintainers/web-stability.md)。该入口显式选择十个独立站点，复用已有正文与保护区契约，并将宿主 DOM 探针、原生站点操作、在线供应商和不同浏览器的证据分开记录。`fullPageVisibilityScheduling` 新增路由观察选项刷新、断连 ShadowRoot 回收/重新插入，以及重连观察器时保留待投递保护区变化；`contentFeatureMounting` 与划词 `--lifecycle-only` 验证入口被移除后的恢复、取消、错误重试、禁用和窄屏键盘操作。
 
+## 缓存清理等待与恢复
+
+`translationCacheManagement`、`popupCache`、`popupAppLifecycle`、`implementationAudit49C`、`backgroundCoreHandlers` 和 `safariTabBroadcastIntegration` 验证缓存操作的真实消费者。覆盖清库确认前的等待、十五秒截止与重试、迟到成功/拒绝、弹窗失活、设置分类切换和 KeepAlive、容量草稿保留，以及清理与后续统计共用截止。清库成功后统计读取失败必须保留清库结果；超时不能报告清库失败或完成。
+
+后台的清库屏障仍完整等待旧写入排空与持久存储清理。只有这些完成后才给页面通知一秒宽限；超时恢复界面等待，原广播继续投递，并通过 `invalidationPending` 区分已清库和页面同步未确认。`translationBroker` 与共享 `tabBroadcast`、缓存存储测试守护串行清库和通知所有权。
+
+生产 Chrome 产物的聚焦浏览器验证：
+
+```bash
+node scripts/testing/run-cache-clear-recovery-test.cjs \
+  --extension-dir .output/chrome-mv3 --playwright-root <捆绑 Node 包目录> \
+  --focus-safe-helper scripts/testing/focus-safe-browser.cjs \
+  --runtime-diagnostics <browser-translation-test-skill>/scripts/runtime-diagnostics.cjs \
+  --artifacts-dir <证据目录>
+```
+
+使用临时 Edge profile 和第二屏后台正常窗口，页面导航前采集扩展页、内容隔离世界及后台诊断。延迟和未决回复只注入本次隔离配置，真实后台路由和数据库清理仍执行。报告分别记录注入边界、等待耗时、状态、重试、截图、焦点事件及诊断缺口；普通扩展标签页的 Popup 验证不代表原生工具栏弹窗、Firefox 实机或外部供应商验收。
+
 ## man7 Linux 手册正文
 
 man7 的 Linux 手册将自然语言正文、参数说明、终端会话和源码混放在 `pre` 中。翻译时按手册段落建立可恢复的正文边界，保留原来的换行、缩进和行内链接；命令会话与程序源码继续保持原文。此能力限定于经过结构核验的 man7 Linux 手册，普通网页代码块和 RFC 的格式化文本仍遵守原有保护策略。

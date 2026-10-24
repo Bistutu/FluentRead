@@ -1687,6 +1687,8 @@ export const frFRMessages = {
     "settings.cache.limitPolicy": "Par défaut : {size}, jusqu’à {entries} résultats. Réduire une limite supprime immédiatement l’excédent, en commençant par les résultats les moins récemment utilisés (LRU).",
     "settings.cache.readFailed": "Utilisation du cache indisponible. Sélectionnez Actualiser pour réessayer.",
     "settings.cache.clearFailed": "Impossible de confirmer la suppression. Sélectionnez Vider le cache pour réessayer.",
+    "settings.cache.clearUnconfirmed": "La suppression du cache n’est pas encore confirmée. Actualisez dans un instant.",
+    "settings.cache.clearedPendingPages": "Le cache en arrière-plan a été vidé. Certaines pages sont encore en cours de synchronisation.",
     "settings.cache.saveFailed": "Impossible d’enregistrer les réglages. Enregistrez à nouveau ou réessayez le commutateur.",
     "settings.cache.cleared": "Cache de traduction vidé.",
     "settings.cache.saved": "Réglages du cache enregistrés.",

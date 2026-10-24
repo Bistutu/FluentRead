@@ -1687,6 +1687,8 @@ export const jaJPMessages = {
     "settings.cache.limitPolicy": "既定の容量は {size}、最大 {entries} 件です。上限を下げると、最後に使ってから最も時間が経った結果（LRU）から超過分を削除します。",
     "settings.cache.readFailed": "使用量を取得できません。「更新」で再試行してください。",
     "settings.cache.clearFailed": "削除の完了を確認できません。「キャッシュを削除」で再試行してください。",
+    "settings.cache.clearUnconfirmed": "キャッシュの削除結果をまだ確認できません。しばらくしてから更新してください。",
+    "settings.cache.clearedPendingPages": "バックグラウンドのキャッシュを削除しました。一部のページはまだ同期中です。",
     "settings.cache.saveFailed": "設定を保存できませんでした。再度保存するか、スイッチを操作してください。",
     "settings.cache.cleared": "翻訳キャッシュを削除しました。",
     "settings.cache.saved": "キャッシュ設定を保存しました。",

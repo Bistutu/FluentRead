@@ -4,6 +4,7 @@ import {
     estimateTranslationCacheCapacity,
     getTranslationCacheStats,
 } from '@/src/services/translation/cacheManagement';
+import {sendTranslationCacheRequest, TranslationCacheRequestTimeoutError} from '@/src/services/translation/cacheRequest';
 
 const {sendMessage} = vi.hoisted(() => ({sendMessage: vi.fn()}));
 vi.mock('webextension-polyfill', () => ({default: {runtime: {sendMessage}}}));
@@ -16,6 +17,7 @@ beforeEach(() => {
 afterEach(() => {
     expect(vi.getTimerCount()).toBe(0);
     vi.useRealTimers();
+    vi.restoreAllMocks();
 });
 
 describe('翻译缓存管理客户端', () => {
@@ -72,6 +74,47 @@ describe('翻译缓存管理客户端', () => {
         expect(settled).toBe(true);
     });
 
+    it('离页信号已取消时不发请求，等待中取消释放计时器并拒绝迟到确认', async () => {
+        const before = new AbortController(); before.abort();
+        await expect(getTranslationCacheStats({signal: before.signal})).rejects.toMatchObject({name: 'AbortError'});
+        expect(sendMessage).not.toHaveBeenCalled();
+        let complete!: (value: unknown) => void;
+        sendMessage.mockImplementationOnce(() => new Promise(resolve => {complete = resolve;}));
+        const controller = new AbortController();
+        const pending = clearManagedTranslationCache({signal: controller.signal});
+        const canceled = expect(pending).rejects.toMatchObject({name: 'AbortError'});
+        expect(vi.getTimerCount()).toBe(1);
+        controller.abort(); await canceled;
+        expect(vi.getTimerCount()).toBe(0);
+        complete({success: true}); await Promise.resolve();
+    });
+
+    it('清除和随后统计共享剩余预算，到期后不继续发送消息', async () => {
+        const now = vi.spyOn(performance, 'now').mockReturnValue(1000);
+        const deadline = 16_000;
+        sendMessage.mockResolvedValueOnce({success: true, invalidationPending: true});
+        await expect(clearManagedTranslationCache({deadline})).resolves.toEqual({invalidationPending: true});
+        now.mockReturnValue(15_000);
+        sendMessage.mockImplementationOnce(() => new Promise(() => {}));
+        const pending = getTranslationCacheStats({deadline});
+        const timeout = expect(pending).rejects.toThrow('缓存管理请求超时');
+        await vi.advanceTimersByTimeAsync(999);
+        expect(vi.getTimerCount()).toBe(1);
+        await vi.advanceTimersByTimeAsync(1); await timeout;
+        now.mockReturnValue(deadline);
+        await expect(getTranslationCacheStats({deadline})).rejects.toThrow('缓存管理请求超时');
+        expect(sendMessage).toHaveBeenCalledTimes(2);
+    });
+
+    it('区分已清库而页面仍在同步，并拒绝畸形的同步状态', async () => {
+        sendMessage.mockResolvedValueOnce({success: true});
+        await expect(clearManagedTranslationCache()).resolves.toEqual({invalidationPending: false});
+        sendMessage.mockResolvedValueOnce({success: true, invalidationPending: false});
+        await expect(clearManagedTranslationCache()).resolves.toEqual({invalidationPending: false});
+        sendMessage.mockResolvedValueOnce({success: true, invalidationPending: 'yes'});
+        await expect(clearManagedTranslationCache()).rejects.toThrow('缓存管理请求失败');
+    });
+
     it('后台拒绝后释放超时器，下一次可以重试', async () => {
         sendMessage.mockRejectedValueOnce(new Error('background unavailable'));
         await expect(getTranslationCacheStats()).rejects.toThrow('background unavailable');
@@ -95,6 +138,74 @@ describe('翻译缓存管理客户端', () => {
         await expect(getTranslationCacheStats()).resolves.toMatchObject({entries: 5});
         complete({success: true, stats});
         await Promise.resolve();
+    });
+});
+
+describe('共享缓存消息等待', () => {
+    it('不传选项时沿用十五秒上限，正常回复和拒绝均移除取消监听', async () => {
+        await expect(sendTranslationCacheRequest(sendMessage.mockResolvedValueOnce('ok'), 'clearTranslationCache')).resolves.toBe('ok');
+        for (const outcome of ['success', 'reject', 'throw'] as const) {
+            const controller = new AbortController();
+            const add = vi.spyOn(controller.signal, 'addEventListener');
+            const remove = vi.spyOn(controller.signal, 'removeEventListener');
+            if (outcome === 'success') sendMessage.mockResolvedValueOnce('ok');
+            else if (outcome === 'reject') sendMessage.mockRejectedValueOnce(new Error('transport rejected'));
+            else sendMessage.mockImplementationOnce(() => {throw new Error('transport threw');});
+            const request = sendTranslationCacheRequest(sendMessage, 'clearTranslationCache', {signal: controller.signal});
+            if (outcome === 'success') await expect(request).resolves.toBe('ok');
+            else await expect(request).rejects.toThrow(outcome === 'reject' ? 'transport rejected' : 'transport threw');
+            expect(add).toHaveBeenCalledWith('abort', expect.any(Function), {once: true});
+            expect(remove).toHaveBeenCalledWith('abort', add.mock.calls[0][1]);
+            expect(vi.getTimerCount()).toBe(0);
+            controller.abort();
+        }
+    });
+
+    it('超时和取消都移除监听，迟到拒绝保持被观察而不阻碍新请求', async () => {
+        for (const outcome of ['timeout', 'abort'] as const) {
+            let rejectLate!: (error: Error) => void;
+            sendMessage.mockImplementationOnce(() => new Promise((_resolve, reject) => {rejectLate = reject;}));
+            const controller = new AbortController();
+            const add = vi.spyOn(controller.signal, 'addEventListener');
+            const remove = vi.spyOn(controller.signal, 'removeEventListener');
+            const request = sendTranslationCacheRequest(sendMessage, 'getTranslationCacheStats', {signal: controller.signal});
+            const rejected = outcome === 'timeout'
+                ? expect(request).rejects.toBeInstanceOf(TranslationCacheRequestTimeoutError)
+                : expect(request).rejects.toMatchObject({name: 'AbortError'});
+            if (outcome === 'timeout') await vi.advanceTimersByTimeAsync(15_000);
+            else controller.abort();
+            await rejected;
+            expect(remove).toHaveBeenCalledWith('abort', add.mock.calls[0][1]);
+            expect(vi.getTimerCount()).toBe(0);
+            rejectLate(new Error('late transport rejection'));
+            await Promise.resolve();
+            await expect(sendTranslationCacheRequest(sendMessage.mockResolvedValueOnce('retry'), 'getTranslationCacheStats')).resolves.toBe('retry');
+        }
+    });
+
+    it('远期截止仍最多等待十五秒，无效截止和已取消信号不发送消息', async () => {
+        const now = vi.spyOn(performance, 'now').mockReturnValue(1000);
+        sendMessage.mockImplementationOnce(() => new Promise(() => {}));
+        const request = sendTranslationCacheRequest(sendMessage, 'clearTranslationCache', {deadline: Infinity});
+        const rejected = expect(request).rejects.toBeInstanceOf(TranslationCacheRequestTimeoutError);
+        await vi.advanceTimersByTimeAsync(14_999);
+        expect(vi.getTimerCount()).toBe(1);
+        await vi.advanceTimersByTimeAsync(1); await rejected;
+        for (const deadline of [NaN, 1000, 999]) {
+            await expect(sendTranslationCacheRequest(sendMessage, 'clearTranslationCache', {deadline})).rejects.toBeInstanceOf(TranslationCacheRequestTimeoutError);
+        }
+        const controller = new AbortController(); controller.abort();
+        await expect(sendTranslationCacheRequest(sendMessage, 'clearTranslationCache', {signal: controller.signal})).rejects.toMatchObject({name: 'AbortError'});
+        expect(sendMessage).toHaveBeenCalledOnce();
+        expect(now).toHaveBeenCalled();
+    });
+
+    it('发送端同步取消后抛错也观察取消拒绝并清理所有等待资源', async () => {
+        const controller = new AbortController();
+        sendMessage.mockImplementationOnce(() => {controller.abort(); throw new Error('synchronous transport failure');});
+        await expect(sendTranslationCacheRequest(sendMessage, 'clearTranslationCache', {signal: controller.signal}))
+            .rejects.toThrow('synchronous transport failure');
+        expect(vi.getTimerCount()).toBe(0);
     });
 });
 

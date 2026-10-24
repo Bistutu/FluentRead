@@ -873,6 +873,8 @@ export const zhCNMessages = {
     "settings.cache.limitPolicy": "默认容量为 {size}，最多 {entries} 条；调小上限会立即清理超额缓存，优先删除最久未使用的结果（LRU）",
     "settings.cache.readFailed": "暂时无法读取缓存用量，请点击“刷新”重试",
     "settings.cache.clearFailed": "缓存未能确认清空，请点击“清空缓存”重试",
+    "settings.cache.clearUnconfirmed": "暂未确认清除结果，请稍后刷新",
+    "settings.cache.clearedPendingPages": "后台缓存已清除，部分页面仍在同步",
     "settings.cache.saveFailed": "设置保存失败，请重新保存或切换开关重试",
     "settings.cache.cleared": "翻译缓存已清空",
     "settings.cache.saved": "缓存设置已保存",
