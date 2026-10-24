@@ -1,7 +1,7 @@
 /**
  * @file scripts/testing/run-cache-clear-recovery-test.cjs
  * 文件职责：在临时且不抢焦点的真实浏览器中验证生产扩展的缓存清理、广播宽限和管理界面恢复。
- * 主要内容：通过真实按钮操作正常缓存链路，以精确消息响应门控注入页面通知和 UI 等待故障，记录数据库、协议、页面状态、原生焦点事件及完整运行时诊断。
+ * 主要内容：通过真实按钮操作正常缓存链路，以精确消息响应门控注入页面通知和 UI 等待故障，记录数据库、协议、页面状态、逐命令/操作焦点时间线、观测失败锁存及完整运行时诊断。
  * 模块边界：只操作本轮临时扩展配置与本地夹具，不访问用户 profile、外部翻译服务或修改生产模块；构建由调用方完成，诊断采集器须显式从 CLI 注入。
  */
 'use strict';
@@ -12,6 +12,101 @@ const path = require('node:path');
 const http = require('node:http');
 const crypto = require('node:crypto');
 const {guardBrowserClose, getGuardedBrowserPid} = require('./owned-browser-close.cjs');
+
+// 仅为本 CLI 留下时序证据；额外的只读前台采样会影响时间，不能据此声称已修复焦点。
+function createCacheFocusTrace({records, errors, readForeground, getBrowserPid, getFocusFailure, onOwnedActivation, onObservationFailure}) {
+  const methods = new Set(['Target.createTarget', 'Target.closeTarget', 'Browser.getWindowForTarget', 'Browser.getWindowBounds', 'Browser.setWindowBounds']);
+  const targets = new Map(), windows = new Map(), pages = new WeakMap(), instrumented = new WeakSet(), active = new Map();
+  let currentCase = 'bootstrap', sequence = 0, operation = 0, lastCreatedTarget, foreground, ownedActivation, observationFailure;
+  const stamp = () => ({time: Date.now(), monotonicMs: performance.now()});
+  const bounds = value => value && Object.fromEntries(['left', 'top', 'width', 'height', 'windowState']
+    .filter(key => key === 'windowState' ? ['normal', 'minimized', 'maximized', 'fullscreen'].includes(value[key]) : Number.isFinite(value[key]))
+    .map(key => [key, value[key]]));
+  const fields = value => ({...(typeof value?.targetId === 'string' ? {targetId: value.targetId} : {}),
+    ...(Number.isInteger(value?.windowId) ? {windowId: value.windowId} : {}), ...(value?.bounds ? {bounds: bounds(value.bounds)} : {}),
+    ...(typeof value?.background === 'boolean' ? {background: value.background} : {}), ...(typeof value?.success === 'boolean' ? {success: value.success} : {})});
+  const identity = value => {
+    const targetId = value?.targetId || (value?.windowId !== undefined
+      ? [...targets].findLast(([, target]) => target.windowId === value.windowId)?.[0] : undefined);
+    const windowId = value?.windowId ?? targets.get(targetId)?.windowId;
+    return {targetId: targetId ?? null, windowId: windowId ?? null, bounds: windows.get(windowId) ?? null};
+  };
+  const record = (scope, name, phase, extra = {}) => records.push({sequence: ++sequence, ...stamp(), case: currentCase,
+    scope, name, phase, browserPid: getBrowserPid() ?? null, foreground, activeOperations: [...active.keys()], ...extra});
+  function observeOwned(pid) {
+    if (pid === getBrowserPid() && Number.isInteger(pid) && !ownedActivation) {
+      ownedActivation = new Error('Owned test browser became frontmost');onOwnedActivation(ownedActivation);
+    }
+  }
+  async function sample() {
+    const startedAt = stamp();
+    try {
+      const value = await readForeground();
+      if (!Number.isInteger(value?.pid) || value.pid <= 0) throw new Error('Foreground observation unavailable');
+      foreground = {startedAt, sampledAt: stamp(), pid: value.pid, name: typeof value.name === 'string' ? value.name : ''};
+      observeOwned(value.pid);
+    } catch (error) {
+      foreground = {startedAt, sampledAt: stamp(), unavailable: true};
+      errors.push({case: currentCase, scope: 'foreground-sample', ...stamp(), errorName: error?.name || 'Error'});
+      observationFailure ||= new Error('Foreground trace observation unavailable; see focusTraceErrors');onObservationFailure(observationFailure);
+    }
+  }
+  async function run(scope, name, invoke, details = () => ({}), cleanup = false, completed = () => {}) {
+    const id = ++operation;
+    const guard = () => {
+      const failure = getFocusFailure() || ownedActivation || observationFailure;
+      if (failure && !cleanup) {record(scope, name, 'blocked', {operation: id, ...details()});throw failure;}
+    };
+    guard();await sample();guard();
+    active.set(id, {scope, name});record(scope, name, 'started', {operation: id, ...details()});
+    try {
+      const result = await invoke();completed(result);
+      await sample();record(scope, name, 'completed', {operation: id, ...details()});return result;
+    } catch (error) {
+      // 采样与 latch 不替换原始 CDP/Playwright 拒绝，失败后的下一动作才被拦截。
+      await sample();record(scope, name, 'rejected', {operation: id, ...details(), errorName: error?.name || 'Error'});throw error;
+    } finally {active.delete(id);}
+  }
+  return {
+    setCase(name) {currentCase = name;},
+    observeActivation(event) {
+      observeOwned(event.pid);record('native', 'application-activation', 'observed', {
+        event: {pid: event.pid, name: event.name, time: event.time, monotonicMs: event.monotonicMs}});
+    },
+    bindPage(page) {if (lastCreatedTarget) pages.set(page, lastCreatedTarget);},
+    pageIdentity(page) {return identity({targetId: page && pages.get(page)});},
+    action(name, invoke, page) {
+      let createdTarget;
+      return run('action', name, invoke, () => identity({targetId: page ? pages.get(page) : createdTarget}), false,
+        result => {if (name === 'newPage') createdTarget = pages.get(result);});
+    },
+    instrumentBrowser(browser) {
+      if (instrumented.has(browser)) return browser;
+      instrumented.add(browser);
+      const nativeSession = browser.newBrowserCDPSession;
+      browser.newBrowserCDPSession = async function (...args) {
+        const cdp = await nativeSession.apply(this, args), nativeSend = cdp.send;
+        cdp.send = function (...args) {
+          const [method, params] = args;
+          if (!methods.has(method)) return nativeSend.apply(this, args);
+          let resultFields;
+          const details = () => ({...identity({...params, ...resultFields}), request: fields(params), ...(resultFields ? {result: resultFields} : {})});
+          // helper 在建页失败后关闭自己刚创建的 target 仍可执行；普通 page.close 走 action guard。
+          const cleanup = method === 'Target.closeTarget' && targets.has(params?.targetId);
+          return run('cdp', method, () => nativeSend.apply(this, args), details, cleanup, result => {
+            resultFields = fields(result);
+            if (method === 'Target.createTarget' && resultFields.targetId) {lastCreatedTarget = resultFields.targetId;targets.set(lastCreatedTarget, {});}
+            if (method === 'Browser.getWindowForTarget' && targets.has(params?.targetId)) targets.get(params.targetId).windowId = resultFields.windowId;
+            if (resultFields.bounds && Number.isInteger(resultFields.windowId ?? params?.windowId)) windows.set(resultFields.windowId ?? params.windowId, resultFields.bounds);
+          });
+        };
+        return cdp;
+      };
+      return browser;
+    },
+  };
+}
+
 const arg = (name, fallback) => {const index = process.argv.indexOf(`--${name}`);return index < 0 ? fallback : process.argv[index + 1];};
 const helper = require(path.resolve(arg('focus-safe-helper', path.join(__dirname, 'focus-safe-browser.cjs'))));
 const extensionDir = path.resolve(arg('extension-dir', '.output/chrome-mv3'));
@@ -28,7 +123,11 @@ const profileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fluentread-cache-clear
 fs.mkdirSync(artifactsDir, {recursive: true});
 const report = {extensionDir, version: manifest.version, build: 'production-chrome-mv3',
   scope: 'Cache management only; Popup is an ordinary extension tab, not the native toolbar popup.',
-  cases: [], pageErrors: [], cleanupErrors: [], controlledFaults: [], screenshots: []};
+  cases: [], pageErrors: [], cleanupErrors: [], controlledFaults: [], screenshots: [], focusTrace: [], focusTraceErrors: [],
+  focusTraceScope: 'Diagnostic only; samples add latency. Public browser CDP sessions trace five allowlisted methods; Playwright private page sessions are represented by action boundaries, not complete protocol traffic. Bootstrap activation events are recorded before the owned PID is verified, then reconciled by the existing post-launch assertFocus.',
+  focusTraceClockDomains: {time: 'Unix epoch milliseconds; correlate sources using this time and foreground sample intervals.',
+    monotonicMs: 'Node performance.now(); local trace clock origin.',
+    nativeEventMonotonicMs: 'Nested event.monotonicMs is Swift systemUptime * 1000; it has a different clock origin and must not be subtracted from Node monotonicMs.'}};
 const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const artifactFiles = directory => fs.readdirSync(directory, {withFileTypes: true}).flatMap(entry => entry.isDirectory()
   ? artifactFiles(path.join(directory, entry.name)) : [path.join(directory, entry.name)]).sort();
@@ -42,6 +141,12 @@ report.sourceSnapshot = Object.fromEntries([
   ...['zh-CN', 'en-US', 'es-ES', 'fr-FR', 'ja-JP', 'ko-KR', 'ru-RU'].map(locale => `src/core/i18n/messages/${locale}.ts`),
 ].map(file => [file, hash(fs.readFileSync(path.resolve(__dirname, '../..', file)))]));
 let session, context, worker, origin, activePage, monitor, browserPid, focusFailure, launchAttempted = false;
+const focusTrace = createCacheFocusTrace({records: report.focusTrace, errors: report.focusTraceErrors,
+  readForeground: () => helper.queryMacFrontmostApplication(), getBrowserPid: () => browserPid,
+  getFocusFailure: () => focusFailure || monitor?.error, onOwnedActivation: error => {focusFailure ||= error;},
+  onObservationFailure: error => {focusFailure ||= error;}});
+const nativeConnect = chromium.connectOverCDP;
+chromium.connectOverCDP = async function (...args) {return focusTrace.instrumentBrowser(await nativeConnect.apply(this, args));};
 const server = http.createServer((_request, response) => {
   response.writeHead(200, {'Content-Type': 'text/html; charset=utf-8'});
   response.end('<!doctype html><meta charset="utf-8"><title>Cache notification fixture</title><main><h1>Cache notification receiver</h1><p>A quiet local reading page receives FluentRead cache invalidation messages without calling a translation provider.</p></main>');
@@ -52,17 +157,18 @@ function assertFocus() {
   assert.equal(monitor.events.filter(event => event.pid === browserPid).length, 0, 'owned browser became frontmost');
 }
 async function screenshot(page, name) {
+  assertFocus();
   const file = path.join(artifactsDir, `${name}.png`);
   const cache = page.locator('[data-translation-cache-settings]');
   if (await cache.count() && await cache.isVisible()) {
     // 连续表单在内层容器滚动；先让真实浏览器完整展示反馈，再拍整窗上下文。
     const componentFile = path.join(artifactsDir, `${name}-cache-feedback.png`);
-    await cache.screenshot({path: componentFile});report.screenshots.push(componentFile);
+    await focusTrace.action('screenshot.component', () => cache.screenshot({path: componentFile}), page);assertFocus();report.screenshots.push(componentFile);
   }
-  await page.screenshot({path: file});report.screenshots.push(file);return file;
+  await focusTrace.action('screenshot.page', () => page.screenshot({path: file}), page);assertFocus();report.screenshots.push(file);return file;
 }
 async function runCase(name, kind, operation) {
-  diagnostics.setPhase(name);assertFocus();
+  focusTrace.setCase(name);diagnostics.setPhase(name);assertFocus();
   const result = await operation();assertFocus();
   report.cases.push({name, kind, passed: true, ...result});save();console.log(`PASS ${name}`);
 }
@@ -118,17 +224,22 @@ function installPageProbe() {
   };
 }
 async function openPage(url, label, probe = true) {
-  const page = await helper.newPageWithoutForeground(context);
+  const page = await focusTrace.action('newPage', async () => {
+    const created = await helper.newPageWithoutForeground(context);focusTrace.bindPage(created);return created;
+  });
+  assertFocus();
   activePage = page;await diagnostics.attachPage(page, label);
   page.on('pageerror', error => report.pageErrors.push({label, message: error.message}));
   if (probe) await page.addInitScript(installPageProbe);
   await page.goto(url, {waitUntil: 'domcontentloaded'});assertFocus();return page;
 }
 async function readProbe(page) {
-  return page.evaluate(() => ({requests: globalThis.__cacheRecovery.requests, receipts: globalThis.__cacheRecovery.receipts,
+  const result = await focusTrace.action('readProbe', () => page.evaluate(() => ({requests: globalThis.__cacheRecovery.requests, receipts: globalThis.__cacheRecovery.receipts,
     holds: globalThis.__cacheRecovery.holds.map(({id, type, released}) => ({id, type, released})),
-    longTimers: [...globalThis.__cacheRecovery.longTimers.values()]}));
+    longTimers: [...globalThis.__cacheRecovery.longTimers.values()]})), page);
+  assertFocus();return result;
 }
+async function closePage(page) {const result = await focusTrace.action('page.close', () => page.close(), page);assertFocus();return result;}
 async function arm(page, type, hold = true) {
   await page.evaluate(({type, hold}) => globalThis.__cacheRecovery.rules[type].push({hold}), {type, hold});
 }
@@ -189,7 +300,7 @@ async function databaseCounts() {
 
 (async () => {
   try {
-    monitor = helper.startFocusEventMonitor({onEvent: event => {if (event.pid === browserPid) focusFailure = new Error('Owned test browser became frontmost');}, onError: error => {focusFailure = error;}});
+    monitor = helper.startFocusEventMonitor({onEvent: event => focusTrace.observeActivation(event), onError: error => {focusFailure ||= error;}});
     await monitor.ready;
     await new Promise((resolve, reject) => {server.once('error', reject);server.listen(0, '127.0.0.1', resolve);});
     launchAttempted = true;
@@ -227,7 +338,7 @@ async function databaseCounts() {
         await status(page, kind).filter({hasText: kind === 'popup' ? '全部翻译缓存已清除' : '翻译缓存已清空'}).waitFor();
         await waitEnabled(page, kind);const counts = await databaseCounts();assert.equal(counts.entries, 0);
         const probe = await readProbe(page);assert.equal(probe.receipts.find(value => value.type === 'clearTranslationCache')?.invalidationPending, false);
-        const image = await screenshot(page, `${kind}-normal-clear`);await page.close();return {seeded, counts, probe, image};
+        const image = await screenshot(page, `${kind}-normal-clear`);await closePage(page);return {seeded, counts, probe, image};
       });
     }
 
@@ -253,7 +364,7 @@ async function databaseCounts() {
       await worker.evaluate(() => globalThis.__cacheBroadcastGate.release());await page.waitForTimeout(250);
       const probe = await readProbe(page);assert.equal(probe.receipts.filter(value => value.type === 'clearTranslationCache').length, 1);
       assert.equal(probe.receipts.find(value => value.type === 'clearTranslationCache').invalidationPending, true);
-      await page.close();return {elapsedMs, counts, notificationGate: before, probe, image};
+      await closePage(page);return {elapsedMs, counts, notificationGate: before, probe, image};
     });
 
     for (const kind of ['options', 'popup']) {
@@ -271,7 +382,7 @@ async function databaseCounts() {
         await release(page, second);await waitEnabled(page, kind);
         await status(page, kind).filter({hasText: kind === 'popup' ? '全部翻译缓存已清除' : '翻译缓存已清空'}).waitFor();
         const image = await screenshot(page, `${kind}-retry-success`), probe = await readProbe(page);
-        await page.close();return {elapsedMs, probe, timeoutImage, image};
+        await closePage(page);return {elapsedMs, probe, timeoutImage, image};
       });
     }
 
@@ -286,7 +397,7 @@ async function databaseCounts() {
       await release(page, stats);await page.waitForTimeout(100);
       assert((await page.locator('[data-translation-cache-settings] [role="alert"]').innerText()).includes('暂时无法读取缓存用量'));
       const image = await screenshot(page, 'options-cleared-stats-unavailable'), probe = await readProbe(page);
-      await page.close();return {elapsedMs, probe, image};
+      await closePage(page);return {elapsedMs, probe, image};
     });
 
     for (const destination of ['section-hide', 'keep-alive']) {
@@ -308,7 +419,7 @@ async function databaseCounts() {
         await page.locator('[data-settings-anchor-link="cache"]').click();await waitEnabled(page, 'options');
         assert.equal(await status(page, 'options').count(), 0, 'old hidden clear response must not claim completion after re-entry');
         const image = await screenshot(page, `options-${destination}-cancel`), probe = await readProbe(page);
-        await page.close();return {statsBefore, inPageNavigation: 'continuous-form-scroll-keeps-current-wait', probe, image};
+        await closePage(page);return {statsBefore, inPageNavigation: 'continuous-form-scroll-keeps-current-wait', probe, image};
       });
     }
     assert.equal(report.pageErrors.length, 0);report.ok = true;
@@ -326,6 +437,7 @@ async function databaseCounts() {
       if (report.ok) diagnostics.assertClean();
     });
     await cleanup('diagnostics-stop', () => diagnostics.stop());
+    await cleanup('focus-trace', async () => {assert.equal(report.focusTraceErrors.length, 0, 'foreground trace samples incomplete; see focusTraceErrors');});
     let closed = false;
     await cleanup('owned-browser-close', async () => {if (session) {await session.close();closed = true;}});
     await cleanup('native-focus-monitor', async () => {
