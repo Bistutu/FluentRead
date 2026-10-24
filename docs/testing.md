@@ -12,9 +12,9 @@
 
 ### 扩展重载后的界面资源
 
-Chrome/Edge MV3 的公开图标和三份内容入口样式使用稳定扩展地址，避免扩展重载后动态 UUID 轮换使旧页面保存的 CSS、图标地址失效。范围仅为 `icon/32.png`、`icon/48.png`、`icon/128.png` 及 `content-scripts/content.css`、`neteaseMailFrame.css`、`supportedFrame.css`；文件、站点匹配、权限和 CSP 不增加。语言包继续使用动态地址。稳定地址会使这些已公开界面资产可按固定扩展 ID 探测。
+Chrome/Edge MV3 的公开图标和实际消费的两份内容入口样式使用稳定扩展地址，避免扩展重载后动态 UUID 轮换使旧页面保存的 CSS、图标地址失效。当前产物为 `icon/32.png`、`icon/48.png`、`icon/128.png` 及 `content-scripts/content.css`、`content-scripts/neteaseMailFrame.css`。共用受限 frame 不显示 Shadow UI，裁剪静态 UI 依赖后不再生成 `supportedFrame.css`；网页翻译样式仍由原四份 inline 样式安装和清理。稳定资源配置继续识别旧文件名，但不会创建文件或清单项。站点匹配、权限和 CSP 不增加，语言包继续使用动态地址。稳定地址会使这些已公开界面资产可按固定扩展 ID 探测。
 
-`extensionManifestContract` 验证最终清单调整的文件集合、原站点边界、语言包动态地址及其他目标行为。浏览器专项须分别验证首次加载、同源 frame、软导航、扩展重载后旧地址与新页面，检查实际 CSS 内容/计算样式、图标尺寸和 Runtime/Log 诊断。旧上下文仍按原生命周期清理；稳定资源地址不代表旧脚本可继续调用失效的扩展 API。动态 UUID 资源不能仅因 host 不同于实际扩展 ID 就自动当成其他扩展噪声排除，未证明归属的安全日志应保留并阻断。
+`extensionManifestContract` 验证最终清单调整的文件集合、原站点边界、语言包动态地址及其他目标行为；产物校验同时检查真实 UI 脚本的 CSS 地址、文件和公开范围，以及共用 frame 没有未消费的 Shadow UI 样式。源码边界、CSS 有序 AST 与字节比较的维护约束见 [受限 frame 的 UI 样式依赖裁剪](maintainers/frame-ui-css-20261024.md)。浏览器专项须分别验证首次加载、同源 frame、软导航、扩展重载后旧地址与新页面，检查实际 CSS 内容/计算样式、图标尺寸和 Runtime/Log 诊断。旧上下文仍按原生命周期清理；稳定资源地址不代表旧脚本可继续调用失效的扩展 API。动态 UUID 资源不能仅因 host 不同于实际扩展 ID 就自动当成其他扩展噪声排除，未证明归属的安全日志应保留并阻断。
 
 网页兼容维护集与生命周期验收见 [网页翻译稳定性维护](maintainers/web-stability.md)。该入口显式选择十个独立站点，复用已有正文与保护区契约，并将宿主 DOM 探针、原生站点操作、在线供应商和不同浏览器的证据分开记录。`fullPageVisibilityScheduling` 新增路由观察选项刷新、断连 ShadowRoot 回收/重新插入，以及重连观察器时保留待投递保护区变化；`contentFeatureMounting` 与划词 `--lifecycle-only` 验证入口被移除后的恢复、取消、错误重试、禁用和窄屏键盘操作。
 

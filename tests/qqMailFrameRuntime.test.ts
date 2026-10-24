@@ -86,9 +86,15 @@ async function load() {
     return import('@/src/app/content/qqMailFrameRuntime');
 }
 
+// 从真实网易入口装配划词端口，生命周期仍执行真实共享 frame runtime。
+async function loadNeteaseEntry() {
+    return (await import('../entrypoints/neteaseMailFrame.content')).default;
+}
+
 beforeEach(() => {
     vi.resetModules();
     vi.unstubAllGlobals();
+    vi.stubGlobal('defineContentScript', (entry: unknown) => entry);
     mocks.sendMessage.mockReset().mockResolvedValue(undefined);
     mocks.addRuntimeListener.mockReset();
     mocks.removeRuntimeListener.mockReset();
@@ -123,7 +129,7 @@ describe('NetEase mail frame lifecycle', () => {
         window.top = {location: {href: readTop}};
         vi.stubGlobal('navigator', {});
         mocks.sendMessage.mockResolvedValue({enabled: true, revision: 1, sessionId: null});
-        const {startNeteaseMailFrameApp} = await load();
+        const {main: startNeteaseMailFrameApp} = await loadNeteaseEntry();
         let invalidate: () => void = () => undefined;
         await startNeteaseMailFrameApp({isInvalid: false, onInvalidated: (callback: () => void) => { invalidate = callback; }} as never);
         expect(mocks.sendMessage).toHaveBeenCalledWith({type: 'neteaseMailFrameRequest', action: 'state'});
@@ -138,7 +144,7 @@ describe('NetEase mail frame lifecycle', () => {
 
     it('never mounts on top-level pages or editable compose frames', async () => {
         const top = installGlobals(readTop);
-        const {startNeteaseMailFrameApp} = await load();
+        const {main: startNeteaseMailFrameApp} = await loadNeteaseEntry();
         let invalidate: (() => void) | undefined;
         const context = {isInvalid: false, onInvalidated: (callback: () => void) => { invalidate = callback; }};
         try {
@@ -166,7 +172,7 @@ describe('NetEase mail frame lifecycle', () => {
         window.top = {location: {href: readTop}};
         vi.stubGlobal('navigator', {});
         mocks.sendMessage.mockResolvedValue({enabled: true, revision: 1, sessionId: null});
-        const {startNeteaseMailFrameApp} = await load();
+        const {main: startNeteaseMailFrameApp} = await loadNeteaseEntry();
         let invalidate: () => void = () => undefined;
         await startNeteaseMailFrameApp({isInvalid: false, onInvalidated: (callback: () => void) => { invalidate = callback; }} as never);
         expect(mocks.mountSelection).toHaveBeenCalledOnce();
@@ -194,7 +200,7 @@ describe('NetEase mail frame lifecycle', () => {
             .mockImplementationOnce(() => oldMount)
             .mockImplementationOnce(() => { mounted = true; return Promise.resolve({}); });
 
-        const {startNeteaseMailFrameApp} = await load();
+        const {main: startNeteaseMailFrameApp} = await loadNeteaseEntry();
         let invalidate: () => void = () => undefined;
         await startNeteaseMailFrameApp({isInvalid: false, onInvalidated: (callback: () => void) => { invalidate = callback; }} as never);
         expect(mocks.mountSelection).toHaveBeenCalledOnce();
@@ -338,9 +344,34 @@ describe('frame bridge cleanup after extension reload', () => {
         const mail = await load();
         const {startEmbeddedFrameApp} = await import('@/src/app/content/embeddedFrameRuntime');
         const start = kind === 'qq' ? mail.startQqMailFrameApp
-            : kind === 'netease' ? mail.startNeteaseMailFrameApp : startEmbeddedFrameApp;
+            : kind === 'netease' ? (await loadNeteaseEntry()).main : startEmbeddedFrameApp;
         return {...globals, start};
     }
+
+    it.each(['qq', 'embedded'] as const)('%s authorization and config refresh never mount or release NetEase selection ports', async kind => {
+        const {start, listeners} = await readingFrame(kind);
+        mocks.sendMessage.mockResolvedValue({enabled: true, revision: 0, sessionId: null});
+        let invalidate!: () => void;
+        const context = {isInvalid: false, onInvalidated: (callback: () => void) => {invalidate = callback;}};
+        try {
+            await start(context as never);
+            expect(mocks.installStyles).toHaveBeenCalledOnce();
+            const notifyConfig = mocks.subscribeConfig.mock.calls[0][0];
+            mocks.config.disableSelectionTranslator = true;
+            notifyConfig(mocks.config);
+            mocks.config.disableSelectionTranslator = false;
+            notifyConfig(mocks.config);
+            const refresh = mocks.addRuntimeListener.mock.calls[0][0];
+            refresh({type: kind === 'qq' ? 'qqMailFrameRefresh' : 'embeddedFrameRefresh'}, {id: 'extension-id'});
+            await vi.waitFor(() => expect(mocks.sendMessage.mock.calls.filter(([message]) => message.action === 'state').length).toBeGreaterThan(1));
+            expect(mocks.mountSelection).not.toHaveBeenCalled();
+            expect(mocks.unmountSelection).not.toHaveBeenCalled();
+        } finally {invalidate?.();}
+        expect(mocks.removeStyles).toHaveBeenCalledOnce();
+        expect(mocks.mountSelection).not.toHaveBeenCalled();
+        expect(mocks.unmountSelection).not.toHaveBeenCalled();
+        expect([...listeners.values()].every(set => set.size === 0)).toBe(true);
+    });
 
     it.each(['qq', 'netease', 'embedded'] as const)('%s forwards the real trusted full-page shortcut to the top session and follows its current snapshot', async kind => {
         mocks.realHotkeys = true;mocks.config.selectionTranslatorMode = 'disabled';

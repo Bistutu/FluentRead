@@ -44,6 +44,7 @@ export default defineConfig({
                 'src/features/video-subtitle/background/runtime.ts',
                 'src/features/video-subtitle/content/youtubeTimedTextBridge.ts',
                 'src/app/document-translation/page.ts',
+                'src/app/content/neteaseMailFrameRuntime.ts',
                 'src/features/image-translation/ui/MangaEntry.vue',
                 'src/features/image-translation/ui/ImageTranslationSettingsPreview.vue',
                 'src/services/translation/requestDeadline.ts',
