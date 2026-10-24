@@ -6,7 +6,7 @@
  */
 import {getElementTagName, isTopLevelApplicationShell} from '@/src/core/translation/dom';
 import {getChineseScript, normalizeChineseLanguageCode} from '@/src/core/language/chinese';
-import {isLanguageCodeMatch} from '@/src/core/language/codes';
+import {isLanguageCodeMatch, normalizeDetectedLanguageCode} from '@/src/core/language/codes';
 import {isTextInLanguage, shouldSkipChineseSelection} from '@/src/core/language/detect';
 
 export interface SelectionRect {
@@ -452,7 +452,14 @@ export function calculateSelectionPopupPosition(
 }
 
 export function normalizeSpeechLanguage(language: string | undefined, fallback = 'en-US'): string {
-    const normalized = String(language ?? '').trim().replace(/_/g, '-');
+    let normalized = String(language ?? '').trim().replace(/_/g, '-');
+    // 词书导入和语言检测可能保存 ISO 639-3（如 eng、jpn）；只归一化主语言子标签，
+    // 再拼回原来的脚本和地区，避免 zho-Hant 被扩展成 zh-Hant-Hant。
+    if (/^[a-z]{3}(?:-|$)/iu.test(normalized)) {
+        const [primary, ...subtags] = normalized.split('-');
+        const canonical = normalizeDetectedLanguageCode(primary);
+        if (canonical) normalized = [canonical, ...subtags].join('-');
+    }
     const lower = normalized.toLowerCase();
     if (!normalized || ['auto', 'detect', 'unknown', 'und'].includes(lower)) return fallback;
 

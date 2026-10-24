@@ -441,7 +441,7 @@ async function untilFixture(predicate: () => boolean) {
 }
 async function openBackgroundPort(kind: BackgroundKind) {
     const index = external.requests.length;
-    const port = makePort(kind === 'reading' ? 'fluentReadHarnessStream' : 'fluentReadWritingStream', {id: 'fixture', tab: {id: 92}, frameId: 0, documentId: 'fixture-document', url: 'https://github.com/fixture/repository/issues/1'});
+    const port = makePort(kind === 'reading' ? 'fluentReadHarnessStream' : 'fluentReadWritingStream', {id: 'fixture', tab: {id: 92, url: 'https://github.com/fixture/repository/issues/1'}, frameId: 0, documentId: 'fixture-document', url: 'https://github.com/fixture/repository/issues/1'});
     external.ports.push(port); external.onConnect.forEach(listener => listener(port));
     port.onMessage.fire(kind === 'reading' ? readingRequest(`background-reading-${index}`) : {...writingRequest, requestId: `background-writing-${index}`});
     await untilFixture(() => external.requests.length > index);
@@ -555,6 +555,39 @@ function writingRequestAt(index=external.ports.length-1) {const port=external.po
 async function writingFailure(error:string,cancelled=false) {const {port,request}=writingRequestAt();port.onMessage.fire({type:'result',requestId:request.requestId,response:{success:false,error,cancelled}});await flush();}
 
 describe('audit49B WritingPanel actual drafting workflows',()=>{
+    it('restores edited output, instructions, versions and unconfirmed style after hiding the same session', async () => {
+        const {host, props} = mount(WritingPanel, {active: true, sessionKey: 1, initialDraft: 'Source'});
+        await flush(); await writingComplete('First reply');
+        await writingClick(host, '重新生成'); await writingComplete('Second reply');
+        await writingInput(host, '写作要求', 'Unsubmitted instruction');
+        await writingClick(host, '编辑正文'); await writingInput(host, '生成正文', 'User edited reply');
+        const output = host.querySelector('[aria-label="生成正文"]');
+        const requestCount = external.ports.length;
+        props.active = false; await flush(); props.active = true; await flush();
+        expect(host.querySelector('[aria-label="生成正文"]')).toBe(output);
+        expect((output as HTMLTextAreaElement).value).toBe('User edited reply');
+        expect((host.querySelector('[aria-label="写作要求"]') as HTMLTextAreaElement).value).toBe('Unsubmitted instruction');
+        expect(host.querySelector('.writing-versions')?.textContent).toBe('2/2');
+        expect(external.ports).toHaveLength(requestCount);
+        await writingClick(host, '完成编辑'); await writingClick(host, '回答风格');
+        await writingClick(host, '详细');
+        const styleEditor = host.querySelector('.writing-style-editor');
+        props.active = false; await flush(); props.active = true; await flush();
+        expect(host.querySelector('.writing-style-editor')).toBe(styleEditor);
+        expect(button(host, '详细').getAttribute('aria-checked')).toBe('true');
+        expect(external.savePreferences).not.toHaveBeenCalled();
+        expect(external.ports).toHaveLength(requestCount);
+        await writingClick(host, '取消');
+        expect(host.querySelector('[aria-label="生成正文预览"]')?.textContent).toContain('User edited reply');
+        await writingClick(host, '上一版');
+        expect(host.querySelector('[aria-label="生成正文预览"]')?.textContent).toContain('First reply');
+        props.active = false; props.sessionKey = 2; props.initialDraft = ''; props.initialContext = ''; props.initialIntent = 'draft'; await flush();
+        props.active = true; await flush();
+        expect(host.querySelector('.writing-versions')).toBeNull();
+        expect(host.querySelector('[aria-label="生成正文预览"]')).toBeNull();
+        expect((host.querySelector('[aria-label="写作要求"]') as HTMLTextAreaElement).value).toBe('');
+    });
+
     it('uses a suggestion and keyboard submit, renders streaming model identity, and inserts plain text',async()=>{
         const applyDraft=vi.fn();const {host}=mount(WritingPanel,{active:true,sessionKey:1,initialIntent:'draft',plainTextOutput:true,applyDraft});await flush();
         await writingClick(host,'writing.experience.suggestionThanks');const instruction=host.querySelector('[aria-label="写作要求"]')!;
@@ -669,6 +702,26 @@ describe('audit49B WritingPanel insertion and feedback', () => {
 
 
 describe('audit49B WritingPanel deferred drafting and interrupted output', () => {
+    it('stops hidden generation, retains the partial draft and instruction, and ignores late output when reopened', async () => {
+        const {host, props} = mount(WritingPanel, {active: true, sessionKey: 1, initialIntent: 'draft'});
+        await flush(); await writingInput(host, '写作要求', 'Keep these requirements');
+        host.querySelector('form')!.dispatchEvent(new Event('submit', {bubbles: true, cancelable: true})); await flush();
+        const {port, request} = writingRequestAt();
+        port.onMessage.fire({type: 'progress', requestId: request.requestId, progress: {kind: 'text', text: 'Partial reply'}}); await flush();
+        props.active = false; await flush();
+        expect(port.disconnect).toHaveBeenCalledOnce();
+        port.onMessage.fire({type: 'result', requestId: request.requestId, response: {...result, text: 'Late obsolete reply'}});
+        props.active = true; await flush();
+        expect(external.ports).toHaveLength(1);
+        expect(host.querySelector('[aria-label="生成正文预览"]')?.textContent).toContain('Partial reply');
+        expect(host.textContent).not.toContain('Late obsolete reply');
+        expect(host.textContent).toContain('writing.experience.incomplete');
+        expect((host.querySelector('[aria-label="写作要求"]') as HTMLTextAreaElement).value).toBe('Keep these requirements');
+        await writingClick(host, '重新生成');
+        expect(external.ports).toHaveLength(2);
+        expect(writingRequestAt().request).toMatchObject({draft: 'Partial reply', instruction: 'Keep these requirements'});
+    });
+
     it('waits for explicit generation when a draft task starts with discussion context only', async () => {
         const {host}=mount(WritingPanel,{active:true,sessionKey:1,initialIntent:'draft',initialContext:'Meeting context'});await flush();expect(external.ports).toHaveLength(0);
         await writingClick(host,'生成回复');expect(writingRequestAt().request).toMatchObject({intent:'draft',draft:'',context:'Meeting context',instruction:''});await writingComplete('Context-based draft');expect(host.textContent).toContain('Context-based draft');

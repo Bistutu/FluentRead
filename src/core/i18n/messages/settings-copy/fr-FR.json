@@ -155,7 +155,20 @@
     "settings.general.themeDescription": "Modifie uniquement l’interface de l’extension, sans changer les couleurs des pages.",
     "settings.services.freeWeights.timeoutHelp": "Chaque service attend au maximum la durée choisie, dans une limite totale partagée de 20 secondes. La traduction gratuite ne relance pas les tentatives globales. Réessayez les erreurs réseau plus tard ; en cas de limitation, de blocage ou de quota épuisé, suivez les consignes du service ou choisissez-en un autre.",
     "writing.experience.inheritService": "Utiliser le service par défaut · {service}",
-    "writing.experience.inheritTargetLanguage": "Utiliser la langue cible · {language}"
+    "writing.experience.inheritTargetLanguage": "Utiliser la langue cible · {language}",
+    "learning.collection.speechRequesting": "Synthèse en cours…",
+    "learning.collection.speechPlaying": "Lecture vocale en cours",
+    "learning.collection.speechOnlineNoAudio": "Le service en ligne n’a renvoyé aucun audio",
+    "learning.collection.speechCancelled": "La demande vocale a été annulée",
+    "learning.collection.speechPageAudioNotStarted": "La lecture audio de la page n’a pas démarré",
+    "learning.collection.speechGoogleNoAudio": "Google n’a renvoyé aucun audio",
+    "learning.collection.speechBrowserStartFailed": "La synthèse vocale du navigateur n’a pas démarré{error}{details}",
+    "learning.collection.speechBrowserNotStarted": "La voix du navigateur ne s’est pas lancée{details}",
+    "learning.collection.speechBrowserCallFailed": "Échec de l’appel vocal du navigateur : {error}{details}",
+    "learning.collection.speechOnlineSynthesis": "Synthèse en ligne : {error}",
+    "learning.collection.speechGoogleFallback": "Solution de secours Google : {error}",
+    "learning.collection.speechOnlineRequestFailed": "Échec de la requête en ligne ou de la lecture audio : {error}",
+    "learning.collection.speechFailedDetail": "Échec de la lecture vocale : {details}"
   },
   "legacy": {
     "同步连接已变化，请重新生成预览。": "La connexion a changé. Générez un nouvel aperçu.",

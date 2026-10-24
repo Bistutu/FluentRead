@@ -155,7 +155,20 @@
     "settings.general.themeDescription": "Solo cambia la interfaz de la extensión, sin modificar los colores de las páginas.",
     "settings.services.freeWeights.timeoutHelp": "Cada servicio espera como máximo el tiempo elegido, dentro de un límite total compartido de 20 segundos. La traducción gratuita no repite los reintentos globales. Reintenta los errores de red más tarde; ante límites, bloqueos o cuotas agotadas, sigue las indicaciones del servicio o elige otro.",
     "writing.experience.inheritService": "Usar servicio predeterminado · {service}",
-    "writing.experience.inheritTargetLanguage": "Usar idioma de destino · {language}"
+    "writing.experience.inheritTargetLanguage": "Usar idioma de destino · {language}",
+    "learning.collection.speechRequesting": "Generando voz…",
+    "learning.collection.speechPlaying": "Leyendo en voz alta",
+    "learning.collection.speechOnlineNoAudio": "El servicio en línea no devolvió audio",
+    "learning.collection.speechCancelled": "Se canceló la solicitud de voz",
+    "learning.collection.speechPageAudioNotStarted": "No se inició el audio de la página",
+    "learning.collection.speechGoogleNoAudio": "Google no devolvió audio",
+    "learning.collection.speechBrowserStartFailed": "No se pudo iniciar la voz del navegador{error}{details}",
+    "learning.collection.speechBrowserNotStarted": "La voz del navegador no se inició{details}",
+    "learning.collection.speechBrowserCallFailed": "Error al llamar a la voz del navegador: {error}{details}",
+    "learning.collection.speechOnlineSynthesis": "Síntesis en línea: {error}",
+    "learning.collection.speechGoogleFallback": "Alternativa de Google: {error}",
+    "learning.collection.speechOnlineRequestFailed": "Error en la solicitud en línea o al reproducir el audio: {error}",
+    "learning.collection.speechFailedDetail": "No se pudo leer en voz alta: {details}"
   },
   "legacy": {
     "同步连接已变化，请重新生成预览。": "La conexión ha cambiado. Genera una nueva vista previa.",

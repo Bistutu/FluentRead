@@ -9,6 +9,7 @@ import {createAreaTranslationOffscreenAdapter} from '@/src/features/area-transla
 import {createImageTranslationOffscreenAdapter} from '@/src/features/image-translation/background/offscreenAdapter';
 import {createLocalTtsOffscreenAdapter} from '@/src/features/local-tts/background/offscreenAdapter';
 import {createSelectionTtsOffscreenAdapter} from '@/src/features/selection-translation/background/offscreenAdapter';
+import {setRuntimeFetch} from '@/src/platform/http/runtime';
 import {
     OFFSCREEN_CANCEL_IMAGE_OPERATION_MESSAGE_TYPE,
     OFFSCREEN_CANCEL_LOCAL_TTS_MESSAGE_TYPE,
@@ -26,6 +27,10 @@ const client = {
 
 beforeEach(() => {
     vi.clearAllMocks();
+});
+
+afterEach(() => {
+    setRuntimeFetch();
 });
 
 describe('area translation Offscreen adapter', () => {
@@ -229,6 +234,44 @@ describe('selection TTS Offscreen adapter', () => {
             .mockResolvedValueOnce({success: true, playbackToken: 'permit'});
     };
     const adapter = createSelectionTtsOffscreenAdapter(client);
+
+    it('fetches Google audio through the platform transport and preserves its response metadata', async () => {
+        const transport = vi.fn(async () => new Response(new Uint8Array([1, 2, 3]), {
+            status: 200,
+            headers: {'content-type': 'audio/ogg'},
+        }));
+        const controller = new AbortController();
+        setRuntimeFetch(transport);
+
+        await expect(adapter.fetchPageAudio('https://example.test/audio', controller.signal)).resolves.toEqual({
+            audio: new Uint8Array([1, 2, 3]).buffer,
+            contentType: 'audio/ogg',
+        });
+        expect(transport).toHaveBeenCalledWith('https://example.test/audio', {signal: controller.signal});
+    });
+
+    it.each([
+        {statusText: 'Service Unavailable', expected: 'Google TTS failed: 503 Service Unavailable'},
+        {statusText: '', expected: 'Google TTS failed: 503'},
+    ])('reports Google HTTP errors with or without a status label: $statusText', async ({statusText, expected}) => {
+        setRuntimeFetch(async () => new Response('unavailable', {status: 503, statusText}));
+        await expect(adapter.fetchPageAudio('https://example.test/audio', new AbortController().signal)).rejects.toThrow(expected);
+    });
+
+    it('cancels an unread Google error body before reporting the HTTP failure', async () => {
+        const cancel = vi.fn();
+        const body = new ReadableStream<Uint8Array>({cancel});
+        setRuntimeFetch(async () => new Response(body, {status: 503}));
+        await expect(adapter.fetchPageAudio('https://example.test/audio', new AbortController().signal)).rejects.toThrow('Google TTS failed: 503');
+        expect(cancel).toHaveBeenCalledOnce();
+    });
+
+    it('uses the MPEG content type when Google omits the response header', async () => {
+        setRuntimeFetch(async () => new Response(new Uint8Array([7])));
+        await expect(adapter.fetchPageAudio('https://example.test/audio', new AbortController().signal)).resolves.toMatchObject({
+            contentType: 'audio/mpeg',
+        });
+    });
 
     it.each([
         {errorCode: 'selection-tts-permit-invalid', receiverId: 'receiver'},
