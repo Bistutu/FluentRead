@@ -2,7 +2,7 @@
  * @file src/features/video-subtitle/content/ui.ts
  *
  * 文件职责：封装视频字幕 content UI 的界面语言转换、可访问名称刷新及桌面/触屏安全视口菜单样式，避免 YouTube 播放器运行时承载重复的文案拼装。
- * 主要内容：提供视频菜单本地化、局部外观变量、独立纯文本读音行及按语言命名；读音按原文、读音、译文排列并计入字幕布局，防止缩成不可读小字；保留逐字高亮、校时与就地模型选择控件，过滤 YouTube 滚动窗口旧行，按实际画面及同视频可见底控约束字幕几何、换行与大字号完整高度，并封装字幕清理、媒体时钟读取、样式及字幕下载。
+ * 主要内容：提供视频菜单本地化、局部外观变量、显式读音开关与示例说明、紧凑下载折叠入口、独立纯文本读音行及按语言命名；读音按原文、读音、译文排列并计入字幕布局，防止缩成不可读小字；菜单仅管理自身交互，不参与字幕的宽度与水平居中计算；保留逐字高亮、校时与就地模型选择控件，过滤 YouTube 滚动窗口旧行，按实际画面及同视频可见底控约束字幕几何、换行与大字号完整高度，并封装字幕清理、媒体时钟读取、样式及字幕下载。
  * 模块边界：只读取界面配置并操作视频 feature 拥有的节点、样式和下载链接，不发起翻译或识别请求；任务生命周期由 runtime 管理。
  */
 
@@ -611,13 +611,10 @@ export function syncTranslationOverlayPosition(container: HTMLElement | null): v
   const menu = document.getElementById(VIDEO_TRANSLATION_MENU_ID);
   const menuOpen = menu instanceof HTMLElement && !menu.hidden;
   const learningOpen = Boolean(getYoutubeSubtitleControlsScope(player).querySelector('#fluent-read-video-learning-panel.fluent-read-video-ui[data-fluent-read-ui="video-subtitle"]'));
-  const menuReserve = menuOpen && playerWidth >= 640
-    ? Math.min(menu.getBoundingClientRect().width + 20, playerWidth * .34)
-    : 0;
   const appearance = normalizeVideoSubtitleAppearance(config.videoSubtitleAppearance);
   Object.entries(getVideoSubtitleAppearanceCssVars(appearance)).forEach(([name, value]) => panel.style.setProperty(name, value));
   panel.dataset.fluentReadSubtitleSkin = appearance.skin;
-  const availableWidth = Math.max(0, Math.min(playerWidth - 24 - menuReserve, playerWidth * appearance.maxWidth / 100));
+  const availableWidth = Math.max(0, Math.min(playerWidth - 24, playerWidth * appearance.maxWidth / 100));
   const baseFontSize = Math.min(Math.max(playerWidth * .022, 16), 30);
   const fontScale = appearance.fontScale / 100;
   panel.style.setProperty('--fluent-read-video-subtitle-font-size', `${baseFontSize * fontScale}px`);
@@ -646,14 +643,14 @@ export function syncTranslationOverlayPosition(container: HTMLElement | null): v
   panel.style.transform = appearance.position === 'center' ? 'translateY(-50%)' : 'none';
   if (!active) {resetSubtitlePanelLayout(panel); return;}
 
-  // 背景只包住双语文本，并以播放器中心为锚点。长字幕仍受播放器宽度限制，
-  // 超出时在面板内部换行，而不是把半透明背景铺满整行。
+  // 背景只包住双语文本，并始终以视频画面中心为锚点；菜单浮层不挤占字幕空间。
+  // 长字幕仍受播放器宽度限制，超出时在面板内部换行，而不是把半透明背景铺满整行。
   const centerPanel = () => {
     panel.style.left = `${(viewport?.left || 0) + 12}px`;
     const layerRect = layer.getBoundingClientRect();
     const measuredWidth = panel.getBoundingClientRect().width / (layer.clientWidth > 0 && layerRect.width > 0 ? layerRect.width / layer.clientWidth : 1);
     const width = Math.min(Math.max(measuredWidth, 0), availableWidth);
-    const usableRight = playerWidth - menuReserve - 12;
+    const usableRight = playerWidth - 12;
     const left = Math.max(12, Math.min((usableRight - width + 12) / 2, usableRight - width));
     const panelLeft = `${(viewport?.left || 0) + left}px`;
     panel.style.left = fullscreen
@@ -846,8 +843,6 @@ export function installVideoSubtitleStyle(): HTMLStyleElement {
     }
     #${VIDEO_READING_OVERLAY_ID}:empty,
     :is(#${VIDEO_TRANSLATION_LAYER_ID}, #${VIDEO_SUBTITLE_SCROLL_HOST_ID}).${VIDEO_DISPLAY_TRANSLATION_ONLY_CLASS} #${VIDEO_READING_OVERLAY_ID} {display:none !important;}
-    #${VIDEO_TRANSLATION_MENU_ID} [data-action="toggle-reading-annotation"]::after {content:''; margin-left:auto; min-width:1em;}
-    #${VIDEO_TRANSLATION_MENU_ID} [data-action="toggle-reading-annotation"][aria-checked="true"]::after {content:'✓';}
     /* 逐字高亮：未唱到的字用本行颜色的淡色，唱过的恢复原色，正在唱的字由同字高亮层从行首方向扫过。 */
     #${VIDEO_TRANSLATION_OVERLAY_ID} { --fluent-read-video-karaoke-color: var(--fluent-read-video-subtitle-translation-color, #ffe45c); }
     #${VIDEO_NORMALIZED_CAPTION_OVERLAY_ID} { --fluent-read-video-karaoke-color: var(--fluent-read-video-subtitle-text-color, #fff); }
@@ -1127,6 +1122,7 @@ export function installVideoSubtitleStyle(): HTMLStyleElement {
       font-weight: 650 !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-settings {
+      min-width: 0 !important;
       min-height: 22px !important;
       padding: 0 5px !important;
       color: var(--fr-video-menu-muted) !important;
@@ -1224,7 +1220,7 @@ export function installVideoSubtitleStyle(): HTMLStyleElement {
     #${VIDEO_TRANSLATION_MENU_ID}[data-compact="true"] .fluent-read-video-menu-secondary-ai .fluent-read-video-menu-ai[data-ready="true"] .fluent-read-video-menu-value { display: none !important; }
     #${VIDEO_TRANSLATION_MENU_ID}[data-compact="true"] .fluent-read-video-menu-tools > .fluent-read-video-menu-secondary { justify-content: flex-start !important; padding: 0 4px !important; }
     #${VIDEO_TRANSLATION_MENU_ID}[data-compact="true"][data-layout="wide"] .fluent-read-video-menu-tools { gap: 4px !important; }
-    #${VIDEO_TRANSLATION_MENU_ID}[data-compact="true"][data-layout="wide"] .fluent-read-video-menu-export { grid-template-columns: auto minmax(0, 1fr) !important; align-items: center !important; }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-compact="true"][data-layout="wide"] .fluent-read-video-menu-export { grid-template-columns: minmax(0, 1fr) !important; }
     #${VIDEO_TRANSLATION_MENU_ID}[data-compact="true"][data-layout="wide"] .fluent-read-video-menu-export .fluent-read-video-menu-download-status { grid-column: 1 / -1 !important; }
 
     #${VIDEO_TRANSLATION_MENU_ID}[data-layout="wide"] .fluent-read-video-menu-source {
@@ -1437,6 +1433,94 @@ export function installVideoSubtitleStyle(): HTMLStyleElement {
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-download-status:empty,
     #${VIDEO_TRANSLATION_MENU_ID}[data-measuring] .fluent-read-video-menu-download-status { display: none !important; }
+
+    /* 高频设置保留清楚的开关；解释与低频导出按需展开，不占常驻卡片高度。 */
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-export {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) !important;
+      gap: 4px !important;
+      min-width: 0 !important;
+      width: 100% !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading,
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-feedback { display: contents !important; }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-header { flex: 0 0 auto !important; }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-toggle {
+      position: relative !important;
+      width: 28px !important;
+      height: 28px !important;
+      padding: 3px !important;
+      border: 1px solid transparent !important;
+      background: transparent !important;
+      color: var(--fr-video-menu-muted) !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-toggle .fluent-read-video-menu-icon { width: 20px !important; height: 20px !important; stroke-width: 1.7 !important; }
+    /* 与标题栏图标及显示方式选中态统一：透明底、柔和品牌色；悬停不能覆盖开启状态。 */
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-toggle[aria-checked="false"]:is(:hover, :focus-visible):not(:disabled) {
+      background: var(--fr-video-menu-control) !important;
+      color: var(--fr-video-menu-text) !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-toggle[aria-checked="true"] {
+      background: var(--fr-video-menu-brand-soft) !important;
+      border-color: rgba(239, 71, 118, .32) !important;
+      color: var(--fr-video-menu-brand-text) !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-toggle[aria-checked="true"]:hover:not(:disabled) {
+      background: rgba(239, 71, 118, .28) !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-help {
+      padding: 9px !important;
+      border: 1px solid var(--fr-video-menu-border) !important;
+      border-radius: 8px !important;
+      background: var(--fr-video-menu-control) !important;
+      font-size: 11px !important;
+      line-height: 1.55 !important;
+      white-space: normal !important;
+      overflow-wrap: anywhere !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-help[popover] {
+      position: fixed !important;
+      inset: auto !important;
+      top: var(--fr-reading-help-top, 8px) !important;
+      left: var(--fr-reading-help-left, 8px) !important;
+      margin: 0 !important;
+      width: var(--fr-reading-help-width, 280px) !important;
+      max-height: var(--fr-reading-help-max-height, calc(100vh - 16px)) !important;
+      overflow: auto !important;
+      background: var(--fr-video-menu-surface) !important;
+      color: var(--fr-video-menu-text) !important;
+      box-shadow: var(--fr-video-menu-shadow) !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-help::backdrop { background: transparent !important; pointer-events: none !important; }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-help p { margin: 0 !important; padding: 0 !important; }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-example {
+      display: grid !important;
+      gap: 2px !important;
+      margin: 8px 0 !important;
+      padding: 7px 9px !important;
+      border-radius: 6px !important;
+      background: var(--fr-video-menu-surface) !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-example-label,
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-note { color: var(--fr-video-menu-muted) !important; font-size: 10.5px !important; }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-example-text { color: var(--fr-video-menu-brand-text) !important; }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading-help .fluent-read-video-menu-reading-note + p { margin-top: 6px !important; }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-reading > .fluent-read-video-menu-source-hint { padding: 0 4px !important; }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-download-toggle {
+      flex: 0 0 28px !important;
+      width: 28px !important;
+      height: 28px !important;
+      padding: 3px !important;
+      color: var(--fr-video-menu-muted) !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-download-toggle:hover { color: var(--fr-video-menu-text) !important; background: var(--fr-video-menu-control) !important; }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-download-toggle[aria-expanded="true"] { color: var(--fr-video-menu-brand-text) !important; background: var(--fr-video-menu-brand-soft) !important; }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-export .fluent-read-video-menu-download {
+      flex-direction: row !important;
+      gap: 4px !important;
+      min-height: 28px !important;
+      padding: 4px !important;
+    }
 
     #${VIDEO_TRANSLATION_MENU_ID}[data-view="export-prompt"] .fluent-read-video-model-prompt.fluent-read-video-export-prompt { display: flex !important; flex-direction: column !important; gap: 8px !important; }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-export-actions { flex-wrap: wrap !important; }
@@ -1711,6 +1795,8 @@ export function installVideoSubtitleStyle(): HTMLStyleElement {
       overflow-wrap: anywhere !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-menu-step { width: 44px !important; height: 44px !important; }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-menu-download-toggle { flex-basis: 44px !important; width: 44px !important; height: 44px !important; }
+    #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-menu-reading-toggle { width: 44px !important; height: 44px !important; }
     #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-menu-timing-value { font-size: 14px !important; }
     #${VIDEO_TRANSLATION_MENU_ID}[data-presentation="viewport"] .fluent-read-video-menu-downloads {
       display: grid !important;

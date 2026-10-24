@@ -393,6 +393,61 @@ describe('mobile YouTube readable control avoidance', () => {
   });
 });
 
+describe('desktop subtitle geometry during menu interaction', () => {
+  it.each([
+    {name: 'windowed bottom', width: 960, scale: 1, fullscreen: false, position: 'bottom'},
+    {name: 'fullscreen bottom', width: 1920, scale: 1, fullscreen: true, position: 'bottom'},
+    {name: 'scaled fullscreen center', width: 1280, scale: 1.5, fullscreen: true, position: 'center'},
+    {name: '640px threshold top', width: 640, scale: 1, fullscreen: false, position: 'top'},
+    {name: '639px below threshold', width: 639, scale: 1, fullscreen: false, position: 'bottom'},
+  ] as const)('keeps short and long captions fixed in $name when the menu opens, grows and closes', scenario => {
+    const {width, scale, position, fullscreen} = scenario;
+    const height = width * 9 / 16;
+    const painted = rect(20, 30, width * scale, height * scale);
+    const f = fixture({player: painted, layer: painted, video: painted,
+      clientSize: [width, height], offset: [width, height]});
+    Object.defineProperty(f.window, 'location', {configurable: true, value: new URL('https://www.youtube.com/watch?v=stable-caption')});
+    if (fullscreen) Object.defineProperty(f.document, 'fullscreenElement', {value: f.player});
+    config.videoSubtitleAppearance = {...DEFAULT_VIDEO_SUBTITLE_APPEARANCE, position};
+    const overlay = getOrCreateTranslationOverlay(f.player);
+    const original = getOrCreateNormalizedCaptionOverlay(f.player);
+    const panel = overlay.parentElement!;
+    const container = f.document.createElement('div'); f.player.appendChild(container);
+    const menu = createVideoPlayerMenu('zh-CN', false); f.player.appendChild(menu);
+    let menuWidth = 280, longCue = false;
+    Object.defineProperty(menu, 'getBoundingClientRect', {value: () => rect(20 + (width - menuWidth) * scale, 30, menuWidth * scale, 200 * scale)});
+    // 浏览器测量边界：长句按可用宽度换行，返回缩放后的外接矩形和未缩放滚动高度。
+    const measure = () => {
+      const maximum = Number.parseFloat(panel.style.maxWidth.match(/[\d.]+/)?.[0] || '') || width;
+      const natural = longCue ? width * 1.8 : 280;
+      const measuredWidth = Math.min(natural, maximum);
+      const font = Number.parseFloat(panel.style.getPropertyValue('--fluent-read-video-subtitle-font-size')) || 16;
+      return {width: measuredWidth, height: Math.ceil(natural / measuredWidth) * font * 2.7 + 16};
+    };
+    Object.defineProperties(panel, {
+      getBoundingClientRect: {value: () => {const size = measure(); return rect(20, 30, size.width * scale, size.height * scale);}},
+      scrollHeight: {get: () => measure().height},
+    });
+    const geometry = () => ({left: panel.style.left, maxWidth: panel.style.maxWidth, top: panel.style.top,
+      bottom: panel.style.bottom, bottomOffset: panel.style.getPropertyValue('--fluent-read-video-subtitle-bottom'),
+      font: panel.style.getPropertyValue('--fluent-read-video-subtitle-font-size'), transform: panel.style.transform});
+    for (const cue of ['short', 'long'] as const) {
+      longCue = cue === 'long';
+      original.textContent = longCue ? 'A longer original caption with enough text to wrap. '.repeat(6) : 'A short caption.';
+      overlay.textContent = longCue ? '菜单展开时，长字幕也应保留原来的位置与宽度。'.repeat(6) : '短字幕。';
+      menu.hidden = true; syncTranslationOverlayPosition(container);
+      const before = geometry();
+      for (const nextWidth of [280, 440]) {
+        menuWidth = nextWidth; menu.hidden = false;
+        syncTranslationOverlayPosition(container);
+        expect(geometry(), `${cue} caption with ${nextWidth}px menu`).toEqual(before);
+      }
+      menu.hidden = true; syncTranslationOverlayPosition(container);
+      expect(geometry(), `${cue} caption after closing menu`).toEqual(before);
+    }
+  });
+});
+
 describe('X video subtitle viewport', () => {
   it('finds the centered painted portrait area for contain', () => {
     const {player, layer} = fixture({intrinsic: [1080, 1920], objectFit: 'contain'});

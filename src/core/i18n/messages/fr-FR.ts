@@ -978,6 +978,8 @@ export const frFRMessages = {
     "video.readingAnnotation.th": "Translittération thaïe",
     "video.readingAnnotation.unavailable": "Les aides à la lecture nécessitent actuellement l’extension du navigateur",
     "video.readingAnnotation.label": "Aides à la lecture",
+    "video.readingAnnotation.explanation": "Affiche le pinyin ou une transcription en lettres latines sous les sous-titres originaux pour vous aider à lire à voix haute.",
+    "video.readingAnnotation.exampleLabel": "Exemple",
     "video.readingAnnotation.description": "Japonais : ~17,8 Mo / hindi : ~0,5 Mo au premier usage, puis hors ligne",
     "video.readingAnnotation.originalRequired": "Affichées avec l’original ou les deux langues ; votre préférence est conservée",
     "video.readingAnnotation.approximation": "Japonais, coréen, chinois, russe, grec, arabe, hindi et thaï pris en charge. La translittération latine facilite la lecture sans indiquer la prononciation exacte. Les noms, les lectures multiples et les voyelles omises peuvent être ambigus.",

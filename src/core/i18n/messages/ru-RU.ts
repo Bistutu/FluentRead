@@ -978,6 +978,8 @@ export const ruRUMessages = {
     "video.readingAnnotation.th": "Тайская транслитерация",
     "video.readingAnnotation.unavailable": "Для подсказок чтения пока требуется расширение браузера",
     "video.readingAnnotation.label": "Подсказки чтения",
+    "video.readingAnnotation.explanation": "Показывает пиньинь или латинскую транслитерацию под исходными субтитрами, чтобы помочь читать вслед за диктором.",
+    "video.readingAnnotation.exampleLabel": "Пример",
     "video.readingAnnotation.description": "Японский: ~17,8 МБ / хинди: ~0,5 МБ при первом использовании, затем офлайн",
     "video.readingAnnotation.originalRequired": "Показаны с оригиналом или обоими языками; настройка сохраняется",
     "video.readingAnnotation.approximation": "Поддерживаются японский, корейский, китайский, русский, греческий, арабский, хинди и тайский. Латинская транслитерация помогает читать, но не передаёт точное произношение. Имена, разные чтения и пропущенные гласные могут быть неоднозначны.",

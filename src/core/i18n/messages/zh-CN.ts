@@ -1205,6 +1205,8 @@ export const zhCNMessages = {
     "video.readingAnnotation.th": "泰语转写",
     "video.readingAnnotation.unavailable": "读音标注目前需要浏览器扩展版",
     "video.readingAnnotation.label": "读音标注",
+    "video.readingAnnotation.explanation": "在原文字幕下显示拼音或罗马音，帮助你跟读。",
+    "video.readingAnnotation.exampleLabel": "效果示例",
     "video.readingAnnotation.description": "日语约 17.8 MB / 印地语约 0.5 MB，首次使用下载，缓存后离线",
     "video.readingAnnotation.originalRequired": "仅原文或双语时显示，当前偏好会保留",
     "video.readingAnnotation.approximation": "支持日语、韩语、中文、俄语、希腊语、阿拉伯语、印地语与泰语。拉丁转写用于辅助阅读，不等于精确发音；人名、多音字与未标元音可能有歧义。",

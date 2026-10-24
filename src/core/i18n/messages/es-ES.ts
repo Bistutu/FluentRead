@@ -978,6 +978,8 @@ export const esESMessages = {
     "video.readingAnnotation.th": "Transliteración tailandesa",
     "video.readingAnnotation.unavailable": "Las guías de lectura requieren actualmente la extensión del navegador",
     "video.readingAnnotation.label": "Guías de lectura",
+    "video.readingAnnotation.explanation": "Muestra pinyin o lecturas romanizadas debajo de los subtítulos originales para ayudarte a leer en voz alta.",
+    "video.readingAnnotation.exampleLabel": "Ejemplo",
     "video.readingAnnotation.description": "Japonés: ~17,8 MB / hindi: ~0,5 MB al primer uso; después sin conexión",
     "video.readingAnnotation.originalRequired": "Se muestran con el original o ambos idiomas; se conserva tu preferencia",
     "video.readingAnnotation.approximation": "Compatible con japonés, coreano, chino, ruso, griego, árabe, hindi y tailandés. La transliteración latina ayuda a leer, pero no indica la pronunciación exacta. Los nombres, las lecturas múltiples y las vocales omitidas pueden ser ambiguos.",
