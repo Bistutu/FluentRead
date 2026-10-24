@@ -85,7 +85,7 @@ await cp(join(root, 'integrations/zotero/dist/fluentread-zotero.xpi'), join(dire
 
 async function probe(config) {
     const results = {application: Zotero.version, platformOnly: config.platformOnly, steps: [], errors: [], warnings: [], logs: [],
-        diagnosticsCoverage:'Console observer installed by the probe before the native add-on; retained through workspace mount, disable, re-enable and disposal',
+        diagnosticsCoverage:'nsIConsoleService and console-api-log-event observers installed by the probe before the native add-on; retained through workspace mount, disable, re-enable and disposal',
         windowPlacement:{mode:'background-visible-no-focus',display:config.display,windows:[]}};
     let phase = 'native installation';
     const assert = (condition, message) => {if (!condition) throw new Error(message); results.steps.push(message);};
@@ -107,7 +107,18 @@ async function probe(config) {
             lineNumber:scriptError.lineNumber,columnNumber:scriptError.columnNumber,flags:scriptError.flags,category:scriptError.category,
             phase,timeStamp:scriptError.timeStamp});
     }};
+    const consoleObserver = {observe(subject) {
+        const entry = subject.wrappedJSObject;
+        if (!entry || !['warn','error','exception','assert'].includes(entry.level)) return;
+        const value = (entry.arguments || []).map(argument => {
+            try {return String(argument);} catch {return '[unprintable console argument]';}
+        }).join(' ');
+        if (!/fluentread|workspace\.js|native\.js/i.test((entry.filename || '') + value)) return;
+        (entry.level === 'warn' ? results.warnings : results.errors).push({message:value.slice(0,500),sourceName:entry.filename || '',
+            lineNumber:entry.lineNumber,columnNumber:entry.columnNumber,category:'console-api',level:entry.level,phase,timeStamp:entry.timeStamp});
+    }};
     Services.console.registerListener(observer);
+    Services.obs.addObserver(consoleObserver, 'console-api-log-event');
     const placeWindow = async (window, name, width=1120, height=800) => {
         const area = config.display;
         const left = Math.round(area.left + (area.width-width)/2);
@@ -223,6 +234,7 @@ async function probe(config) {
     } catch (error) {results.passed = false; results.failure = String(error); results.stack = error.stack;}
     finally {
         Services.console.unregisterListener(observer);
+        Services.obs.removeObserver(consoleObserver, 'console-api-log-event');
         if (results.errors.length || results.warnings.length) {
             results.passed = false;
             results.failure ||= `Native runtime diagnostics: ${results.errors.length} errors, ${results.warnings.length} warnings`;
