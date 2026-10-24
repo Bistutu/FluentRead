@@ -1,11 +1,10 @@
 /*
  * @file src/features/settings/ui/components/settings-navigation.css
- * 文件职责：统一设置页内定位、服务分组、服务详情标签页与统计视图导航的紧凑外观。
+ * 文件职责：统一设置页内定位、服务分组与统计视图导航的紧凑外观。
  * 主要内容：单行横向滚动、圆角面板、浅色选中块及键盘焦点；文字保持完整，长标签只扩展导航内部宽度。
  * 模块边界：仅定义 settings-subnavigation 展示原语，不决定导航位置、路由、滚动目标或配置状态。
  */
-.settings-subnavigation,
-.settings-tab-navigation .el-tabs__nav {
+.settings-subnavigation {
   display: flex;
   flex: none;
   flex-wrap: nowrap;
@@ -18,8 +17,7 @@
   background: var(--surface, #fff);
 }
 .settings-subnavigation { overflow-x: auto; scrollbar-width: thin; overscroll-behavior-x: contain; }
-.settings-subnavigation > button,
-.settings-tab-navigation .el-tabs__item {
+.settings-subnavigation > button {
   flex: none;
   padding: 7px 12px;
   border: 0;
@@ -34,17 +32,7 @@
   overflow-wrap: normal;
   cursor: pointer;
 }
-.settings-subnavigation > button:hover,
-.settings-tab-navigation .el-tabs__item:hover { color: var(--ink, #172033); background: var(--surface-soft, #f5f6fa); }
-.settings-subnavigation > button[aria-current],
-.settings-tab-navigation .el-tabs__item.is-active { color: var(--brand-strong, #d63260); background: var(--brand-soft, #fff0f5); font-weight: 650; }
-.settings-subnavigation > button:focus-visible,
-.settings-tab-navigation .el-tabs__item:focus-visible { outline: 2px solid var(--brand, #ef4776); outline-offset: -2px; border-radius: 8px; box-shadow: none; }
+.settings-subnavigation > button:hover { color: var(--ink, #172033); background: var(--surface-soft, #f5f6fa); }
+.settings-subnavigation > button[aria-current] { color: var(--brand-strong, #d63260); background: var(--brand-soft, #fff0f5); font-weight: 650; }
+.settings-subnavigation > button:focus-visible { outline: 2px solid var(--brand, #ef4776); outline-offset: -2px; border-radius: 8px; box-shadow: none; }
 .settings-subnavigation > button:disabled { cursor: default; opacity: .6; }
-/* 保留 Element Plus 的标签页角色、键盘切换和滚动按钮，仅替换下划线外观。 */
-.settings-tab-navigation.el-tabs--top .el-tabs__header .el-tabs__item.is-top { height: auto; padding: 7px 12px; }
-.settings-tab-navigation .el-tabs__active-bar,
-.settings-tab-navigation .el-tabs__nav-wrap::after { display: none; }
-.settings-tab-navigation .el-tabs__nav-wrap { margin-bottom: 0; }
-.settings-tab-navigation .el-tabs__nav-next,
-.settings-tab-navigation .el-tabs__nav-prev { line-height: 42px; }

@@ -5,9 +5,9 @@
  * 模块边界：仅展示已知服务的性质，不判断连接状态、费用或修改配置。
  -->
 <template>
-  <span v-if="service === 'deeplx'" class="service-badge service-nature-badge" :data-service-nature-badge="service">{{ t('settings.services.library.freeUnofficial') }}</span>
-  <span v-else-if="service === 'bilibili' || service === 'bilibiliFree'" class="service-badge service-nature-badge" :data-service-nature-badge="service">{{ translateLegacy('免费') }}</span>
-  <span v-else-if="isCompositeTranslationProviderId(service)" class="service-badge service-nature-badge" :data-service-nature-badge="service">{{ t('settings.services.composite.badge') }}</span>
+  <span v-if="service === 'deeplx'" class="service-badge service-nature-badge" :data-service-nature-badge="service" :title="t('settings.services.library.freeUnofficial')">{{ t('settings.services.library.freeUnofficial') }}</span>
+  <span v-else-if="service === 'bilibili' || service === 'bilibiliFree'" class="service-badge service-nature-badge" :data-service-nature-badge="service" :title="translateLegacy('免费')">{{ translateLegacy('免费') }}</span>
+  <span v-else-if="isCompositeTranslationProviderId(service)" class="service-badge service-nature-badge" :data-service-nature-badge="service" :title="t('settings.services.composite.badge')">{{ t('settings.services.composite.badge') }}</span>
 </template>
 <script setup lang="ts">
 import './service-badges.css'

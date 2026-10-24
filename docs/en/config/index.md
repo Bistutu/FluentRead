@@ -1,6 +1,6 @@
 # Settings
 
-Settings start near the top of the page, with the current page identified in the sidebar or mobile selector. Section links, translation service groups, service settings tabs, and statistics views share a compact rounded navigation style. Long navigation bars scroll horizontally; on narrow screens, translation services use an expandable directory.
+Settings start near the top of the page, with the current page identified in the sidebar or mobile selector. Section links, translation service groups, and statistics views share a compact rounded navigation style. Long navigation bars scroll horizontally; on narrow screens, translation services use an expandable single-column directory.
 
 Open full settings from the gear in the extension menu. Search for a setting when you can’t find it, such as language, shortcuts, or menu layout. Changes normally save automatically.
 
