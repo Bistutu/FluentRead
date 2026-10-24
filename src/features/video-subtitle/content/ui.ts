@@ -2,7 +2,7 @@
  * @file src/features/video-subtitle/content/ui.ts
  *
  * 文件职责：封装视频字幕 content UI 的界面语言转换、可访问名称刷新及桌面/触屏安全视口菜单样式，避免 YouTube 播放器运行时承载重复的文案拼装。
- * 主要内容：提供视频菜单本地化、局部外观变量、显式读音开关与示例说明、紧凑下载折叠入口、独立纯文本读音行及按语言命名；读音按原文、读音、译文排列并计入字幕布局，防止缩成不可读小字；保留逐字高亮、校时与就地模型选择控件，过滤 YouTube 滚动窗口旧行，按实际画面及同视频可见底控约束字幕几何、换行与大字号完整高度，并封装字幕清理、媒体时钟读取、样式及字幕下载。
+ * 主要内容：提供视频菜单本地化、局部外观变量、显式读音开关与示例说明、紧凑下载折叠入口、独立纯文本读音行及按语言命名；读音按原文、读音、译文排列并计入字幕布局，防止缩成不可读小字；菜单仅管理自身交互，不参与字幕的宽度与水平居中计算；保留逐字高亮、校时与就地模型选择控件，过滤 YouTube 滚动窗口旧行，按实际画面及同视频可见底控约束字幕几何、换行与大字号完整高度，并封装字幕清理、媒体时钟读取、样式及字幕下载。
  * 模块边界：只读取界面配置并操作视频 feature 拥有的节点、样式和下载链接，不发起翻译或识别请求；任务生命周期由 runtime 管理。
  */
 
@@ -611,13 +611,10 @@ export function syncTranslationOverlayPosition(container: HTMLElement | null): v
   const menu = document.getElementById(VIDEO_TRANSLATION_MENU_ID);
   const menuOpen = menu instanceof HTMLElement && !menu.hidden;
   const learningOpen = Boolean(getYoutubeSubtitleControlsScope(player).querySelector('#fluent-read-video-learning-panel.fluent-read-video-ui[data-fluent-read-ui="video-subtitle"]'));
-  const menuReserve = menuOpen && playerWidth >= 640
-    ? Math.min(menu.getBoundingClientRect().width + 20, playerWidth * .34)
-    : 0;
   const appearance = normalizeVideoSubtitleAppearance(config.videoSubtitleAppearance);
   Object.entries(getVideoSubtitleAppearanceCssVars(appearance)).forEach(([name, value]) => panel.style.setProperty(name, value));
   panel.dataset.fluentReadSubtitleSkin = appearance.skin;
-  const availableWidth = Math.max(0, Math.min(playerWidth - 24 - menuReserve, playerWidth * appearance.maxWidth / 100));
+  const availableWidth = Math.max(0, Math.min(playerWidth - 24, playerWidth * appearance.maxWidth / 100));
   const baseFontSize = Math.min(Math.max(playerWidth * .022, 16), 30);
   const fontScale = appearance.fontScale / 100;
   panel.style.setProperty('--fluent-read-video-subtitle-font-size', `${baseFontSize * fontScale}px`);
@@ -646,14 +643,14 @@ export function syncTranslationOverlayPosition(container: HTMLElement | null): v
   panel.style.transform = appearance.position === 'center' ? 'translateY(-50%)' : 'none';
   if (!active) {resetSubtitlePanelLayout(panel); return;}
 
-  // 背景只包住双语文本，并以播放器中心为锚点。长字幕仍受播放器宽度限制，
-  // 超出时在面板内部换行，而不是把半透明背景铺满整行。
+  // 背景只包住双语文本，并始终以视频画面中心为锚点；菜单浮层不挤占字幕空间。
+  // 长字幕仍受播放器宽度限制，超出时在面板内部换行，而不是把半透明背景铺满整行。
   const centerPanel = () => {
     panel.style.left = `${(viewport?.left || 0) + 12}px`;
     const layerRect = layer.getBoundingClientRect();
     const measuredWidth = panel.getBoundingClientRect().width / (layer.clientWidth > 0 && layerRect.width > 0 ? layerRect.width / layer.clientWidth : 1);
     const width = Math.min(Math.max(measuredWidth, 0), availableWidth);
-    const usableRight = playerWidth - menuReserve - 12;
+    const usableRight = playerWidth - 12;
     const left = Math.max(12, Math.min((usableRight - width + 12) / 2, usableRight - width));
     const panelLeft = `${(viewport?.left || 0) + left}px`;
     panel.style.left = fullscreen
