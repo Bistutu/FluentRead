@@ -326,7 +326,9 @@ node scripts/testing/run-webdav-backup-ui-test.cjs \
 
 `tests/bilingualSentenceHighlight.test.ts` 覆盖字符坐标、缩写、小数、中英文标点、无原生分句能力的回退、拆句与合句分组，以及双向悬停、内联结构、动态变化和关闭清理。定向覆盖率命令仅包含 `sentenceAlignment.ts`、`sentenceHighlight.ts` 和 `bilingualSentenceHighlight.ts` 三个模块。
 
-生产扩展构建后执行 `node scripts/testing/run-bilingual-sentence-highlight-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper <focus-safe-browser.cjs路径> --artifacts-dir /private/tmp/fluentread-bilingual-highlight`。专项使用临时 Edge、第二屏正常尺寸后台窗口，验证真实 Control 翻译—恢复—再翻译、双向逐句定位、富文本、动态 DOM、关闭和配置持久化、多句设置预览、窄屏与深色。报告记录悬停期间的 DOM 变化、几何偏移和请求计数。
+生产扩展构建后执行 `node scripts/testing/run-bilingual-sentence-highlight-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper <focus-safe-browser.cjs路径> --runtime-diagnostics <runtime-diagnostics.cjs路径> --artifacts-dir /private/tmp/fluentread-bilingual-highlight`。专项使用临时 Edge、第二屏正常尺寸后台窗口，验证真实 Control 翻译—恢复—再翻译、双向逐句定位、富文本、动态 DOM、关闭和配置持久化、多句设置预览、窄屏与深色；阅读辅助通过当前样式入口进入界面风格页，以“无”和预设验证停用、启用与重载后的保存。报告记录悬停期间的 DOM 变化、几何偏移、请求计数及隔离世界、扩展页面和后台诊断。未传入诊断采集器时报告会注明采集缺口，不能据页面断言宣称运行时干净。
+
+启动性能对照使用 `node scripts/testing/run-startup-performance.cjs --extension-dir <正式产物目录> --kinds popup,options,content --runs 5 --playwright-root <Node包目录> --focus-safe-helper <focus-safe-browser.cjs路径> --runtime-diagnostics <runtime-diagnostics.cjs路径> --artifacts-dir <证据目录>`，同条件分别测试基线与候选产物。它记录实际加载的脚本字节、就绪时间、脚本及空闲任务耗时；计时包含浏览器、操作系统缓存和采集开销，不将单次对照描述为稳定加速。针对配置编辑、未译长列表和划选的操作计数回归及本批结果见[性能与交互热路径优化](./maintainers/performance-interaction-20261024.md)。
 
 页面与翻译响应为本地确定性夹具，不能代表真实服务的语义对齐质量或 Firefox 实机行为。参考 [duo-translator](https://github.com/linuxscreen/duo-translator/tree/f3abdd18a0e20687222ab338b367edf5476cf746/main/dom) 的文字范围绘制与相邻句分组设计；FluentRead 独立实现，未复制其 GPL-3.0 源码。
 

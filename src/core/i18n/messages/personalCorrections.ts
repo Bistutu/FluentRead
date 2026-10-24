@@ -1,19 +1,21 @@
 /**
  * @file src/core/i18n/messages/personalCorrections.ts
  * 文件职责：提供个人校订面板中与用户项目、网页名称相邻的界面文案。
- * 主要内容：显式登记七语范围标签和章节回退，通过命名参数保留用户名称与各语言语序。
+ * 主要内容：显式登记七语范围标签和章节回退，通过命名参数保留用户名称与各语言语序；中文常量独立导出，运行时引用它时无需保留构建期七语聚合表。
  * 模块边界：这里只描述界面文案，不接收或改写原文、译文、项目名称和章节内容；旧模板仍由迁移适配层处理。
  */
 import type {MessageCatalog, UiLanguage} from '../types';
 
+export const personalCorrectionChineseMessages = {
+    'personalCorrections.projectName': '项目：{name}',
+    'personalCorrections.pageName': '网页：{name}',
+    'personalCorrections.noChapter': '此处没有章节标题',
+    'personalCorrections.currentPage': '仅当前网页',
+    'personalCorrections.project': '项目',
+} as const;
+
 export const personalCorrectionMessages = {
-    'zh-CN': {
-        'personalCorrections.projectName': '项目：{name}',
-        'personalCorrections.pageName': '网页：{name}',
-        'personalCorrections.noChapter': '此处没有章节标题',
-        'personalCorrections.currentPage': '仅当前网页',
-        'personalCorrections.project': '项目',
-    },
+    'zh-CN': personalCorrectionChineseMessages,
     'en-US': {
         'personalCorrections.projectName': 'Project: {name}',
         'personalCorrections.pageName': 'Page: {name}',

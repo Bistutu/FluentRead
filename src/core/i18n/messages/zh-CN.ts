@@ -8,8 +8,8 @@
  */
 import videoLearningText from './video-learning/zh-CN.json';
 import selfHelpText from './self-help/zh-CN.json';
-import {compositeTranslationMessages} from './compositeTranslation';
-import {aiRequestTimeoutMessages} from './aiRequestTimeout';
+import {compositeTranslationChineseMessages} from './compositeTranslation';
+import {aiRequestTimeoutChineseMessages} from './aiRequestTimeout';
 import {sectionTranslationRulesChineseMessages} from './sectionTranslationRules';
 import {pdfReadingChineseMessages} from './pdfReading';
 import {informationHighlightChineseMessages} from './informationHighlight';
@@ -24,19 +24,19 @@ import {localTtsChineseMessages} from './localTts';
 import {translationStatsChineseMessages} from './translationStats';
 import {localTranslationChineseMessages} from './localTranslation';
 
-import {personalCorrectionMessages} from './personalCorrections';
+import {personalCorrectionChineseMessages} from './personalCorrections';
 
 import countForms from './count-forms.json';
 
 export const zhCNMessages = {
     ...countForms['zh-CN'],
-    ...personalCorrectionMessages['zh-CN'],
+    ...personalCorrectionChineseMessages,
     "document.config.loadFailed": "设置未能读取，请重新加载后再试。",
     "popup.compact.translate": "翻译",
     "popup.compact.restore": "还原",
     ...videoLearningText,
     ...selfHelpText,
-    ...compositeTranslationMessages['zh-CN'],
+    ...compositeTranslationChineseMessages,
     ...pdfReadingChineseMessages,
     ...informationHighlightChineseMessages,
     ...reencounterText,
@@ -542,7 +542,7 @@ export const zhCNMessages = {
     "settings.requestLimits.modelTitle": "模型请求限制",
     "settings.requestLimits.globalTitle": "请求限制",
     "settings.requestLimits.globalHelp": "未单独设置的服务和模型共用这些限制",
-    ...aiRequestTimeoutMessages["zh-CN"],
+    ...aiRequestTimeoutChineseMessages,
     ...sectionTranslationRulesChineseMessages,
     "settings.requestLimits.retryIntervals": "重试间隔",
     "settings.requestLimits.apiKeyRecovery": "失败 Key 冷却时间",

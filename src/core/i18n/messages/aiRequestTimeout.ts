@@ -1,17 +1,19 @@
 /**
  * @file src/core/i18n/messages/aiRequestTimeout.ts
  * 文件职责：维护 AI 翻译请求等待时间设置的七语言稳定文案。
- * 主要内容：说明默认 120 秒、10 至 600 秒范围与适合慢模型或长文本的调整方式；扩展资源包与 userscript 注册时补充共用此目录。
+ * 主要内容：说明默认 120 秒、10 至 600 秒范围与适合慢模型或长文本的调整方式；中文独立导出供运行时引用，七语聚合表继续供扩展资源包构建与 userscript 注册使用。
  * 模块边界：仅提供静态文本，不读取配置、不修改远端语言资源、不发起请求或控制计时器。
  */
 import type {UiLanguage} from '../types';
 
+export const aiRequestTimeoutChineseMessages = {
+    "settings.requestLimits.aiTimeout": "AI 翻译请求超时",
+    "settings.requestLimits.aiTimeoutHelp": "每次 AI 翻译请求默认等待 120 秒，可设为 10–600 秒。慢模型或长文本可适当延长等待时间。",
+    "settings.requestLimits.seconds": "秒",
+} as const;
+
 export const aiRequestTimeoutMessages: Readonly<Record<UiLanguage, Readonly<Record<string, string>>>> = {
-    "zh-CN": {
-        "settings.requestLimits.aiTimeout": "AI 翻译请求超时",
-        "settings.requestLimits.aiTimeoutHelp": "每次 AI 翻译请求默认等待 120 秒，可设为 10–600 秒。慢模型或长文本可适当延长等待时间。",
-        "settings.requestLimits.seconds": "秒",
-    },
+    "zh-CN": aiRequestTimeoutChineseMessages,
     "en-US": {
         "settings.requestLimits.aiTimeout": "AI translation request timeout",
         "settings.requestLimits.aiTimeoutHelp": "Each AI translation request waits up to 120 seconds by default. Range: 10–600 seconds. Allow more time for slow models or long text.",

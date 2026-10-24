@@ -368,23 +368,32 @@ describe('设置主表单实际组件异步归属', () => {
         app?.unmount();app = undefined;ready.resolve();await settle();
         expect(theme).not.toHaveBeenCalled();expect(patch).not.toHaveBeenCalled();expect(unsubscribe).toHaveBeenCalledOnce();
     });
-    it('同步订阅与后续批量水合只重建一次完整草稿观察，随后编辑仍同步保存', async () => {
-        const {state, patch, notifyConfig} = await mountSections({configSnapshot: {to: 'en', theme: 'dark'}});
+    it('批量水合重建字段签名，后续编辑只重扫对应分支且仍同步保存', async () => {
+        const {state, patch, notifyConfig} = await mountSections({configSnapshot: {to: 'en', theme: 'dark', glossaryLibraries: [{
+            id: 'library', name: 'Library', enabled: true, sourceLanguage: 'en', targetLanguage: 'zh-Hans', domains: [],
+            entries: Array.from({length: 500}, (_, index) => ({id: `term-${index}`, source: `term ${index}`, target: `术语${index}`, caseSensitive: false})),
+        }]}});
         expect(state.config.to).toBe('en');expect(state.config.theme).toBe('dark');expect(patch).not.toHaveBeenCalled();
         const stringify = JSON.stringify;
-        let draftScans = 0;
+        const draftScans: unknown[] = [];
         vi.spyOn(JSON, 'stringify').mockImplementation((value, replacer, space) => {
-            if (value === state.config) draftScans++;
+            if (runtime.isReactive(value)) draftScans.push(value);
             return stringify(value, replacer, space);
         });
         notifyConfig({...state.config, to: 'ja', theme: 'light', hotkey: 'Shift', customHotkey: 'Alt+J'});
-        expect(draftScans).toBe(1);
+        expect(draftScans).not.toContain(state.config);
+        expect(draftScans.filter(value => value === state.config.harness)).toHaveLength(1);
+        expect(draftScans.filter(value => value === state.config.glossaryLibraries)).toHaveLength(1);
         expect(patch).not.toHaveBeenCalled();expect(state.config.to).toBe('ja');
+        draftScans.length = 0;
         state.config.to = 'fr';
         expect(patch).toHaveBeenCalledOnce();expect(patch).toHaveBeenCalledWith(expect.objectContaining({to: 'fr'}), expect.any(Function));
+        expect(draftScans).not.toContain(state.config.harness);expect(draftScans).not.toContain(state.config.glossaryLibraries);
         state.config.harness.enabled = true;
         expect(patch).toHaveBeenCalledTimes(2);
         expect(patch).toHaveBeenLastCalledWith(expect.objectContaining({harness: expect.objectContaining({enabled: true})}), expect.any(Function));
+        expect(draftScans.filter(value => value === state.config.harness)).toHaveLength(1);
+        expect(draftScans).not.toContain(state.config.glossaryLibraries);expect(draftScans).not.toContain(state.config);
     });
     it('水合结束后立即关闭捕获最新编辑，后续编辑仍允许另一轮关闭交接', async () => {
         const {state, patch, data, notifyConfig} = await mountSections({configSnapshot: {to: 'en'}});
@@ -416,14 +425,18 @@ describe('设置主表单实际组件异步归属', () => {
             expect(() => state.configEditor.hydrate(invalid)).toThrow(error);
             expect(state.config.to).toBe('en');
         } else {
-            const stringify = JSON.stringify;let rejectDraft = true;
+            const stringify = JSON.stringify, previousHarness = runtime.toRaw(state.config.harness);let rejectDraft = true;
+            const warnings = vi.fn();app!.config.warnHandler = warnings;
             vi.spyOn(JSON, 'stringify').mockImplementation((value, replacer, space) => {
-                if (value === state.config && rejectDraft) {rejectDraft = false;throw error;}
+                if (value && typeof value === 'object' && runtime.isReactive(value) && runtime.toRaw(value) !== previousHarness
+                    && 'hoverDelay' in value && rejectDraft) {rejectDraft = false;throw error;}
                 return stringify(value, replacer, space);
             });
             expect(() => notifyConfig({...state.config, to: 'ja'})).toThrow(error);
             expect(state.config.to).toBe('ja');
+            expect(warnings.mock.calls.map(([message]) => message)).toEqual(['Unhandled error during execution of watcher getter']);
         }
+        expect(state.configEditor.applying).toBe(false);
         expect(patch).not.toHaveBeenCalled();
         state.config.to = 'fr';expect(patch).toHaveBeenCalledOnce();
         expect(patch).toHaveBeenLastCalledWith(expect.objectContaining({to: 'fr'}), expect.any(Function));

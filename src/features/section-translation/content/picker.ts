@@ -1,7 +1,7 @@
 /**
  * @file src/features/section-translation/content/picker.ts
  * 文件职责：实现局部翻译的区域选择模式，稳定预览鼠标下的内容块，支持单击锁定或按住左键划过多个区域，松开后用可见按钮调整并确认翻译或恢复，并在选择期间拦截网页自身的点击与悬停反应。
- * 主要内容：以封闭 Shadow Root 绘制高亮与紧凑操作条，突出选区状态和确认，省去正文摘录及重复教程；显式勾选后展示记忆动作与范围，保存成功才翻译，失败保留重试并忽略失效结果；拖动采样独立区域、去重后逐块高亮，空白起划进入正文时收窄外壳而不因经过间隙扩大范围，支持有名称的范围图标和方向键调整；按每帧 150 步发现开放 ShadowRoot，动态插入只扫描新增子树；正文、布局及保护属性变化合并盘点并贴合高亮，退出时清理计时器、观察器和焦点；确认按钮或 Enter 执行，Esc、右键、关闭和隐藏退出。
+ * 主要内容：以封闭 Shadow Root 绘制高亮与紧凑操作条，突出选区状态和确认，省去正文摘录及重复教程；显式勾选后展示记忆动作与范围，保存成功才翻译，失败保留重试并忽略失效结果；拖动采样独立区域，同次事件复用相同命中的解析而保留全部路径采样，去重后逐块高亮，空白起划进入正文时收窄外壳而不因经过间隙扩大范围，支持有名称的范围图标和方向键调整；按每帧 150 步发现开放 ShadowRoot，动态插入只扫描新增子树；正文、布局及保护属性变化合并盘点并贴合高亮，退出时清理计时器、观察器和焦点；确认按钮或 Enter 执行，Esc、右键、关闭和隐藏退出。
  * 模块边界：本模块只处理手势、高亮和选择生命周期，所有事件先校验 isTrusted；区域判定规则来自 ../core，区域盘点、翻译和提示文案由调用方注入，不直接发起翻译、不读取配置存储。
  */
 import pickerStyles from './picker.css?inline';
@@ -709,9 +709,17 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
         const distance = Math.hypot(point.x - drag.last.x, point.y - drag.last.y);
         const steps = Math.max(1, Math.min(64, Math.ceil(distance / 12)));
         const roots = [...swept];
+        // 一次同步采样内不写宿主布局；相同命中只解析一次。下一事件重新取值，
+        // 避免页面改样式、重挂或滚动后沿用过时区域，也不丢掉折线路径上的采样点。
+        const resolved = new Map<Element | null, Element | null>();
         for (let step = 1; step <= steps; step += 1) {
-            const hit = resolveSectionElement(elementAtPoint({x: drag.last.x + (point.x - drag.last.x) * step / steps,
-                y: drag.last.y + (point.y - drag.last.y) * step / steps}), geometry);
+            const element = elementAtPoint({x: drag.last.x + (point.x - drag.last.x) * step / steps,
+                y: drag.last.y + (point.y - drag.last.y) * step / steps});
+            let hit = resolved.get(element);
+            if (hit === undefined) {
+                hit = resolveSectionElement(element, geometry);
+                resolved.set(element, hit);
+            }
             // 段落间空隙往往命中文章外壳；保留已选的具体内容块，不因经过间隙扩大。
             if (!hit || roots.some(root => containsContent(hit, root))) continue;
             // 若从空白起划，起点外壳仅作暂存；进入正文后用实际经过的块替换它。
