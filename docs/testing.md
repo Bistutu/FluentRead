@@ -54,6 +54,14 @@ node scripts/testing/run-cache-clear-recovery-test.cjs \
 
 运行 `pnpm test tests/materialWorkspaceLifecycle.test.ts` 验证材料搜索的真实 SFC。主题过滤先于正文索引，空白查询不处理正文；非空查询复用至多 4 Mi 字符的小写文本，超预算材料完整匹配且当轮只构造一次，之后的小项仍可缓存。覆盖全部引用和跨字段短语、深层引用及来源/主题变更、同 ID 重载、分页和选择/草稿归属，以及清空查询、归档和清库后的失效。首次字段读取登记依赖与正文构造分开计数，不能把首次额外读取或原有空查询短路隐藏成收益。设计、证据和限制见[阅读材料搜索的正文复用](maintainers/performance-material-search-20261024.md)。
 
+### 阅读材料隐藏与恢复
+
+运行 `pnpm test tests/materialWorkspaceKeepAlive.test.ts tests/materialWorkspaceLifecycle.test.ts tests/optionsAppNavigationLifecycle.test.ts tests/learningCenterLifecycle.test.ts`。材料页藏在外层 KeepAlive 时，把普通列表和详情读取合并为待刷新，恢复且操作空闲后再执行；内层学习标签切换仍卸载材料页。独立显示代次拒绝跨隐藏的旧读取与延迟焦点，组件存活和原操作代次继续接收已接受保存、导入、导出的结果，保留 busy 收尾与草稿身份。两级稳定 `isVisible` getter 还覆盖学习中心或材料组件在离开后才挂载的情况。
+
+自动补刷须保留保存、导入或导出失败的首因，不能因读取成功清空它或因读取失败覆盖它；用户主动刷新/重试会清理旧错误并呈现新读取结果。已发出的请求和已接受操作仍可在隐藏期间完成，不能将普通读取合并描述为全部隐藏 I/O 为零。
+
+实际父子 SFC 的 16 项与不可变基线配对，外层只复现 Options 异步组件/KeepAlive 结构；实际 Options SFC 的导航用例另以学习中心端口检查捕获的可见性 getter。直接材料组 60 项负责接受中的操作、各等待点、补刷错误及读取期间产生的文件校验错误；另验证 Options 59 项与原学习中心 39 项。均为离线 Vue 与受控客户端端口验证，没有真实浏览器或持久存储验收。设计、分项结果和证据入口见[阅读材料的可见性与延后刷新](maintainers/material-visibility-20261024.md)。
+
 ## man7 Linux 手册正文
 
 man7 的 Linux 手册将自然语言正文、参数说明、终端会话和源码混放在 `pre` 中。翻译时按手册段落建立可恢复的正文边界，保留原来的换行、缩进和行内链接；命令会话与程序源码继续保持原文。此能力限定于经过结构核验的 man7 Linux 手册，普通网页代码块和 RFC 的格式化文本仍遵守原有保护策略。

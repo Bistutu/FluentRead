@@ -6,6 +6,7 @@ import type {TranslationParams, UiLanguage} from '../src/core/i18n';
 const TEST_KEY = '__frOptionsNavigationLifecycle';
 type ActualUiI18n = {language: import('vue').Ref<UiLanguage>; t: (key: string, params?: TranslationParams) => string; translateLegacy: (text: string) => string};
 type FixtureScope = {active: boolean; unmount?: () => void};
+type LearningVisibilityProps = {isVisible?: () => boolean};
 let current: FixtureScope | undefined;
 let unmount: (() => void) | undefined;
 const owns = (scope: FixtureScope) => scope.active && current === scope;
@@ -116,7 +117,7 @@ async function mountOptions(hash = '#settings-selection', ready = Promise.resolv
     cloneNode: () => ({}), insertStaticContent: () => [{}, {}],
   });
   type SearchResult = {id: string; sectionId: string; targetId?: string; panelId?: string; label: string; searchDescription: string};
-  let state!: {activeSection: string; query: string; activeItem: {id: string}; selectSection: (id: string, target?: string) => void; activePanel: string; activePanels: {id: string}[]; sectionPanels: {id: string}[]; contentComponentProps: {activePanel?: string; initialTab?: string; onReload?: (tab: string) => void}; selectPanel: (id: string) => void; isGroupOpen: (index: number) => boolean; toggleGroup: (index: number) => void; settingsContentElement: {scrollTo: typeof scrollTo} | null; filteredResults: SearchResult[]; selectResult: (result: SearchResult) => Promise<void>};
+  let state!: {activeSection: string; query: string; activeItem: {id: string}; selectSection: (id: string, target?: string) => void; activePanel: string; activePanels: {id: string}[]; sectionPanels: {id: string}[]; contentComponentProps: LearningVisibilityProps & {activePanel?: string; initialTab?: string; onReload?: (tab: string) => void}; selectPanel: (id: string) => void; isGroupOpen: (index: number) => boolean; toggleGroup: (index: number) => void; settingsContentElement: {scrollTo: typeof scrollTo} | null; filteredResults: SearchResult[]; selectResult: (result: SearchResult) => Promise<void>};
   const app = renderer.createApp({
     setup: () => () => runtime.h(component, {
       ...recovery?.props,
@@ -449,6 +450,18 @@ describe('OptionsApp mounted hash navigation', () => {
     expect(windowScrollTo).not.toHaveBeenCalled();
   });
 
+  it('keeps a captured learning props getter current after hash navigation and return', async () => {
+    const {state, navigateHash} = await mountOptions('#settings-vocabulary');
+    const capturedProps = state.contentComponentProps;
+    const visible = capturedProps.isVisible;
+    expect(visible).toBeTypeOf('function');expect(visible!()).toBe(true);
+    await navigateHash('#settings-general');
+    expect(state.activeSection).toBe('settings-general');expect(visible!()).toBe(false);
+    await navigateHash('#settings-vocabulary');
+    expect(state.contentComponentProps).not.toBe(capturedProps);
+    expect(state.contentComponentProps.isVisible).toBe(visible);expect(visible!()).toBe(true);
+  });
+
   it('opens the general page when an initial fragment names an Object prototype member', async () => {
     const {state, location} = await mountOptions('#constructor');
     expect(state.activeSection).toBe('settings-general');
@@ -641,7 +654,12 @@ async function mountClientOptions(requestedSection: string, browser: 'userscript
       runtime.h('button', {'data-anchor-navigate': '', onClick: () => emit('navigate')}, 'Navigate anchor')]);
   }});
   const settingsPort = runtime.defineComponent({name: 'SettingsDisplayPort', props: ['activeSection'], setup: props => () => runtime.h('section', {'data-settings-child': 'settings', 'data-active-section': props.activeSection}, route ? (navigation.settingsPagePanels[props.activeSection] || []).map((panel: {id: string; targetIds: readonly string[]}) => runtime.h('div', {class:'settings-page-panel', 'data-settings-panel':panel.id}, panel.targetIds.map(id=>runtime.h('div',{id},id)))) : props.activeSection)});
-  const learningPort = runtime.defineComponent({name: 'LearningDisplayPort', setup: () => () => runtime.h('section', {'data-settings-child': 'learning'}, 'Saved display port')});
+  const learningProps: LearningVisibilityProps[] = [];
+  const learningPort = runtime.defineComponent({name: 'LearningDisplayPort', props: {isVisible: Function as runtime.PropType<() => boolean>}, setup: props => {
+    // Keep the mount-time value rather than a reactive props proxy, as a pending async VNode would.
+    learningProps.push({isVisible: props.isVisible});
+    return () => runtime.h('section', {'data-settings-child': 'learning'}, 'Saved display port');
+  }});
   configureOptionsPorts({i18n, config, configReady: Promise.resolve(), subscribeConfig: () => unsubscribe,
     browserCapabilities: capabilities.resolveBrowserCapabilities({browser, manifestVersion: browser === 'chrome' ? 3 : 2}),
     theme, skin() {}, font() {}, registerAppearance: () => () => undefined});
@@ -715,13 +733,25 @@ async function mountClientOptions(requestedSection: string, browser: 'userscript
       width: image.getAttribute('width'), height: image.getAttribute('height')};
   };
   const notifyDialogClosed = () => {if (!dialogNotifications.closed) throw new Error('Dialog display port is not mounted');dialogNotifications.closed();};
-  return {host, loads, errors, language, t: i18n.t, location, prefix, unsubscribe, settle, rail, choose, navigateHash, targetQueries, highlightedPanels, media, emitMedia, theme, config,
+  return {host, loads, learningProps, errors, language, t: i18n.t, location, prefix, unsubscribe, settle, rail, choose, navigateHash, targetQueries, highlightedPanels, media, emitMedia, theme, config,
     images, previewState, notifyDialogClosed, dialogSlotEvaluations: () => dialogSlotRuns,
     hostDocumentState, initialHostDocumentState, dispose: () => scope.unmount?.(),
     search: host.querySelector<HTMLInputElement>('input[type="search"]')!};
 }
 
 describe('OptionsApp actual client navigation controls and system events', () => {
+  it('passes a live visibility getter through the actual learning VNode and retains it while cached', async () => {
+    const h = await mountClientOptions('settings-vocabulary', 'chrome');
+    expect(h.learningProps).toHaveLength(1);
+    const capturedProps = h.learningProps[0], visible = capturedProps.isVisible;
+    expect(visible).toBeTypeOf('function');expect(visible!()).toBe(true);
+    await h.choose('settings-general');
+    expect(h.host.querySelector('[data-settings-child="learning"]')).toBeNull();expect(visible!()).toBe(false);
+    await h.choose('settings-vocabulary');
+    expect(h.host.querySelector('[data-settings-child="learning"]')).not.toBeNull();expect(visible!()).toBe(true);
+    expect(h.learningProps).toEqual([capturedProps]);expect(h.loads.learning).toHaveBeenCalledOnce();expect(h.errors).toEqual([]);
+  });
+
   it('collapses a navigation group, selects a mobile destination and switches its registered tab', async () => {
     const h = await mountClientOptions('settings-general', 'chrome');
     const toggle = h.host.querySelector<HTMLButtonElement>('.nav-group-toggle')!;

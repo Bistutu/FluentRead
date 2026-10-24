@@ -18,7 +18,7 @@ vi.mock('webextension-polyfill', () => ({default: {get runtime() {return (global
 vi.mock('@/src/features/reading-assistant/public', () => ({getHarnessSession: (...args: unknown[]) => (globalThis as any).__fluentreadMaterialUiTest.getSession(...args), listLearningMemories: (...args: unknown[]) => (globalThis as any).__fluentreadMaterialUiTest.memories(...args)}));
 vi.mock('@/src/features/reading-assistant/ui/answer/public', () => ({ReadingAnswer: {render: () => null}}));
 vi.mock('@/src/ui/dateFormat', () => ({useRenderDateFormatter: () => () => '10/15'}));
-async function mount(options: {list?: (...args: any[]) => Promise<MaterialRecord[]>; session?: (...args: any[]) => Promise<unknown>; update?: (...args: any[]) => Promise<MaterialRecord>; memories?: () => Promise<unknown[]>; getEntry?: (message: unknown) => Promise<unknown>} = {}) {
+async function mount(options: {shown?: import('vue').Ref<boolean>; list?: (...args: any[]) => Promise<MaterialRecord[]>; session?: (...args: any[]) => Promise<unknown>; update?: (...args: any[]) => Promise<MaterialRecord>; memories?: () => Promise<unknown[]>; getEntry?: (message: unknown) => Promise<unknown>} = {}) {
   let items = [record(),record('b')]; let listener: ((message: unknown) => void) | undefined;
   const api = {
     materialList:vi.fn(options.list || (async () => items.map(item => structuredClone(item)))),
@@ -54,7 +54,11 @@ async function mount(options: {list?: (...args: any[]) => Promise<MaterialRecord
     insertStaticContent(html, parent, anchor) {const box = document.createElement('div'); box.innerHTML = html; const first = box.firstChild!, last = box.lastChild!; while(box.firstChild) parent.insertBefore(box.firstChild, anchor || null); return [first,last];},
   });
   let panel: any; const openTab=vi.fn();
-  const app = renderer.createApp({render:()=>runtime.h(component,{onOpenTab:openTab,ref:(instance:any)=>{if(instance) panel=instance.$.setupState;}})});
+  const material=()=>runtime.h(component,{onOpenTab:openTab,ref:(instance:any)=>{if(instance) panel=instance.$.setupState;}});
+  const otherPage={render:()=>runtime.h('div',{'data-material-test-other':''})};
+  const app = renderer.createApp({render:()=>options.shown
+    ? runtime.h(runtime.KeepAlive,null,{default:()=>options.shown!.value?material():runtime.h(otherPage)})
+    : material()});
   app.mount(document.querySelector('main')!);
   let active=true; const unmount=()=>{if(active){active=false;app.unmount();}}; dispose.push(unmount);
   const flush=async()=>{for(let i=0;i<15;i++){await Promise.resolve();await runtime.nextTick();}};
@@ -248,6 +252,106 @@ it('keeps source text visible when stored source or learning memories cannot be 
   expect(ui.document.body.textContent).toContain('A recoverable original.');expect(ui.document.body.textContent).toContain('部分学习内容读取失败');expect(ui.document.body.textContent).toContain('来源地址已失效');
   await activate(ui,namedButton(ui,'重试'));expect(ui.document.body.textContent).toContain('Restored memory.');expect(ui.document.body.textContent).not.toContain('部分学习内容读取失败');
   ui.api.materialList.mockResolvedValueOnce([record('new')]);ui.notify();await ui.flush();expect(ui.document.querySelector('[data-material-id="new"]')).toBeTruthy();expect(ui.document.querySelector('.fr-material-detail')).toBeNull();
+});
+
+describe('material workspace hidden accepted actions and focus ownership',()=>{
+  async function visibility(ui:Awaited<ReturnType<typeof mount>>,shown:import('vue').Ref<boolean>,value:boolean){shown.value=value;await ui.flush();}
+
+  it('continues accepted note generation and acknowledgement while hidden and does not restore the saved draft',async()=>{
+    const shown=runtime.ref(true),ui=await mount({shown});await ui.panel.select('a');ui.panel.note='Accepted hidden note';
+    const generation=deferred<number>(),write=deferred<MaterialRecord>();ui.api.materialGeneration.mockReturnValueOnce(generation.promise);ui.api.materialCapture.mockReturnValueOnce(write.promise);
+    const saving=ui.panel.saveNote();expect(ui.panel.busy).toBe(true);await visibility(ui,shown,false);generation.resolve(3);await ui.flush();
+    expect(ui.api.materialCapture).toHaveBeenCalledWith(expect.objectContaining({generation:3,reference:expect.objectContaining({note:'Accepted hidden note'})}));
+    const updated={...record(),references:[{kind:'note' as const,id:'saved',note:'Accepted hidden note'}]};write.resolve(updated);await saving;
+    expect(ui.panel.busy).toBe(false);expect(ui.panel.note).toBe('');expect(ui.panel.feedback).toContain('笔记已保存');expect(ui.panel.materials[0].references).toEqual(updated.references);
+    ui.api.materialList.mockResolvedValue([updated,record('b')]);await visibility(ui,shown,true);expect(ui.panel.note).toBe('');expect(ui.panel.busy).toBe(false);
+  });
+
+  it('keeps a failed accepted note draft and clears busy while hidden, then permits retry after activation',async()=>{
+    const shown=runtime.ref(true),ui=await mount({shown});await ui.panel.select('a');ui.panel.note='Retry this hidden note';
+    const generation=deferred<number>();ui.api.materialGeneration.mockReturnValueOnce(generation.promise);ui.api.materialCapture.mockRejectedValueOnce(new Error('Hidden note write failed'));
+    const saving=ui.panel.saveNote();await visibility(ui,shown,false);generation.resolve(0);await saving;
+    expect(ui.panel.busy).toBe(false);expect(ui.panel.note).toBe('Retry this hidden note');expect(ui.panel.error).toBe('Hidden note write failed');
+    await visibility(ui,shown,true);await ui.panel.saveNote();expect(ui.api.materialCapture).toHaveBeenCalledTimes(2);expect(ui.panel.note).toBe('');expect(ui.panel.busy).toBe(false);
+  });
+
+  it.each(['file-read','import-ack','followup-list'] as const)('finishes an accepted import hidden during %s without losing completion or busy cleanup',async stage=>{
+    const shown=runtime.ref(true),ui=await mount({shown}),bytes=deferred<string>(),write=deferred<{inserted:number;updated:number;skipped:number}>(),listing=deferred<MaterialRecord[]>();
+    const imported=[record('imported')],counts={inserted:2,updated:0,skipped:0};
+    ui.api.materialImport.mockImplementationOnce(()=>stage==='import-ack'?write.promise:Promise.resolve(counts));
+    ui.api.materialList.mockImplementationOnce(()=>stage==='followup-list'?listing.promise:Promise.resolve(imported));
+    const importing=ui.panel.importMaterials({target:{files:[{size:2,text:()=>stage==='file-read'?bytes.promise:Promise.resolve('{}')}],value:'backup'}});await ui.flush();expect(ui.panel.busy).toBe(true);
+    if(stage!=='file-read')expect(ui.api.materialImport).toHaveBeenCalledOnce();
+    await visibility(ui,shown,false);
+    if(stage==='file-read')bytes.resolve('{}');else if(stage==='import-ack')write.resolve(counts);else listing.resolve(imported);
+    await importing;expect(ui.api.materialImport).toHaveBeenCalledOnce();expect(ui.panel.materials.map((item:MaterialRecord)=>item.id)).toEqual(['imported']);expect(ui.panel.feedback).toContain('已恢复 2 份材料');expect(ui.panel.busy).toBe(false);
+    ui.api.materialList.mockResolvedValue(imported);await visibility(ui,shown,true);expect(ui.panel.busy).toBe(false);expect(ui.panel.feedback).toContain('已恢复 2 份材料');
+  });
+
+  it.each(['success','download-failure','storage-failure'] as const)('settles an accepted export after hiding with %s and releases every created URL',async outcome=>{
+    const shown=runtime.ref(true),ui=await mount({shown}),exported=deferred<Awaited<ReturnType<typeof ui.api.materialExport>>>();ui.api.materialExport.mockReturnValueOnce(exported.promise);
+    const create=vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:hidden-materials'),revoke=vi.spyOn(URL,'revokeObjectURL').mockImplementation(()=>{}),downloads:Element[]=[];
+    vi.spyOn(ui.window.HTMLElement.prototype,'click').mockImplementation(function(this:HTMLElement){if(this.tagName==='A'){downloads.push(this);if(outcome==='download-failure')throw new Error('Download failed');}});
+    const exporting=ui.panel.exportMaterials();await visibility(ui,shown,false);
+    if(outcome==='storage-failure')exported.reject(new Error('Export storage failed'));else exported.resolve({format:'fluentread-learning-materials',version:1,materials:[record()]});
+    await exporting;expect(ui.panel.busy).toBe(false);
+    if(outcome==='storage-failure'){expect(create).not.toHaveBeenCalled();expect(revoke).not.toHaveBeenCalled();expect(ui.panel.error).toBe('Export storage failed');}
+    else {expect(create).toHaveBeenCalledOnce();expect(downloads).toHaveLength(1);expect(revoke).toHaveBeenCalledOnce();expect(revoke).toHaveBeenCalledWith('blob:hidden-materials');if(outcome==='success')expect(ui.panel.feedback).toContain('材料备份已导出');else expect(ui.panel.error).toBe('Download failed');}
+    await visibility(ui,shown,true);expect(ui.panel.busy).toBe(false);
+  });
+
+  it('remembers a list read interrupted by accepted export and refreshes once after returning idle and visible',async()=>{
+    const shown=runtime.ref(true),first=deferred<MaterialRecord[]>();let lists=0;
+    const ui=await mount({shown,list:()=>++lists===1?first.promise:Promise.resolve([record('refreshed')])}),exported=deferred<Awaited<ReturnType<typeof ui.api.materialExport>>>();expect(ui.panel.loading).toBe(true);ui.api.materialExport.mockReturnValueOnce(exported.promise);
+    const create=vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:pending-list');vi.spyOn(URL,'revokeObjectURL').mockImplementation(()=>{});vi.spyOn(ui.window.HTMLElement.prototype,'click').mockImplementation(()=>{});
+    const exporting=ui.panel.exportMaterials();await visibility(ui,shown,false);first.resolve([record('obsolete')]);exported.resolve({format:'fluentread-learning-materials',version:1,materials:[]});await exporting;await ui.flush();
+    expect(ui.panel.busy).toBe(false);expect(ui.api.materialList).toHaveBeenCalledOnce();expect(create).toHaveBeenCalledOnce();
+    await visibility(ui,shown,true);expect(ui.api.materialList).toHaveBeenCalledTimes(2);expect(ui.panel.materials.map((item:MaterialRecord)=>item.id)).toEqual(['refreshed']);
+  });
+
+  it.each(['success','failure'] as const)('preserves the export failure during automatic refresh %s until an explicit user refresh',async outcome=>{
+    const ui=await mount(),interrupted=deferred<MaterialRecord[]>(),automatic=deferred<MaterialRecord[]>(),exported=deferred<Awaited<ReturnType<typeof ui.api.materialExport>>>();
+    ui.api.materialList.mockReturnValueOnce(interrupted.promise).mockReturnValueOnce(automatic.promise).mockResolvedValueOnce([record('explicit')]);ui.api.materialExport.mockReturnValueOnce(exported.promise);
+    const reloading=ui.panel.reload();await ui.flush();expect(ui.panel.loading).toBe(true);
+    namedButton(ui,'导出材料备份').dispatchEvent(new ui.window.Event('click',{bubbles:true}));await ui.flush();expect(ui.panel.busy).toBe(true);
+    exported.reject(new Error('Original export failure'));await ui.flush();expect(ui.api.materialList).toHaveBeenCalledTimes(3);
+    const duringAutomatic=ui.document.querySelector('[role="alert"]')?.textContent||'';
+    if(outcome==='success')automatic.resolve([record('automatic')]);else automatic.reject(new Error('Automatic refresh failure'));
+    interrupted.resolve([record('obsolete')]);await reloading;await ui.flush();const afterAutomatic=ui.document.querySelector('[role="alert"]')?.textContent||'';
+    expect(ui.panel.busy).toBe(false);expect(ui.panel.loading).toBe(false);
+    await activate(ui,namedButton(ui,'刷新材料'));const afterExplicit=ui.document.querySelector('[role="alert"]')?.textContent||'';
+    if(process.env.FLUENTREAD_MATERIAL_RECOVERY_METRICS==='1')console.info(`MATERIAL_EXPORT_RECOVERY ${JSON.stringify({outcome,duringAutomatic,afterAutomatic,afterExplicit,listRequests:ui.api.materialList.mock.calls.length})}`);
+    expect(duringAutomatic).toContain('Original export failure');expect(afterAutomatic).toContain('Original export failure');expect(afterAutomatic).not.toContain('Automatic refresh failure');expect(afterExplicit).toBe('');
+    expect(ui.api.materialList).toHaveBeenCalledTimes(4);expect(ui.panel.materials.map((item:MaterialRecord)=>item.id)).toEqual(['explicit']);
+  });
+
+  it.each(['success','failure'] as const)('preserves a newer backup validation error after an already pending automatic refresh %s',async outcome=>{
+    const ui=await mount(),automatic=deferred<MaterialRecord[]>();ui.api.materialList.mockReturnValueOnce(automatic.promise).mockResolvedValueOnce([record('retried')]);
+    ui.notify();await ui.flush();expect(ui.panel.loading).toBe(true);expect(ui.api.materialList).toHaveBeenCalledTimes(2);
+    const input=ui.document.querySelector<HTMLInputElement>('input[type="file"]')!,read=vi.fn();
+    Object.defineProperty(input,'files',{configurable:true,value:[{size:21*1024*1024,text:read}]});input.dispatchEvent(new ui.window.Event('change',{bubbles:true}));await ui.flush();
+    expect(ui.document.querySelector('[role="alert"]')?.textContent).toContain('超过 20 MB');expect(read).not.toHaveBeenCalled();expect(ui.api.materialImport).not.toHaveBeenCalled();
+    if(outcome==='success')automatic.resolve([record('automatic')]);else automatic.reject(new Error('Automatic read failure after validation'));
+    await ui.flush();const afterAutomatic=ui.document.querySelector('[role="alert"]')?.textContent||'';
+    await activate(ui,namedButton(ui,'重试'));const afterExplicit=ui.document.querySelector('[role="alert"]')?.textContent||'';
+    if(process.env.FLUENTREAD_MATERIAL_RECOVERY_METRICS==='1')console.info(`MATERIAL_VALIDATION_RECOVERY ${JSON.stringify({outcome,afterAutomatic,afterExplicit,listRequests:ui.api.materialList.mock.calls.length})}`);
+    expect(afterAutomatic).toContain('超过 20 MB');expect(afterAutomatic).not.toContain('Automatic read failure after validation');expect(afterExplicit).toBe('');expect(ui.panel.materials.map((item:MaterialRecord)=>item.id)).toEqual(['retried']);
+  });
+
+  it.each(['edit-note','start-edit','cancel-edit','back-to-list'] as const)('does not run the queued %s focus after KeepAlive deactivation',async action=>{
+    const shown=runtime.ref(true),ui=await mount({shown});await ui.panel.select('a');await ui.flush();
+    if(action==='cancel-edit'){ui.panel.startEdit();await ui.flush();}
+    const focus=vi.spyOn(ui.window.HTMLElement.prototype,'focus').mockImplementation(()=>{});
+    if(action==='edit-note')ui.panel.editNote(record().references[0]);else if(action==='start-edit')ui.panel.startEdit();else if(action==='cancel-edit')ui.panel.cancelEdit();else ui.panel.backToList();
+    shown.value=false;await ui.flush();expect(focus).not.toHaveBeenCalled();
+  });
+
+  it('finishes an accepted material save across hide-show ABA without reclaiming old focus',async()=>{
+    const shown=runtime.ref(true),ui=await mount({shown});await ui.panel.select('a');ui.panel.startEdit();await ui.flush();ui.panel.draft.title='Accepted title';
+    const write=deferred<MaterialRecord>();ui.api.materialUpdate.mockReturnValueOnce(write.promise);const organize=namedButton(ui,'整理材料'),focus=vi.spyOn(organize,'focus').mockImplementation(()=>{});
+    const saving=ui.panel.saveEdit();await visibility(ui,shown,false);await visibility(ui,shown,true);const updated={...record(),title:'Accepted title'};ui.api.materialList.mockResolvedValue([updated,record('b')]);write.resolve(updated);await saving;await ui.flush();
+    expect(ui.panel.materials.find((item:MaterialRecord)=>item.id==='a').title).toBe('Accepted title');expect(ui.panel.editing).toBe(false);expect(ui.panel.busy).toBe(false);expect(focus).not.toHaveBeenCalled();
+  });
 });
 
 describe('material workspace search workload and bounded memo',()=>{
